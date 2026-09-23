@@ -2107,6 +2107,16 @@
   /* ---------- Administration (Espace Pro, global_role='admin') ---------- */
   .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
   .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
+  /* flex-shrink:0 (ci-dessus) empêche ce bloc de se réduire à la largeur de
+     la carte sur mobile — flex-wrap:wrap ne peut alors jamais s'appliquer,
+     puisque l'élément garde toujours sa largeur naturelle complète (bug réel
+     observé : "Proposer un autre créneau" coupé au bord de l'écran, sans
+     moyen d'y accéder). Corrigé uniquement ≤760px : le rendu desktop
+     (élément à côté du bloc infos, jamais sur sa propre ligne) reste
+     inchangé au-dessus de ce seuil. */
+  @media (max-width:760px){
+    .admin-bk-row-actions{ flex:1 1 100%; min-width:0; }
+  }
   .admin-bk-status-select{
     font-family:"Poppins",sans-serif; font-size:0.78rem; font-weight:600;
     padding:7px 10px; border-radius:8px; border:1.5px solid var(--line);
