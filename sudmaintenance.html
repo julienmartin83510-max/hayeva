@@ -1790,10 +1790,11 @@
   /* Professionnels & conciergeries */
   .pro-cats{
     display:flex;
-    flex-wrap:wrap;
-    gap:14px;
+    flex-wrap:nowrap;
+    gap:clamp(8px, 1.6vw, 14px);
     margin:26px 0 36px;
   }
+  @media (max-width:600px){ .pro-cats{ flex-wrap:wrap; } }
   .pro-cat-card{
     display:flex;
     align-items:center;
@@ -1801,13 +1802,47 @@
     background:var(--cream);
     border:1px solid var(--line);
     border-radius:12px;
-    padding:16px 22px;
+    padding:16px clamp(14px, 2.2vw, 22px);
     font-family:"Poppins",sans-serif;
     font-weight:700;
-    font-size:0.98rem;
+    font-size:clamp(0.82rem, 1.6vw, 0.98rem);
     color:var(--ink);
+    flex:1 1 0;
+    min-width:0;
+    white-space:nowrap;
   }
-  .pro-cat-card .pro-cat-icon{ font-size:1.3rem; line-height:1; }
+  .pro-cat-card .pro-cat-icon{ font-size:1.3rem; line-height:1; flex:none; }
+  /* Placée APRÈS la règle de base ci-dessus (même sélecteur/spécificité :
+     dans ce fichier, entre deux règles de même poids, celle qui arrive en
+     dernier dans le CSS l'emporte, indépendamment de la présence d'une
+     media query — cf. les autres correctifs de cascade de ce fichier).
+     flex:1 1 0 + min-width:0 (utiles au rétrécissement fluide sur
+     desktop/tablette) empêchaient tout passage à la ligne en dessous de
+     600px : les cartes se comprimaient à l'infini (texte tronqué) au lieu
+     de passer sur une nouvelle ligne, min-width:0 supprimant leur largeur
+     minimale naturelle. */
+  @media (max-width:600px){
+    .pro-cat-card{ flex:1 1 auto; min-width:calc(50% - 7px); white-space:normal; }
+  }
+  /* Troisième carte "Plusieurs logements" : seule à être un vrai <button>
+     cliquable (les deux autres restent décoratives, inchangées). Reset des
+     styles par défaut du navigateur pour rendre visuellement identique aux
+     deux cartes voisines, plus un retour visuel au survol/clic. */
+  button.pro-cat-card{
+    appearance:none; -webkit-appearance:none; cursor:pointer; text-align:left;
+    transition:border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+  }
+  button.pro-cat-card:hover{ border-color:var(--terracotta); box-shadow:0 6px 16px -10px rgba(20,33,44,0.35); }
+  button.pro-cat-card:active{ transform:scale(0.98); }
+  /* Mise en évidence brève de la carte multi-logements au clic sur
+     "Plusieurs logements" (scroll fluide + pulse ~0.6s), pour que
+     l'utilisateur comprenne immédiatement où il vient d'être amené. */
+  @keyframes proMultiHighlightPulse{
+    0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--terracotta) 45%, transparent); }
+    40%{ box-shadow:0 0 0 10px color-mix(in srgb, var(--terracotta) 18%, transparent); }
+    100%{ box-shadow:0 0 0 0 transparent; }
+  }
+  .pro-multi-card.is-highlighted{ animation:proMultiHighlightPulse 0.6s ease-out; }
   .pro-report{
     margin-top:32px;
     background:var(--cream);
@@ -4059,6 +4094,9 @@
       <div class="pro-cats">
         <div class="pro-cat-card"><span class="pro-cat-icon" aria-hidden="true">🏠</span> Locations saisonnières</div>
         <div class="pro-cat-card"><span class="pro-cat-icon" aria-hidden="true">🚐</span> Mobil-homes</div>
+        <button type="button" class="pro-cat-card" id="multiLogementsQuickLink">
+          <span class="pro-cat-icon" aria-hidden="true">🏘️</span> Plusieurs logements
+        </button>
       </div>
 
       <div class="pack-grid">
@@ -4173,6 +4211,21 @@
       </div>
     </div>
   </section>
+
+  <script>
+  (function(){
+    var quickLink = document.getElementById('multiLogementsQuickLink');
+    var target = document.getElementById('multiLogements');
+    if (!quickLink || !target) return;
+    quickLink.addEventListener('click', function(){
+      target.scrollIntoView({ behavior:'smooth', block:'start' });
+      target.classList.remove('is-highlighted');
+      void target.offsetWidth; // force le reflow pour pouvoir rejouer l'animation à chaque clic
+      target.classList.add('is-highlighted');
+      setTimeout(function(){ target.classList.remove('is-highlighted'); }, 700);
+    });
+  })();
+  </script>
 
   <section id="espacePro" hidden>
     <div class="auth-bg" aria-hidden="true">
