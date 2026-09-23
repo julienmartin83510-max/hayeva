@@ -2048,6 +2048,10 @@
     transition:background .2s ease, color .2s ease;
   }
   .admin-bk-ics-btn:hover{ background:var(--terracotta); color:var(--white); }
+  .admin-bk-note{
+    font-size:0.8rem; font-style:italic; color:var(--ink); background:var(--sand-deep);
+    border-radius:8px; padding:7px 10px; margin-top:2px; max-width:44ch;
+  }
   .ec-next-appt{
     background:var(--navy-fixed); color:#fff; border-radius:16px; padding:24px 26px; margin-bottom:26px;
   }
@@ -3713,8 +3717,8 @@
               <label>Code postal<input id="bkNewAddrPostal" type="text" placeholder="83600"></label>
               <label>Ville<input id="bkNewAddrCity" type="text" placeholder="Fréjus"></label>
             </div>
-            <label class="full">Commentaire (facultatif)
-              <textarea id="bkComment" rows="2" placeholder="Précision utile pour votre rendez-vous"></textarea>
+            <label class="full">Précisez votre demande (facultatif)
+              <textarea id="bkComment" rows="2" placeholder="Décrivez rapidement le problème ou l'intervention souhaitée…"></textarea>
             </label>
           </div>
           <h3 style="margin-top:24px;">Récapitulatif</h3>
@@ -5442,7 +5446,8 @@
               p_service_pack_slug: resolved.packSlug,
               p_date: toISODateLocal(state.date),
               p_start_time: fmtTime(state.time) + ':00',
-              p_customer_address_id: addrOutcome.addressId
+              p_customer_address_id: addrOutcome.addressId,
+              p_notes: (bkComment.value || '').trim() || null
             }).then(function(rpcRes){
               if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
               return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {} };
@@ -7054,6 +7059,7 @@
         (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
         (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
+        (b.notes ? '<span class="admin-bk-note">💬 ' + admEscape(b.notes) + '</span>' : '') +
         '</div><div class="admin-bk-row-actions">' +
         '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
         (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">📅 Ajouter à Apple Calendar</button>' : '') +
@@ -7067,7 +7073,7 @@
     var listEl = document.getElementById('adminBkList');
     if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
     sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
       .order('date', { ascending:true })
       .order('start_time', { ascending:true })
       .limit(500)
@@ -7197,6 +7203,7 @@
       'Téléphone : ' + (contact.phone || '-'),
       'E-mail : ' + (contact.email || '-'),
       "Type d'intervention : " + svcName,
+      'Commentaire : ' + (b.notes || '-'),
       'Référence : ' + b.reference
     ];
     var lines = [
