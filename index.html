@@ -2032,6 +2032,22 @@
   .ec-badge-completed{ background:rgba(47,122,79,0.15); color:#2F7A4F; }
   .ec-badge-cancelled{ background:rgba(178,58,58,0.12); color:#B23A3A; }
   .ec-badge-draft{ background:var(--sand-deep); color:var(--ink-soft); }
+
+  /* ---------- Administration (Espace Pro, global_role='admin') ---------- */
+  .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
+  .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
+  .admin-bk-status-select{
+    font-family:"Poppins",sans-serif; font-size:0.78rem; font-weight:600;
+    padding:7px 10px; border-radius:8px; border:1.5px solid var(--line);
+    background:var(--sand); color:var(--ink); cursor:pointer;
+  }
+  .admin-bk-ics-btn{
+    display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
+    padding:7px 12px; border-radius:8px; border:1.5px solid var(--terracotta); color:var(--terracotta);
+    background:transparent; cursor:pointer; white-space:nowrap;
+    transition:background .2s ease, color .2s ease;
+  }
+  .admin-bk-ics-btn:hover{ background:var(--terracotta); color:var(--white); }
   .ec-next-appt{
     background:var(--navy-fixed); color:#fff; border-radius:16px; padding:24px 26px; margin-bottom:26px;
   }
@@ -4163,6 +4179,25 @@
           </form>
           <div class="prop-list" id="propList"></div>
           <p class="espace-pro-local-note">Ces informations sont stockées uniquement dans ce navigateur (aucun compte, aucun serveur) : elles ne sont ni partagées entre appareils, ni visibles par notre équipe tant que vous ne les transmettez pas via une demande de rendez-vous.</p>
+        </div>
+
+        <!-- Visible uniquement pour profiles.global_role = 'admin' (voir
+             initAdminPanel côté JS). Un compte 'professional' classique
+             (client conciergerie/mobil-home) ne voit jamais ce panneau :
+             ce sont ses propres logements ci-dessus qui le concernent. -->
+        <div class="espace-pro-admin" id="espaceProAdminPanel" hidden>
+          <div class="section-head espace-pro-intro" style="margin-top:44px;">
+            <p class="eyebrow">Administration<span class="rule"></span></p>
+            <h2>Tous les rendez-vous</h2>
+            <p>Vue d'ensemble des réservations HAYEVA, tous clients confondus — statut et ajout au calendrier depuis chaque rendez-vous.</p>
+          </div>
+          <div class="admin-bk-filters" id="adminBkFilters" role="group" aria-label="Filtrer par période">
+            <button type="button" class="gallery-filter-btn is-active" data-admin-filter="today">Aujourd'hui</button>
+            <button type="button" class="gallery-filter-btn" data-admin-filter="week">Cette semaine</button>
+            <button type="button" class="gallery-filter-btn" data-admin-filter="upcoming">À venir</button>
+            <button type="button" class="gallery-filter-btn" data-admin-filter="all">Tout</button>
+          </div>
+          <div id="adminBkList"><p class="ec-loading">Chargement…</p></div>
         </div>
       </div>
 
@@ -6635,6 +6670,8 @@
     currentSessionType = 'none';
     gate.hidden = false;
     dashboard.hidden = true;
+    var adminPanelOnLock = document.getElementById('espaceProAdminPanel');
+    if (adminPanelOnLock) adminPanelOnLock.hidden = true;
     if (loginForm) loginForm.hidden = false;
     if (signupForm) signupForm.hidden = true;
   }
@@ -6709,6 +6746,7 @@
     }).then(function(role){
       if (role === 'professional' || role === 'admin'){
         renderUnlocked('real', '🔐 Espace professionnel — ' + (session.user.email || 'connecté'));
+        initAdminPanel(role);
       } else {
         renderLocked();
         showMsg(loginError, "Ce compte n'est pas un compte professionnel. Si vous êtes un particulier, utilisez l'Espace Client.");
@@ -6926,6 +6964,274 @@
         afterProLogout();
       }
     });
+  }
+
+  // ---------- Administration : tous les rendez-vous (global_role='admin') ----------
+  // Aucune nouvelle table : lit directement bookings (RLS "owner or admin
+  // read/update" déjà en place côté Supabase, voir 0001_init.sql) ainsi que
+  // profiles/customer_profiles pour reconstituer nom/téléphone/e-mail des
+  // réservations rattachées à un compte particulier. Auto-contenu (helpers
+  // dupliqués plutôt que partagés avec le module Espace Client) car chaque
+  // espace reste indépendant dans ce fichier, même convention que le reste.
+  var ADMIN_STATUS_OPTIONS = [
+    ['PENDING', 'En attente'], ['CONFIRMED', 'Confirmé'],
+    ['COMPLETED', 'Terminé'], ['CANCELLED', 'Annulé']
+  ];
+  var adminBookingsCache = null;
+  var adminFilter = 'today';
+
+  function admEscape(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function admFmtDate(d){
+    if (!d) return '';
+    var p = String(d).slice(0,10).split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : d;
+  }
+  function admFmtTime(t){ return t ? String(t).slice(0,5) : ''; }
+
+  function admContactFor(b, profileMap){
+    if (b.guest_name){
+      return { name: b.guest_name, phone: b.guest_phone, email: b.guest_email, address: b.guest_address };
+    }
+    if (b.customer_user_id && profileMap[b.customer_user_id]){
+      var p = profileMap[b.customer_user_id];
+      var addr = b.customer_addresses
+        ? [b.customer_addresses.address, b.customer_addresses.postal_code, b.customer_addresses.city].filter(Boolean).join(', ')
+        : '';
+      return {
+        name: ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || 'Client',
+        phone: p.phone, email: p.email, address: addr
+      };
+    }
+    if (b.professional_accounts){
+      var pa = b.professional_accounts;
+      var paddr = [pa.address_line1, pa.address_line2, pa.postal_code, pa.city].filter(Boolean).join(', ');
+      return { name: pa.legal_name, phone: pa.phone, email: '', address: paddr };
+    }
+    return { name:'Client', phone:'', email:'', address:'' };
+  }
+
+  function admFilterBookings(rows, mode){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var in7 = new Date(today.getTime() + 7 * 86400000);
+    return rows.filter(function(b){
+      var d = new Date(b.date + 'T00:00:00');
+      if (mode === 'today') return d.getTime() === today.getTime();
+      if (mode === 'week') return d.getTime() >= today.getTime() && d.getTime() < in7.getTime();
+      if (mode === 'upcoming') return d.getTime() >= today.getTime();
+      return true;
+    });
+  }
+
+  function admRenderList(){
+    var listEl = document.getElementById('adminBkList');
+    if (!listEl || !adminBookingsCache) return;
+    var rows = admFilterBookings(adminBookingsCache.rows, adminFilter);
+    if (!rows.length){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
+      return;
+    }
+    var html = '<div class="ec-list">';
+    rows.forEach(function(b){
+      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var optionsHtml = ADMIN_STATUS_OPTIONS.map(function(o){
+        return '<option value="' + o[0] + '"' + (o[0] === b.status ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('');
+      // Un statut hors des 4 valeurs pilotées ici (IN_PROGRESS, NO_SHOW —
+      // existent en base mais ne sont pas gérées depuis cet écran) reste
+      // affiché tel quel dans le <select> pour ne jamais l'écraser au premier
+      // changement accidentel : on ajoute une option correspondante.
+      if (!ADMIN_STATUS_OPTIONS.some(function(o){ return o[0] === b.status; })){
+        optionsHtml += '<option value="' + admEscape(b.status) + '" selected>' + admEscape(b.status) + '</option>';
+      }
+      html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+        '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
+        '<span class="ec-row-meta">' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+        (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
+        (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
+        '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
+        '</div><div class="admin-bk-row-actions">' +
+        '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
+        (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">📅 Ajouter à Apple Calendar</button>' : '') +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  function admLoadBookings(){
+    var listEl = document.getElementById('adminBkList');
+    if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    sb.client.from('bookings')
+      .select('id, reference, date, start_time, status, service_duration_minutes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .order('date', { ascending:true })
+      .order('start_time', { ascending:true })
+      .limit(500)
+      .then(function(res){
+        if (res.error){
+          if (listEl) listEl.innerHTML = '<div class="ec-empty"><strong>Chargement impossible</strong>Réessayez dans un instant.</div>';
+          return;
+        }
+        var rows = res.data || [];
+        var custIds = Array.prototype.filter.call(rows, function(b){ return b.customer_user_id && !b.guest_name; })
+          .map(function(b){ return b.customer_user_id; });
+        custIds = custIds.filter(function(id, i){ return custIds.indexOf(id) === i; });
+        if (!custIds.length){
+          adminBookingsCache = { rows: rows, profiles: {} };
+          admRenderList();
+          return;
+        }
+        Promise.all([
+          sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
+          sb.client.from('profiles').select('user_id,email').in('user_id', custIds)
+        ]).then(function(res2){
+          var cp = res2[0].data || [];
+          var pf = res2[1].data || [];
+          var map = {};
+          cp.forEach(function(r){
+            map[r.user_id] = map[r.user_id] || {};
+            map[r.user_id].first_name = r.first_name;
+            map[r.user_id].last_name = r.last_name;
+            map[r.user_id].phone = r.phone;
+          });
+          pf.forEach(function(r){
+            map[r.user_id] = map[r.user_id] || {};
+            map[r.user_id].email = r.email;
+          });
+          adminBookingsCache = { rows: rows, profiles: map };
+          admRenderList();
+        });
+      });
+  }
+
+  var adminFiltersEl = document.getElementById('adminBkFilters');
+  if (adminFiltersEl){
+    adminFiltersEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-admin-filter]');
+      if (!btn) return;
+      adminFilter = btn.getAttribute('data-admin-filter');
+      Array.prototype.forEach.call(adminFiltersEl.querySelectorAll('[data-admin-filter]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      admRenderList();
+    });
+  }
+
+  var adminListEl = document.getElementById('adminBkList');
+  if (adminListEl){
+    adminListEl.addEventListener('change', function(e){
+      var sel = e.target.closest('.admin-bk-status-select');
+      if (!sel) return;
+      var id = sel.getAttribute('data-booking-id');
+      var newStatus = sel.value;
+      sel.disabled = true;
+      sb.client.from('bookings').update({ status: newStatus }).eq('id', id).then(function(res){
+        sel.disabled = false;
+        if (res.error){ window.alert('Impossible de mettre à jour ce rendez-vous.'); return; }
+        var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+        if (row) row.status = newStatus;
+        admRenderList();
+      });
+    });
+    adminListEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.admin-bk-ics-btn');
+      if (!btn || !adminBookingsCache) return;
+      var id = btn.getAttribute('data-booking-id');
+      var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+      if (!row) return;
+      var contact = admContactFor(row, adminBookingsCache.profiles);
+      downloadBookingIcs(row, contact);
+    });
+  }
+
+  function initAdminPanel(role){
+    var panel = document.getElementById('espaceProAdminPanel');
+    if (!panel) return;
+    if (role === 'admin'){
+      panel.hidden = false;
+      admLoadBookings();
+    } else {
+      panel.hidden = true;
+    }
+  }
+
+  // ---- Génération .ics (Europe/Paris, VTIMEZONE standard UE) ----
+  // Règle DST UE (dernier dimanche de mars/octobre) fixe depuis 1996 :
+  // bloc VTIMEZONE statique, aucun calcul de fuseau à l'exécution.
+  var ADMIN_PARIS_VTZ =
+    'BEGIN:VTIMEZONE\r\nTZID:Europe/Paris\r\nX-LIC-LOCATION:Europe/Paris\r\n' +
+    'BEGIN:DAYLIGHT\r\nTZOFFSETFROM:+0100\r\nTZOFFSETTO:+0200\r\nTZNAME:CEST\r\nDTSTART:19700329T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU\r\nEND:DAYLIGHT\r\n' +
+    'BEGIN:STANDARD\r\nTZOFFSETFROM:+0200\r\nTZOFFSETTO:+0100\r\nTZNAME:CET\r\nDTSTART:19701025T030000\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\r\nEND:STANDARD\r\n' +
+    'END:VTIMEZONE';
+
+  function admPad2(n){ return (n < 10 ? '0' : '') + n; }
+  function icsEscape(s){
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  }
+  function icsFold(line){
+    if (line.length <= 74) return line;
+    var out = line.slice(0, 74), rest = line.slice(74);
+    while (rest.length){ out += '\r\n ' + rest.slice(0, 73); rest = rest.slice(73); }
+    return out;
+  }
+  function icsLocalStamp(d){
+    return d.getFullYear() + admPad2(d.getMonth()+1) + admPad2(d.getDate()) + 'T' +
+      admPad2(d.getHours()) + admPad2(d.getMinutes()) + '00';
+  }
+
+  function buildBookingIcs(b, contact){
+    var svcName = (b.services && b.services.name) || 'Intervention';
+    var timeParts = String(b.start_time || '00:00:00').split(':');
+    var startDt = new Date(b.date + 'T' + timeParts[0] + ':' + timeParts[1] + ':00');
+    var endDt = new Date(startDt.getTime() + (b.service_duration_minutes || 60) * 60000);
+    var now = new Date();
+    var stamp = now.getUTCFullYear() + admPad2(now.getUTCMonth()+1) + admPad2(now.getUTCDate()) + 'T' +
+      admPad2(now.getUTCHours()) + admPad2(now.getUTCMinutes()) + admPad2(now.getUTCSeconds()) + 'Z';
+    var descParts = [
+      'Nom : ' + (contact.name || '-'),
+      'Téléphone : ' + (contact.phone || '-'),
+      'E-mail : ' + (contact.email || '-'),
+      "Type d'intervention : " + svcName,
+      'Référence : ' + b.reference
+    ];
+    var lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//HAYEVA//Rendez-vous//FR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      ADMIN_PARIS_VTZ,
+      'BEGIN:VEVENT',
+      'UID:' + b.reference + '@hayeva.fr',
+      'DTSTAMP:' + stamp,
+      'DTSTART;TZID=Europe/Paris:' + icsLocalStamp(startDt),
+      'DTEND;TZID=Europe/Paris:' + icsLocalStamp(endDt),
+      icsFold('SUMMARY:' + icsEscape('HAYEVA – ' + svcName + ' – ' + (contact.name || 'Client'))),
+      icsFold('LOCATION:' + icsEscape(contact.address || '')),
+      icsFold('DESCRIPTION:' + icsEscape(descParts.join('\n'))),
+      'STATUS:CONFIRMED',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ];
+    return lines.join('\r\n');
+  }
+
+  function downloadBookingIcs(b, contact){
+    var content = buildBookingIcs(b, contact);
+    var blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'hayeva-' + b.reference + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
   }
 })();
 </script>
