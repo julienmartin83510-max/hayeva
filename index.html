@@ -2335,20 +2335,53 @@
     position:fixed; inset:0; z-index:9999;
     display:flex; align-items:center; justify-content:center;
     padding:48px 20px; overflow:hidden;
-    background:
-      radial-gradient(ellipse 900px 600px at 8% -10%, color-mix(in srgb, var(--turquoise) 16%, transparent), transparent 60%),
-      radial-gradient(ellipse 800px 600px at 100% 110%, color-mix(in srgb, var(--amber) 13%, transparent), transparent 60%),
-      var(--sand);
+    background:var(--terracotta-deep);
     opacity:1; transition:opacity .35s ease;
+    /* Le portail est un écran immersif toujours sombre (photo + overlay
+       bleu nuit), indépendant du thème clair/sombre du reste du site —
+       d'où ces jetons de couleur fixes plutôt que --ink/--ink-soft, qui
+       s'inverseraient en mode clair et rendraient le texte illisible. */
+    --portal-fg: #FBF7EF;
+    --portal-fg-soft: rgba(251,247,239,0.8);
+    --portal-line: rgba(255,255,255,0.16);
+    --portal-card-bg: rgba(15,25,34,0.56);
   }
   #sitePortal.is-leaving{ opacity:0; }
   .portal-scroll{ width:100%; height:100%; overflow-y:auto; display:flex; align-items:center; justify-content:center; }
+  /* Photo réelle HAYEVA en fond, recouverte d'un traitement bleu nuit pour
+     rester lisible : image plein cadre, léger flou + désaturation, puis un
+     empilement de dégradés (assombrissement général + halo doux derrière le
+     texte + vignette sur les bords). */
+  .portal-bg{ position:absolute; inset:0; z-index:0; overflow:hidden; background:var(--terracotta-deep); }
+  .portal-bg-img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:32% center;
+    filter:saturate(0.85) brightness(0.82) blur(1.2px);
+    transform:scale(1.1);
+    opacity:0;
+  }
+  @media (max-width:760px){ .portal-bg-img{ object-position:24% center; } }
+  @media (prefers-reduced-motion: no-preference){
+    .portal-bg-img{ animation:portalBgFade 1.3s ease-out forwards, portalBgZoom 18s ease-out forwards; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .portal-bg-img{ opacity:1; transform:scale(1); }
+  }
+  @keyframes portalBgFade{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes portalBgZoom{ from{ transform:scale(1.1); } to{ transform:scale(1.01); } }
+  .portal-bg-overlay{
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 780px 560px at 50% 40%, rgba(15,25,34,0.35) 0%, transparent 68%),
+      linear-gradient(180deg, rgba(11,19,26,0.86) 0%, rgba(13,22,30,0.62) 36%, rgba(11,19,26,0.9) 100%),
+      radial-gradient(ellipse 1200px 800px at 50% 50%, transparent 42%, rgba(6,11,16,0.6) 100%);
+  }
   /* Halos flottants décoratifs : purement visuels, dérivent lentement pour
      que l'écran d'accueil ne soit plus un aplat figé. */
   .portal-orb{ position:absolute; border-radius:50%; filter:blur(50px); pointer-events:none; z-index:0; }
-  .portal-orb-1{ width:280px; height:280px; top:8%; left:6%; background:var(--turquoise); opacity:0.16; }
-  .portal-orb-2{ width:220px; height:220px; bottom:10%; right:8%; background:var(--amber); opacity:0.14; }
-  .portal-orb-3{ width:180px; height:180px; top:55%; left:48%; background:var(--sky-accent); opacity:0.10; }
+  .portal-orb-1{ width:280px; height:280px; top:8%; left:6%; background:var(--turquoise); opacity:0.22; }
+  .portal-orb-2{ width:220px; height:220px; bottom:10%; right:8%; background:var(--amber); opacity:0.18; }
+  .portal-orb-3{ width:180px; height:180px; top:55%; left:48%; background:var(--sky-accent); opacity:0.14; }
   @media (prefers-reduced-motion: no-preference){
     .portal-orb-1{ animation:portalDrift1 16s ease-in-out infinite alternate; }
     .portal-orb-2{ animation:portalDrift2 19s ease-in-out infinite alternate; }
@@ -2360,26 +2393,28 @@
   .portal-inner{ position:relative; z-index:1; width:100%; max-width:920px; text-align:center; }
   .portal-eyebrow{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase;
-    color:var(--ink-soft); margin-bottom:14px;
+    color:var(--portal-fg-soft); margin-bottom:14px;
   }
   .portal-title{
     font-family:"Poppins",sans-serif; font-weight:800; font-size:clamp(1.7rem,4vw,2.6rem);
-    color:var(--ink); margin-bottom:12px; text-wrap:balance;
+    color:var(--portal-fg); margin-bottom:12px; text-wrap:balance;
+    text-shadow:0 2px 18px rgba(0,0,0,0.35);
   }
-  .portal-subtitle{ font-size:1rem; color:var(--ink-soft); margin-bottom:44px; }
-  /* Entrée en scène au premier affichage : léger décalage entre chaque
-     bloc pour donner un vrai effet "reveal" plutôt qu'un écran qui
-     apparaît d'un bloc, sans jamais dépendre du scroll (le portail est
-     toujours visible d'emblée, contrairement à .reveal-on-scroll). */
+  .portal-subtitle{ font-size:1rem; color:var(--portal-fg-soft); margin-bottom:44px; }
+  /* Entrée en scène au premier affichage : le fond (photo) démarre en
+     premier (voir portalBgFade ci-dessus, sans délai), puis logo/titre,
+     puis les cartes, avec un décalage croissant pour un vrai effet
+     "reveal" plutôt qu'un écran qui apparaît d'un bloc. Jamais dépendant
+     du scroll (le portail est toujours visible d'emblée). */
   @media (prefers-reduced-motion: no-preference){
     .portal-eyebrow, .portal-title, .portal-subtitle, .portal-cards, .portal-guest-link{
-      animation:portalRise .6s cubic-bezier(.2,.7,.3,1) both;
+      animation:portalRise .7s cubic-bezier(.2,.7,.3,1) both;
     }
-    .portal-eyebrow{ animation-delay:.05s; }
-    .portal-title{ animation-delay:.12s; }
-    .portal-subtitle{ animation-delay:.19s; }
-    .portal-cards{ animation-delay:.26s; }
-    .portal-guest-link{ animation-delay:.4s; }
+    .portal-eyebrow{ animation-delay:.35s; }
+    .portal-title{ animation-delay:.44s; }
+    .portal-subtitle{ animation-delay:.53s; }
+    .portal-cards{ animation-delay:.64s; }
+    .portal-guest-link{ animation-delay:.8s; }
   }
   @keyframes portalRise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .portal-cards{
@@ -2388,32 +2423,34 @@
   @media (min-width:860px){ .portal-cards{ grid-template-columns:1fr 1fr; } }
   .portal-card{
     position:relative; overflow:hidden;
-    background:var(--cream); border:1px solid var(--line); border-radius:18px;
+    background:var(--portal-card-bg); border:1px solid var(--portal-line); border-radius:18px;
+    backdrop-filter:blur(18px) saturate(1.15); -webkit-backdrop-filter:blur(18px) saturate(1.15);
     padding:34px 30px; display:flex; flex-direction:column; align-items:flex-start; gap:14px;
-    box-shadow:0 1px 2px rgba(20,33,44,0.04);
-    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    box-shadow:0 22px 48px -24px rgba(4,8,12,0.6);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease, background .25s ease;
   }
   .portal-card:hover{
     transform:translateY(-5px);
-    box-shadow:0 18px 34px -18px var(--portal-card-accent, rgba(20,33,44,0.3));
-    border-color:color-mix(in srgb, var(--portal-card-accent, var(--terracotta)) 45%, var(--line));
+    background:color-mix(in srgb, var(--portal-card-bg) 82%, rgba(255,255,255,0.06));
+    box-shadow:0 26px 54px -22px var(--portal-card-accent, rgba(0,0,0,0.5));
+    border-color:color-mix(in srgb, var(--portal-card-accent, var(--portal-fg)) 55%, var(--portal-line));
   }
   .portal-card-icon{
     width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:var(--portal-card-accent-soft, var(--sand-deep)); color:var(--portal-card-accent, var(--terracotta));
-    border:1px solid var(--line); transition:transform .3s ease;
+    background:var(--portal-card-accent-soft, rgba(255,255,255,0.12)); color:var(--portal-card-accent, var(--portal-fg));
+    border:1px solid var(--portal-line); transition:transform .3s ease;
   }
   .portal-card-icon svg{ width:24px; height:24px; }
   .portal-card:hover .portal-card-icon{ transform:scale(1.1) rotate(-4deg); }
-  .portal-card h2{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.15rem; color:var(--ink); }
-  .portal-card p{ font-size:0.9rem; color:var(--ink-soft); line-height:1.5; margin-top:-6px; }
+  .portal-card h2{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.15rem; color:var(--portal-fg); }
+  .portal-card p{ font-size:0.9rem; color:var(--portal-fg-soft); line-height:1.5; margin-top:-6px; }
   .portal-card .btn-primary{ margin-top:6px; align-self:stretch; text-align:center; }
   .portal-guest-link{
     display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.86rem;
-    color:var(--ink-soft); text-decoration:none; padding:8px 4px; border-bottom:1px solid transparent;
+    color:var(--portal-fg-soft); text-decoration:none; padding:8px 4px; border-bottom:1px solid transparent;
     transition:color .2s ease, border-color .2s ease;
   }
-  .portal-guest-link:hover{ color:var(--terracotta); border-color:currentColor; }
+  .portal-guest-link:hover{ color:var(--portal-fg); border-color:currentColor; }
   .portal-back-link{
     display:inline-flex; align-items:center; gap:4px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.85rem;
     color:var(--ink-soft); text-decoration:none; margin-bottom:16px; cursor:pointer; background:none; border:none; padding:0;
@@ -2604,6 +2641,14 @@
 </style>
 
 <div id="sitePortal">
+  <div class="portal-bg" aria-hidden="true">
+    <img class="portal-bg-img" id="portalBgImg"
+      src="images/portal/portal-bg-md.jpg"
+      srcset="images/portal/portal-bg-sm.jpg 800w, images/portal/portal-bg-md.jpg 1280w, images/portal/portal-bg-lg.jpg 1920w"
+      sizes="100vw"
+      alt="" loading="eager" fetchpriority="high">
+  </div>
+  <div class="portal-bg-overlay" aria-hidden="true"></div>
   <div class="portal-orb portal-orb-1" aria-hidden="true"></div>
   <div class="portal-orb portal-orb-2" aria-hidden="true"></div>
   <div class="portal-orb portal-orb-3" aria-hidden="true"></div>
@@ -8114,6 +8159,24 @@
   // par eux à chaque accès, jamais supposée acquise ici.
   var portal = document.getElementById('sitePortal');
   if (!portal) return;
+
+  // Très léger effet de profondeur au mouvement de la souris (desktop
+  // uniquement, jamais au toucher) : la photo de fond suit discrètement
+  // le curseur, quelques pixels à peine, pour donner une sensation de
+  // profondeur sans jamais distraire du contenu au premier plan.
+  var portalBgImg = document.getElementById('portalBgImg');
+  if (portalBgImg && window.matchMedia && window.matchMedia('(hover:hover)').matches
+      && !(window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    portal.addEventListener('mousemove', function(e){
+      var rect = portal.getBoundingClientRect();
+      var px = (e.clientX - rect.left) / rect.width - 0.5;
+      var py = (e.clientY - rect.top) / rect.height - 0.5;
+      portalBgImg.style.translate = (px * -10) + 'px ' + (py * -8) + 'px';
+    });
+    portal.addEventListener('mouseleave', function(){
+      portalBgImg.style.translate = '0px 0px';
+    });
+  }
 
   var brand = window.SUD_BRAND || { name: 'HAYEVA', tagline: '' };
   document.getElementById('portalEyebrow').textContent = 'Bienvenue chez';
