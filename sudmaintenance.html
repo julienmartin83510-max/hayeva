@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>HAYEVA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2364,7 +2365,7 @@
     display:flex; align-items:center; justify-content:center;
     padding:48px 20px; overflow:hidden;
     background:var(--terracotta-deep);
-    opacity:1; transition:opacity .35s ease;
+    opacity:1; transition:opacity .35s ease, transform .4s ease;
     /* Le portail est un écran immersif toujours sombre (photo + overlay
        bleu nuit), indépendant du thème clair/sombre du reste du site —
        d'où ces jetons de couleur fixes plutôt que --ink/--ink-soft, qui
@@ -2374,19 +2375,63 @@
     --portal-line: rgba(255,255,255,0.16);
     --portal-card-bg: rgba(15,25,34,0.56);
   }
-  #sitePortal.is-leaving{ opacity:0; }
+  /* Sortie du portail (site invité, ou ouverture Espace Particulier/Pro) :
+     léger zoom avant + fondu, cf. sud-veil ci-dessous pour le voile qui
+     masque la coupure pendant la bascule. */
+  #sitePortal.is-leaving{ opacity:0; transform:scale(1.025); }
+  @media (prefers-reduced-motion: reduce){
+    #sitePortal{ transition:opacity .35s ease; }
+    #sitePortal.is-leaving{ transform:none; }
+  }
+
+  /* ---------- Transition premium entre pages/espaces ----------
+     Utilisée pour Bienvenue → site public, et Connexion → Espace
+     Particulier/Professionnel une fois connecté. Un voile bleu/blanc très
+     léger passe au-dessus de tout pendant la bascule (masque la coupure
+     brute), pendant que l'écran quitté s'estompe avec un léger zoom
+     (#sitePortal.is-leaving ci-dessus) et que le nouvel écran apparaît avec
+     un fondu + léger mouvement vertical (.sud-fade-in). Durée totale visée :
+     600 à 900 ms. Jamais de rechargement de page : uniquement des classes
+     CSS posées/retirées sur les éléments déjà présents dans le DOM. */
+  .sud-veil{
+    position:fixed; inset:0; z-index:10050; pointer-events:none;
+    opacity:0; transition:opacity .22s ease;
+    background:linear-gradient(160deg, rgba(255,255,255,0.82) 0%, rgba(15,60,90,0.5) 100%);
+  }
+  .sud-veil.is-active{ opacity:1; }
+  .sud-fade-in{ animation:sudFadeIn .4s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes sudFadeIn{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .sud-veil{ transition:none; }
+    .sud-fade-in{ animation:none; }
+  }
   .portal-scroll{ width:100%; height:100%; overflow-y:auto; display:flex; align-items:center; justify-content:center; }
-  /* Photo réelle HAYEVA en fond, recouverte d'un traitement bleu nuit pour
+  /* Photo Côte d'Azur en fond, recouverte d'un traitement bleu nuit pour
      rester lisible : image plein cadre, léger flou + désaturation, puis un
      empilement de dégradés (assombrissement général + halo doux derrière le
-     texte + vignette sur les bords). */
-  .portal-bg{ position:absolute; inset:0; z-index:0; overflow:hidden; background:var(--terracotta-deep); }
+     texte + vignette sur les bords).
+     EN ATTENTE D'UNE VRAIE PHOTO : aucune photo de paysage Côte d'Azur /
+     Fréjus / Saint-Raphaël n'existe actuellement dans les assets du projet
+     (uniquement des photos de chantier/technicien, impropres à cet usage).
+     Plutôt que de réutiliser une photo inadaptée, .portal-bg-img reste
+     masquée et .portal-bg affiche un dégradé bleu azur (mer → ciel) le temps
+     qu'une vraie photo soit fournie — voir portal-bg-img[src] ci-dessous
+     pour réactiver l'image dès qu'un fichier images/portal/portal-bg-*.jpg
+     adapté existe. */
+  .portal-bg{
+    position:absolute; inset:0; z-index:0; overflow:hidden;
+    background:linear-gradient(165deg, #0a2436 0%, #0f4160 30%, #1478a0 58%, #2aa7c4 82%, #4bc3d6 100%);
+  }
   .portal-bg-img{
     position:absolute; inset:0; width:100%; height:100%;
     object-fit:cover; object-position:center center;
     filter:saturate(0.92) brightness(0.85) blur(3px);
     transform:scale(1.1);
     opacity:0;
+    display:none; /* réactiver (supprimer cette ligne) une fois une vraie photo Côte d'Azur en place */
   }
   @media (max-width:760px){ .portal-bg-img{ object-position:center center; } }
   @media (prefers-reduced-motion: no-preference){
@@ -2399,10 +2444,12 @@
   @keyframes portalBgZoom{ from{ transform:scale(1.1); } to{ transform:scale(1.01); } }
   .portal-bg-overlay{
     position:absolute; inset:0; z-index:0; pointer-events:none;
+    /* Overlay bleu marine transparent : assombrit assez pour la lisibilité
+       du texte/cartes sans écraser le fond (photo ou dégradé) en noir. */
     background:
-      radial-gradient(ellipse 780px 560px at 50% 40%, rgba(15,25,34,0.35) 0%, transparent 68%),
-      linear-gradient(180deg, rgba(11,19,26,0.86) 0%, rgba(13,22,30,0.62) 36%, rgba(11,19,26,0.9) 100%),
-      radial-gradient(ellipse 1200px 800px at 50% 50%, transparent 42%, rgba(6,11,16,0.6) 100%);
+      radial-gradient(ellipse 780px 560px at 50% 38%, rgba(10,20,32,0.22) 0%, transparent 68%),
+      linear-gradient(180deg, rgba(8,20,32,0.58) 0%, rgba(10,24,36,0.34) 38%, rgba(8,18,28,0.62) 100%),
+      radial-gradient(ellipse 1200px 800px at 50% 50%, transparent 46%, rgba(5,14,22,0.4) 100%);
   }
   /* Halos flottants décoratifs : purement visuels, dérivent lentement pour
      que l'écran d'accueil ne soit plus un aplat figé. */
@@ -2424,9 +2471,11 @@
     color:var(--portal-fg-soft); margin-bottom:14px;
   }
   .portal-title{
-    font-family:"Poppins",sans-serif; font-weight:800; font-size:clamp(1.7rem,4vw,2.6rem);
-    color:var(--portal-fg); margin-bottom:12px; text-wrap:balance;
-    text-shadow:0 2px 18px rgba(0,0,0,0.35);
+    margin-bottom:14px; display:flex; justify-content:center;
+  }
+  .portal-logo-img{
+    display:block; width:clamp(200px, 24vw, 300px); height:auto;
+    filter:drop-shadow(0 6px 22px rgba(0,0,0,0.4));
   }
   .portal-subtitle{ font-size:1rem; color:var(--portal-fg-soft); margin-bottom:44px; }
   /* Entrée en scène au premier affichage : le fond (photo) démarre en
@@ -2715,11 +2764,17 @@
   }
 </style>
 
+<div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
 <div id="sitePortal">
   <div class="portal-bg" aria-hidden="true">
+    <!-- src/srcset volontairement retirés : l'ancienne photo (technicien)
+         ne correspond plus à l'usage souhaité (paysage Côte d'Azur), et la
+         charger inutilement en arrière-plan alors qu'elle reste masquée
+         (display:none, voir .portal-bg-img) gaspillerait de la bande
+         passante pour rien. Dès qu'un fichier images/portal/portal-bg-*.jpg
+         adapté existe : remettre src/srcset ci-dessous ET supprimer
+         `display:none` sur .portal-bg-img (voir CSS). -->
     <img class="portal-bg-img" id="portalBgImg"
-      src="images/portal/portal-bg-md.jpg"
-      srcset="images/portal/portal-bg-sm.jpg 800w, images/portal/portal-bg-md.jpg 1280w, images/portal/portal-bg-lg.jpg 1920w"
       sizes="100vw"
       alt="" loading="eager" fetchpriority="high">
   </div>
@@ -2730,7 +2785,12 @@
   <div class="portal-scroll">
   <div class="portal-inner">
     <p class="portal-eyebrow" id="portalEyebrow"></p>
-    <h1 class="portal-title brand-wordmark" id="portalTitle"></h1>
+    <h1 class="portal-title" id="portalTitle">
+      <img class="portal-logo-img" src="images/brand/hayeva-logo.png"
+           srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
+           sizes="(max-width:600px) 200px, 300px"
+           alt="HAYEVA" width="900" height="607">
+    </h1>
     <p class="portal-subtitle" id="portalSubtitle"></p>
 
     <div class="portal-cards">
@@ -4086,8 +4146,8 @@
         <button type="button" class="portal-back-link" id="espaceProBackToPortal">← Retour</button>
         <div class="section-head espace-pro-intro">
           <p class="eyebrow">Espace professionnel<span class="rule"></span></p>
-          <h2 id="espaceProGateTitle">Connexion Espace Pro</h2>
-          <p id="espaceProGateSubtitle">Retrouvez vos logements, vos rendez-vous, vos rapports et vos devis.</p>
+          <h2 id="espaceProGateTitle">Connexion Espace Professionnel</h2>
+          <p id="espaceProGateSubtitle">Gérez vos établissements, logements, interventions, rendez-vous, devis, factures et documents professionnels.</p>
         </div>
 
         <div class="espace-pro-login-card">
@@ -4116,8 +4176,11 @@
                 <input type="text" id="suLastName" autocomplete="family-name" required>
               </label>
             </div>
-            <label>Entreprise
+            <label>Entreprise (raison sociale)
               <input type="text" id="suCompany" placeholder="Ex. Conciergerie Azur" autocomplete="organization" required>
+            </label>
+            <label>SIRET (facultatif)
+              <input type="text" id="suSiret" placeholder="14 chiffres" inputmode="numeric" pattern="[0-9]{14}" maxlength="14" autocomplete="off">
             </label>
             <label>Type d'activité
               <select id="suActivityType">
@@ -4292,8 +4355,8 @@
       <div id="espaceClientGate">
         <button type="button" class="portal-back-link" id="espaceClientBackToPortal">← Retour</button>
         <div class="section-head espace-pro-intro">
-          <p class="eyebrow">Espace client<span class="rule"></span></p>
-          <h2 id="espaceClientGateTitle">Connexion Espace Client</h2>
+          <p class="eyebrow">Espace particulier<span class="rule"></span></p>
+          <h2 id="espaceClientGateTitle">Connexion Espace Particulier</h2>
           <p>Retrouvez vos rendez-vous, devis, factures, adresses et documents dans votre espace personnel.</p>
         </div>
 
@@ -4550,7 +4613,7 @@
   }
 
   function normalizeText(s){
-    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   }
 
   // Climatisation = entretien/nettoyage/contrôle uniquement. PAS
@@ -6749,10 +6812,13 @@
     gate.hidden = true;
     dashboard.hidden = false;
     if (dashBannerText) dashBannerText.textContent = label;
-    // Connexion réussie : referme l'écran plein écran et ramène en haut du
-    // site (ne fait rien si l'écran n'était pas ouvert, ex. restauration
-    // silencieuse d'une session au chargement de la page).
-    if (window.sudCloseEspace) window.sudCloseEspace('espacePro');
+    // Reste dans l'écran plein écran déjà ouvert (ou ne l'ouvre pas du tout
+    // s'il s'agit d'une restauration silencieuse de session au chargement de
+    // la page) : le tableau de bord prend simplement la place du formulaire
+    // de connexion à l'intérieur. NE PAS refermer ici (ancien bug : refermait
+    // l'écran juste après une connexion réussie, empêchant de jamais voir le
+    // tableau de bord suite à un clic réel sur "Se connecter").
+    if (window.sudFadeInEl) window.sudFadeInEl(dashboard);
   }
 
   // Lit le rôle réel depuis la base (jamais depuis user_metadata ni depuis un
@@ -6792,12 +6858,14 @@
       return sb.client.rpc('create_professional_account', {
         p_legal_name: meta.sud_pending_company || 'Entreprise',
         p_activity_type: meta.sud_pending_activity_type || null,
-        p_phone: meta.sud_pending_phone || null
+        p_phone: meta.sud_pending_phone || null,
+        p_siret: meta.sud_pending_siret || null
       }).then(function(rpcRes){
         if (rpcRes.error) throw rpcRes.error;
         // Les données de transfert ne servent plus une fois le compte provisionné.
         return sb.client.auth.updateUser({ data: {
           sud_pending_role: null, sud_pending_company: null,
+          sud_pending_siret: null,
           sud_pending_activity_type: null, sud_pending_phone: null,
           sud_pending_first_name: null, sud_pending_last_name: null
         }});
@@ -6818,7 +6886,7 @@
         initAdminPanel(role);
       } else {
         renderLocked();
-        showMsg(loginError, "Ce compte n'est pas un compte professionnel. Si vous êtes un particulier, utilisez l'Espace Client.");
+        showMsg(loginError, "Ce compte n'est pas un compte professionnel. Si vous êtes un particulier, utilisez l'Espace Particulier.");
       }
     });
   }
@@ -6829,6 +6897,14 @@
     if (isDemoUnlocked()) renderUnlocked('demo', '🔐 Espace professionnel — démonstration locale');
   } else {
     if (devNotice) devNotice.hidden = true; // Supabase configuré : la note "à connecter" n'a plus lieu d'être
+    // Idem pour le mode démonstration locale : avec une authentification
+    // réelle disponible, le proposer en parallèle du vrai formulaire ne fait
+    // que brouiller les deux parcours Particulier/Professionnel.
+    var demoDivider = document.querySelector('.espace-pro-demo-divider');
+    if (demoDivider) demoDivider.hidden = true;
+    if (demoBtn) demoBtn.hidden = true;
+    var demoLocalNote = document.querySelector('#espaceProGate .espace-pro-local-note');
+    if (demoLocalNote) demoLocalNote.hidden = true;
     renderLocked();
     sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
@@ -6878,6 +6954,7 @@
           }
           var session = res.data && res.data.session;
           if (session){
+            if (window.sudFlashVeil) window.sudFlashVeil();
             handleRealSession(session);
             dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
           }
@@ -6943,6 +7020,7 @@
       var firstName = document.getElementById('suFirstName').value.trim();
       var lastName = document.getElementById('suLastName').value.trim();
       var company = document.getElementById('suCompany').value.trim();
+      var siret = document.getElementById('suSiret').value.replace(/\s+/g, '').trim();
       var activityType = document.getElementById('suActivityType').value;
       var phone = document.getElementById('suPhone').value.trim();
       var email = document.getElementById('suEmail').value.trim();
@@ -6951,6 +7029,10 @@
 
       if (!firstName || !lastName || !company || !email || !password){
         showMsg(signupError, 'Merci de compléter tous les champs obligatoires.');
+        return;
+      }
+      if (siret && !/^[0-9]{14}$/.test(siret)){
+        showMsg(signupError, 'Le SIRET doit contenir exactement 14 chiffres (laissez vide si vous ne l\'avez pas).');
         return;
       }
       if (password !== passwordConfirm){
@@ -6977,6 +7059,7 @@
         options: { data: {
           sud_pending_role: 'professional',
           sud_pending_company: company,
+          sud_pending_siret: siret || null,
           sud_pending_activity_type: activityType,
           sud_pending_phone: phone || null,
           sud_pending_first_name: firstName,
@@ -6991,6 +7074,7 @@
         }
         var session = res.data && res.data.session;
         if (session){
+          if (window.sudFlashVeil) window.sudFlashVeil();
           handleRealSession(session);
           dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
         } else {
@@ -7010,6 +7094,7 @@
   if (demoBtn){
     demoBtn.addEventListener('click', function(){
       setDemoUnlocked(true);
+      if (window.sudFlashVeil) window.sudFlashVeil();
       renderUnlocked('demo', '🔐 Espace professionnel — démonstration locale');
       dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
     });
@@ -7389,11 +7474,14 @@
   }
   function renderUnlocked(label){
     setGateView('dashboard');
-    if (bannerText) bannerText.textContent = '🔐 Espace client' + (label ? (' — ' + label) : '');
-    // Connexion réussie : referme l'écran plein écran et ramène en haut du
-    // site (ne fait rien si l'écran n'était pas ouvert, ex. restauration
-    // silencieuse d'une session au chargement de la page).
-    if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+    if (bannerText) bannerText.textContent = '🔐 Espace particulier' + (label ? (' — ' + label) : '');
+    // Reste dans l'écran plein écran déjà ouvert (ou ne l'ouvre pas du tout
+    // s'il s'agit d'une restauration silencieuse de session au chargement de
+    // la page) : le tableau de bord prend simplement la place du formulaire
+    // de connexion à l'intérieur. NE PAS refermer ici (ancien bug : refermait
+    // l'écran juste après une connexion réussie, empêchant de jamais voir le
+    // tableau de bord suite à un clic réel sur "Se connecter").
+    if (window.sudFadeInEl) window.sudFadeInEl(dashboard);
   }
 
   // ---------- Réinitialisation du mot de passe (lien reçu par e-mail) ----------
@@ -8079,7 +8167,7 @@
         // Un compte professionnel/admin qui se connecte ici : pas d'accès
         // client dédié à construire pour lui, on l'oriente vers l'Espace Pro.
         renderLocked();
-        showMsg(loginError, "Ce compte est un compte professionnel. Utilisez l'Espace Pro pour vous connecter.");
+        showMsg(loginError, "Ce compte est un compte professionnel. Utilisez l'Espace Professionnel pour vous connecter.");
       }
     }).finally(function(){
       ecHandlingUid = null;
@@ -8187,6 +8275,7 @@
           }
           var session = res.data && res.data.session;
           if (session){
+            if (window.sudFlashVeil) window.sudFlashVeil();
             handleRealSession(session);
             dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
           }
@@ -8291,6 +8380,7 @@
         }
         var session = res.data && res.data.session;
         if (session){
+          if (window.sudFlashVeil) window.sudFlashVeil();
           handleRealSession(session);
           dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
         } else {
@@ -8572,7 +8662,6 @@
 
   var brand = window.SUD_BRAND || { name: 'HAYEVA', tagline: '' };
   document.getElementById('portalEyebrow').textContent = 'Bienvenue chez';
-  document.getElementById('portalTitle').textContent = brand.name;
   document.getElementById('portalSubtitle').textContent = brand.tagline;
 
   document.body.style.overflow = 'hidden';
@@ -8625,6 +8714,32 @@
   window.sudOpenEspace = openEspace;
   window.sudCloseEspace = closeEspace;
 
+  // ---------- Transition premium (voile + fondu) ----------
+  // sudFlashVeil() : voile bleu/blanc très bref au-dessus de tout, posé au
+  // moment précis d'une bascule d'écran importante (jamais entre deux
+  // petites sections). sudFadeInEl() : fondu + léger mouvement vertical sur
+  // l'écran qui vient d'apparaître. Les deux respectent prefers-reduced-
+  // motion (géré en CSS pour sud-fade-in ; ici directement pour le voile,
+  // qui ne doit même pas clignoter pour ces utilisateurs).
+  function sudPrefersReducedMotion(){
+    try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(e){ return false; }
+  }
+  function sudFlashVeil(){
+    var veil = document.getElementById('sudTransitionVeil');
+    if (!veil || sudPrefersReducedMotion()) return;
+    veil.classList.add('is-active');
+    setTimeout(function(){ veil.classList.remove('is-active'); }, 240);
+  }
+  function sudFadeInEl(el){
+    if (!el) return;
+    el.classList.remove('sud-fade-in');
+    void el.offsetWidth; // force le reflow pour pouvoir rejouer l'animation
+    el.classList.add('sud-fade-in');
+  }
+  window.sudFlashVeil = sudFlashVeil;
+  window.sudFadeInEl = sudFadeInEl;
+
   // Espace Client/Pro n'étant plus jamais visible en scrollant, tout lien
   // classique (menu, FAQ, hero Pro…) pointant vers #espaceClient/#espacePro
   // doit passer par ce même mécanisme d'ouverture plutôt que par le saut
@@ -8642,16 +8757,21 @@
 
   customerBtn.addEventListener('click', function(){
     if (window.sudSetMode) window.sudSetMode('particulier');
+    if (window.sudFlashVeil) window.sudFlashVeil();
     closePortal();
     openEspace('espaceClient');
+    if (window.sudFadeInEl) window.sudFadeInEl(document.getElementById('espaceClient'));
   });
   proBtn.addEventListener('click', function(){
     if (window.sudSetMode) window.sudSetMode('professionnel');
+    if (window.sudFlashVeil) window.sudFlashVeil();
     closePortal();
     openEspace('espacePro');
+    if (window.sudFadeInEl) window.sudFadeInEl(document.getElementById('espacePro'));
   });
   guestLink.addEventListener('click', function(e){
     e.preventDefault();
+    if (window.sudFlashVeil) window.sudFlashVeil();
     closePortal();
     // Remonte en haut du site public : sans ça, un visiteur passé par
     // "Espace Particulier/Professionnel" puis "← Retour" puis "Continuer
