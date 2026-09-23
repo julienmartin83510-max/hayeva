@@ -498,53 +498,48 @@
      contenu ; le Hero a besoin de davantage de largeur sur grand écran pour
      ne pas ressembler à une colonne mobile centrée, d'où cette surcharge
      dédiée plutôt que de toucher .wrap partout ailleurs. */
+  /* Hero volontairement épinglé en clair (jetons --hl-*) quel que soit le
+     thème clair/sombre du reste du site : le logo HAYEVA (bleu marine, bleu
+     clair, argent, orange) doit toujours ressortir sur un fond lumineux,
+     jamais sur un aplat bleu nuit — même principe d'épinglage que le
+     portail (toujours sombre) ou la FAQ (toujours ivoire), inversé ici. */
   .hero{
-    padding-block:56px 64px;
+    --hl-bg:#FBFCFE;
+    --hl-bg-deep:#EEF5F9;
+    --hl-navy:#12213D;
+    --hl-navy-soft:#55637A;
+    --hl-blue:#1AA6EE;
+    --hl-blue-soft:#BFE0F5;
+    --hl-orange:#E85A12;
+    --hl-orange-deep:#C94400;
+    --hl-line:rgba(18,33,61,0.12);
+    padding-block:64px 72px;
     position:relative;
     overflow:hidden;
+    background:
+      radial-gradient(ellipse 900px 560px at 16% -10%, color-mix(in srgb, var(--hl-blue) 12%, transparent), transparent 62%),
+      radial-gradient(ellipse 760px 520px at 102% 108%, color-mix(in srgb, var(--hl-orange) 9%, transparent), transparent 60%),
+      linear-gradient(180deg, var(--hl-bg) 0%, var(--hl-bg-deep) 100%);
   }
-  /* Touches de couleur discrètes derrière le texte du hero (turquoise +
-     ambre), pour casser le tout-bleu-nuit sans jamais gêner la lecture :
-     très floues, très basse opacité, jamais sous le texte lui-même grâce
-     au z-index négatif et à .hero-grid en position relative. */
   .hero::before, .hero::after{
     content:''; position:absolute; border-radius:50%; filter:blur(70px); z-index:0; pointer-events:none;
   }
-  .hero::before{ width:340px; height:340px; top:-120px; left:-100px; background:var(--turquoise); opacity:0.14; }
-  .hero::after{ width:280px; height:280px; bottom:-140px; right:8%; background:var(--amber); opacity:0.12; }
+  .hero::before{ width:340px; height:340px; top:-120px; left:-100px; background:var(--hl-blue); opacity:0.14; }
+  .hero::after{ width:280px; height:280px; bottom:-140px; right:8%; background:var(--hl-orange); opacity:0.12; }
   .hero .wrap{ position:relative; z-index:1; }
   .hero .wrap{
     max-width:1320px;
-  }
-  .hero-grid{
-    display:grid;
-    grid-template-columns:1fr;
-    align-items:center;
-    gap:48px;
-  }
-  .hero-copy{
-    max-width:720px;
-    min-width:0;
   }
   .hero h1{
     font-size:clamp(2.2rem, 3.6vw + 1rem, 3.75rem);
     line-height:1.08;
     margin-block:14px 18px;
-  }
-  .hero p.tagline{
-    font-family:"Poppins",sans-serif;
-    font-weight:700;
-    font-size:1.05rem;
-    color:var(--terracotta);
-    margin-bottom:14px;
-  }
-  .hero p.lead{
-    font-size:1.08rem;
-    max-width:56ch;
+    color:var(--hl-navy);
   }
   .hero-ctas{
     display:flex;
     flex-wrap:wrap;
+    justify-content:center;
     gap:14px;
     margin-top:26px;
   }
@@ -553,90 +548,64 @@
   .hero-visual{
     display:none;
   }
-  @media (min-width:1025px){
-    .hero-grid{
-      grid-template-columns:minmax(0, 720px) 1fr;
-      gap:32px;
-    }
-    .hero-visual{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-width:0;
-    }
-    .hero-illustration{ width:100%; max-width:380px; }
-  }
-  @media (min-width:1440px){
-    .hero .wrap{ max-width:1400px; }
-    .hero-grid{ grid-template-columns:minmax(0, 760px) 1fr; gap:56px; }
-    .hero-illustration{ max-width:440px; }
-  }
-  /* Illustration maison isométrique (climatisation, chauffage, plomberie) :
-     dessinée en SVG, sans cadre ni rectangle — elle se fond dans le fond du
-     hero grâce aux halos flous et à l'absence de conteneur opaque. Les
-     vraies photos HAYEVA restent utilisées partout ailleurs sur le site. */
-  .hero-illustration{ position:relative; }
-  .hero-illustration svg{ width:100%; height:auto; display:block; }
   @media (prefers-reduced-motion: reduce){
     .reviews-track{ scroll-behavior:auto; }
   }
+
+  /* ---------- Hero : logo + composition centrée sur fond clair ---------- */
+  .hero-center{ max-width:760px; margin-inline:auto; text-align:center; position:relative; z-index:1; }
+  .hero-logo{
+    display:block; height:clamp(52px, 8vw, 80px); width:auto; margin:0 auto 26px;
+  }
   @media (prefers-reduced-motion: no-preference){
-    .hero-visual .hv-float{ animation:heroFloat 7s ease-in-out infinite alternate; }
-    .hero-visual .hv-float-b{ animation-delay:-2.3s; }
-    .hero-visual .hv-float-c{ animation-delay:-4.6s; }
-    .hero-visual .hv-halo{ animation:heroBreathe 6s ease-in-out infinite alternate; }
-    .hero-visual .hv-halo-b{ animation-delay:-2s; }
-    .hero-visual .hv-halo-c{ animation-delay:-4s; }
-    .hero-visual .hv-rings{
-      animation:heroRotate 200s linear infinite;
-      transform-box:fill-box;
-      transform-origin:50% 50%;
-    }
-    .hero-visual .hv-bubble{
-      animation:hvBubbleRise 3.6s ease-in infinite;
-      transform-box:fill-box; transform-origin:50% 50%;
-    }
-    .hero-visual .hv-bubble-2{ animation-delay:.9s; }
-    .hero-visual .hv-bubble-3{ animation-delay:1.8s; }
-    .hero-visual .hv-drip{
-      animation:hvDrip 2.6s ease-in infinite;
-      transform-box:fill-box; transform-origin:50% 50%;
-    }
-    .hero-visual .hv-heatwaves path{
-      animation:hvHeatRise 2.4s ease-in-out infinite alternate;
-      transform-box:fill-box; transform-origin:50% 50%;
-    }
-    .hero-visual .hv-heatwaves path:last-child{ animation-delay:-1.2s; }
-    /* Flux d'air climatisation (chevrons qui dérivent depuis l'unité murale)
-       et rotation lente du ventilateur de l'unité extérieure. */
-    .hero-visual .hv-airflow{
-      animation:hvAirDrift 2.6s ease-in-out infinite;
-      transform-box:fill-box; transform-origin:0% 50%;
-    }
-    .hero-visual .hv-airflow-b{ animation-delay:.35s; }
-    .hero-visual .hv-airflow-c{ animation-delay:.7s; }
-    .hero-visual .hv-fan{
-      animation:hvFanSpin 7s linear infinite;
-      transform-box:fill-box; transform-origin:50% 50%;
-    }
+    .hero-logo{ animation:heroLogoReveal .8s cubic-bezier(.2,.7,.3,1) both; }
   }
-  @keyframes heroFloat{
-    from{ transform:translateY(0); }
-    to{ transform:translateY(-10px); }
+  @keyframes heroLogoReveal{
+    from{ opacity:0; transform:translateY(-10px); }
+    to{ opacity:1; transform:translateY(0); }
   }
-  @keyframes heroBreathe{
-    from{ opacity:0.14; }
-    to{ opacity:0.32; }
+  .hero-eyebrow-light{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--hl-blue); margin-bottom:14px;
   }
-  @keyframes heroRotate{
-    to{ transform:rotate(360deg); }
+  .hero-subtitle-light{
+    font-size:1.08rem; color:var(--hl-navy-soft); margin-bottom:32px;
+    max-width:52ch; margin-inline:auto;
   }
-  @keyframes hvAirDrift{
-    0%{ transform:translateX(0); opacity:0.1; }
-    45%{ opacity:0.85; }
-    100%{ transform:translateX(16px); opacity:0; }
+  .btn-hero-primary{
+    display:inline-flex; align-items:center; gap:8px;
+    background:linear-gradient(135deg, var(--hl-orange) 0%, var(--hl-orange-deep) 100%);
+    color:#fff; font-weight:700; font-family:"Poppins",sans-serif; font-size:0.98rem;
+    padding:15px 28px; border-radius:10px; text-decoration:none;
+    box-shadow:0 16px 30px -14px rgba(201,68,0,0.5);
+    transition:transform .2s ease, box-shadow .2s ease;
   }
-  @keyframes hvFanSpin{ to{ transform:rotate(360deg); } }
+  .btn-hero-primary:hover{ transform:translateY(-2px); box-shadow:0 20px 36px -14px rgba(201,68,0,0.58); }
+  .btn-hero-secondary{
+    display:inline-flex; align-items:center; gap:8px;
+    background:#fff; color:var(--hl-navy); font-weight:700; font-family:"Poppins",sans-serif; font-size:0.98rem;
+    padding:15px 28px; border-radius:10px; text-decoration:none;
+    border:1.5px solid var(--hl-line);
+    transition:transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .btn-hero-secondary:hover{ transform:translateY(-2px); border-color:var(--hl-blue); background:var(--hl-bg-deep); }
+
+  /* Décor : vagues abstraites très discrètes évoquant l'eau/l'air/la chaleur
+     du logo, jamais une seconde silhouette de maison (pour ne pas dupliquer
+     le logo lui-même). Dérive extrêmement lente, jamais gênante. */
+  .hero-wave-decor{
+    position:absolute; left:0; right:0; bottom:0; height:60%; z-index:0;
+    pointer-events:none; overflow:hidden;
+  }
+  .hero-wave-decor svg{ width:100%; height:100%; display:block; }
+  @media (prefers-reduced-motion: no-preference){
+    .hero-wave-1{ animation:heroWaveDrift 26s ease-in-out infinite alternate; }
+    .hero-wave-2{ animation:heroWaveDrift 32s ease-in-out infinite alternate-reverse; }
+  }
+  @keyframes heroWaveDrift{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-46px); }
+  }
 
   /* ---------- Refonte visuelle : utilitaires partagés (formes, révélation
      au scroll, micro-animations) réutilisés par plusieurs sections. ---------- */
@@ -706,18 +675,19 @@
   .btn-secondary:hover{border-color:var(--sky-deep); background:var(--cream);}
   .hero-pro-login-link{ margin-top:16px; }
   .hero-pro-login-link a{
-    font-size:0.86rem; font-weight:700; color:var(--sky-deep); text-decoration:underline; text-underline-offset:3px;
+    font-size:0.86rem; font-weight:700; color:var(--hl-blue); text-decoration:underline; text-underline-offset:3px;
   }
   .trustline{
     margin-top:22px;
     font-size:0.88rem;
-    color:var(--ink-soft);
+    color:var(--hl-navy-soft);
     display:flex;
     gap:8px;
     align-items:center;
+    justify-content:center;
     flex-wrap:wrap;
   }
-  .trustline .dot{width:5px;height:5px;border-radius:50%;background:var(--sky-deep); flex:none;}
+  .trustline .dot{width:5px;height:5px;border-radius:50%;background:var(--hl-blue); flex:none;}
 
   /* ---------- Hero scene ---------- */
   .scene-card{
@@ -2780,118 +2750,58 @@
 
 <main>
   <section class="hero">
-    <div class="wrap hero-grid">
-      <div class="hero-copy">
-        <div data-audience="particulier">
-          <p class="eyebrow">Climatisation · Chauffage · Plomberie<span class="rule"></span></p>
-          <h1>Votre confort entretenu à l'année, du Var jusqu'aux Alpes-Maritimes.</h1>
-          <p class="tagline">Entretien climatisation · Dépannage plomberie &amp; chauffage.</p>
-          <p class="lead">Entretien de climatisation, entretien &amp; dépannage de chauffage, installation &amp; dépannage de plomberie. Une équipe locale et réactive qui intervient dans tout le Var (83) et tout le 06.</p>
-          <div class="hero-ctas">
-            <a class="btn-primary" href="#rdv">Prendre rendez-vous en ligne</a>
-            <a class="btn-secondary" href="tel:+33671262302">Appeler : 06 71 26 23 02</a>
-          </div>
-          <div class="trustline">
-            <span>Devis gratuit</span><span class="dot"></span>
-            <span>Intervention rapide</span><span class="dot"></span>
-            <span>Basés à Fréjus</span>
-          </div>
-        </div>
+    <div class="hero-wave-decor" aria-hidden="true">
+      <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="heroWaveGrad1" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#1AA6EE"/>
+            <stop offset="100%" stop-color="#BFE0F5"/>
+          </linearGradient>
+          <linearGradient id="heroWaveGrad2" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#E85A12"/>
+            <stop offset="100%" stop-color="#F5B27A"/>
+          </linearGradient>
+        </defs>
+        <path class="hero-wave-1" d="M-100,380 C150,300 350,460 600,380 C850,300 1050,460 1300,380 L1300,600 L-100,600 Z" fill="url(#heroWaveGrad1)" opacity="0.07"/>
+        <path class="hero-wave-2" d="M-100,430 C200,370 400,490 650,430 C900,370 1100,490 1300,430 L1300,600 L-100,600 Z" fill="url(#heroWaveGrad2)" opacity="0.05"/>
+      </svg>
+    </div>
+    <div class="wrap hero-center">
+      <img class="hero-logo" src="images/brand/hayeva-logo.png"
+           srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
+           sizes="(min-width:640px) 320px, 240px"
+           alt="HAYEVA" loading="eager" fetchpriority="high">
 
-        <div data-audience="pro" hidden>
-          <p class="eyebrow">Conciergeries · Locations saisonnières · Mobil-homes<span class="rule"></span></p>
-          <h1>La maintenance technique de vos hébergements.</h1>
-          <p class="tagline">Simplifiez la maintenance de vos locations.</p>
-          <p class="lead">Plomberie, chauffage et climatisation pour conciergeries, locations saisonnières, campings et gestionnaires de biens. Check technique, comptes-rendus numériques, tarifs dégressifs multi-logements.</p>
-          <div class="hero-ctas">
-            <a class="btn-primary" href="#pro">Découvrir nos services professionnels</a>
-            <a class="btn-secondary" href="#rdv">Demander une intervention</a>
-          </div>
-          <p class="hero-pro-login-link">
-            <a href="#espacePro">🔐 Se connecter à mon espace Pro</a>
-          </p>
-          <div class="trustline">
-            <span>Tarifs dégressifs</span><span class="dot"></span>
-            <span>Compte-rendu numérique</span><span class="dot"></span>
-            <span>Basés à Fréjus</span>
-          </div>
+      <div data-audience="particulier">
+        <p class="hero-eyebrow-light">Plomberie • Chauffage • Climatisation</p>
+        <h1>Votre confort, entre de bonnes mains.</h1>
+        <p class="hero-subtitle-light">Dépannage plomberie &amp; chauffage · Entretien de climatisation</p>
+        <div class="hero-ctas">
+          <a class="btn-hero-primary" href="#rdv">Prendre rendez-vous</a>
+          <a class="btn-hero-secondary" href="#besoin">Voir nos services</a>
+        </div>
+        <div class="trustline">
+          <span>Devis gratuit</span><span class="dot"></span>
+          <span>Intervention rapide</span><span class="dot"></span>
+          <span>Basés à Fréjus</span>
         </div>
       </div>
 
-      <div class="hero-visual">
-        <div class="hero-illustration" id="heroIllustration" aria-hidden="true">
-          <svg viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <filter id="heroBlur" x="-60%" y="-60%" width="220%" height="220%">
-                <feGaussianBlur stdDeviation="26"/>
-              </filter>
-              <linearGradient id="heroRoofGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#F6FAFC"/>
-                <stop offset="100%" stop-color="#CDE6EF"/>
-              </linearGradient>
-              <linearGradient id="heroWallRightGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#2C4A66"/>
-                <stop offset="100%" stop-color="#182533"/>
-              </linearGradient>
-              <linearGradient id="heroWallLeftGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#182533"/>
-                <stop offset="100%" stop-color="#0E1822"/>
-              </linearGradient>
-            </defs>
-
-            <!-- Halos ambiants : font fusionner l'illustration avec le fond
-                 du hero, aucun cadre ni rectangle autour de la composition. -->
-            <circle class="hv-halo" cx="120" cy="130" r="92" fill="var(--turquoise)" filter="url(#heroBlur)" opacity="0.2"/>
-            <circle class="hv-halo hv-halo-b" cx="336" cy="330" r="80" fill="var(--amber)" filter="url(#heroBlur)" opacity="0.14"/>
-
-            <g class="hv-rings">
-              <circle cx="222" cy="242" r="172" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
-              <circle cx="222" cy="242" r="142" fill="none" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
-            </g>
-
-            <ellipse cx="222" cy="370" rx="128" ry="16" fill="#060B0F" opacity="0.32" filter="url(#heroBlur)"/>
-
-            <!-- Maison isométrique : toit clair + deux pans de mur (ombre / lumière) -->
-            <g>
-              <polygon points="122,180 222,230 222,340 122,290" fill="url(#heroWallLeftGrad)"/>
-              <polygon points="222,230 322,180 322,290 222,340" fill="url(#heroWallRightGrad)"/>
-              <polygon points="222,130 322,180 222,230 122,180" fill="url(#heroRoofGrad)"/>
-              <rect x="252" y="292" width="26" height="46" rx="2" fill="#0B141C" opacity="0.55"/>
-              <rect x="150" y="230" width="26" height="22" rx="2" fill="#F3C878" opacity="0.55"/>
-              <circle class="hv-halo hv-halo-c" cx="163" cy="241" r="24" fill="var(--amber)" filter="url(#heroBlur)" opacity="0.22"/>
-            </g>
-
-            <!-- Unité murale de climatisation, élément principal, avec flux d'air animé -->
-            <g transform="translate(250,193)">
-              <rect x="0" y="0" width="54" height="17" rx="7" fill="#F7FAFB"/>
-              <rect x="0" y="0" width="54" height="17" rx="7" fill="none" stroke="rgba(20,33,44,0.18)" stroke-width="1"/>
-              <g class="hv-airflow" stroke="var(--cat-clim-a)" stroke-width="2.2" stroke-linecap="round" fill="none">
-                <path d="M4 23 Q28 31 56 25"/>
-              </g>
-              <g class="hv-airflow hv-airflow-b" stroke="var(--cat-clim-a)" stroke-width="2" stroke-linecap="round" fill="none">
-                <path d="M2 31 Q28 41 52 33"/>
-              </g>
-              <g class="hv-airflow hv-airflow-c" stroke="var(--cat-clim-a)" stroke-width="1.6" stroke-linecap="round" fill="none">
-                <path d="M0 39 Q26 49 48 41"/>
-              </g>
-            </g>
-
-            <!-- Unité extérieure au sol, ventilateur qui tourne lentement -->
-            <g transform="translate(300,318)">
-              <rect x="0" y="0" width="48" height="34" rx="5" fill="#EDF0F1"/>
-              <g class="hv-fan">
-                <circle cx="15" cy="17" r="10.5" fill="none" stroke="#7C8D97" stroke-width="2"/>
-                <line x1="15" y1="8" x2="15" y2="26" stroke="#7C8D97" stroke-width="1.6"/>
-                <line x1="5.5" y1="17" x2="24.5" y2="17" stroke="#7C8D97" stroke-width="1.6"/>
-              </g>
-            </g>
-
-            <!-- Descente d'eau : goutte animée, touche plomberie -->
-            <g transform="translate(222,290)">
-              <line x1="0" y1="0" x2="0" y2="44" stroke="var(--cat-plomberie)" stroke-width="2" opacity="0.55"/>
-              <circle class="hv-drip" cx="0" cy="46" r="3" fill="var(--cat-plomberie)"/>
-            </g>
-          </svg>
+      <div data-audience="pro" hidden>
+        <p class="hero-eyebrow-light">Conciergeries · Locations saisonnières · Mobil-homes</p>
+        <h1>La maintenance technique de vos hébergements.</h1>
+        <p class="hero-subtitle-light">Simplifiez la maintenance de vos locations.</p>
+        <div class="hero-ctas">
+          <a class="btn-hero-primary" href="#pro">Découvrir nos services professionnels</a>
+          <a class="btn-hero-secondary" href="#rdv">Demander une intervention</a>
+        </div>
+        <p class="hero-pro-login-link">
+          <a href="#espacePro">🔐 Se connecter à mon espace Pro</a>
+        </p>
+        <div class="trustline">
+          <span>Tarifs dégressifs</span><span class="dot"></span>
+          <span>Compte-rendu numérique</span><span class="dot"></span>
+          <span>Basés à Fréjus</span>
         </div>
       </div>
     </div>
@@ -8635,24 +8545,3 @@
 })();
 </script>
 
-<script>
-(function(){
-  // ---------- Illustration du hero : très léger parallaxe desktop ----------
-  // Suit le curseur de quelques pixels à peine, uniquement à la souris
-  // (jamais au toucher) et jamais si le visiteur préfère moins d'animations.
-  var hero = document.querySelector('.hero');
-  var illustration = document.getElementById('heroIllustration');
-  if (!hero || !illustration) return;
-  if (!(window.matchMedia && window.matchMedia('(hover:hover)').matches)) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  hero.addEventListener('mousemove', function(e){
-    var rect = hero.getBoundingClientRect();
-    var px = (e.clientX - rect.left) / rect.width - 0.5;
-    var py = (e.clientY - rect.top) / rect.height - 0.5;
-    illustration.style.translate = (px * -8) + 'px ' + (py * -6) + 'px';
-  });
-  hero.addEventListener('mouseleave', function(){
-    illustration.style.translate = '0px 0px';
-  });
-})();
-</script>
