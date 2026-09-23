@@ -5479,7 +5479,7 @@
     return sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
       if (!session) return bkAuthContext;
-      return sb.client.from('profiles').select('global_role').maybeSingle().then(function(pres){
+      return sb.client.from('profiles').select('global_role').eq('user_id', session.user.id).maybeSingle().then(function(pres){
         if (!pres.data || pres.data.global_role !== 'customer') return bkAuthContext;
         var svc = currentService();
         return Promise.all([
@@ -5679,7 +5679,7 @@
     return sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
       if (!session) return { kind:'no-session' };
-      return sb.client.from('profiles').select('global_role').maybeSingle().then(function(pres){
+      return sb.client.from('profiles').select('global_role').eq('user_id', session.user.id).maybeSingle().then(function(pres){
         var role = pres.data ? pres.data.global_role : null;
         if (role !== 'customer') return { kind:'not-customer' };
         return fetchBookingCatalog().then(function(catalog){
@@ -6974,8 +6974,17 @@
   // Lit le rôle réel depuis la base (jamais depuis user_metadata ni depuis un
   // paramètre du formulaire) : seule la colonne profiles.global_role fait
   // autorité pour décider qui peut entrer dans l'Espace Pro.
-  function fetchRole(){
-    return sb.client.from('profiles').select('global_role').maybeSingle().then(function(res){
+  // userId explicite obligatoire (pas de filtre implicite via RLS) : une
+  // fois ce compte lui-même admin, la policy RLS "self or admin" laisse
+  // voir TOUTES les lignes profiles sans .eq() — .maybeSingle() plante
+  // alors sur "plusieurs lignes renvoyées" et role revient à null, comme si
+  // le rôle admin qu'on vient d'accorder invalidait sa propre détection.
+  // Bug réel rencontré : un compte tout juste passé admin se voyait
+  // refuser l'accès Espace Pro avec "Ce compte n'est pas un compte
+  // professionnel", alors que profiles.global_role valait bien 'admin' en
+  // base.
+  function fetchRole(userId){
+    return sb.client.from('profiles').select('global_role').eq('user_id', userId).maybeSingle().then(function(res){
       return res.data ? res.data.global_role : null;
     }).catch(function(){ return null; });
   }
@@ -7029,7 +7038,7 @@
   function handleRealSession(session){
     if (!session){ renderLocked(); return; }
     provisionProfessionalIfNeeded(session.user).then(function(){
-      return fetchRole();
+      return fetchRole(session.user.id);
     }).then(function(role){
       if (role === 'professional' || role === 'admin'){
         renderUnlocked('real', '🔐 Espace professionnel — ' + (session.user.email || 'connecté'));
@@ -8382,8 +8391,11 @@
   }
 
   // Rôle réel exclusivement depuis profiles.global_role (jamais user_metadata).
-  function fetchRole(){
-    return sb.client.from('profiles').select('global_role').maybeSingle().then(function(res){
+  // userId explicite obligatoire : voir le commentaire équivalent côté
+  // script Espace Pro — sans .eq(), un compte admin voit (via RLS) toutes
+  // les lignes profiles et .maybeSingle() échoue silencieusement.
+  function fetchRole(userId){
+    return sb.client.from('profiles').select('global_role').eq('user_id', userId).maybeSingle().then(function(res){
       return res.data ? res.data.global_role : null;
     }).catch(function(){ return null; });
   }
@@ -8443,7 +8455,7 @@
     if (ecHandlingUid === uid) return ecHandlingPromise;
     ecHandlingUid = uid;
     ecHandlingPromise = provisionCustomerIfNeeded(session.user).then(function(){
-      return fetchRole();
+      return fetchRole(uid);
     }).then(function(role){
       if (role === 'customer'){
         renderUnlocked(session.user.email || 'connecté');
