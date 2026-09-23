@@ -3665,7 +3665,7 @@
       <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km autour de Fréjus. Au-delà, des frais kilométriques (0,70 €/km) sont calculés et affichés avant confirmation de votre rendez-vous.</p>
       <p class="price-disclaimer">Tarifs TTC donnés à titre indicatif, hors fournitures sauf mention contraire — un devis précis vous est toujours confirmé avant intervention.</p>
       <p class="photo-tip">💳 Profitez de -10% si vous réglez votre prestation à l'avance — contactez-nous pour en profiter.</p>
-      <p class="photo-tip">📷 Une fois votre email de demande ouvert, vous pouvez y joindre une photo : ça nous permet souvent de vous donner un tarif précis avant même notre venue.</p>
+      <p class="photo-tip">📷 Une photo de la panne ou de l'installation nous aide souvent à vous donner un tarif précis avant même notre venue : décrivez votre besoin dans le formulaire de réservation, nous vous recontactons pour l'obtenir facilement.</p>
     </div>
   </section>
 
@@ -3995,9 +3995,14 @@
           </div>
           <div class="confirm-screen" id="bkConfirmReal" hidden>
             <span class="confirm-check">✓</span>
-            <h3>Rendez-vous enregistré</h3>
-            <p>Votre rendez-vous a bien été créé et est visible dans votre Espace Client.</p>
+            <h3>Demande de rendez-vous envoyée</h3>
+            <p>Merci d'avoir pris rendez-vous avec Hayeva.</p>
+            <p>Votre demande a bien été enregistrée. Nous vous confirmerons votre rendez-vous très prochainement.</p>
             <p class="hint" id="bkConfirmRealDetails"></p>
+            <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+              <button type="button" class="btn-primary" id="bkGoToAppointmentsBtn" hidden>Voir mes rendez-vous</button>
+              <button type="button" class="btn-primary" id="bkGoHomeBtn">Retour à l'accueil</button>
+            </div>
           </div>
           <p style="margin-top:18px; text-align:center;"><button type="button" class="restart-link" id="bkRestart">Faire une nouvelle demande</button></p>
         </div>
@@ -5040,6 +5045,8 @@
   var bkConfirmDemo = document.getElementById('bkConfirmDemo');
   var bkConfirmReal = document.getElementById('bkConfirmReal');
   var bkConfirmRealDetails = document.getElementById('bkConfirmRealDetails');
+  var bkGoToAppointmentsBtn = document.getElementById('bkGoToAppointmentsBtn');
+  var bkGoHomeBtn = document.getElementById('bkGoHomeBtn');
   var bkNext = document.getElementById('bkNext');
   var bkBack = document.getElementById('bkBack');
   var bkNavRow = document.getElementById('bkNavRow');
@@ -5517,59 +5524,11 @@
     return isRaffleEntry;
   }
 
-  function sendBookingRequest(){
-    var svc = currentService();
-    var endTime = fmtTime(state.time + svc.duration);
-    var isRaffleEntry = buildSummary();
-    var packLine = packSummaryLine(svc);
-    var multi = proMultiInfo(svc);
-    var isPro = document.documentElement.getAttribute('data-mode') === 'professionnel';
-
-    var lines = [
-      'Nouvelle demande de rendez-vous — ' + ((window.SUD_BRAND && window.SUD_BRAND.name) || 'HAYEVA'),
-      ''
-    ];
-    if (isPro && bkCompany && bkCompany.value.trim()) lines.push('Entreprise / Conciergerie : ' + bkCompany.value);
-    lines.push('Prestation : ' + svc.title + ' — ' + svc.price + (svc.supply ? ' + fourniture selon modèle choisi' : ''));
-    if (packLine) lines.push(packLine);
-    lines.push('Durée estimée : ' + fmtDuration(svc.duration) + ' (déplacement inclus)');
-    lines.push('Date souhaitée : ' + fmtDateLong(state.date));
-    lines.push('Horaire souhaité : ' + fmtTime(state.time) + ' - ' + endTime);
-    lines.push('Battement avant le rendez-vous suivant : ' + MINIMUM_BUFFER_MIN + ' min');
-    lines.push('Prochain créneau disponible à partir de : ' + fmtTime(state.time + svc.duration + MINIMUM_BUFFER_MIN));
-    var travelForEmail = travelSummaryLines(svc, bkAddress.value);
-    if (travelForEmail){
-      lines.push(travelForEmail.distanceLabel);
-      lines.push(travelForEmail.travelLabel);
-      if (!multi && travelForEmail.totalLabel) lines.push(travelForEmail.totalLabel);
-    }
-    if (multi){
-      lines.push('Nombre de logements : ' + multi.count);
-      lines.push('Sous-total (' + multi.count + ' x ' + fmtEuros(multi.unit) + ') : ' + fmtEuros(multi.est.normalTotal));
-      if (multi.est.quoteOnly){
-        lines.push('Remise professionnelle : sur devis (10 logements et plus)');
-      } else {
-        lines.push('Remise professionnelle (-' + multi.est.tier.discountPercent + '%) : -' + fmtEuros(multi.est.discountAmount));
-        lines.push('TOTAL TTC : ' + fmtEuros(roundCommercialPrice(multi.est.total + (travelForEmail ? travelForEmail.travelFee : 0))));
-      }
-    }
-    lines.push('Nom : ' + (bkName.value || ''));
-    lines.push('Téléphone : ' + (bkPhone.value || ''));
-    lines.push('E-mail : ' + (bkEmail.value || ''));
-    lines.push('Ville / adresse : ' + (bkAddress.value || ''));
-    lines.push('Commentaire : ' + (bkComment.value || ''));
-    if (isRaffleEntry){
-      lines.push('');
-      lines.push('🎁 Participation tirage au sort Switch 2 — N° ' + getRaffleTicket());
-    }
-    var body = lines.join('\n');
-    var subject = 'Demande de RDV - ' + svc.title + ' - ' + fmtTime(state.time) + ' le ' + state.date.toLocaleDateString('fr-FR');
-    var mailtoUrl = 'mailto:' + BUSINESS_EMAIL + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-    var smsUrl = 'sms:' + BUSINESS_PHONE + '?body=' + encodeURIComponent(body);
-
-    window.location.href = mailtoUrl;
-    confirmFallback.innerHTML = 'Votre messagerie ne s\'est pas ouverte ? <a href="' + mailtoUrl + '">Envoyer par e-mail</a> ou <a href="' + smsUrl + '">par SMS</a>.';
-  }
+  // sendBookingRequest() (ouverture de mailto:) a été entièrement retirée du
+  // parcours de réservation — plus aucune tentative d'ouvrir une application
+  // e-mail sur le téléphone du client. Toute réservation, connectée ou
+  // invitée, sur devis ou à prix fixe, est désormais enregistrée directement
+  // dans Supabase (voir attemptRealBooking / attemptDirectInsertBooking).
 
   function stepEls(){
     return document.querySelectorAll('.booking-step');
@@ -5644,7 +5603,15 @@
     bkNewAddressFields.hidden = bkAddressSelect.value !== '__new__';
   }
 
-  function showStep(n){
+  // skipScroll : uniquement pour l'appel initial au chargement de la page
+  // (aucun changement d'étape réel, rien à faire défiler). Tout autre appel
+  // — Continuer, Retour, nouvelle demande, ou sélection d'un service depuis
+  // une carte ailleurs sur le site via window.sudBooking.selectService/
+  // selectPack — doit ramener le haut de la carte de réservation dans
+  // l'écran : c'est la cause du bug « redirection vers Zone d'intervention »
+  // (showStep changeait bien d'étape mais ne faisait jamais défiler la
+  // page, qui restait donc là où était le clic).
+  function showStep(n, skipScroll){
     step = n;
     stepEls().forEach(function(el){
       el.hidden = Number(el.getAttribute('data-step')) !== n;
@@ -5665,6 +5632,10 @@
     }
     bkNext.textContent = n === 3 ? 'Confirmer ma demande' : 'Continuer';
     updateNav();
+    if (!skipScroll){
+      var bookingCard = document.querySelector('.booking-card');
+      if (bookingCard) bookingCard.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
   }
 
   function updateNav(){
@@ -5781,18 +5752,74 @@
     });
   }
 
+  // Utilisée quand create_booking() (réservée aux comptes particuliers pour
+  // une prestation DIRECT_BOOKING) ne s'applique pas : réservation invitée
+  // (pas de session), compte connecté non-particulier consultant le
+  // formulaire public, ou prestation sur devis (QUOTE_REQUEST). Appelle le
+  // RPC create_guest_or_quote_booking() (SECURITY DEFINER, voir migration
+  // supabase/migrations/0006_guest_quote_booking.sql) plutôt qu'un insert
+  // direct dans bookings : un insert direct échoue systématiquement en
+  // production avec "new row violates row-level security policy for table
+  // bookings" malgré une policy d'insert qui l'autorise pourtant sur le
+  // papier — même anomalie RLS non résolue déjà rencontrée et contournée
+  // sur ce projet pour create_professional_account() et audit_logs (voir
+  // le commentaire de create_professional_account() dans 0001_init.sql).
+  // Le RPC revalide lui-même côté serveur tout ce que le client propose
+  // (service actif, créneau non passé, nom/e-mail requis si invité, rôle
+  // réel de l'appelant via auth.uid()) — jamais de confiance aveugle dans
+  // les paramètres reçus.
+  function attemptDirectInsertBooking(svc, session){
+    var sb = window.sudSupabase;
+    return fetchBookingCatalog().then(function(catalog){
+      var resolved = resolveBookingParams(svc.id, catalog);
+      if (!resolved) return { kind:'not-bookable' };
+      // resolveBookingParams() ne renvoie PAS serviceSlug pour une
+      // prestation sur devis (juste { quoteOnly:true }) : svc.id (identifiant
+      // frontend) est alors le slug réel Supabase pour toute prestation hors
+      // formule, exactement comme le reste du parcours de réservation le
+      // suppose déjà ailleurs (voir resolveBookingParams).
+      var serviceSlug = resolved.serviceSlug || svc.id;
+      var addressText = (bkAddress.value || '').trim();
+      var commentText = (bkComment.value || '').trim();
+      var isCustomer = !!(session && session.user);
+      var notesParts = [];
+      if (resolved.quoteOnly) notesParts.push('Demande sur devis — tarif et durée exacts à confirmer par HAYEVA.');
+      if (isCustomer && addressText) notesParts.push('Adresse d\'intervention : ' + addressText + '.');
+      if (commentText) notesParts.push(commentText);
+      var guestName = (bkName.value || '').trim();
+      var guestEmail = (bkEmail.value || '').trim();
+      if (!isCustomer && (!guestName || !guestEmail)) return { kind:'missing-contact' };
+      var params = {
+        p_service_slug: serviceSlug,
+        p_date: toISODateLocal(state.date),
+        p_start_time: fmtTime(state.time) + ':00',
+        p_service_pack_slug: resolved.packSlug || null,
+        p_notes: notesParts.join(' ') || null,
+        p_guest_name: isCustomer ? null : guestName,
+        p_guest_email: isCustomer ? null : guestEmail,
+        p_guest_phone: isCustomer ? null : (bkPhone.value || '').trim(),
+        p_guest_address: isCustomer ? null : (addressText || null)
+      };
+      return sb.client.rpc('create_guest_or_quote_booking', params).then(function(rpcRes){
+        if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
+        return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {}, isCustomer: isCustomer };
+      });
+    }).catch(function(){ return { kind:'network-error' }; });
+  }
+
   function attemptRealBooking(svc){
     var sb = window.sudSupabase;
-    if (!sb || !sb.configured) return Promise.resolve({ kind:'no-session' });
+    if (!sb || !sb.configured) return attemptDirectInsertBooking(svc, null);
     return sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
-      if (!session) return { kind:'no-session' };
+      if (!session) return attemptDirectInsertBooking(svc, null);
       return sb.client.from('profiles').select('global_role').eq('user_id', session.user.id).maybeSingle().then(function(pres){
         var role = pres.data ? pres.data.global_role : null;
-        if (role !== 'customer') return { kind:'not-customer' };
+        if (role !== 'customer') return attemptDirectInsertBooking(svc, null);
         return fetchBookingCatalog().then(function(catalog){
           var resolved = resolveBookingParams(svc.id, catalog);
-          if (!resolved || resolved.quoteOnly) return { kind:'not-bookable' };
+          if (!resolved) return { kind:'not-bookable' };
+          if (resolved.quoteOnly) return attemptDirectInsertBooking(svc, session);
           return resolveAddressForBooking(session.user.id).then(function(addrOutcome){
             if (addrOutcome.kind === 'address-error') return addrOutcome;
             return sb.client.rpc('create_booking', {
@@ -5804,7 +5831,7 @@
               p_notes: (bkComment.value || '').trim() || null
             }).then(function(rpcRes){
               if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
-              return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {} };
+              return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {}, isCustomer: true };
             });
           });
         });
@@ -5812,6 +5839,10 @@
     }).catch(function(){ return { kind:'network-error' }; });
   }
 
+  // submitted + bkNext.disabled : protection anti double-clic déjà en place
+  // avant cette correction, conservée à l'identique — un deuxième clic
+  // pendant l'enregistrement Supabase est ignoré, jamais une deuxième
+  // réservation créée.
   var submitted = false;
   bkNext.addEventListener('click', function(){
     if (step === 3){
@@ -5821,47 +5852,38 @@
       submitted = true;
       bkNext.disabled = true;
       attemptRealBooking(svc).then(function(outcome){
-        if (outcome.kind === 'no-session' && looksLikeExpiredSession()){
-          submitted = false;
-          bkNext.disabled = false;
-          showBkMsg(bkSubmitError, 'Votre session a expiré. Merci de vous reconnecter à votre Espace Client avant de confirmer, puis recommencez votre demande.');
-          return;
-        }
         if (outcome.kind === 'success'){
           var row = outcome.row;
           bkConfirmRealDetails.textContent = 'Référence ' + (row.reference || '') +
             (row.total_cents != null ? ' — Total ' + fmtEuros(row.total_cents / 100) : '');
           bkConfirmDemo.hidden = true;
           bkConfirmReal.hidden = false;
+          if (bkGoToAppointmentsBtn) bkGoToAppointmentsBtn.hidden = !outcome.isCustomer;
           if (window.sudEspaceClientRefresh) window.sudEspaceClientRefresh();
           showStep(4);
           return;
         }
+        // Tout le reste est un échec : on ne montre JAMAIS l'écran de
+        // confirmation, on ne perd aucune saisie (les champs restent tels
+        // quels), et on réactive le bouton pour permettre de réessayer.
+        submitted = false;
+        bkNext.disabled = false;
+        var msg = 'Une erreur est survenue lors de l\'enregistrement de votre demande. Veuillez réessayer.';
         if (outcome.kind === 'address-error'){
-          submitted = false;
-          bkNext.disabled = false;
-          showBkMsg(bkSubmitError, (outcome.error && outcome.error.message) || 'Adresse invalide.');
-          return;
-        }
-        if (outcome.kind === 'rpc-error'){
-          submitted = false;
-          bkNext.disabled = false;
-          var msg = (outcome.error && outcome.error.message) || '';
-          if (/authentification requise/i.test(msg)){
-            showBkMsg(bkSubmitError, 'Votre session a expiré. Merci de vous reconnecter à votre Espace Client avant de confirmer, puis recommencez votre demande.');
-          } else if (/créneau/i.test(msg) || /adresse/i.test(msg)){
-            showBkMsg(bkSubmitError, msg);
-          } else {
-            showBkMsg(bkSubmitError, 'Impossible d\'enregistrer ce rendez-vous pour le moment. Réessayez.');
+          msg = (outcome.error && outcome.error.message) || 'Adresse invalide.';
+        } else if (outcome.kind === 'rpc-error'){
+          var rmsg = (outcome.error && outcome.error.message) || '';
+          if (/authentification requise/i.test(rmsg)){
+            msg = 'Votre session a expiré. Merci de vous reconnecter à votre Espace Client avant de confirmer, puis recommencez votre demande.';
+          } else if (/créneau/i.test(rmsg) || /adresse/i.test(rmsg)){
+            msg = rmsg;
           }
-          return;
+        } else if (outcome.kind === 'missing-contact'){
+          msg = 'Merci de renseigner votre nom et votre e-mail pour confirmer la demande.';
+        } else if (outcome.kind === 'not-bookable'){
+          msg = 'Cette prestation n\'est plus disponible en ligne pour le moment. Contactez-nous directement au ' + BUSINESS_PHONE + '.';
         }
-        // no-session (invité réel) / not-customer (pro/admin) / not-bookable
-        // (service sur devis) / network-error : parcours mailto existant, inchangé.
-        sendBookingRequest();
-        bkConfirmDemo.hidden = false;
-        bkConfirmReal.hidden = true;
-        showStep(4);
+        showBkMsg(bkSubmitError, msg);
       });
     } else if (step < 4){
       showStep(step + 1);
@@ -5876,6 +5898,22 @@
     if (step > 1) showStep(step - 1);
   });
 
+  // "Voir mes rendez-vous" : ouvre l'Espace Client déjà connecté directement
+  // sur l'onglet "Mes rendez-vous" — masqué pour une réservation invitée
+  // (pas de tableau de bord accessible sans compte).
+  if (bkGoToAppointmentsBtn){
+    bkGoToAppointmentsBtn.addEventListener('click', function(){
+      if (window.sudOpenEspace) window.sudOpenEspace('espaceClient');
+      if (window.sudEspaceClientGoToAppointments) window.sudEspaceClientGoToAppointments();
+    });
+  }
+  // "Retour à l'accueil" : ramène simplement en haut de la page publique.
+  if (bkGoHomeBtn){
+    bkGoHomeBtn.addEventListener('click', function(){
+      window.scrollTo({ top:0, left:0, behavior:'smooth' });
+    });
+  }
+
   bkRestart.addEventListener('click', function(){
     state = { serviceId:null, date:null, time:null };
     raffleTicket = null;
@@ -5884,6 +5922,7 @@
     showBkMsg(bkSubmitError, '');
     bkConfirmDemo.hidden = false;
     bkConfirmReal.hidden = true;
+    if (bkGoToAppointmentsBtn) bkGoToAppointmentsBtn.hidden = true;
     bkName.value = ''; bkPhone.value = ''; bkEmail.value = ''; bkAddress.value = ''; bkComment.value = ''; bkSearch.value = '';
     bkNewAddrLabel.value = ''; bkNewAddrAddress.value = ''; bkNewAddrPostal.value = ''; bkNewAddrCity.value = '';
     bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null };
@@ -5948,7 +5987,7 @@
 
   renderDateOptions();
   renderTimeOptions();
-  showStep(1);
+  showStep(1, true);
 
   window.sudBooking = {
     selectService: function(id){
@@ -8155,6 +8194,13 @@
     var apptPanel = document.getElementById('ecPanelAppointments');
     if (homePanel && !homePanel.hidden) ecLoadHome();
     else if (apptPanel && !apptPanel.hidden) ecLoadAppointments();
+  };
+  // Hook minimal appelé par le bouton "Voir mes rendez-vous" de l'écran de
+  // confirmation de réservation : ouvre le tableau de bord (si nécessaire)
+  // directement sur l'onglet "Mes rendez-vous", sans dupliquer la logique
+  // d'ouverture déjà gérée par window.sudOpenEspace/ecShowTab.
+  window.sudEspaceClientGoToAppointments = function(){
+    ecShowTab('appointments');
   };
   // Prénom réel (customer_profiles.first_name) pour le message d'accueil,
   // mis en cache pour éviter une requête à chaque passage sur l'onglet
