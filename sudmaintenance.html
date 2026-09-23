@@ -2119,6 +2119,50 @@
     transition:background .2s ease, color .2s ease;
   }
   .admin-bk-ics-btn:hover{ background:var(--terracotta); color:var(--white); }
+  /* Actions rapides sur une demande en attente : accepter / refuser /
+     proposer un autre créneau. N'apparaissent que pour status='PENDING' —
+     le menu déroulant de statut (ci-dessus) reste disponible pour tout
+     changement manuel, y compris après coup. */
+  .admin-bk-action-btn{
+    display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
+    padding:7px 12px; border-radius:8px; border:1.5px solid var(--line); cursor:pointer; white-space:nowrap;
+    background:transparent; transition:background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .admin-bk-accept-btn{ border-color:#2F7A4F; color:#2F7A4F; }
+  .admin-bk-accept-btn:hover{ background:#2F7A4F; color:#fff; }
+  .admin-bk-refuse-btn{ border-color:#B23A3A; color:#B23A3A; }
+  .admin-bk-refuse-btn:hover{ background:#B23A3A; color:#fff; }
+  .admin-bk-propose-btn{ border-color:var(--sky-deep); color:var(--sky-deep); }
+  .admin-bk-propose-btn:hover{ background:var(--sky-deep); color:#fff; }
+  .admin-bk-action-btn[disabled]{ opacity:0.55; cursor:not-allowed; }
+  /* flex-direction:column plutôt qu'une grille de labels en ligne : évite
+     tout calcul de largeur ambigu entre date/heure/message/boutons (bug
+     réel observé — le formulaire dépassait la largeur de sa carte, obligeant
+     à scroller horizontalement). Une ligne = un groupe, jamais de débordement
+     possible quelle que soit la largeur d'écran. */
+  .admin-bk-propose-form{
+    flex:1 1 100%; min-width:0; display:flex; flex-direction:column; gap:10px;
+    background:var(--sand-deep); border-radius:10px; padding:14px; margin-top:8px; box-sizing:border-box;
+  }
+  .admin-bk-propose-form-row{ display:flex; flex-wrap:wrap; gap:10px; }
+  .admin-bk-propose-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.76rem; font-weight:600; color:var(--ink-soft); flex:1 1 140px; min-width:0; }
+  .admin-bk-propose-form input, .admin-bk-propose-form textarea{
+    font-family:inherit; font-size:0.85rem; padding:8px 10px; border-radius:8px; border:1.5px solid var(--line);
+    background:var(--cream); color:var(--ink); width:100%; box-sizing:border-box;
+  }
+  .admin-bk-propose-form textarea{ resize:vertical; min-height:38px; }
+  .admin-bk-propose-send{
+    background:var(--sky-deep); color:#fff; border:none; border-radius:8px; padding:9px 14px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; cursor:pointer;
+  }
+  .admin-bk-propose-send[disabled]{ opacity:0.6; cursor:not-allowed; }
+  .admin-bk-propose-cancel{
+    background:transparent; border:1px solid var(--line); color:var(--ink-soft); border-radius:8px;
+    padding:9px 12px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.78rem; cursor:pointer;
+  }
+  .admin-bk-propose-msg{ font-size:0.78rem; font-weight:600; }
+  .admin-bk-propose-msg.is-error{ color:#B23A3A; }
+  .admin-bk-propose-msg.is-success{ color:#2F7A4F; }
   .admin-bk-note{
     font-size:0.8rem; font-style:italic; color:var(--ink); background:var(--sand-deep);
     border-radius:8px; padding:7px 10px; margin-top:2px; max-width:44ch;
@@ -7463,8 +7507,27 @@
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         (b.notes ? '<span class="admin-bk-note">💬 ' + admEscape(b.notes) + '</span>' : '') +
         '</div><div class="admin-bk-row-actions">' +
+        (b.status === 'PENDING' ?
+          '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">✅ Accepter</button>' +
+          '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">❌ Refuser</button>' +
+          '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">🕐 Proposer un autre créneau</button>'
+          : '') +
         '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
         (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">📅 Ajouter à Apple Calendar</button>' : '') +
+        (b.status === 'PENDING' ?
+          '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
+            '<div class="admin-bk-propose-form-row">' +
+              '<label>Nouvelle date<input type="date" class="admin-bk-propose-date" required></label>' +
+              '<label>Nouvelle heure<input type="time" class="admin-bk-propose-time" required></label>' +
+            '</div>' +
+            '<label>Message (facultatif)<textarea class="admin-bk-propose-message" placeholder="Un mot pour votre client…"></textarea></label>' +
+            '<div class="admin-bk-propose-form-row">' +
+              '<button type="submit" class="admin-bk-propose-send">Envoyer la proposition</button>' +
+              '<button type="button" class="admin-bk-propose-cancel">Annuler</button>' +
+            '</div>' +
+            '<p class="admin-bk-propose-msg" hidden></p>' +
+          '</form>'
+          : '') +
         '</div></div>';
     });
     html += '</div>';
@@ -7529,30 +7592,112 @@
     });
   }
 
+  // Un seul point de mise à jour du statut, réutilisé par le menu déroulant
+  // ET les boutons rapides Accepter/Refuser — même comportement partout
+  // (cache local resynchronisé, re-rendu, message d'erreur identique).
+  function admUpdateBookingStatus(id, newStatus, onDone){
+    sb.client.from('bookings').update({ status: newStatus }).eq('id', id).then(function(res){
+      if (onDone) onDone(res.error);
+      if (res.error){ window.alert('Impossible de mettre à jour ce rendez-vous.'); return; }
+      var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+      if (row) row.status = newStatus;
+      admRenderList();
+    });
+  }
+
   var adminListEl = document.getElementById('adminBkList');
   if (adminListEl){
     adminListEl.addEventListener('change', function(e){
       var sel = e.target.closest('.admin-bk-status-select');
       if (!sel) return;
       var id = sel.getAttribute('data-booking-id');
-      var newStatus = sel.value;
       sel.disabled = true;
-      sb.client.from('bookings').update({ status: newStatus }).eq('id', id).then(function(res){
-        sel.disabled = false;
-        if (res.error){ window.alert('Impossible de mettre à jour ce rendez-vous.'); return; }
-        var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
-        if (row) row.status = newStatus;
-        admRenderList();
-      });
+      admUpdateBookingStatus(id, sel.value, function(){ sel.disabled = false; });
     });
     adminListEl.addEventListener('click', function(e){
-      var btn = e.target.closest('.admin-bk-ics-btn');
-      if (!btn || !adminBookingsCache) return;
-      var id = btn.getAttribute('data-booking-id');
-      var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
-      if (!row) return;
-      var contact = admContactFor(row, adminBookingsCache.profiles);
-      downloadBookingIcs(row, contact);
+      var icsBtn = e.target.closest('.admin-bk-ics-btn');
+      if (icsBtn && adminBookingsCache){
+        var icsId = icsBtn.getAttribute('data-booking-id');
+        var icsRow = adminBookingsCache.rows.filter(function(b){ return b.id === icsId; })[0];
+        if (icsRow){
+          var contact = admContactFor(icsRow, adminBookingsCache.profiles);
+          downloadBookingIcs(icsRow, contact);
+        }
+        return;
+      }
+      var acceptBtn = e.target.closest('.admin-bk-accept-btn');
+      if (acceptBtn){
+        acceptBtn.disabled = true;
+        admUpdateBookingStatus(acceptBtn.getAttribute('data-booking-id'), 'CONFIRMED');
+        return;
+      }
+      var refuseBtn = e.target.closest('.admin-bk-refuse-btn');
+      if (refuseBtn){
+        refuseBtn.disabled = true;
+        admUpdateBookingStatus(refuseBtn.getAttribute('data-booking-id'), 'CANCELLED');
+        return;
+      }
+      var proposeBtn = e.target.closest('.admin-bk-propose-btn');
+      if (proposeBtn){
+        var row = e.target.closest('.ec-row');
+        var form = row && row.querySelector('.admin-bk-propose-form');
+        if (form) form.hidden = !form.hidden;
+        return;
+      }
+      var cancelBtn = e.target.closest('.admin-bk-propose-cancel');
+      if (cancelBtn){
+        var formToClose = cancelBtn.closest('.admin-bk-propose-form');
+        if (formToClose) formToClose.hidden = true;
+        return;
+      }
+    });
+
+    // Envoi de la proposition de créneau alternatif : appelle l'Edge
+    // Function propose-alternative-slot (authentifiée avec la session admin
+    // en cours — elle revérifie elle-même côté serveur que ce compte est
+    // bien admin avant d'envoyer quoi que ce soit). L'e-mail part côté
+    // serveur (clé Resend jamais exposée ici) ; aucun changement du statut
+    // ni de la date en base — la proposition est juste communiquée par
+    // e-mail, à l'admin de suivre la réponse du client comme aujourd'hui.
+    adminListEl.addEventListener('submit', function(e){
+      var form = e.target.closest('.admin-bk-propose-form');
+      if (!form) return;
+      e.preventDefault();
+      var id = form.getAttribute('data-booking-id');
+      var dateVal = form.querySelector('.admin-bk-propose-date').value;
+      var timeVal = form.querySelector('.admin-bk-propose-time').value;
+      var messageVal = form.querySelector('.admin-bk-propose-message').value.trim();
+      var msgEl = form.querySelector('.admin-bk-propose-msg');
+      var sendBtn = form.querySelector('.admin-bk-propose-send');
+      if (!dateVal || !timeVal) return;
+      msgEl.hidden = true;
+      msgEl.className = 'admin-bk-propose-msg';
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Envoi…';
+      sb.client.auth.getSession().then(function(res){
+        var token = res && res.data && res.data.session && res.data.session.access_token;
+        if (!token) throw new Error('no-session');
+        return fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/propose-alternative-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ booking_id: id, proposed_date: dateVal, proposed_time: timeVal, message: messageVal || null })
+        });
+      }).then(function(res){
+        if (!res.ok) throw new Error('http-' + res.status);
+        return res.json();
+      }).then(function(){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Envoyer la proposition';
+        msgEl.textContent = 'Proposition envoyée au client par e-mail.';
+        msgEl.className = 'admin-bk-propose-msg is-success';
+        msgEl.hidden = false;
+      }).catch(function(){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Envoyer la proposition';
+        msgEl.textContent = "Échec de l'envoi. Réessayez dans un instant.";
+        msgEl.className = 'admin-bk-propose-msg is-error';
+        msgEl.hidden = false;
+      });
     });
   }
 
