@@ -564,34 +564,19 @@
       justify-content:center;
       min-width:0;
     }
-    .hero-photo-stack{ width:100%; max-width:380px; }
+    .hero-illustration{ width:100%; max-width:380px; }
   }
   @media (min-width:1440px){
     .hero .wrap{ max-width:1400px; }
     .hero-grid{ grid-template-columns:minmax(0, 760px) 1fr; gap:56px; }
-    .hero-photo-stack{ max-width:440px; }
+    .hero-illustration{ max-width:440px; }
   }
-  /* Composition photo du hero : grande photo verticale d'intervention réelle
-     + vignette "résultat" en incrustation, plutôt qu'une illustration
-     abstraite — les vraies réalisations HAYEVA priment dès l'arrivée. */
-  .hero-photo-stack{ position:relative; }
-  .hero-photo-main{
-    aspect-ratio:4/5; border-radius:26px; overflow:hidden;
-    box-shadow:0 30px 64px -26px rgba(14,24,32,0.45);
-    background:var(--sand-deep);
-  }
-  .hero-photo-main img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .hero-photo-badge{
-    position:absolute; right:-6%; bottom:-9%; width:54%;
-    aspect-ratio:4/3; border-radius:18px; overflow:hidden;
-    border:5px solid var(--sand);
-    box-shadow:0 22px 44px -20px rgba(14,24,32,0.5);
-    background:var(--sand-deep);
-  }
-  .hero-photo-badge img{ width:100%; height:100%; object-fit:cover; display:block; }
-  @media (prefers-reduced-motion: no-preference){
-    .hero-photo-badge{ animation:heroFloat 7s ease-in-out infinite alternate; }
-  }
+  /* Illustration maison isométrique (climatisation, chauffage, plomberie) :
+     dessinée en SVG, sans cadre ni rectangle — elle se fond dans le fond du
+     hero grâce aux halos flous et à l'absence de conteneur opaque. Les
+     vraies photos HAYEVA restent utilisées partout ailleurs sur le site. */
+  .hero-illustration{ position:relative; }
+  .hero-illustration svg{ width:100%; height:auto; display:block; }
   @media (prefers-reduced-motion: reduce){
     .reviews-track{ scroll-behavior:auto; }
   }
@@ -622,6 +607,18 @@
       transform-box:fill-box; transform-origin:50% 50%;
     }
     .hero-visual .hv-heatwaves path:last-child{ animation-delay:-1.2s; }
+    /* Flux d'air climatisation (chevrons qui dérivent depuis l'unité murale)
+       et rotation lente du ventilateur de l'unité extérieure. */
+    .hero-visual .hv-airflow{
+      animation:hvAirDrift 2.6s ease-in-out infinite;
+      transform-box:fill-box; transform-origin:0% 50%;
+    }
+    .hero-visual .hv-airflow-b{ animation-delay:.35s; }
+    .hero-visual .hv-airflow-c{ animation-delay:.7s; }
+    .hero-visual .hv-fan{
+      animation:hvFanSpin 7s linear infinite;
+      transform-box:fill-box; transform-origin:50% 50%;
+    }
   }
   @keyframes heroFloat{
     from{ transform:translateY(0); }
@@ -634,6 +631,12 @@
   @keyframes heroRotate{
     to{ transform:rotate(360deg); }
   }
+  @keyframes hvAirDrift{
+    0%{ transform:translateX(0); opacity:0.1; }
+    45%{ opacity:0.85; }
+    100%{ transform:translateX(16px); opacity:0; }
+  }
+  @keyframes hvFanSpin{ to{ transform:rotate(360deg); } }
 
   /* ---------- Refonte visuelle : utilitaires partagés (formes, révélation
      au scroll, micro-animations) réutilisés par plusieurs sections. ---------- */
@@ -2600,16 +2603,64 @@
     .ba-slider-handle{ transition:left .05s linear; }
   }
 
-  /* ---- Galerie réalisations (filtres + lightbox) ---- */
-  .gallery-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:28px; }
-  .gallery-filter-btn{
-    font-family:"Poppins",sans-serif; font-weight:600; font-size:0.85rem;
-    padding:9px 16px; border-radius:999px; border:1.5px solid var(--line);
-    background:transparent; color:var(--ink); cursor:pointer;
-    transition:border-color .2s ease, background .2s ease, color .2s ease;
+  /* ---- Galerie réalisations : 5 cartes métier + panneau dépliable ---- */
+  .gallery-cats{
+    display:grid; grid-template-columns:repeat(2, 1fr); gap:14px;
   }
-  .gallery-filter-btn:hover{ border-color:var(--terracotta); }
-  .gallery-filter-btn.is-active{ background:var(--terracotta); border-color:var(--terracotta); color:var(--white); }
+  @media (min-width:640px){ .gallery-cats{ grid-template-columns:repeat(3, 1fr); gap:18px; } }
+  @media (min-width:1024px){ .gallery-cats{ grid-template-columns:repeat(5, 1fr); } }
+  .gallery-cat-card{
+    position:relative; overflow:hidden; border-radius:18px; border:0; padding:0; cursor:pointer;
+    aspect-ratio:3/4; background:var(--sand-deep);
+    box-shadow:0 18px 40px -22px rgba(14,24,32,0.4);
+    transition:transform .25s ease, box-shadow .25s ease;
+  }
+  @media (hover:hover){
+    .gallery-cat-card:hover{ transform:translateY(-4px); box-shadow:0 24px 48px -20px rgba(14,24,32,0.5); }
+  }
+  .gallery-cat-card img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    transition:transform .5s ease, filter .35s ease;
+  }
+  @media (hover:hover){ .gallery-cat-card:hover img{ transform:scale(1.08); } }
+  .gallery-cat-card::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(10,17,23,0) 40%, rgba(10,17,23,0.78) 100%);
+    transition:opacity .3s ease;
+  }
+  @media (hover:hover){ .gallery-cat-card:hover::after{ opacity:0.92; } }
+  .gallery-cat-label{
+    position:absolute; left:16px; right:16px; bottom:14px; z-index:1;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-family:"Poppins",sans-serif; font-weight:700; color:#fff;
+    font-size:1rem; text-shadow:0 2px 10px rgba(0,0,0,0.4);
+  }
+  .gallery-cat-label svg{
+    width:18px; height:18px; flex:none; opacity:0; transform:translateX(-4px);
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  @media (hover:hover){ .gallery-cat-card:hover .gallery-cat-label svg{ opacity:1; transform:translateX(0); } }
+  .gallery-cat-card.is-active{ outline:2.5px solid var(--terracotta); outline-offset:3px; }
+  .gallery-cat-card:focus-visible{ outline:2.5px solid var(--terracotta); outline-offset:3px; }
+
+  .gallery-panel{
+    margin-top:26px; border-radius:18px; background:var(--sand-deep); border:1px solid var(--line);
+    padding:22px 20px 26px; overflow:hidden;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .gallery-panel{ animation:revealUp .4s cubic-bezier(.2,.7,.3,1) both; }
+  }
+  .gallery-panel-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px;
+  }
+  .gallery-panel-head h3{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.15rem; color:var(--ink); }
+  .gallery-panel-close{
+    width:34px; height:34px; border-radius:50%; flex:none; border:1.5px solid var(--line);
+    background:transparent; color:var(--ink-soft); cursor:pointer; font-size:0.95rem;
+    display:flex; align-items:center; justify-content:center; transition:border-color .2s ease, color .2s ease;
+  }
+  .gallery-panel-close:hover{ border-color:var(--terracotta); color:var(--terracotta); }
+
   .gallery-grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
   @media (min-width:640px){ .gallery-grid{ grid-template-columns:repeat(3, 1fr); gap:18px; } }
   @media (min-width:1024px){ .gallery-grid{ grid-template-columns:repeat(4, 1fr); } }
@@ -2620,7 +2671,6 @@
   .gallery-item .photo-frame{ aspect-ratio:1/1; border-radius:16px; }
   .gallery-item img{ transition:transform .4s ease; }
   @media (hover:hover){ .gallery-item:hover img{ transform:scale(1.06); } }
-  .gallery-item[hidden]{ display:none; }
 
   .lightbox{
     position:fixed; inset:0; z-index:9995; background:rgba(10,16,22,0.92);
@@ -2769,23 +2819,79 @@
       </div>
 
       <div class="hero-visual">
-        <div class="hero-photo-stack">
-          <div class="hero-photo-main">
-            <img
-              src="images/climatisation/technicien-entretien-climatisation-md.jpg"
-              srcset="images/climatisation/technicien-entretien-climatisation-sm.jpg 480w, images/climatisation/technicien-entretien-climatisation-md.jpg 900w, images/climatisation/technicien-entretien-climatisation-lg.jpg 1600w"
-              sizes="(min-width:1440px) 440px, (min-width:1025px) 380px, 0px"
-              alt="Technicien HAYEVA en pleine intervention sur l'échangeur d'une climatisation murale"
-              loading="eager" fetchpriority="high">
-          </div>
-          <div class="hero-photo-badge">
-            <img
-              src="images/climatisation/unite-exterieure-climatisation-apres-md.jpg"
-              srcset="images/climatisation/unite-exterieure-climatisation-apres-sm.jpg 480w, images/climatisation/unite-exterieure-climatisation-apres-md.jpg 900w"
-              sizes="220px"
-              alt="Unité extérieure de climatisation entretenue par HAYEVA, propre et fonctionnelle"
-              loading="lazy">
-          </div>
+        <div class="hero-illustration" id="heroIllustration" aria-hidden="true">
+          <svg viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="heroBlur" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="26"/>
+              </filter>
+              <linearGradient id="heroRoofGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#F6FAFC"/>
+                <stop offset="100%" stop-color="#CDE6EF"/>
+              </linearGradient>
+              <linearGradient id="heroWallRightGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2C4A66"/>
+                <stop offset="100%" stop-color="#182533"/>
+              </linearGradient>
+              <linearGradient id="heroWallLeftGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#182533"/>
+                <stop offset="100%" stop-color="#0E1822"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Halos ambiants : font fusionner l'illustration avec le fond
+                 du hero, aucun cadre ni rectangle autour de la composition. -->
+            <circle class="hv-halo" cx="120" cy="130" r="92" fill="var(--turquoise)" filter="url(#heroBlur)" opacity="0.2"/>
+            <circle class="hv-halo hv-halo-b" cx="336" cy="330" r="80" fill="var(--amber)" filter="url(#heroBlur)" opacity="0.14"/>
+
+            <g class="hv-rings">
+              <circle cx="222" cy="242" r="172" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+              <circle cx="222" cy="242" r="142" fill="none" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
+            </g>
+
+            <ellipse cx="222" cy="370" rx="128" ry="16" fill="#060B0F" opacity="0.32" filter="url(#heroBlur)"/>
+
+            <!-- Maison isométrique : toit clair + deux pans de mur (ombre / lumière) -->
+            <g>
+              <polygon points="122,180 222,230 222,340 122,290" fill="url(#heroWallLeftGrad)"/>
+              <polygon points="222,230 322,180 322,290 222,340" fill="url(#heroWallRightGrad)"/>
+              <polygon points="222,130 322,180 222,230 122,180" fill="url(#heroRoofGrad)"/>
+              <rect x="252" y="292" width="26" height="46" rx="2" fill="#0B141C" opacity="0.55"/>
+              <rect x="150" y="230" width="26" height="22" rx="2" fill="#F3C878" opacity="0.55"/>
+              <circle class="hv-halo hv-halo-c" cx="163" cy="241" r="24" fill="var(--amber)" filter="url(#heroBlur)" opacity="0.22"/>
+            </g>
+
+            <!-- Unité murale de climatisation, élément principal, avec flux d'air animé -->
+            <g transform="translate(250,193)">
+              <rect x="0" y="0" width="54" height="17" rx="7" fill="#F7FAFB"/>
+              <rect x="0" y="0" width="54" height="17" rx="7" fill="none" stroke="rgba(20,33,44,0.18)" stroke-width="1"/>
+              <g class="hv-airflow" stroke="var(--cat-clim-a)" stroke-width="2.2" stroke-linecap="round" fill="none">
+                <path d="M4 23 Q28 31 56 25"/>
+              </g>
+              <g class="hv-airflow hv-airflow-b" stroke="var(--cat-clim-a)" stroke-width="2" stroke-linecap="round" fill="none">
+                <path d="M2 31 Q28 41 52 33"/>
+              </g>
+              <g class="hv-airflow hv-airflow-c" stroke="var(--cat-clim-a)" stroke-width="1.6" stroke-linecap="round" fill="none">
+                <path d="M0 39 Q26 49 48 41"/>
+              </g>
+            </g>
+
+            <!-- Unité extérieure au sol, ventilateur qui tourne lentement -->
+            <g transform="translate(300,318)">
+              <rect x="0" y="0" width="48" height="34" rx="5" fill="#EDF0F1"/>
+              <g class="hv-fan">
+                <circle cx="15" cy="17" r="10.5" fill="none" stroke="#7C8D97" stroke-width="2"/>
+                <line x1="15" y1="8" x2="15" y2="26" stroke="#7C8D97" stroke-width="1.6"/>
+                <line x1="5.5" y1="17" x2="24.5" y2="17" stroke="#7C8D97" stroke-width="1.6"/>
+              </g>
+            </g>
+
+            <!-- Descente d'eau : goutte animée, touche plomberie -->
+            <g transform="translate(222,290)">
+              <line x1="0" y1="0" x2="0" y2="44" stroke="var(--cat-plomberie)" stroke-width="2" opacity="0.55"/>
+              <circle class="hv-drip" cx="0" cy="46" r="3" fill="var(--cat-plomberie)"/>
+            </g>
+          </svg>
         </div>
       </div>
     </div>
@@ -2980,18 +3086,17 @@
   <section id="realisations" class="section-relative" style="padding-block:80px;">
     <div class="wrap">
       <h2 style="font-size:clamp(1.7rem, 2vw + 1rem, 2.5rem); margin-bottom:14px;">Nos réalisations</h2>
-      <p style="color:var(--ink-soft); max-width:56ch; margin-bottom:32px;">Un aperçu de nos interventions réelles, classées par métier. Cliquez sur une photo pour l'agrandir.</p>
+      <p style="color:var(--ink-soft); max-width:56ch; margin-bottom:32px;">Choisissez un métier pour découvrir les interventions réelles correspondantes.</p>
 
-      <div class="gallery-filters" role="group" aria-label="Filtrer les réalisations par métier">
-        <button type="button" class="gallery-filter-btn is-active" data-gallery-filter="all">Tout</button>
-        <button type="button" class="gallery-filter-btn" data-gallery-filter="clim">Climatisation</button>
-        <button type="button" class="gallery-filter-btn" data-gallery-filter="entretien">Entretien</button>
-        <button type="button" class="gallery-filter-btn" data-gallery-filter="plomberie">Plomberie</button>
-        <button type="button" class="gallery-filter-btn" data-gallery-filter="sanitaire">Sanitaire</button>
-        <button type="button" class="gallery-filter-btn" data-gallery-filter="chauffage">Chauffage</button>
+      <div class="gallery-cats" id="galleryCats"></div>
+
+      <div class="gallery-panel" id="galleryPanel" hidden>
+        <div class="gallery-panel-head">
+          <h3 id="galleryPanelTitle"></h3>
+          <button type="button" class="gallery-panel-close" id="galleryPanelClose" aria-label="Fermer cette catégorie">✕</button>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
       </div>
-
-      <div class="gallery-grid" id="galleryGrid"></div>
     </div>
   </section>
 
@@ -8366,10 +8471,11 @@
 
 <script>
 (function(){
-  // ---------- Galerie "Nos réalisations" : rendu, filtres, lightbox ----------
+  // ---------- Galerie "Nos réalisations" : 5 cartes métier + panneau dépliable ----------
   // Toutes les photos viennent de vraies interventions HAYEVA (dossier
-  // images/), classées par métier. Rendu en JS pour éviter 18 blocs HTML
-  // quasi identiques à maintenir à la main.
+  // images/), classées par métier. Rendu en JS pour éviter des dizaines de
+  // blocs HTML quasi identiques à maintenir à la main. Une seule catégorie
+  // à la fois affiche ses photos : pas de grande galerie "Tout" d'un coup.
   var GALLERY_ITEMS = [
     { cat:'clim', file:'climatisation/technicien-entretien-climatisation', alt:"Technicien HAYEVA au travail sur l'échangeur d'une climatisation murale" },
     { cat:'clim', file:'climatisation/technicien-nettoyage-filtres-terrasse', alt:"Nettoyage des filtres de climatisation sur la terrasse d'un client" },
@@ -8391,41 +8497,101 @@
     { cat:'sanitaire', file:'sanitaire/installation-wc', alt:'WC installé par HAYEVA' }
   ];
 
-  var grid = document.getElementById('galleryGrid');
-  if (!grid) return;
+  var CATEGORIES = [
+    { key:'clim', label:'Climatisation', cover:'climatisation/technicien-nettoyage-filtres-terrasse', coverAlt:'Technicien HAYEVA nettoyant les filtres d\'une climatisation' },
+    { key:'entretien', label:'Entretien', cover:'climatisation/protection-echangeur-nettoyage', coverAlt:'Échangeur de climatisation protégé pendant un entretien' },
+    { key:'plomberie', label:'Plomberie', cover:'plomberie/installation-evier-inox', coverAlt:'Évier inox installé par HAYEVA' },
+    { key:'sanitaire', label:'Sanitaire', cover:'sanitaire/installation-baignoire', coverAlt:'Baignoire installée par HAYEVA' },
+    { key:'chauffage', label:'Chauffage', cover:'chauffage/entretien-chaudiere-ouverte', coverAlt:'Chaudière ouverte lors d\'une intervention HAYEVA' }
+  ];
 
-  var frag = document.createDocumentFragment();
-  GALLERY_ITEMS.forEach(function(item, i){
+  var cats = document.getElementById('galleryCats');
+  var panel = document.getElementById('galleryPanel');
+  var panelTitle = document.getElementById('galleryPanelTitle');
+  var panelClose = document.getElementById('galleryPanelClose');
+  var grid = document.getElementById('galleryGrid');
+  if (!cats || !grid) return;
+
+  var activeCatKey = null;
+
+  var catFrag = document.createDocumentFragment();
+  CATEGORIES.forEach(function(c){
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'gallery-item';
-    btn.setAttribute('data-cat', item.cat);
-    btn.setAttribute('data-index', String(i));
-    var frame = document.createElement('span');
-    frame.className = 'photo-frame';
+    btn.className = 'gallery-cat-card';
+    btn.setAttribute('data-cat', c.key);
+    btn.setAttribute('aria-expanded', 'false');
     var img = document.createElement('img');
-    img.src = 'images/' + item.file + '-md.jpg';
-    img.srcset = 'images/' + item.file + '-sm.jpg 480w, images/' + item.file + '-md.jpg 900w';
-    img.sizes = '(min-width:1024px) 25vw, (min-width:640px) 33vw, 50vw';
-    img.alt = item.alt;
+    img.src = 'images/' + c.cover + '-md.jpg';
+    img.srcset = 'images/' + c.cover + '-sm.jpg 480w, images/' + c.cover + '-md.jpg 900w';
+    img.sizes = '(min-width:1024px) 20vw, (min-width:640px) 33vw, 50vw';
+    img.alt = c.coverAlt;
     img.loading = 'lazy';
-    frame.appendChild(img);
-    btn.appendChild(frame);
-    frag.appendChild(btn);
+    var label = document.createElement('span');
+    label.className = 'gallery-cat-label';
+    label.innerHTML = '<span>' + c.label + '</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    btn.appendChild(img);
+    btn.appendChild(label);
+    catFrag.appendChild(btn);
   });
-  grid.appendChild(frag);
+  cats.appendChild(catFrag);
 
-  var filterBtns = document.querySelectorAll('.gallery-filter-btn');
-  Array.prototype.forEach.call(filterBtns, function(fbtn){
-    fbtn.addEventListener('click', function(){
-      Array.prototype.forEach.call(filterBtns, function(b){ b.classList.remove('is-active'); });
-      fbtn.classList.add('is-active');
-      var cat = fbtn.getAttribute('data-gallery-filter');
-      Array.prototype.forEach.call(grid.querySelectorAll('.gallery-item'), function(el){
-        el.hidden = (cat !== 'all' && el.getAttribute('data-cat') !== cat);
-      });
+  function renderCategory(key){
+    var meta = CATEGORIES.filter(function(c){ return c.key === key; })[0];
+    if (!meta) return;
+    grid.innerHTML = '';
+    var frag = document.createDocumentFragment();
+    GALLERY_ITEMS.forEach(function(item, i){
+      if (item.cat !== key) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'gallery-item';
+      btn.setAttribute('data-index', String(i));
+      var frame = document.createElement('span');
+      frame.className = 'photo-frame';
+      var img = document.createElement('img');
+      img.src = 'images/' + item.file + '-md.jpg';
+      img.srcset = 'images/' + item.file + '-sm.jpg 480w, images/' + item.file + '-md.jpg 900w';
+      img.sizes = '(min-width:1024px) 25vw, (min-width:640px) 33vw, 50vw';
+      img.alt = item.alt;
+      img.loading = 'lazy';
+      frame.appendChild(img);
+      btn.appendChild(frame);
+      frag.appendChild(btn);
     });
+    grid.appendChild(frag);
+    panelTitle.textContent = meta.label;
+  }
+
+  function openCategory(key){
+    activeCatKey = key;
+    renderCategory(key);
+    Array.prototype.forEach.call(cats.querySelectorAll('.gallery-cat-card'), function(c){
+      var isActive = c.getAttribute('data-cat') === key;
+      c.classList.toggle('is-active', isActive);
+      c.setAttribute('aria-expanded', String(isActive));
+    });
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeCategory(){
+    activeCatKey = null;
+    panel.hidden = true;
+    Array.prototype.forEach.call(cats.querySelectorAll('.gallery-cat-card'), function(c){
+      c.classList.remove('is-active');
+      c.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  cats.addEventListener('click', function(e){
+    var card = e.target.closest('.gallery-cat-card');
+    if (!card) return;
+    var key = card.getAttribute('data-cat');
+    if (activeCatKey === key){ closeCategory(); }
+    else { openCategory(key); }
   });
+  if (panelClose) panelClose.addEventListener('click', closeCategory);
 
   var lightbox = document.getElementById('galleryLightbox');
   var lightboxImg = document.getElementById('lightboxImg');
@@ -8465,6 +8631,28 @@
   }
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape' && lightbox && !lightbox.hidden) closeLightbox();
+  });
+})();
+</script>
+
+<script>
+(function(){
+  // ---------- Illustration du hero : très léger parallaxe desktop ----------
+  // Suit le curseur de quelques pixels à peine, uniquement à la souris
+  // (jamais au toucher) et jamais si le visiteur préfère moins d'animations.
+  var hero = document.querySelector('.hero');
+  var illustration = document.getElementById('heroIllustration');
+  if (!hero || !illustration) return;
+  if (!(window.matchMedia && window.matchMedia('(hover:hover)').matches)) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  hero.addEventListener('mousemove', function(e){
+    var rect = hero.getBoundingClientRect();
+    var px = (e.clientX - rect.left) / rect.width - 0.5;
+    var py = (e.clientY - rect.top) / rect.height - 0.5;
+    illustration.style.translate = (px * -8) + 'px ' + (py * -6) + 'px';
+  });
+  hero.addEventListener('mouseleave', function(){
+    illustration.style.translate = '0px 0px';
   });
 })();
 </script>
