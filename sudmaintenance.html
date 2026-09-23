@@ -2105,6 +2105,12 @@
   .ec-badge-professionnel{ background:var(--amber-soft); color:var(--amber); }
 
   /* ---------- Administration (Espace Pro, global_role='admin') ---------- */
+  .admin-bk-pending-count{
+    display:inline-flex; align-items:center; gap:6px; margin-top:10px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem;
+    color:var(--terracotta); background:var(--terracotta-soft, rgba(196,106,64,0.12));
+    border-radius:999px; padding:6px 14px;
+  }
   .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
   .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
   /* flex-shrink:0 (ci-dessus) empêche ce bloc de se réduire à la largeur de
@@ -2509,7 +2515,15 @@
   .bk-confirm-detail{ font-size:0.92rem; color:var(--ink-soft); margin-bottom:22px; }
   .bk-confirm-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
   .bk-confirm-actions .btn-primary, .bk-confirm-actions .btn-secondary{ flex:1 1 140px; }
-  .portal-scroll{ width:100%; height:100%; overflow-y:auto; display:flex; align-items:center; justify-content:center; }
+  /* align-items:center sur un conteneur qui overflow verticalement coupe le
+     HAUT du contenu sur mobile (bug connu du centrage flex + overflow :
+     Safari iOS ne laisse pas toujours défiler jusqu'à la partie "avant le
+     centre") — c'est la cause du logo rogné et de la carte Professionnel
+     collée en bas signalés sur iPhone. Remplacé par un centrage via
+     margin-block:auto sur .portal-inner (voir plus bas) : centre bien quand
+     tout tient à l'écran, mais laisse défiler normalement dès que le
+     contenu dépasse, sans jamais rien couper. */
+  .portal-scroll{ width:100%; height:100%; overflow-y:auto; display:flex; flex-direction:column; align-items:center; }
   /* Photo Côte d'Azur (Saint-Jean-Cap-Ferrat, mer/côte/relief/villégétation
      méditerranéenne, licence Unsplash) en fond, recouverte d'un traitement
      bleu nuit pour rester lisible : image plein cadre, léger flou +
@@ -2561,7 +2575,17 @@
   @keyframes portalDrift1{ from{ transform:translate(0,0) scale(1); } to{ transform:translate(30px,20px) scale(1.12); } }
   @keyframes portalDrift2{ from{ transform:translate(0,0) scale(1); } to{ transform:translate(-24px,-18px) scale(1.08); } }
   @keyframes portalDrift3{ from{ transform:translate(-16px,10px) scale(1); } to{ transform:translate(18px,-14px) scale(1.1); } }
-  .portal-inner{ position:relative; z-index:1; width:100%; max-width:920px; text-align:center; }
+  .portal-inner{
+    position:relative; z-index:1; width:100%; max-width:920px; text-align:center;
+    /* margin-block:auto centre verticalement quand le contenu tient dans
+       l'écran, et se réduit naturellement à 0 sinon (contrairement à
+       align-items:center sur le parent, ça ne coupe jamais le haut quand ça
+       déborde). Le padding-bottom inclut la safe area iPhone (barre du bas /
+       home indicator) pour que "Continuer sans se connecter" ne soit jamais
+       caché derrière. */
+    margin-block:auto;
+    padding-block:12px calc(28px + env(safe-area-inset-bottom, 0px));
+  }
   .portal-eyebrow{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase;
     color:var(--portal-fg-soft); margin-bottom:14px;
@@ -2580,14 +2604,14 @@
      "reveal" plutôt qu'un écran qui apparaît d'un bloc. Jamais dépendant
      du scroll (le portail est toujours visible d'emblée). */
   @media (prefers-reduced-motion: no-preference){
-    .portal-eyebrow, .portal-title, .portal-subtitle, .portal-cards, .portal-guest-link{
+    .portal-eyebrow, .portal-title, .portal-subtitle, .portal-cards, .portal-guest{
       animation:portalRise .7s cubic-bezier(.2,.7,.3,1) both;
     }
     .portal-eyebrow{ animation-delay:.35s; }
     .portal-title{ animation-delay:.44s; }
     .portal-subtitle{ animation-delay:.53s; }
     .portal-cards{ animation-delay:.64s; }
-    .portal-guest-link{ animation-delay:.8s; }
+    .portal-guest{ animation-delay:.8s; }
   }
   @keyframes portalRise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .portal-cards{
@@ -2618,6 +2642,10 @@
   .portal-card h2{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.15rem; color:var(--portal-fg); }
   .portal-card p{ font-size:0.9rem; color:var(--portal-fg-soft); line-height:1.5; margin-top:-6px; }
   .portal-card .btn-primary{ margin-top:6px; align-self:stretch; text-align:center; }
+  .portal-guest{ margin-top:4px; }
+  .portal-guest-question{
+    font-size:0.86rem; color:var(--portal-fg-soft); margin-bottom:4px;
+  }
   .portal-guest-link{
     display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.86rem;
     color:var(--portal-fg-soft); text-decoration:none; padding:8px 4px; border-bottom:1px solid transparent;
@@ -2969,7 +2997,10 @@
       </div>
     </div>
 
-    <a href="#" class="portal-guest-link" id="portalGuestLink">Continuer sans se connecter →</a>
+    <div class="portal-guest">
+      <p class="portal-guest-question">Vous ne souhaitez pas créer de compte ?</p>
+      <a href="#" class="portal-guest-link" id="portalGuestLink">Continuer sans se connecter →</a>
+    </div>
   </div>
   </div>
 </div>
@@ -4496,11 +4527,12 @@
             <p class="eyebrow">Administration<span class="rule"></span></p>
             <h2>Tous les rendez-vous</h2>
             <p>Vue d'ensemble des réservations HAYEVA, tous clients confondus — statut et ajout au calendrier depuis chaque rendez-vous.</p>
+            <p class="admin-bk-pending-count" id="adminBkPendingCount" hidden></p>
           </div>
           <div class="admin-bk-filters" id="adminBkFilters" role="group" aria-label="Filtrer par période">
-            <button type="button" class="gallery-filter-btn is-active" data-admin-filter="today">Aujourd'hui</button>
+            <button type="button" class="gallery-filter-btn" data-admin-filter="today">Aujourd'hui</button>
             <button type="button" class="gallery-filter-btn" data-admin-filter="week">Cette semaine</button>
-            <button type="button" class="gallery-filter-btn" data-admin-filter="upcoming">À venir</button>
+            <button type="button" class="gallery-filter-btn is-active" data-admin-filter="upcoming">À venir</button>
             <button type="button" class="gallery-filter-btn" data-admin-filter="all">Tout</button>
           </div>
           <div id="adminBkList"><p class="ec-loading">Chargement…</p></div>
@@ -7438,7 +7470,12 @@
     ['COMPLETED', 'Terminé'], ['CANCELLED', 'Annulé']
   ];
   var adminBookingsCache = null;
-  var adminFilter = 'today';
+  // "today" comme filtre par défaut cachait les toutes nouvelles demandes
+  // dès qu'un client choisissait une date différente d'aujourd'hui (cas le
+  // plus fréquent) — l'admin ouvrait le panneau et ne voyait rien, alors que
+  // la réservation existait bien en base. "upcoming" (aujourd'hui + futur)
+  // est un bien meilleur défaut pour repérer les nouvelles demandes.
+  var adminFilter = 'upcoming';
 
   function admEscape(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -7580,10 +7617,35 @@
     });
   }
 
+  function admUpdatePendingCount(){
+    var el = document.getElementById('adminBkPendingCount');
+    if (!el || !adminBookingsCache) return;
+    // Compte sur TOUTES les réservations en cache (pas seulement celles du
+    // filtre de période actif) : une nouvelle demande en attente doit être
+    // signalée même si l'admin regarde "Aujourd'hui" ou "Cette semaine".
+    var count = adminBookingsCache.rows.filter(function(b){ return b.status === 'PENDING'; }).length;
+    if (count > 0){
+      el.hidden = false;
+      el.textContent = '🟠 Demande' + (count > 1 ? 's' : '') + ' en attente : ' + count;
+    } else {
+      el.hidden = true;
+      el.textContent = '';
+    }
+  }
+
   function admRenderList(){
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
+    admUpdatePendingCount();
     var rows = admFilterBookings(adminBookingsCache.rows, adminFilter);
+    // Les demandes en attente remontent en premier (période conservée par
+    // ailleurs) : ce sont celles qui demandent une action, jamais enfouies
+    // sous des rendez-vous déjà confirmés/traités.
+    rows = rows.slice().sort(function(a, b){
+      var pa = a.status === 'PENDING' ? 0 : 1;
+      var pb = b.status === 'PENDING' ? 0 : 1;
+      return pa - pb;
+    });
     if (!rows.length){
       listEl.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
       return;
