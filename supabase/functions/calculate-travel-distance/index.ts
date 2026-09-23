@@ -25,7 +25,11 @@ const MAPBOX_SECRET_TOKEN = Deno.env.get('MAPBOX_SECRET_TOKEN');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // Appelée via supabase-js (sb.client.functions.invoke), qui ajoute
+  // automatiquement apikey/x-client-info en plus de authorization/
+  // content-type — les omettre ici fait échouer le préflight CORS du
+  // navigateur (aucune requête n'atteint alors la fonction du tout).
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 async function hmacSha256Hex(message: string, secret: string): Promise<string> {
