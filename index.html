@@ -2039,6 +2039,14 @@
     padding:7px 14px; font-size:0.78rem; font-weight:600; cursor:pointer; transition:background .2s;
   }
   .espace-pro-dash-banner button:hover{ background:rgba(255,255,255,0.15); }
+  .espace-dash-banner-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  /* "Site HAYEVA" : seul bouton plein (fond blanc) de la bannière, pour se
+     distinguer visuellement de "Se déconnecter" (contour) — c'est l'action
+     qu'on veut le plus visible, celle qui ramène au site sans déconnexion. */
+  #espaceClientGoToSiteBtn{
+    background:#fff !important; color:var(--navy-fixed) !important; border-color:#fff !important;
+  }
+  #espaceClientGoToSiteBtn:hover{ background:rgba(255,255,255,0.88) !important; }
 
   /* Espace Client : tableau de bord */
   .ec-dash-body{ display:flex; flex-direction:column; }
@@ -4550,7 +4558,10 @@
       <div id="espaceClientDashboard" hidden>
         <div class="espace-pro-dash-banner">
           <span id="espaceClientBannerText">🔐 Espace client</span>
-          <button type="button" id="espaceClientLogoutBtn">Se déconnecter</button>
+          <div class="espace-dash-banner-actions">
+            <button type="button" id="espaceClientGoToSiteBtn">🌐 Site HAYEVA</button>
+            <button type="button" id="espaceClientLogoutBtn">Se déconnecter</button>
+          </div>
         </div>
 
         <div class="ec-dash-body">
@@ -5459,11 +5470,11 @@
   // ---------- Contexte réel (customer connecté + ses adresses) à l'étape 3 ----------
   // Recalculé à chaque entrée dans l'étape 3 : jamais mis en cache d'une
   // visite à l'autre, pour refléter une déconnexion/reconnexion entre-temps.
-  var bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null };
+  var bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null, contact:null };
 
   function refreshBkAuthContext(){
     var sb = window.sudSupabase;
-    bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null };
+    bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null, contact:null };
     if (!sb || !sb.configured) return Promise.resolve(bkAuthContext);
     return sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
@@ -5474,17 +5485,37 @@
         return Promise.all([
           fetchBookingCatalog(),
           sb.client.from('customer_addresses').select('*').eq('customer_user_id', session.user.id)
-            .order('is_default', { ascending:false }).order('created_at', { ascending:false })
+            .order('is_default', { ascending:false }).order('created_at', { ascending:false }),
+          sb.client.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', session.user.id).maybeSingle()
         ]).then(function(results){
           var catalog = results[0];
           var addrRes = results[1];
+          var profRes = results[2];
           bkAuthContext.isRealCustomer = true;
           bkAuthContext.addresses = (addrRes && addrRes.data) || [];
           bkAuthContext.resolvedParams = svc ? resolveBookingParams(svc.id, catalog) : null;
+          var cp = profRes && profRes.data;
+          bkAuthContext.contact = {
+            name: cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : '',
+            phone: (cp && cp.phone) || '',
+            email: session.user.email || ''
+          };
           return bkAuthContext;
         });
       });
     }).catch(function(){ return bkAuthContext; });
+  }
+
+  // Préremplit nom/téléphone/e-mail pour un client déjà connecté — seulement
+  // les champs encore vides, pour ne jamais écraser ce que l'utilisateur a
+  // déjà tapé lui-même. Les adresses enregistrées ont déjà leur propre
+  // logique dédiée (renderBkAddressUI, menu déroulant) : non concerné ici.
+  function prefillBkContactFields(){
+    var c = bkAuthContext.contact;
+    if (!c) return;
+    if (c.name && bkName && !bkName.value.trim()) bkName.value = c.name;
+    if (c.phone && bkPhone && !bkPhone.value.trim()) bkPhone.value = c.phone;
+    if (c.email && bkEmail && !bkEmail.value.trim()) bkEmail.value = c.email;
   }
 
   function renderBkAddressUI(){
@@ -5518,6 +5549,7 @@
     if (n === 1) renderStep1View();
     if (n === 3){
       refreshBkAuthContext().then(function(){
+        prefillBkContactFields();
         renderBkAddressUI();
         buildSummary();
         updateNav();
@@ -6113,7 +6145,7 @@
     ['#faq', 'FAQ'],
     ['#pourquoi', 'Pourquoi nous ?'],
     ['#contact', 'Contact'],
-    ['#espaceClient', 'Espace client']
+    ['#espaceClient', 'Mon espace']
   ];
   var NAV_PRO_DESKTOP = [
     ['#accueil', 'Accueil'],
@@ -6128,7 +6160,7 @@
   var NAV_PARTICULIER_MOBILE = [
     ['#accueil', 'Accueil'], ['#services', 'Services'], ['#rdv', 'Rendez-vous'], ['#tarifs', 'Tarifs'],
     ['#zone', "Zone d'intervention"], ['#faq', 'FAQ'], ['#pourquoi', 'Pourquoi nous ?'], ['#contact', 'Contact'],
-    ['#espaceClient', '🔐 Espace Client', 'sep']
+    ['#espaceClient', '🔐 Mon espace', 'sep']
   ];
   var NAV_PRO_MOBILE = [
     ['#accueil', 'Accueil'], ['#pro', 'Check technique'], ['#multiLogements', 'Multi-logements'], ['#tarifsPro', 'Tarifs pro'],
@@ -7625,6 +7657,7 @@
   var signupSuccess = document.getElementById('espaceClientSignupSuccess');
   var devNotice = document.getElementById('espaceClientDevNotice');
   var logoutBtn = document.getElementById('espaceClientLogoutBtn');
+  var goToSiteBtn = document.getElementById('espaceClientGoToSiteBtn');
   var showSignupLink = document.getElementById('espaceClientShowSignup');
   var showLoginLink = document.getElementById('espaceClientShowLogin');
   var forgotLink = document.getElementById('espaceClientForgotLink');
@@ -7647,6 +7680,41 @@
       if (window.sudOpenPortal) window.sudOpenPortal();
     });
   }
+
+  // "Site HAYEVA" (bannière du tableau de bord, une fois connecté) : referme
+  // l'écran plein écran pour révéler le site public — jamais de
+  // déconnexion, jamais de retour au portail "Bienvenue" (contrairement à
+  // "← Retour" ci-dessus, qui lui n'existe que côté écran de connexion,
+  // avant d'être identifié). La session Supabase (localStorage) est
+  // totalement indépendante de cet état d'affichage : fermer l'écran ne la
+  // touche pas, le client reste connecté en naviguant sur le site.
+  if (goToSiteBtn){
+    goToSiteBtn.addEventListener('click', function(){
+      if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+  }
+
+  // Délégué (couvre les liens "Prendre rendez-vous" déjà présents dans le
+  // tableau de bord — accueil et historique vide — et tout futur lien
+  // similaire) : un simple <a href="#rdv"> ne faisait rien de visible tant
+  // que le tableau de bord reste un écran plein écran par-dessus le site
+  // (le saut d'ancre natif scrollait la page cachée en dessous). On ferme
+  // d'abord l'écran, puis on scrolle vraiment jusqu'à la réservation, sans
+  // déconnecter — le formulaire de réservation détecte déjà tout seul un
+  // client connecté (voir refreshBkAuthContext) et adapte son comportement
+  // en conséquence (adresses enregistrées, etc.), aucun système de
+  // réservation séparé n'est créé ici.
+  dashboard.addEventListener('click', function(e){
+    var link = e.target.closest('a[href="#rdv"]');
+    if (!link) return;
+    e.preventDefault();
+    if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+    requestAnimationFrame(function(){
+      var target = document.getElementById('rdv');
+      if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+  });
 
   function showMsg(el, msg){ if (!el) return; el.textContent = msg || ''; el.hidden = !msg; }
 
