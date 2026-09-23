@@ -1280,6 +1280,16 @@
     min-height:1.2em;
   }
   .travel-note.is-muted{ font-weight:500; color:var(--ink-soft); }
+  .address-suggestions{
+    position:absolute; top:100%; left:0; right:0; z-index:40;
+    background:var(--cream); border:1px solid var(--line); border-radius:10px;
+    margin-top:4px; max-height:220px; overflow-y:auto; list-style:none; padding:6px 0;
+    box-shadow:0 12px 28px -12px rgba(0,0,0,0.3);
+  }
+  .address-suggestions li{
+    padding:9px 14px; font-size:0.9rem; line-height:1.35; cursor:pointer; color:var(--ink);
+  }
+  .address-suggestions li:hover{ background:var(--sand-deep); }
   .booking-form input[type="file"]{
     padding:9px 10px;
     font-size:0.86rem;
@@ -4025,8 +4035,9 @@
               <input id="bkEmail" type="email" placeholder="jean.dupont@email.fr" autocomplete="email">
               <span class="field-error" id="bkEmailError" hidden>Merci d'indiquer un e-mail valide.</span>
             </label>
-            <label id="bkAddressFreeTextLabel">Ville / adresse d'intervention
-              <input id="bkAddress" type="text" placeholder="Nice, Cannes, Fréjus…" autocomplete="address-level2">
+            <label id="bkAddressFreeTextLabel" style="position:relative;">Ville / adresse d'intervention
+              <input id="bkAddress" type="text" placeholder="12 avenue de la République, Fréjus…" autocomplete="off">
+              <ul class="address-suggestions" id="bkAddressSuggestions" hidden></ul>
               <span class="travel-hint">Déplacement inclus dans un rayon de 20 km autour de Fréjus. Au-delà, des frais kilométriques peuvent s'appliquer et sont indiqués avant confirmation du rendez-vous.</span>
               <span class="travel-note" id="travelEstimateNote"></span>
             </label>
@@ -4035,7 +4046,7 @@
             </label>
             <div class="full espace-pro-form-grid-2" id="bkNewAddressFields" hidden>
               <label>Libellé<input id="bkNewAddrLabel" type="text" placeholder="Ex. Maison principale"></label>
-              <label>Adresse<input id="bkNewAddrAddress" type="text" placeholder="12 rue des Pins"></label>
+              <label style="position:relative;">Adresse<input id="bkNewAddrAddress" type="text" placeholder="12 rue des Pins" autocomplete="off"><ul class="address-suggestions" id="bkNewAddrSuggestions" hidden></ul></label>
               <label>Code postal<input id="bkNewAddrPostal" type="text" placeholder="83600"></label>
               <label>Ville<input id="bkNewAddrCity" type="text" placeholder="Fréjus"></label>
             </div>
@@ -5177,80 +5188,123 @@
       EXTRA_KM_PRICE = res.data.rate_per_km_cents / 100;
     }).catch(function(){});
   })();
-  // Coefficient appliqué à la distance à vol d'oiseau pour approcher une distance
-  // routière tant qu'aucune API d'itinéraire réelle n'est branchée (voir estimateTravelKm).
-  var ROAD_DISTANCE_FACTOR = 1.3;
+  /* ---------- Adresse d'intervention : autocomplétion + distance routière
+     réelle (Mapbox) ----------
+     Remplace l'ancienne estimation par correspondance de ville (vol
+     d'oiseau × 1.3) par une vraie distance routière, calculée côté serveur
+     (Edge Function calculate-travel-distance, qui appelle Mapbox Directions
+     avec le token SECRET — jamais exposé ici) à partir de coordonnées
+     obtenues par autocomplétion d'adresse (Mapbox Geocoding, appelé
+     directement depuis le navigateur avec le token PUBLIC — conçu pour cet
+     usage). Le serveur renvoie un devis SIGNÉ (HMAC) : c'est ce devis, et
+     lui seul, qui est transmis à create_booking()/create_guest_or_quote_
+     booking() — jamais un nombre de kilomètres construit côté client (voir
+     0009_mapbox_signed_distance.sql : la distance est revérifiée et
+     resignée côté serveur avant tout calcul financier définitif). */
+  var mapboxPublicToken = null;
+  (function loadMapboxPublicToken(){
+    fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/get-public-config')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ mapboxPublicToken = (d && d.mapboxPublicToken) || null; })
+      .catch(function(){});
+  })();
 
-  // Communes connues (issues de la section Zone d'intervention) avec coordonnées
-  // approximatives, utilisées pour estimer la distance depuis Fréjus.
-  var TRAVEL_TOWNS = [
-    { name:'Fréjus', lat:43.4340, lon:6.7356 },
-    { name:'Nice', lat:43.7102, lon:7.2620 },
-    { name:'Cannes', lat:43.5528, lon:7.0174 },
-    { name:'Antibes', lat:43.5808, lon:7.1251 },
-    { name:'Cagnes-sur-Mer', lat:43.6631, lon:7.1485 },
-    { name:'Menton', lat:43.7746, lon:7.5029 },
-    { name:'Grasse', lat:43.6584, lon:6.9227 },
-    { name:'Villeneuve-Loubet', lat:43.6486, lon:7.1256 },
-    { name:'Cabris', lat:43.6494, lon:6.9309 },
-    { name:'Spéracèdes', lat:43.6667, lon:6.8931 },
-    { name:'Saint-Cézaire-sur-Siagne', lat:43.6386, lon:6.7942 },
-    { name:'Saint-Vallier-de-Thiey', lat:43.6975, lon:6.8564 },
-    { name:'Andon', lat:43.7561, lon:6.8497 },
-    { name:'Caille', lat:43.7772, lon:6.8511 },
-    { name:'Séranon', lat:43.8194, lon:6.7994 },
-    { name:'Valderoure', lat:43.7717, lon:6.8394 },
-    { name:'Toulon', lat:43.1242, lon:5.9280 },
-    { name:'Saint-Raphaël', lat:43.4254, lon:6.7686 },
-    { name:'Draguignan', lat:43.5372, lon:6.4658 },
-    { name:'Hyères', lat:43.1204, lon:6.1286 },
-    { name:'Saint-Tropez', lat:43.2727, lon:6.6407 },
-    { name:'Bagnols-en-Forêt', lat:43.5083, lon:6.6594 },
-    { name:'Fayence', lat:43.6167, lon:6.6928 },
-    { name:'Tourrettes', lat:43.6119, lon:6.7053 },
-    { name:'Callian', lat:43.6222, lon:6.7481 },
-    { name:'Montauroux', lat:43.6119, lon:6.7692 },
-    { name:'Saint-Paul-en-Forêt', lat:43.6008, lon:6.6903 },
-    { name:'Seillans', lat:43.6486, lon:6.6353 },
-    { name:'Mons', lat:43.6394, lon:6.7181 },
-    { name:'Bargemon', lat:43.7286, lon:6.6819 }
-  ];
+  // Dernier devis de distance obtenu pour l'adresse ACTUELLE uniquement :
+  // toute frappe dans le champ adresse invalide immédiatement ce devis (voir
+  // invalidateTravelQuote, branché sur les listeners d'input) — impossible
+  // de saisir une adresse proche, obtenir un devis, puis remplacer
+  // discrètement par une adresse lointaine en gardant l'ancien tarif.
+  var travelState = { status:'empty', distanceKm:null, quote:null };
 
-  function haversineKm(lat1, lon1, lat2, lon2){
-    var R = 6371;
-    var dLat = (lat2 - lat1) * Math.PI / 180;
-    var dLon = (lon2 - lon1) * Math.PI / 180;
-    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  function invalidateTravelQuote(){
+    travelState = { status:'empty', distanceKm:null, quote:null };
   }
 
-  function matchTravelTown(address){
-    var q = normalizeText(address || '').trim();
-    if (!q) return null;
-    for (var i = 0; i < TRAVEL_TOWNS.length; i++){
-      if (q.indexOf(normalizeText(TRAVEL_TOWNS[i].name)) !== -1) return TRAVEL_TOWNS[i];
+  function requestTravelQuote(lat, lng){
+    var sb = window.sudSupabase;
+    travelState = { status:'computing', distanceKm:null, quote:null };
+    updateTravelEstimateNote();
+    if (step === 3) buildSummary();
+    function onResolved(next){
+      travelState = next;
+      updateTravelEstimateNote();
+      if (step === 3) buildSummary();
     }
-    var words = q.split(/[^a-z0-9]+/).filter(function(w){ return w.length >= 4; });
-    var best = null, bestDist = Infinity;
-    TRAVEL_TOWNS.forEach(function(t){
-      var tn = normalizeText(t.name);
-      words.forEach(function(w){
-        var d = levenshtein(w, tn);
-        if (d < bestDist && d <= 2){ bestDist = d; best = t; }
-      });
-    });
-    return best;
+    if (!sb || !sb.configured){
+      onResolved({ status:'unavailable', distanceKm:null, quote:null });
+      return;
+    }
+    sb.client.functions.invoke('calculate-travel-distance', { body: { lat: lat, lng: lng } })
+      .then(function(res){
+        var data = res && res.data;
+        if (res.error || !data || data.status !== 'ok'){
+          onResolved({ status:'unavailable', distanceKm:null, quote:null });
+        } else {
+          onResolved({ status:'ok', distanceKm: data.distanceKm, quote: data.quote });
+        }
+      })
+      .catch(function(){ onResolved({ status:'unavailable', distanceKm:null, quote:null }); });
   }
 
-  // Point d'extension : à remplacer plus tard par un vrai calcul d'itinéraire
-  // routier (API de distance) branché sur l'adresse complète du client.
-  function estimateTravelKm(address){
-    var town = matchTravelTown(address);
-    if (!town) return null;
-    var straight = haversineKm(TRAVEL_ORIGIN.lat, TRAVEL_ORIGIN.lon, town.lat, town.lon);
-    return Math.round(straight * ROAD_DISTANCE_FACTOR * 10) / 10;
+  // Extrait adresse/code postal/ville/coordonnées d'un résultat Mapbox
+  // Geocoding (context[] contient les niveaux administratifs : postcode,
+  // place = ville, etc.).
+  function mapboxFeatureParts(feat){
+    var context = feat.context || [];
+    function find(prefix){
+      var m = context.filter(function(c){ return c.id && c.id.indexOf(prefix) === 0; })[0];
+      return m ? m.text : '';
+    }
+    return {
+      fullAddress: feat.place_name || '',
+      streetAddress: ((feat.address ? feat.address + ' ' : '') + (feat.text || '')).trim(),
+      postalCode: find('postcode'),
+      city: find('place'),
+      lat: feat.center && feat.center[1],
+      lng: feat.center && feat.center[0]
+    };
+  }
+
+  var addressAutocompleteDebounce = null;
+  function attachAddressAutocomplete(inputEl, listEl, onSelect){
+    if (!inputEl || !listEl) return;
+    inputEl.addEventListener('input', function(){
+      invalidateTravelQuote();
+      updateTravelEstimateNote();
+      if (step === 3) buildSummary();
+      var q = inputEl.value.trim();
+      clearTimeout(addressAutocompleteDebounce);
+      if (!mapboxPublicToken || q.length < 3){
+        listEl.hidden = true; listEl.innerHTML = '';
+        return;
+      }
+      addressAutocompleteDebounce = setTimeout(function(){
+        var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(q) + '.json' +
+          '?access_token=' + encodeURIComponent(mapboxPublicToken) +
+          '&country=fr&language=fr&types=address&autocomplete=true&limit=5';
+        fetch(url).then(function(r){ return r.json(); }).then(function(data){
+          var feats = (data && data.features) || [];
+          if (!feats.length){ listEl.hidden = true; listEl.innerHTML = ''; return; }
+          listEl.innerHTML = feats.map(function(f, i){
+            return '<li data-index="' + i + '">' + String(f.place_name || '').replace(/</g,'&lt;') + '</li>';
+          }).join('');
+          listEl._features = feats;
+          listEl.hidden = false;
+        }).catch(function(){ listEl.hidden = true; listEl.innerHTML = ''; });
+      }, 300);
+    });
+    listEl.addEventListener('click', function(e){
+      var li = e.target.closest('li');
+      if (!li) return;
+      var idx = parseInt(li.getAttribute('data-index'), 10);
+      var feat = listEl._features && listEl._features[idx];
+      listEl.hidden = true; listEl.innerHTML = '';
+      if (!feat) return;
+      onSelect(mapboxFeatureParts(feat));
+    });
+    document.addEventListener('click', function(e){
+      if (e.target !== inputEl && !listEl.contains(e.target)) listEl.hidden = true;
+    });
   }
 
   // Le kilométrage facturable compte l'aller-retour (règle HAYEVA) : une
@@ -5337,33 +5391,37 @@
   // finissait par ressembler, à l'affichage, à un déplacement gratuit —
   // c'est exactement le bug constaté avec une demande de devis pour Nice).
   function travelSummaryLines(svc, address){
-    if (!String(address || '').trim()){
-      return { status:'empty', km:null, extraKm:0, base: currentServiceBaseEuros(svc), travelFee:0, total:null,
-        distanceLabel: '', travelLabel: '', totalLabel: null };
-    }
-    var km = estimateTravelKm(address);
     var base = currentServiceBaseEuros(svc);
-    if (km === null){
+    if (!String(address || '').trim()){
+      return { status:'empty', km:null, extraKm:0, base:base, travelFee:0, total:null,
+        distanceLabel: '', travelLabel: '', totalLabel: null, quote:null };
+    }
+    if (travelState.status === 'computing'){
+      return { status:'computing', km:null, extraKm:0, base:base, travelFee:null, total:null,
+        distanceLabel: 'Calcul de la distance routière en cours…', travelLabel: '', totalLabel: null, quote:null };
+    }
+    if (travelState.status !== 'ok' || travelState.distanceKm === null){
       return {
         status:'unavailable', km:null, extraKm:0, base:base, travelFee:null, total:null,
         distanceLabel: '⚠️ Frais de déplacement à vérifier',
         travelLabel: 'Nous n\'avons pas pu calculer automatiquement la distance pour cette adresse. HAYEVA vérifiera les éventuels frais de déplacement avant confirmation du rendez-vous.',
-        totalLabel: null
+        totalLabel: null, quote:null
       };
     }
-    var travel = computeTravelFee(km);
+    var travel = computeTravelFee(travelState.distanceKm);
     var out = {
       status:'ok',
-      km: km,
+      km: travelState.distanceKm,
       extraKm: travel.extraKm,
       base: base,
-      distanceLabel: 'Distance estimée depuis Fréjus : ' + km + ' km',
+      distanceLabel: 'Distance routière depuis ' + TRAVEL_ORIGIN.label + ' : ' + travelState.distanceKm + ' km',
       travelLabel: travel.extraKm > 0
         ? 'Déplacement : ' + fmtEuros(travel.fee) + ' (' + travel.extraKm + ' km au-delà des ' + FREE_TRAVEL_KM + ' km inclus)'
         : 'Déplacement inclus (moins de ' + FREE_TRAVEL_KM + ' km)',
       travelFee: travel.fee,
       total: null,
-      totalLabel: null
+      totalLabel: null,
+      quote: travelState.quote
     };
     if (base !== null){
       out.total = roundCommercialPrice(base + travel.fee);
@@ -5617,10 +5675,12 @@
     var isQuoteOnly = bkAuthContext.resolvedParams && bkAuthContext.resolvedParams.quoteOnly;
 
     var travelRows = '';
-    if (travel.status === 'unavailable'){
+    if (travel.status === 'computing'){
+      travelRows += '<div class="s-row"><span class="s-label">Déplacement</span><span class="s-value">Calcul en cours…</span></div>';
+    } else if (travel.status === 'unavailable'){
       travelRows += '<div class="s-row s-row-warning"><span class="s-label">⚠️ Déplacement</span><span class="s-value">À vérifier par HAYEVA</span></div>';
     } else if (travel.status === 'ok'){
-      travelRows += '<div class="s-row"><span class="s-label">Distance</span><span class="s-value">'+travel.km+' km (estimée)</span></div>';
+      travelRows += '<div class="s-row"><span class="s-label">Distance routière</span><span class="s-value">'+travel.km+' km</span></div>';
       travelRows += '<div class="s-row"><span class="s-label">Déplacement — '+FREE_TRAVEL_KM+' premiers km</span><span class="s-value">Inclus</span></div>';
       if (travel.extraKm > 0){
         travelRows += '<div class="s-row"><span class="s-label">Km supplémentaires ('+travel.extraKm+' km)</span><span class="s-value">'+fmtEuros(travel.travelFee)+'</span></div>';
@@ -5901,7 +5961,14 @@
       label: label,
       address: address,
       postal_code: bkNewAddrPostal.value.trim() || null,
-      city: bkNewAddrCity.value.trim() || null
+      city: bkNewAddrCity.value.trim() || null,
+      // Coordonnées capturées lors de la sélection via l'autocomplétion
+      // (voir attachAddressAutocomplete) : permettent un vrai calcul de
+      // distance routière dès la prochaine sélection de cette adresse, sans
+      // nouveau géocodage. Absentes (adresse tapée sans sélectionner de
+      // suggestion) => null, traité comme "à vérifier" au moment venu.
+      lat: bkNewAddrAddress._geocodedLat != null ? bkNewAddrAddress._geocodedLat : null,
+      lng: bkNewAddrAddress._geocodedLng != null ? bkNewAddrAddress._geocodedLng : null
     }).select('id').then(function(res){
       if (res.error || !res.data || !res.data[0]){
         return { kind:'address-error', error: res.error || { message:'Impossible d’enregistrer cette adresse.' } };
@@ -5947,11 +6014,12 @@
       var guestName = (bkName.value || '').trim();
       var guestEmail = (bkEmail.value || '').trim();
       if (!isCustomer && (!guestName || !guestEmail)) return { kind:'missing-contact' };
-      // Distance recalculée juste avant l'envoi (jamais réutilisée depuis un
-      // affichage potentiellement périmé si l'adresse a été modifiée entre
-      // temps) ; le serveur ne fait de toute façon confiance qu'à cette
-      // valeur pour RECALCULER le tarif (compute_travel_fee_cents), jamais à
-      // un montant envoyé directement par le client.
+      // Le devis de distance (signé côté serveur par calculate-travel-
+      // distance) est envoyé tel quel — jamais un nombre de kilomètres
+      // construit ici. create_guest_or_quote_booking() revérifie sa
+      // signature avant de faire confiance à la distance qu'il contient
+      // (voir verify_distance_quote côté SQL) : un devis absent, invalide ou
+      // périmé est traité comme une distance inconnue, jamais comme 0 km.
       var travelForSubmit = travelSummaryLines(svc, addressText);
       var params = {
         p_service_slug: serviceSlug,
@@ -5963,7 +6031,7 @@
         p_guest_email: isCustomer ? null : guestEmail,
         p_guest_phone: isCustomer ? null : (bkPhone.value || '').trim(),
         p_guest_address: isCustomer ? null : (addressText || null),
-        p_one_way_distance_km: travelForSubmit.status === 'ok' ? travelForSubmit.km : null
+        p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null
       };
       return sb.client.rpc('create_guest_or_quote_booking', params).then(function(rpcRes){
         if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
@@ -5995,7 +6063,7 @@
               p_start_time: fmtTime(state.time) + ':00',
               p_customer_address_id: addrOutcome.addressId,
               p_notes: (bkComment.value || '').trim() || null,
-              p_one_way_distance_km: travelForSubmit.status === 'ok' ? travelForSubmit.km : null
+              p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null
             }).then(function(rpcRes){
               if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
               return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {}, isCustomer: true };
@@ -6092,6 +6160,8 @@
     if (bkGoToAppointmentsBtn) bkGoToAppointmentsBtn.hidden = true;
     bkName.value = ''; bkPhone.value = ''; bkEmail.value = ''; bkAddress.value = ''; bkComment.value = ''; bkSearch.value = '';
     bkNewAddrLabel.value = ''; bkNewAddrAddress.value = ''; bkNewAddrPostal.value = ''; bkNewAddrCity.value = '';
+    bkNewAddrAddress._geocodedLat = null; bkNewAddrAddress._geocodedLng = null;
+    invalidateTravelQuote();
     bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null };
     if (bkCompany) bkCompany.value = '';
     if (bkPropCount) bkPropCount.value = '1';
@@ -6109,6 +6179,11 @@
     if (travel.status === 'empty'){
       travelEstimateNote.textContent = '';
       travelEstimateNote.classList.remove('is-muted');
+      return;
+    }
+    if (travel.status === 'computing'){
+      travelEstimateNote.textContent = '🚐 Calcul de la distance routière en cours…';
+      travelEstimateNote.classList.add('is-muted');
       return;
     }
     if (travel.status === 'unavailable'){
@@ -6130,9 +6205,46 @@
   [bkNewAddrLabel, bkNewAddrAddress, bkNewAddrPostal, bkNewAddrCity].forEach(function(input){
     input.addEventListener('input', updateNav);
   });
+  // Adresse déjà enregistrée sélectionnée dans la liste (particulier
+  // connecté) : si elle a été géocodée (lat/lng présents — voir
+  // customer_addresses.lat/lng, remplis lors d'une sélection via
+  // l'autocomplétion), on redemande directement un devis de distance réel ;
+  // sinon (adresse enregistrée avant cette fonctionnalité) le déplacement
+  // reste "à vérifier" jusqu'à ce que le client la ressaisisse.
   bkAddressSelect.addEventListener('change', function(){
     bkNewAddressFields.hidden = bkAddressSelect.value !== '__new__';
     updateNav();
+    invalidateTravelQuote();
+    var selectedId = bkAddressSelect.value;
+    if (selectedId && selectedId !== '__new__'){
+      var addr = (bkAuthContext.addresses || []).filter(function(a){ return a.id === selectedId; })[0];
+      if (addr && addr.lat != null && addr.lng != null){
+        requestTravelQuote(addr.lat, addr.lng);
+      } else {
+        updateTravelEstimateNote();
+        if (step === 3) buildSummary();
+      }
+    } else {
+      updateTravelEstimateNote();
+      if (step === 3) buildSummary();
+    }
+  });
+  var bkAddressSuggestions = document.getElementById('bkAddressSuggestions');
+  var bkNewAddrSuggestions = document.getElementById('bkNewAddrSuggestions');
+  attachAddressAutocomplete(bkAddress, bkAddressSuggestions, function(parts){
+    bkAddress.value = parts.fullAddress;
+    updateTravelEstimateNote();
+    if (step === 3) buildSummary();
+    if (parts.lat != null && parts.lng != null) requestTravelQuote(parts.lat, parts.lng);
+  });
+  attachAddressAutocomplete(bkNewAddrAddress, bkNewAddrSuggestions, function(parts){
+    bkNewAddrAddress.value = parts.streetAddress || parts.fullAddress;
+    if (parts.postalCode) bkNewAddrPostal.value = parts.postalCode;
+    if (parts.city) bkNewAddrCity.value = parts.city;
+    bkNewAddrAddress._geocodedLat = parts.lat;
+    bkNewAddrAddress._geocodedLng = parts.lng;
+    updateNav();
+    if (parts.lat != null && parts.lng != null) requestTravelQuote(parts.lat, parts.lng);
   });
   [bkCompany, bkPropCount].forEach(function(input){
     if (!input) return;
