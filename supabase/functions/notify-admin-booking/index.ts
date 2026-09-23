@@ -2,21 +2,26 @@
 // immédiatement après la création d'une nouvelle réservation.
 //
 // DÉCLENCHEMENT : cette fonction n'est JAMAIS appelée depuis le frontend, ni
-// depuis create_booking(). Elle doit être branchée à un Database Webhook
-// Supabase (Dashboard > Database > Webhooks) sur la table "bookings",
-// événement INSERT UNIQUEMENT (jamais UPDATE) — voir le README de ce
-// dossier pour la configuration exacte. C'est ce choix (INSERT seul) qui
-// garantit structurellement une seule notification par réservation : un
-// rafraîchissement de page ne réinsère rien, et un changement de statut
-// (PENDING -> CONFIRMED) est un UPDATE, jamais écouté ici. Aucune logique
-// applicative de "déjà notifié" à maintenir.
+// depuis create_booking(). Elle est appelée par un trigger Postgres AFTER
+// INSERT ON bookings (voir supabase/migrations/0005_booking_notify_trigger.sql),
+// qui utilise pg_net pour faire un appel HTTP asynchrone — pas de "Database
+// Webhook" via le Dashboard (le schéma technique supabase_functions dont
+// cette fonctionnalité dépend n'existe pas sur ce projet). C'est le choix
+// INSERT-only du trigger qui garantit structurellement une seule
+// notification par réservation : un rafraîchissement de page ne réinsère
+// rien, et un changement de statut (PENDING -> CONFIRMED) est un UPDATE,
+// jamais écouté par ce trigger. Aucune logique applicative de "déjà
+// notifié" à maintenir.
 //
 // SÉCURITÉ : aucune clé n'est jamais exposée au frontend. SUPABASE_URL et
 // SUPABASE_SERVICE_ROLE_KEY sont injectées automatiquement par Supabase pour
-// toute Edge Function (rien à configurer). RESEND_API_KEY et
-// ADMIN_NOTIFICATION_EMAIL doivent être définies comme secrets de la
-// fonction (`supabase secrets set ...` ou Dashboard > Edge Functions >
-// Secrets) — jamais commitées dans ce fichier.
+// toute Edge Function (rien à configurer). RESEND_API_KEY,
+// ADMIN_NOTIFICATION_EMAIL et WEBHOOK_SECRET doivent être définies comme
+// secrets de la fonction (`supabase secrets set ...`) — jamais commitées
+// dans ce fichier. WEBHOOK_SECRET est un jeton partagé avec le trigger SQL
+// (passé dans l'en-tête Authorization) : sans lui, n'importe qui connaissant
+// l'URL de cette fonction pourrait déclencher un faux e-mail de
+// notification — vérifié ci-dessous avant tout traitement.
 //
 // FIABILITÉ : la réservation est déjà enregistrée en base AVANT que ce
 // webhook ne se déclenche (il réagit à un INSERT déjà commité). Un échec
@@ -42,6 +47,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const ADMIN_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL');
+const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
 const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
 
@@ -66,10 +72,18 @@ function fmtDate(d: string): string {
 
 Deno.serve(async (req: Request) => {
   try {
+    // Vérifie le jeton partagé envoyé par le trigger SQL (voir
+    // 0005_booking_notify_trigger.sql) avant tout traitement. Rejette
+    // silencieusement (401) tout appel qui ne le porte pas — empêche un
+    // tiers connaissant l'URL de cette fonction de déclencher de faux
+    // e-mails de notification.
+    if (!WEBHOOK_SECRET || req.headers.get('authorization') !== `Bearer ${WEBHOOK_SECRET}`) {
+      return new Response('unauthorized', { status: 401 });
+    }
+
     const payload = await req.json();
 
-    // Payload standard d'un Database Webhook Supabase :
-    // { type, table, schema, record, old_record }
+    // Payload envoyé par le trigger SQL : { type, table, record }
     if (payload.type !== 'INSERT' || payload.table !== 'bookings') {
       return new Response('ignored', { status: 200 });
     }

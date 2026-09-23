@@ -39,20 +39,25 @@ supabase secrets set ADMIN_PANEL_URL=https://hayeva.netlify.app/#espacePro
 `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` sont injectées automatiquement
 par Supabase pour toute Edge Function — rien à faire pour celles-ci.
 
-## 4. Créer le Database Webhook (déclenche la fonction)
+## 4. Brancher la fonction (trigger SQL, pas le Dashboard Webhooks)
 
-Dashboard Supabase > **Database > Webhooks** > **Create a new hook** :
+Le Dashboard "Database > Webhooks" dépend d'un schéma technique
+(`supabase_functions`) absent sur ce projet — inutile d'insister dessus.
+`supabase/migrations/0005_booking_notify_trigger.sql` fait exactement la
+même chose (déclenche la fonction uniquement à la création d'une
+réservation, jamais sur une mise à jour) via un trigger Postgres standard.
 
-- Name : `notify-admin-booking`
-- Table : `bookings`
-- Events : **Insert uniquement** (décoche Update et Delete — c'est ce qui
-  garantit qu'un changement de statut ne redéclenche jamais l'e-mail)
-- Type : **Supabase Edge Functions**
-- Edge Function : `notify-admin-booking`
-- HTTP Method : POST
-
-Supabase signe automatiquement l'appel avec un jeton valide de ton projet —
-rien d'autre à configurer côté sécurité.
+1. Génère un secret partagé : `openssl rand -hex 32`
+2. Définis-le comme secret de la fonction :
+   ```bash
+   supabase secrets set WEBHOOK_SECRET=LE_SECRET_GÉNÉRÉ
+   supabase functions deploy notify-admin-booking
+   ```
+3. Ouvre `supabase/migrations/0005_booking_notify_trigger.sql`, remplace
+   `REMPLACER_PAR_LE_SECRET` par ce même secret, colle tout le contenu dans
+   Supabase > SQL Editor > New query > Run.
+4. Ne commite jamais le fichier avec la vraie valeur du secret dedans —
+   remets `REMPLACER_PAR_LE_SECRET` après coup si tu modifies ce fichier.
 
 ## 5. Tester
 

@@ -1,2 +1,5 @@
 .DS_Store
 **/.DS_Store
+
+# État local de la CLI Supabase (project ref, versions, etc.) — jamais à versionner
+supabase/.temp/
