@@ -5,6 +5,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@300;500&family=Outfit:wght@300;400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<!-- PWA : nécessaire pour les Web Push Notifications réelles (Espace
+     Administration), et sur iPhone pour l'installation "Sur l'écran
+     d'accueil" exigée par Safari avant d'autoriser les notifications. -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C2B3A">
+<link rel="apple-touch-icon" href="images/pwa/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HAYEVA">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -28,6 +37,16 @@
   }
   window.sudSupabase = { client: client, configured: !!client };
 })();
+// Enregistrement du Service Worker (sw.js) : nécessaire pour recevoir de
+// vraies Web Push Notifications même site fermé (Espace Administration).
+// N'active/ne demande rien lui-même — juste l'enregistrement du fichier ;
+// l'abonnement réel se fait uniquement sur clic explicite de l'admin sur
+// "Activer les notifications" (voir le module Administration plus bas).
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
 </script>
 <script>
   // Configuration de marque centralisée — utilisée par le portail d'entrée.
@@ -2118,114 +2137,433 @@
   .ec-badge-particulier{ background:var(--sky-accent-soft); color:var(--sky-accent); }
   .ec-badge-professionnel{ background:var(--amber-soft); color:var(--amber); }
 
-  /* ---------- Administration (Espace Pro, global_role='admin') ---------- */
+  /* ================================================================
+     ESPACE ADMINISTRATION HAYEVA — refonte visuelle premium (2026-09-23)
+     ================================================================
+     Périmètre STRICT : uniquement #espaceProAdminPanel (le panneau visible
+     pour profiles.global_role='admin'). Tout ce bloc pose ses propres jetons
+     --adm-* sur #espaceProAdminPanel — jamais de redéfinition des jetons
+     globaux (--sand/--terracotta/--ink/...), pour ne toucher ni le site
+     public ni le reste de l'Espace Pro/Client. Certaines classes partagées
+     avec l'Espace Client (préfixe "ec-", conçu pour ce dernier et réutilisé
+     tel quel par l'admin) sont resurchargées ICI en les préfixant par
+     "#espaceProAdminPanel " : spécificité plus forte que la règle .ec-*
+     d'origine, donc aucun risque de collision d'ordre de cascade, et
+     l'Espace Client garde son apparence actuelle à l'identique. Aucun ID/
+     classe/attribut data-* utilisé par le JS n'a été renommé : uniquement
+     de nouvelles classes de présentation (adm-*) et des couleurs. */
+
+  #espaceProAdminPanel{
+    --adm-navy:#101B2E; --adm-navy-soft:#1B2A45; --adm-petrol:#17394A;
+    --adm-ocean:#2C6FB3; --adm-ocean-soft:rgba(44,111,179,0.12); --adm-ocean-deep:#204F82;
+    --adm-turquoise:#3FA9A0; --adm-turquoise-soft:rgba(63,169,160,0.14);
+    --adm-coral:#E8724C; --adm-coral-soft:rgba(232,114,76,0.14); --adm-coral-deep:#C85A38;
+    --adm-sand:#F2E9DA; --adm-sand-deep:#EADDC6; --adm-offwhite:#F6F7FA; --adm-card-bg:#FFFFFF;
+    --adm-ink:#212C3D; --adm-ink-soft:#5B6B80; --adm-line:rgba(33,44,61,0.10);
+    --adm-shadow:0 14px 34px -18px rgba(16,27,46,0.22); --adm-shadow-sm:0 6px 18px -12px rgba(16,27,46,0.16);
+    --adm-green:#3F9463; --adm-green-soft:rgba(63,148,99,0.14);
+    --adm-amber:#C4862A; --adm-amber-soft:rgba(196,134,42,0.15);
+    --adm-grey:#7C8AA0; --adm-grey-soft:rgba(124,138,160,0.15);
+    --adm-red:#C1503B; --adm-red-soft:rgba(193,80,59,0.14);
+    margin-top:38px; position:relative;
+  }
+  @media (prefers-color-scheme: dark){
+    #espaceProAdminPanel{
+      --adm-offwhite:#111826; --adm-card-bg:#1A2333; --adm-sand:#1E2A3D; --adm-sand-deep:#243349;
+      --adm-ink:#EEF2F7; --adm-ink-soft:rgba(238,242,247,0.68); --adm-line:rgba(238,242,247,0.12);
+    }
+  }
+
+  /* ---------- Coquille : sidebar + contenu ---------- */
+  .adm-shell{
+    display:flex; align-items:stretch; background:var(--adm-offwhite); border-radius:24px;
+    overflow:hidden; box-shadow:var(--adm-shadow); border:1px solid var(--adm-line); position:relative; isolation:isolate;
+  }
+  .adm-sidebar{
+    flex:0 0 232px; background:linear-gradient(165deg, var(--adm-navy) 0%, var(--adm-petrol) 145%);
+    padding:30px 16px; display:flex; flex-direction:column; gap:28px; position:relative; overflow:hidden;
+  }
+  .adm-sidebar .deco-blob{ opacity:0.16; }
+  .adm-sidebar-brand{ display:flex; justify-content:center; position:relative; z-index:1; }
+  .adm-sidebar-logo{ height:38px; width:auto; filter:brightness(0) invert(1); opacity:0.95; }
+  .adm-sidebar-nav{ display:flex; flex-direction:column; gap:4px; position:relative; z-index:1; }
+  .adm-nav-btn{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; font-family:"Poppins",sans-serif;
+    font-weight:600; font-size:0.87rem; color:rgba(255,255,255,0.7); background:transparent; border:none;
+    border-radius:12px; padding:11px 14px; cursor:pointer; transition:background .18s, color .18s; position:relative;
+  }
+  .adm-nav-btn:hover{ background:rgba(255,255,255,0.07); color:#fff; }
+  .adm-nav-btn.is-active{ background:rgba(255,255,255,0.13); color:#fff; }
+  .adm-nav-btn.is-active::before{
+    content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--adm-coral);
+  }
+  .adm-nav-icon{ font-size:1.05rem; flex:0 0 auto; line-height:1; }
+  .adm-nav-label{ flex:1 1 auto; }
+  .adm-nav-badge{
+    flex:0 0 auto; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--adm-coral);
+    color:#fff; font-size:0.7rem; font-weight:800; display:inline-flex; align-items:center; justify-content:center;
+  }
+  .adm-main{ flex:1 1 auto; min-width:0; padding:32px 34px 46px; background:var(--adm-offwhite); }
+  .adm-page[hidden]{ display:none; }
+  .adm-page-head{ margin-bottom:22px; }
+  .adm-eyebrow{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--adm-ocean); margin-bottom:6px;
+  }
+  .adm-page-title{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:1.5rem; color:var(--adm-ink); margin:0 0 6px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .adm-page-sub{ font-size:0.9rem; color:var(--adm-ink-soft); max-width:640px; }
+  .adm-subhead{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1rem; color:var(--adm-ink); margin:30px 0 14px; }
+  .adm-subhead:first-of-type{ margin-top:4px; }
+
+  @media (max-width:880px){
+    .adm-shell{ flex-direction:column; border-radius:18px; }
+    .adm-sidebar{
+      flex-direction:row; align-items:center; gap:10px; padding:10px; overflow-x:auto;
+      -webkit-overflow-scrolling:touch; position:sticky; top:0; z-index:6;
+    }
+    .adm-sidebar-brand{ display:none; }
+    .adm-sidebar-nav{ flex-direction:row; gap:6px; flex:1 1 auto; }
+    .adm-nav-btn{
+      flex-direction:column; gap:3px; flex:0 0 auto; min-width:64px; min-height:52px;
+      align-items:center; justify-content:center; padding:8px 10px; text-align:center;
+    }
+    .adm-nav-btn.is-active::before{ left:10px; right:10px; top:auto; bottom:2px; height:3px; width:auto; }
+    .adm-nav-label{ font-size:0.6rem; line-height:1.15; }
+    .adm-nav-icon{ font-size:1.15rem; }
+    .adm-nav-badge{ position:absolute; top:4px; right:8px; }
+    .adm-main{ padding:22px 16px 40px; }
+  }
+
+  /* ---------- Tableau de bord ---------- */
+  .adm-stats-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:26px; }
+  @media (max-width:900px){ .adm-stats-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:460px){ .adm-stats-grid{ grid-template-columns:1fr; } }
+  .adm-stat-card{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 18px 16px;
+    display:flex; flex-direction:column; gap:6px; box-shadow:var(--adm-shadow-sm); position:relative; overflow:hidden;
+  }
+  .adm-stat-card::after{
+    content:''; position:absolute; right:-18px; top:-18px; width:72px; height:72px; border-radius:50%;
+  }
+  .adm-stat-ocean::after{ background:var(--adm-ocean-soft); }
+  .adm-stat-coral::after{ background:var(--adm-coral-soft); }
+  .adm-stat-turquoise::after{ background:var(--adm-turquoise-soft); }
+  .adm-stat-sand::after{ background:var(--adm-sand); }
+  .adm-stat-icon{ font-size:1.25rem; position:relative; z-index:1; }
+  .adm-stat-value{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.65rem; color:var(--adm-ink); position:relative; z-index:1; }
+  .adm-stat-label{ font-size:0.8rem; color:var(--adm-ink-soft); font-weight:600; position:relative; z-index:1; }
+  .adm-quicklinks{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
+  .adm-quicklink-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem; color:#fff; background:var(--adm-ocean);
+    border:none; border-radius:999px; padding:11px 20px; cursor:pointer; transition:filter .15s, transform .15s;
+  }
+  .adm-quicklink-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+
+  /* ---------- Badges de statut génériques (Planning/Devis) ---------- */
+  .adm-badge{
+    display:inline-flex; align-items:center; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.7rem;
+    padding:3px 10px; border-radius:999px; letter-spacing:0.01em; white-space:nowrap;
+  }
+  .adm-badge-confirmed{ background:var(--adm-green-soft); color:var(--adm-green); }
+  .adm-badge-pending{ background:var(--adm-amber-soft); color:var(--adm-amber); }
+  .adm-badge-completed{ background:var(--adm-grey-soft); color:var(--adm-grey); }
+  .adm-badge-cancelled{ background:var(--adm-red-soft); color:var(--adm-red); }
+
+  /* ---------- Cartes partagées avec l'Espace Client (.ec-*), resurchargées
+     uniquement dans le périmètre admin — l'Espace Client n'est pas touché. */
+  #espaceProAdminPanel .ec-loading{ color:var(--adm-ink-soft); }
+  #espaceProAdminPanel .ec-empty{
+    background:var(--adm-card-bg); border:1.5px dashed var(--adm-line); border-radius:14px; color:var(--adm-ink-soft);
+  }
+  #espaceProAdminPanel .ec-empty strong{ color:var(--adm-ink); }
+  #espaceProAdminPanel .ec-list{ gap:8px; }
+  #espaceProAdminPanel .ec-row{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:14px; padding:14px 16px;
+    box-shadow:var(--adm-shadow-sm);
+  }
+  #espaceProAdminPanel .ec-row-title{ color:var(--adm-ink); }
+  #espaceProAdminPanel .ec-row-meta{ color:var(--adm-ink-soft); }
+  #espaceProAdminPanel .ec-badge-pending{ background:var(--adm-amber-soft); color:var(--adm-amber); }
+  #espaceProAdminPanel .ec-badge-confirmed, #espaceProAdminPanel .ec-badge-progress{ background:var(--adm-ocean-soft); color:var(--adm-ocean); }
+  #espaceProAdminPanel .ec-badge-completed{ background:var(--adm-grey-soft); color:var(--adm-grey); }
+  #espaceProAdminPanel .ec-badge-cancelled{ background:var(--adm-red-soft); color:var(--adm-red); }
+  #espaceProAdminPanel .ec-badge-particulier{ background:var(--adm-turquoise-soft); color:var(--adm-turquoise); }
+  #espaceProAdminPanel .ec-badge-professionnel{ background:var(--adm-coral-soft); color:var(--adm-coral-deep); }
+  #espaceProAdminPanel .gallery-filter-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--adm-ink-soft);
+    background:var(--adm-card-bg); border:1.5px solid var(--adm-line); border-radius:999px; padding:8px 16px;
+    cursor:pointer; transition:background .18s, color .18s, border-color .18s;
+  }
+  #espaceProAdminPanel .gallery-filter-btn:hover{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
+  #espaceProAdminPanel .gallery-filter-btn.is-active{ background:var(--adm-ocean); border-color:var(--adm-ocean); color:#fff; }
+
+  /* ---------- Inscriptions : recherche uniquement, rien affiché tant que le
+     champ est vide — volontairement compact, pas de grosses cartes. ---------- */
+  .admin-accounts-search-wrap{ margin-bottom:14px; }
+  .admin-accounts-search{
+    width:100%; box-sizing:border-box; font:inherit; font-size:0.95rem; padding:13px 18px;
+    border:1.5px solid var(--adm-line); border-radius:14px; background:var(--adm-card-bg); color:var(--adm-ink);
+    box-shadow:var(--adm-shadow-sm); transition:border-color .15s;
+  }
+  .admin-accounts-search:focus{ outline:none; border-color:var(--adm-ocean); }
+  .admin-accounts-hint{ font-size:0.86rem; color:var(--adm-ink-soft); padding:6px 2px; }
+  .admin-accounts-list{ display:flex; flex-direction:column; gap:6px; }
+  .admin-account-row{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:12px; padding:11px 15px;
+    cursor:pointer; transition:border-color .15s, box-shadow .15s; box-shadow:var(--adm-shadow-sm);
+  }
+  .admin-account-row:hover{ border-color:var(--adm-ocean); }
+  .admin-account-row.is-expanded{ border-color:var(--adm-ocean); }
+  .admin-account-row-summary{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; font-size:0.88rem; }
+  .admin-account-row-name{ font-weight:700; color:var(--adm-ink); }
+  .admin-account-row-sep{ color:var(--adm-ink-soft); }
+  .admin-account-row-detail{ color:var(--adm-ink-soft); }
+  .admin-account-row-full{
+    display:flex; flex-direction:column; gap:6px; margin-top:10px; padding-top:10px;
+    border-top:1px dashed var(--adm-line); font-size:0.84rem; color:var(--adm-ink);
+  }
+
+  /* ---------- Tous les rendez-vous : filtres, actions rapides, e-mails ---------- */
   .admin-bk-pending-count{
     display:inline-flex; align-items:center; gap:6px; margin-top:10px;
-    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem;
-    color:var(--terracotta); background:var(--terracotta-soft, rgba(196,106,64,0.12));
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem;
+    color:var(--adm-coral-deep); background:var(--adm-coral-soft);
     border-radius:999px; padding:6px 14px;
   }
   .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
   .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
-  /* flex-shrink:0 (ci-dessus) empêche ce bloc de se réduire à la largeur de
-     la carte sur mobile — flex-wrap:wrap ne peut alors jamais s'appliquer,
-     puisque l'élément garde toujours sa largeur naturelle complète (bug réel
-     observé : "Proposer un autre créneau" coupé au bord de l'écran, sans
-     moyen d'y accéder). Corrigé uniquement ≤760px : le rendu desktop
-     (élément à côté du bloc infos, jamais sur sa propre ligne) reste
-     inchangé au-dessus de ce seuil. */
   @media (max-width:760px){
     .admin-bk-row-actions{ flex:1 1 100%; min-width:0; }
   }
   .admin-bk-status-select{
     font-family:"Poppins",sans-serif; font-size:0.78rem; font-weight:600;
-    padding:7px 10px; border-radius:8px; border:1.5px solid var(--line);
-    background:var(--sand); color:var(--ink); cursor:pointer;
+    padding:7px 10px; border-radius:8px; border:1.5px solid var(--adm-line);
+    background:var(--adm-sand); color:var(--adm-ink); cursor:pointer;
   }
   .admin-bk-ics-btn{
     display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
-    padding:7px 12px; border-radius:8px; border:1.5px solid var(--terracotta); color:var(--terracotta);
+    padding:7px 12px; border-radius:8px; border:1.5px solid var(--adm-ocean); color:var(--adm-ocean);
     background:transparent; cursor:pointer; white-space:nowrap;
     transition:background .2s ease, color .2s ease;
   }
-  .admin-bk-ics-btn:hover{ background:var(--terracotta); color:var(--white); }
-  /* Actions rapides sur une demande en attente : accepter / refuser /
-     proposer un autre créneau. N'apparaissent que pour status='PENDING' —
-     le menu déroulant de statut (ci-dessus) reste disponible pour tout
-     changement manuel, y compris après coup. */
+  .admin-bk-ics-btn:hover{ background:var(--adm-ocean); color:#fff; }
   .admin-bk-action-btn{
     display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
-    padding:7px 12px; border-radius:8px; border:1.5px solid var(--line); cursor:pointer; white-space:nowrap;
+    padding:7px 12px; border-radius:8px; border:1.5px solid var(--adm-line); cursor:pointer; white-space:nowrap;
     background:transparent; transition:background .2s ease, color .2s ease, border-color .2s ease;
   }
-  .admin-bk-accept-btn{ border-color:#2F7A4F; color:#2F7A4F; }
-  .admin-bk-accept-btn:hover{ background:#2F7A4F; color:#fff; }
-  .admin-bk-refuse-btn{ border-color:#B23A3A; color:#B23A3A; }
-  .admin-bk-refuse-btn:hover{ background:#B23A3A; color:#fff; }
-  .admin-bk-propose-btn{ border-color:var(--sky-deep); color:var(--sky-deep); }
-  .admin-bk-propose-btn:hover{ background:var(--sky-deep); color:#fff; }
+  .admin-bk-accept-btn{ border-color:var(--adm-green); color:var(--adm-green); }
+  .admin-bk-accept-btn:hover{ background:var(--adm-green); color:#fff; }
+  .admin-bk-refuse-btn{ border-color:var(--adm-red); color:var(--adm-red); }
+  .admin-bk-refuse-btn:hover{ background:var(--adm-red); color:#fff; }
+  .admin-bk-propose-btn{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
+  .admin-bk-propose-btn:hover{ background:var(--adm-ocean); color:#fff; }
   .admin-bk-action-btn[disabled]{ opacity:0.55; cursor:not-allowed; }
-  /* flex-direction:column plutôt qu'une grille de labels en ligne : évite
-     tout calcul de largeur ambigu entre date/heure/message/boutons (bug
-     réel observé — le formulaire dépassait la largeur de sa carte, obligeant
-     à scroller horizontalement). Une ligne = un groupe, jamais de débordement
-     possible quelle que soit la largeur d'écran. */
   .admin-bk-propose-form{
     flex:1 1 100%; min-width:0; display:flex; flex-direction:column; gap:10px;
-    background:var(--sand-deep); border-radius:10px; padding:14px; margin-top:8px; box-sizing:border-box;
+    background:var(--adm-sand); border-radius:12px; padding:14px; margin-top:8px; box-sizing:border-box;
   }
   .admin-bk-propose-form-row{ display:flex; flex-wrap:wrap; gap:10px; }
-  .admin-bk-propose-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.76rem; font-weight:600; color:var(--ink-soft); flex:1 1 140px; min-width:0; }
+  .admin-bk-propose-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.76rem; font-weight:600; color:var(--adm-ink-soft); flex:1 1 140px; min-width:0; }
   .admin-bk-propose-form input, .admin-bk-propose-form textarea{
-    font-family:inherit; font-size:0.85rem; padding:8px 10px; border-radius:8px; border:1.5px solid var(--line);
-    background:var(--cream); color:var(--ink); width:100%; box-sizing:border-box;
+    font-family:inherit; font-size:0.85rem; padding:8px 10px; border-radius:8px; border:1.5px solid var(--adm-line);
+    background:var(--adm-card-bg); color:var(--adm-ink); width:100%; box-sizing:border-box;
   }
   .admin-bk-propose-form textarea{ resize:vertical; min-height:38px; }
   .admin-bk-propose-send{
-    background:var(--sky-deep); color:#fff; border:none; border-radius:8px; padding:9px 14px;
+    background:var(--adm-ocean); color:#fff; border:none; border-radius:8px; padding:9px 14px;
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; cursor:pointer;
   }
   .admin-bk-propose-send[disabled]{ opacity:0.6; cursor:not-allowed; }
   .admin-bk-propose-cancel{
-    background:transparent; border:1px solid var(--line); color:var(--ink-soft); border-radius:8px;
+    background:transparent; border:1px solid var(--adm-line); color:var(--adm-ink-soft); border-radius:8px;
     padding:9px 12px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.78rem; cursor:pointer;
   }
   .admin-bk-propose-msg{ font-size:0.78rem; font-weight:600; }
-  .admin-bk-propose-msg.is-error{ color:#B23A3A; }
-  .admin-bk-propose-msg.is-success{ color:#2F7A4F; }
+  .admin-bk-propose-msg.is-error{ color:var(--adm-red); }
+  .admin-bk-propose-msg.is-success{ color:var(--adm-green); }
   .admin-bk-note{
-    font-size:0.8rem; font-style:italic; color:var(--ink); background:var(--sand-deep);
+    font-size:0.8rem; font-style:italic; color:var(--adm-ink); background:var(--adm-sand);
     border-radius:8px; padding:7px 10px; margin-top:2px; max-width:44ch;
   }
-  .admin-bk-travel-warning{ color:#B5762A; font-weight:700; }
+  .admin-bk-travel-warning{ color:var(--adm-amber); font-weight:700; }
   .admin-bk-email-status{
     display:inline-flex; align-items:center; font-size:0.78rem; font-weight:700;
     border-radius:999px; padding:3px 10px; margin-right:8px;
   }
-  .admin-bk-email-sent{ background:rgba(74,150,101,0.15); color:#3C7A52; }
-  .admin-bk-email-pending{ background:var(--sand-deep); color:var(--ink-soft); }
-  .admin-bk-email-failed{ background:rgba(196,90,64,0.15); color:#A6432A; }
+  .admin-bk-email-sent{ background:var(--adm-green-soft); color:var(--adm-green); }
+  .admin-bk-email-pending{ background:var(--adm-sand-deep); color:var(--adm-ink-soft); }
+  .admin-bk-email-failed{ background:var(--adm-red-soft); color:var(--adm-red); }
   .admin-bk-resend-email-btn{
-    font-size:0.78rem; font-weight:700; color:var(--terracotta); background:none;
-    border:1px solid var(--terracotta); border-radius:999px; padding:3px 12px; cursor:pointer;
+    font-size:0.78rem; font-weight:700; color:var(--adm-coral-deep); background:none;
+    border:1px solid var(--adm-coral); border-radius:999px; padding:3px 12px; cursor:pointer;
   }
   .admin-bk-resend-email-btn:disabled{ opacity:0.6; cursor:not-allowed; }
   .admin-travel-settings-form{
     display:flex; flex-direction:column; gap:14px; max-width:420px;
-    background:var(--sand); border:1px solid var(--line); border-radius:14px; padding:20px;
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:20px;
+    box-shadow:var(--adm-shadow-sm);
   }
-  .admin-travel-settings-form label{ display:flex; flex-direction:column; gap:6px; font-size:0.88rem; font-weight:600; color:var(--ink-soft); }
+  .admin-travel-settings-form label{ display:flex; flex-direction:column; gap:6px; font-size:0.88rem; font-weight:600; color:var(--adm-ink-soft); }
   .admin-travel-settings-form input{
-    font:inherit; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:var(--cream); color:var(--ink);
+    font:inherit; padding:9px 12px; border:1px solid var(--adm-line); border-radius:8px; background:var(--adm-sand); color:var(--adm-ink);
   }
-  .admin-travel-settings-hint{ font-size:0.78rem; color:var(--ink-soft); }
+  .admin-travel-settings-hint{ font-size:0.78rem; color:var(--adm-ink-soft); }
   #adminTravelSettingsSave{
-    background:var(--terracotta); color:#fff; border:none; border-radius:999px; padding:10px 20px;
+    background:var(--adm-ocean); color:#fff; border:none; border-radius:999px; padding:10px 20px;
     font-weight:700; cursor:pointer;
   }
   #adminTravelSettingsSave:disabled{ opacity:0.6; cursor:not-allowed; }
-  .admin-travel-settings-msg.is-success{ color:#3C7A52; font-weight:600; }
-  .admin-travel-settings-msg.is-error{ color:#A6432A; font-weight:600; }
+  .admin-travel-settings-msg.is-success{ color:var(--adm-green); font-weight:600; }
+  .admin-travel-settings-msg.is-error{ color:var(--adm-red); font-weight:600; }
+
+  /* ---------- Planning hebdomadaire : apparence uniquement, structure et
+     logique JS totalement inchangées (voir admRenderPlanning — non modifié
+     hormis le badge de statut dans chaque bloc, cosmétique). Les rendez-vous
+     annulés/refusés restent exclus de Planning/Liste, visibles uniquement
+     via Historique — comportement d'origine préservé à l'identique. ---------- */
+  .admin-bk-toolbar{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .admin-bk-view-toggle{ display:flex; gap:8px; }
+  .admin-bk-view-tab{
+    flex:0 0 auto; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem;
+    padding:9px 18px; border-radius:999px; border:1.5px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink-soft);
+    cursor:pointer; transition:background .2s, color .2s, border-color .2s;
+  }
+  .admin-bk-view-tab.is-active{ background:var(--adm-navy); border-color:var(--adm-navy); color:#fff; }
+  .admin-bk-history-btn{
+    font-family:"Poppins",sans-serif; font-weight:600; font-size:0.78rem; color:var(--adm-ink-soft);
+    background:transparent; border:1px solid var(--adm-line); border-radius:999px; padding:8px 16px; cursor:pointer;
+    margin-left:auto; white-space:nowrap; transition:border-color .2s, color .2s, background .2s;
+  }
+  .admin-bk-history-btn:hover{ border-color:var(--adm-coral); color:var(--adm-coral-deep); }
+  .admin-bk-history-btn.is-active{ background:var(--adm-coral); border-color:var(--adm-coral); color:#fff; }
+
+  .admin-bk-planning-nav{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;
+  }
+  .admin-bk-planning-nav[hidden]{ display:none; }
+  .admin-bk-planning-nav-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--adm-ink);
+    background:var(--adm-card-bg); border:1.5px solid var(--adm-line); border-radius:999px; padding:9px 16px; cursor:pointer;
+    transition:border-color .2s, color .2s;
+  }
+  .admin-bk-planning-nav-btn:hover{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
+  .admin-bk-planning-today-btn{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
+  .admin-bk-planning-label{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:var(--adm-ink); text-align:center; flex:1 1 auto; }
+
+  .admin-bk-planning[hidden]{ display:none; }
+  .admin-bk-planning-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--adm-line); border-radius:16px; background:var(--adm-card-bg); box-shadow:var(--adm-shadow-sm); }
+  .admin-bk-planning-table{ display:flex; flex-direction:column; min-width:760px; }
+  .admin-bk-planning-headrow{ display:flex; position:sticky; top:0; z-index:2; }
+  .admin-bk-planning-corner{ flex:0 0 56px; border-bottom:1.5px solid var(--adm-line); background:var(--adm-sand); }
+  .admin-bk-planning-daycol-head{
+    flex:1 1 0; min-width:104px; border-bottom:1.5px solid var(--adm-line); border-left:1px solid var(--adm-line);
+    background:var(--adm-sand); padding:10px 8px; text-align:center; font-family:"Poppins",sans-serif; color:var(--adm-ink);
+  }
+  .admin-bk-planning-daycol-head.is-today{ background:var(--adm-ocean); color:#fff; }
+  .admin-bk-planning-day-name{ font-weight:700; font-size:0.76rem; text-transform:uppercase; letter-spacing:0.03em; }
+  .admin-bk-planning-day-date{ font-size:0.76rem; opacity:0.82; margin-top:2px; }
+  .admin-bk-planning-bodyrow{ display:flex; }
+  .admin-bk-planning-hourgutter{ flex:0 0 56px; }
+  .admin-bk-planning-hour-label{
+    position:relative; font-size:0.7rem; color:var(--adm-ink-soft); text-align:right; padding:0 8px; box-sizing:border-box;
+    border-top:1px solid var(--adm-line);
+  }
+  .admin-bk-planning-hourgutter .admin-bk-planning-hour-label:first-child{ border-top:none; }
+  .admin-bk-planning-hour-label span{ position:relative; top:-7px; }
+  .admin-bk-planning-daycol{ flex:1 1 0; min-width:104px; position:relative; border-left:1px solid var(--adm-line); box-sizing:border-box; }
+  .admin-bk-planning-hourline{ border-top:1px solid var(--adm-line); box-sizing:border-box; }
+  .admin-bk-planning-daycol .admin-bk-planning-hourline:first-child{ border-top:none; }
+  .admin-bk-event{
+    position:absolute; left:4px; right:4px; border-radius:9px; padding:5px 7px; overflow:hidden;
+    background:var(--adm-turquoise-soft); border:1.5px solid var(--adm-turquoise); cursor:pointer; box-sizing:border-box;
+    display:flex; flex-direction:column; gap:2px; text-align:left; transition:filter .15s ease, transform .15s ease;
+    box-shadow:var(--adm-shadow-sm);
+  }
+  .admin-bk-event:hover{ filter:brightness(0.98); transform:translateY(-1px); }
+  .admin-bk-event-time{ font-size:0.68rem; font-weight:700; color:var(--adm-ocean-deep); line-height:1.2; }
+  .admin-bk-event-title{ font-size:0.75rem; font-weight:700; color:var(--adm-ink); line-height:1.2; }
+  .admin-bk-event-meta{ font-size:0.66rem; color:var(--adm-ink-soft); line-height:1.25; }
+  .admin-bk-event-price{ font-size:0.7rem; font-weight:700; color:var(--adm-ink); margin-top:auto; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  .admin-bk-planning-empty{ padding:34px 20px; text-align:center; color:var(--adm-ink-soft); font-size:0.9rem; }
+  @media (max-width:640px){
+    .admin-bk-planning-label{ font-size:0.82rem; flex:1 1 100%; order:-1; margin-bottom:4px; }
+  }
+
+  /* Fiche détaillée d'un rendez-vous (clic sur un bloc du planning) — même
+     patron que .bk-confirm-overlay (margin-block:auto plutôt que
+     align-items:center pour ne jamais rogner le haut du contenu sur mobile,
+     voir le commentaire sur .portal-scroll plus haut). */
+  .admin-bk-modal-overlay{
+    position:fixed; inset:0; z-index:10060; display:flex; justify-content:center;
+    background:rgba(16,27,46,0.6); padding:20px; backdrop-filter:blur(2px); overflow-y:auto;
+  }
+  .admin-bk-modal-overlay[hidden]{ display:none; }
+  .admin-bk-modal{
+    background:var(--adm-card-bg); border-radius:18px; padding:28px 26px; max-width:440px; width:100%;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.4); position:relative; margin-block:auto;
+  }
+  .admin-bk-modal-close{
+    position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%;
+    background:var(--adm-sand); border:1px solid var(--adm-line); color:var(--adm-ink); font-size:1rem; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .admin-bk-modal-close:hover{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
+  .admin-bk-modal-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.08rem; color:var(--adm-ink); margin:0 30px 4px 0; }
+  .admin-bk-modal-ref{ font-size:0.8rem; color:var(--adm-ink-soft); margin-bottom:18px; }
+  .admin-bk-modal-rows{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+  .admin-bk-modal-row{ font-size:0.88rem; color:var(--adm-ink); display:flex; gap:8px; }
+  .admin-bk-modal-row-label{ flex:0 0 100px; color:var(--adm-ink-soft); font-weight:600; }
+  .admin-bk-modal-note{
+    font-size:0.85rem; font-style:italic; color:var(--adm-ink); background:var(--adm-sand);
+    border-radius:8px; padding:10px 12px; margin-bottom:18px;
+  }
+  .admin-bk-modal-status-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .admin-bk-modal-status-row label{ font-size:0.82rem; font-weight:700; color:var(--adm-ink-soft); }
+
+  /* ---------- Demandes récentes ---------- */
+  .admin-req-badge{
+    display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px;
+    padding:0 7px; margin-left:8px; border-radius:999px; background:var(--adm-coral); color:#fff;
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:0.78rem; vertical-align:middle;
+  }
+  .admin-req-new-badge{ background:var(--adm-ocean-soft); color:var(--adm-ocean); margin-left:8px; }
+  .admin-req-row{ cursor:pointer; transition:border-color .2s, background .2s; }
+  .admin-req-row:hover{ border-color:var(--adm-ocean); }
+  .admin-req-row-new{ border-color:var(--adm-turquoise); background:var(--adm-turquoise-soft); }
+  @keyframes adminReqHighlight{
+    0%, 100%{ box-shadow:none; }
+    30%, 70%{ box-shadow:0 0 0 3px var(--adm-ocean); }
+  }
+  .admin-req-row-highlight{ animation:adminReqHighlight 1.3s ease 2; }
+
+  /* ---------- Notifications push ---------- */
+  .admin-push-panel{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:20px 22px; max-width:520px;
+    box-shadow:var(--adm-shadow-sm);
+  }
+  .admin-push-row{ font-size:0.92rem; font-weight:600; color:var(--adm-ink); margin-bottom:14px; }
+  .admin-push-status{ font-weight:800; padding:3px 10px; border-radius:999px; font-size:0.82rem; }
+  .admin-push-status.is-on{ background:var(--adm-green-soft); color:var(--adm-green); }
+  .admin-push-status.is-off{ background:var(--adm-sand-deep); color:var(--adm-ink-soft); }
+  .admin-push-toggle-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem; color:#fff;
+    background:var(--adm-coral); border:none; border-radius:999px; padding:11px 22px; cursor:pointer;
+    transition:background .2s;
+  }
+  .admin-push-toggle-btn:hover{ background:var(--adm-coral-deep); }
+  .admin-push-toggle-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .admin-push-ios-note{
+    margin-top:16px; background:var(--adm-sand); border:1px dashed var(--adm-line); border-radius:12px; padding:14px 16px;
+    font-size:0.86rem; color:var(--adm-ink); line-height:1.55;
+  }
+  .admin-push-ios-note ol{ margin:8px 0 0; padding-left:20px; }
+  .admin-push-ios-note li{ margin-bottom:4px; }
+  .admin-push-unsupported-note{ margin-top:14px; font-size:0.86rem; color:var(--adm-ink-soft); }
+
   .ec-next-appt{
     background:var(--navy-fixed); color:#fff; border-radius:16px; padding:24px 26px; margin-bottom:26px;
   }
@@ -2996,6 +3334,14 @@
       <button type="button" class="btn-secondary" id="bkConfirmCancel">Modifier</button>
       <button type="button" class="btn-primary" id="bkConfirmOk">Oui, confirmer</button>
     </div>
+  </div>
+</div>
+<!-- Fiche détaillée d'un rendez-vous, ouverte depuis un clic sur un bloc du
+     planning hebdomadaire Administration (voir admOpenBookingModal). -->
+<div class="admin-bk-modal-overlay" id="adminBkModalOverlay" hidden>
+  <div class="admin-bk-modal" role="dialog" aria-modal="true" aria-labelledby="adminBkModalBody">
+    <button type="button" class="admin-bk-modal-close" id="adminBkModalClose" aria-label="Fermer">✕</button>
+    <div id="adminBkModalBody"></div>
   </div>
 </div>
 <div id="sitePortal">
@@ -4555,53 +4901,184 @@
              (client conciergerie/mobil-home) ne voit jamais ce panneau :
              ce sont ses propres logements ci-dessus qui le concernent. -->
         <div class="espace-pro-admin" id="espaceProAdminPanel" hidden>
-          <div class="section-head espace-pro-intro">
-            <p class="eyebrow">Administration<span class="rule"></span></p>
-            <h2>Inscriptions</h2>
-            <p>Tous les comptes Particuliers et Professionnels créés sur HAYEVA, les plus récents en premier.</p>
-          </div>
-          <div class="admin-bk-filters" id="adminAccountsFilters" role="group" aria-label="Filtrer par type de compte">
-            <button type="button" class="gallery-filter-btn is-active" data-admin-account-filter="all">Tous</button>
-            <button type="button" class="gallery-filter-btn" data-admin-account-filter="customer">Particuliers</button>
-            <button type="button" class="gallery-filter-btn" data-admin-account-filter="professional">Professionnels</button>
-          </div>
-          <div id="adminAccountsList"><p class="ec-loading">Chargement…</p></div>
+          <div class="adm-shell">
+            <div class="deco-blob" style="width:190px; height:190px; top:-70px; left:-60px; background:var(--adm-ocean);" aria-hidden="true"></div>
+            <div class="deco-blob" style="width:150px; height:150px; bottom:30px; left:-56px; background:var(--adm-turquoise);" aria-hidden="true"></div>
 
-          <div class="section-head espace-pro-intro" style="margin-top:44px;">
-            <p class="eyebrow">Administration<span class="rule"></span></p>
-            <h2>Tous les rendez-vous</h2>
-            <p>Vue d'ensemble des réservations HAYEVA, tous clients confondus — statut et ajout au calendrier depuis chaque rendez-vous.</p>
-            <p class="admin-bk-pending-count" id="adminBkPendingCount" hidden></p>
-          </div>
-          <div class="admin-bk-filters" id="adminBkFilters" role="group" aria-label="Filtrer par période">
-            <button type="button" class="gallery-filter-btn" data-admin-filter="today">Aujourd'hui</button>
-            <button type="button" class="gallery-filter-btn" data-admin-filter="week">Cette semaine</button>
-            <button type="button" class="gallery-filter-btn is-active" data-admin-filter="upcoming">À venir</button>
-            <button type="button" class="gallery-filter-btn" data-admin-filter="all">Tout</button>
-          </div>
-          <div id="adminBkList"><p class="ec-loading">Chargement…</p></div>
+            <nav class="adm-sidebar" aria-label="Navigation Administration">
+              <div class="adm-sidebar-brand">
+                <img src="images/brand/hayeva-logo.png" alt="HAYEVA" class="adm-sidebar-logo">
+              </div>
+              <div class="adm-sidebar-nav" id="admSidebarNav" role="tablist">
+                <button type="button" class="adm-nav-btn is-active" data-adm-page="dashboard" role="tab" aria-selected="true">
+                  <span class="adm-nav-icon" aria-hidden="true">🏠</span><span class="adm-nav-label">Tableau de bord</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="planning" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">📅</span><span class="adm-nav-label">Planning</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="requests" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">🔔</span><span class="adm-nav-label">Demandes récentes</span>
+                  <span class="adm-nav-badge" id="admSidebarReqBadge" hidden>0</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="accounts" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">👥</span><span class="adm-nav-label">Inscriptions</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="quotes" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">📄</span><span class="adm-nav-label">Devis</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">⚙️</span><span class="adm-nav-label">Paramètres</span>
+                </button>
+              </div>
+            </nav>
 
-          <div class="section-head espace-pro-intro" style="margin-top:44px;">
-            <p class="eyebrow">Administration<span class="rule"></span></p>
-            <h2>Paramètres des déplacements</h2>
-            <p>Barème appliqué à toutes les nouvelles demandes. Une modification ici n'affecte jamais les rendez-vous déjà enregistrés (leur tarif reste celui appliqué au moment de la réservation).</p>
-          </div>
-          <form id="adminTravelSettingsForm" class="admin-travel-settings-form">
-            <label>Point de départ (nom affiché)
-              <input type="text" id="adminTravelOriginLabel" placeholder="Fréjus">
-            </label>
-            <label>Rayon inclus (km)
-              <input type="number" id="adminTravelRadius" min="0" step="0.5" required>
-            </label>
-            <label>Tarif au km supplémentaire (€ TTC)
-              <input type="number" id="adminTravelRate" min="0" step="0.01" required>
-            </label>
-            <p class="admin-travel-settings-hint">Le calcul compte le trajet aller-retour : au-delà du rayon inclus, chaque km supplémentaire aller est facturé deux fois (aller + retour).</p>
-            <div class="admin-bk-propose-form-row">
-              <button type="submit" id="adminTravelSettingsSave">Enregistrer</button>
-              <p class="admin-travel-settings-msg" id="adminTravelSettingsMsg" hidden></p>
+            <div class="adm-main">
+
+              <section class="adm-page" id="admPageDashboard" data-adm-page="dashboard">
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">🏠 Tableau de bord</h2>
+                  <p class="adm-page-sub">Vue d'ensemble de l'activité HAYEVA.</p>
+                </div>
+                <div class="adm-stats-grid">
+                  <div class="adm-stat-card adm-stat-ocean">
+                    <span class="adm-stat-icon" aria-hidden="true">📅</span>
+                    <span class="adm-stat-value" id="admStatToday">—</span>
+                    <span class="adm-stat-label">Rendez-vous aujourd'hui</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-coral">
+                    <span class="adm-stat-icon" aria-hidden="true">🔔</span>
+                    <span class="adm-stat-value" id="admStatNew">—</span>
+                    <span class="adm-stat-label">Demandes récentes</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-turquoise">
+                    <span class="adm-stat-icon" aria-hidden="true">🗓️</span>
+                    <span class="adm-stat-value" id="admStatWeek">—</span>
+                    <span class="adm-stat-label">Rendez-vous cette semaine</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-sand">
+                    <span class="adm-stat-icon" aria-hidden="true">📄</span>
+                    <span class="adm-stat-value" id="admStatQuotes">—</span>
+                    <span class="adm-stat-label">Devis en attente</span>
+                  </div>
+                </div>
+                <div class="adm-quicklinks">
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">📅 Ouvrir le planning</button>
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">🔔 Voir les dernières demandes</button>
+                </div>
+              </section>
+
+              <section class="adm-page" id="admPagePlanning" data-adm-page="planning" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">📅 Tous les rendez-vous</h2>
+                  <p class="adm-page-sub">Vue d'ensemble des réservations HAYEVA, tous clients confondus — statut et ajout au calendrier depuis chaque rendez-vous.</p>
+                  <p class="admin-bk-pending-count" id="adminBkPendingCount" hidden></p>
+                </div>
+                <div class="admin-bk-toolbar">
+                  <div class="admin-bk-view-toggle" id="adminBkViewToggle" role="group" aria-label="Mode d'affichage">
+                    <button type="button" class="admin-bk-view-tab is-active" data-admin-bk-view="planning">🗓️ Planning</button>
+                    <button type="button" class="admin-bk-view-tab" data-admin-bk-view="liste">☰ Liste</button>
+                  </div>
+                  <button type="button" class="admin-bk-history-btn" id="adminBkHistoryBtn">🗂️ Historique (annulés / refusés)</button>
+                </div>
+                <div class="admin-bk-planning-nav" id="adminBkPlanningNav">
+                  <button type="button" class="admin-bk-planning-nav-btn" data-admin-planning-nav="prev">← Semaine précédente</button>
+                  <button type="button" class="admin-bk-planning-nav-btn admin-bk-planning-today-btn" data-admin-planning-nav="today">Aujourd'hui</button>
+                  <span class="admin-bk-planning-label" id="adminBkPlanningLabel"></span>
+                  <button type="button" class="admin-bk-planning-nav-btn" data-admin-planning-nav="next">Semaine suivante →</button>
+                </div>
+                <div class="admin-bk-filters" id="adminBkFilters" role="group" aria-label="Filtrer par période" hidden>
+                  <button type="button" class="gallery-filter-btn" data-admin-filter="today">Aujourd'hui</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-filter="week">Cette semaine</button>
+                  <button type="button" class="gallery-filter-btn is-active" data-admin-filter="upcoming">À venir</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-filter="all">Tout</button>
+                </div>
+                <div id="adminBkPlanning" class="admin-bk-planning"><p class="ec-loading">Chargement…</p></div>
+                <div id="adminBkList" hidden><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageRequests" data-adm-page="requests" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">🔔 Demandes récentes <span class="admin-req-badge" id="adminReqBadge" hidden>0</span></h2>
+                  <p class="adm-page-sub">Toutes les réservations reçues sur HAYEVA, les plus récentes en premier.</p>
+                </div>
+                <div class="admin-bk-filters" id="adminReqFilters" role="group" aria-label="Filtrer les demandes">
+                  <button type="button" class="gallery-filter-btn is-active" data-admin-req-filter="new">Nouvelles</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-req-filter="all">Toutes</button>
+                </div>
+                <div id="adminReqList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageAccounts" data-adm-page="accounts" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">👥 Inscriptions</h2>
+                  <p class="adm-page-sub">Recherchez un compte par nom, téléphone ou e-mail — rien ne s'affiche tant que vous n'avez rien saisi.</p>
+                </div>
+                <div class="admin-bk-filters" id="adminAccountsFilters" role="group" aria-label="Filtrer par type de compte">
+                  <button type="button" class="gallery-filter-btn is-active" data-admin-account-type="customer">Particuliers</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-account-type="professional">Professionnels</button>
+                </div>
+                <div class="admin-accounts-search-wrap">
+                  <input type="search" id="adminAccountsSearch" class="admin-accounts-search" placeholder="🔍 Rechercher par nom, téléphone ou e-mail…" autocomplete="off">
+                </div>
+                <div id="adminAccountsList"></div>
+              </section>
+
+              <section class="adm-page" id="admPageQuotes" data-adm-page="quotes" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">📄 Devis</h2>
+                  <p class="adm-page-sub">Demandes de devis gratuit, les plus récentes en premier — cliquez pour ouvrir la fiche complète.</p>
+                </div>
+                <div id="adminQuotesList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">⚙️ Paramètres</h2>
+                  <p class="adm-page-sub">Barème de déplacement et notifications de l'équipe HAYEVA.</p>
+                </div>
+                <h3 class="adm-subhead">Déplacements</h3>
+                <form id="adminTravelSettingsForm" class="admin-travel-settings-form">
+                  <label>Point de départ (nom affiché)
+                    <input type="text" id="adminTravelOriginLabel" placeholder="Fréjus">
+                  </label>
+                  <label>Rayon inclus (km)
+                    <input type="number" id="adminTravelRadius" min="0" step="0.5" required>
+                  </label>
+                  <label>Tarif au km supplémentaire (€ TTC)
+                    <input type="number" id="adminTravelRate" min="0" step="0.01" required>
+                  </label>
+                  <p class="admin-travel-settings-hint">Le calcul compte le trajet aller-retour : au-delà du rayon inclus, chaque km supplémentaire aller est facturé deux fois (aller + retour).</p>
+                  <div class="admin-bk-propose-form-row">
+                    <button type="submit" id="adminTravelSettingsSave">Enregistrer</button>
+                    <p class="admin-travel-settings-msg" id="adminTravelSettingsMsg" hidden></p>
+                  </div>
+                </form>
+
+                <h3 class="adm-subhead">Notifications push</h3>
+                <div class="admin-push-panel">
+                  <p class="admin-push-row">Notifications de nouvelles réservations : <span class="admin-push-status is-off" id="adminPushStatus">Désactivées</span></p>
+                  <button type="button" class="admin-push-toggle-btn" id="adminPushToggleBtn" hidden>🔔 Activer les notifications</button>
+                  <div class="admin-push-ios-note" id="adminPushIosNote" hidden>
+                    <p><strong>Sur iPhone/iPad</strong>, Safari exige d'abord d'installer HAYEVA sur l'écran d'accueil avant de pouvoir activer les notifications :</p>
+                    <ol>
+                      <li>Appuyez sur <strong>Partager</strong> <span aria-hidden="true">⬆️</span> en bas de Safari</li>
+                      <li>Choisissez <strong>Sur l'écran d'accueil</strong></li>
+                      <li>Appuyez sur <strong>Ajouter</strong></li>
+                      <li>Ouvrez ensuite HAYEVA depuis l'icône ajoutée à votre écran d'accueil, puis revenez sur cette page pour activer les notifications</li>
+                    </ol>
+                  </div>
+                  <p class="admin-push-unsupported-note" id="adminPushUnsupportedNote" hidden>Les notifications push ne sont pas prises en charge par ce navigateur.</p>
+                </div>
+              </section>
+
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
@@ -5203,9 +5680,16 @@
      resignée côté serveur avant tout calcul financier définitif). */
   var mapboxPublicToken = null;
   (function loadMapboxPublicToken(){
+    // Même appel réutilisé pour la clé publique VAPID (window.sudVapidPublicKey,
+    // lue par le module Notifications push de l'Espace Administration plus
+    // bas) : évite une deuxième requête vers get-public-config pour une
+    // valeur tout aussi publique par nature (destinée au navigateur).
     fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/get-public-config')
       .then(function(r){ return r.json(); })
-      .then(function(d){ mapboxPublicToken = (d && d.mapboxPublicToken) || null; })
+      .then(function(d){
+        mapboxPublicToken = (d && d.mapboxPublicToken) || null;
+        window.sudVapidPublicKey = (d && d.vapidPublicKey) || null;
+      })
       .catch(function(){});
   })();
 
@@ -7723,6 +8207,13 @@
   // la réservation existait bien en base. "upcoming" (aujourd'hui + futur)
   // est un bien meilleur défaut pour repérer les nouvelles demandes.
   var adminFilter = 'upcoming';
+  // Affichage principal de "Tous les rendez-vous" : planning hebdomadaire par
+  // défaut (adminBkViewMode='planning'), bascule possible vers la liste
+  // existante ('liste'). adminBkShowHistory est indépendant des deux : coché,
+  // il remplace le contenu affiché par les seuls rendez-vous CANCELLED (voir
+  // admRenderList) quel que soit l'onglet actif, jusqu'à décochage.
+  var adminBkViewMode = 'planning';
+  var adminBkShowHistory = false;
 
   function admEscape(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -7791,41 +8282,73 @@
   // table, aucune nouvelle policy. Les comptes 'admin' (l'équipe HAYEVA elle-
   // même) sont volontairement exclus : cet écran répertorie les inscriptions
   // clients, pas les comptes internes.
+  // Recherche uniquement (voir demande explicite : "aucun nom, e-mail ou
+  // numéro de téléphone ne doit apparaître" avant saisie) — la donnée reste
+  // chargée en mémoire au chargement du panneau (comportement de fetch
+  // inchangé), seul admRenderAccounts() n'affiche plus rien tant que
+  // adminAccountSearch est vide. Un clic sur une ligne déplie ses infos
+  // complètes (SIRET, date d'inscription) sans nouvelle requête.
   var adminAccountsCache = null;
-  var adminAccountFilter = 'all';
+  var adminAccountType = 'customer';
+  var adminAccountSearch = '';
+  var adminAccountExpandedId = null;
 
-  function admFilterAccounts(rows, filter){
-    if (filter === 'all') return rows;
-    return rows.filter(function(r){ return r.type === filter; });
+  function admNormalizePhone(s){
+    return String(s || '').replace(/[^0-9+]/g, '');
+  }
+  function admAccountMatchesSearch(r, needle){
+    if (r.displayName && r.displayName.toLowerCase().indexOf(needle) !== -1) return true;
+    if (r.email && r.email.toLowerCase().indexOf(needle) !== -1) return true;
+    var needlePhone = admNormalizePhone(needle);
+    if (needlePhone && r.phone && admNormalizePhone(r.phone).indexOf(needlePhone) !== -1) return true;
+    return false;
   }
 
   function admRenderAccounts(){
     var listEl = document.getElementById('adminAccountsList');
-    if (!listEl || !adminAccountsCache) return;
-    var rows = admFilterAccounts(adminAccountsCache, adminAccountFilter);
-    if (!rows.length){
-      listEl.innerHTML = '<div class="ec-empty"><strong>Aucune inscription</strong>Aucun compte pour ce filtre.</div>';
+    if (!listEl) return;
+    var query = adminAccountSearch.trim();
+    if (!query){
+      listEl.innerHTML = '<p class="admin-accounts-hint">Tapez un nom, un numéro ou un e-mail pour rechercher.</p>';
       return;
     }
-    var html = '<div class="ec-list">';
+    if (!adminAccountsCache){
+      listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+      return;
+    }
+    var needle = query.toLowerCase();
+    var rows = adminAccountsCache.filter(function(r){
+      return r.type === adminAccountType && admAccountMatchesSearch(r, needle);
+    });
+    if (!rows.length){
+      listEl.innerHTML = '<p class="admin-accounts-hint">Aucun compte trouvé.</p>';
+      return;
+    }
+    var html = '<div class="admin-accounts-list">';
     rows.forEach(function(r){
-      var badgeClass = r.type === 'professional' ? 'ec-badge-professionnel' : 'ec-badge-particulier';
-      var badgeLabel = r.type === 'professional' ? 'Professionnel' : 'Particulier';
-      html += '<div class="ec-row"><div class="ec-row-info">' +
-        '<span class="ec-row-title">' + admEscape(r.displayName) + ' <span class="ec-badge ' + badgeClass + '">' + badgeLabel + '</span></span>' +
-        (r.email ? '<span class="ec-row-meta">✉️ ' + admEscape(r.email) + '</span>' : '') +
-        (r.phone ? '<span class="ec-row-meta">📞 ' + admEscape(r.phone) + '</span>' : '') +
-        (r.siret ? '<span class="ec-row-meta">SIRET ' + admEscape(r.siret) + '</span>' : '') +
-        '<span class="ec-row-meta">Inscrit le ' + admFmtDate(r.created_at) + '</span>' +
-        '</div></div>';
+      var expanded = adminAccountExpandedId === r.userId;
+      html += '<div class="admin-account-row' + (expanded ? ' is-expanded' : '') + '" data-user-id="' + admEscape(r.userId) + '">' +
+        '<div class="admin-account-row-summary">' +
+          '<span class="admin-account-row-name">' + admEscape(r.displayName) + '</span>' +
+          (r.phone ? '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(r.phone) + '</span>' : '') +
+          (r.email ? '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(r.email) + '</span>' : '') +
+        '</div>' +
+        (expanded ?
+          '<div class="admin-account-row-full">' +
+            '<span class="ec-badge ' + (r.type === 'professional' ? 'ec-badge-professionnel' : 'ec-badge-particulier') + '">' + (r.type === 'professional' ? 'Professionnel' : 'Particulier') + '</span>' +
+            (r.email ? '<span>✉️ ' + admEscape(r.email) + '</span>' : '') +
+            (r.phone ? '<span>📞 ' + admEscape(r.phone) + '</span>' : '') +
+            (r.siret ? '<span>SIRET ' + admEscape(r.siret) + '</span>' : '') +
+            '<span>Inscrit le ' + admFmtDate(r.created_at) + '</span>' +
+          '</div>'
+          : '') +
+        '</div>';
     });
     html += '</div>';
     listEl.innerHTML = html;
   }
 
   function admLoadAccounts(){
-    var listEl = document.getElementById('adminAccountsList');
-    if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
     Promise.all([
       sb.client.from('profiles').select('user_id,email,global_role,created_at')
         .in('global_role', ['customer','professional'])
@@ -7834,10 +8357,7 @@
       sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone'),
       sb.client.from('professional_accounts').select('created_by,legal_name,siret,phone')
     ]).then(function(res){
-      if (res[0].error){
-        if (listEl) listEl.innerHTML = '<div class="ec-empty"><strong>Chargement impossible</strong>Réessayez dans un instant.</div>';
-        return;
-      }
+      if (res[0].error) return;
       var profilesRows = res[0].data || [];
       var custMap = {};
       (res[1].data || []).forEach(function(c){ custMap[c.user_id] = c; });
@@ -7848,7 +8368,7 @@
         if (p.global_role === 'professional'){
           var pa = proMap[p.user_id];
           return {
-            type: 'professional', email: p.email, created_at: p.created_at,
+            userId: p.user_id, type: 'professional', email: p.email, created_at: p.created_at,
             displayName: (pa && pa.legal_name) || p.email,
             phone: pa && pa.phone, siret: pa && pa.siret
           };
@@ -7856,7 +8376,7 @@
         var cp = custMap[p.user_id];
         var fullName = cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : '';
         return {
-          type: 'customer', email: p.email, created_at: p.created_at,
+          userId: p.user_id, type: 'customer', email: p.email, created_at: p.created_at,
           displayName: fullName || p.email,
           phone: cp && cp.phone
         };
@@ -7868,12 +8388,29 @@
   var adminAccountsFiltersEl = document.getElementById('adminAccountsFilters');
   if (adminAccountsFiltersEl){
     adminAccountsFiltersEl.addEventListener('click', function(e){
-      var btn = e.target.closest('[data-admin-account-filter]');
+      var btn = e.target.closest('[data-admin-account-type]');
       if (!btn) return;
-      adminAccountFilter = btn.getAttribute('data-admin-account-filter');
-      Array.prototype.forEach.call(adminAccountsFiltersEl.querySelectorAll('[data-admin-account-filter]'), function(b){
+      adminAccountType = btn.getAttribute('data-admin-account-type');
+      Array.prototype.forEach.call(adminAccountsFiltersEl.querySelectorAll('[data-admin-account-type]'), function(b){
         b.classList.toggle('is-active', b === btn);
       });
+      admRenderAccounts();
+    });
+  }
+  var adminAccountsSearchEl = document.getElementById('adminAccountsSearch');
+  if (adminAccountsSearchEl){
+    adminAccountsSearchEl.addEventListener('input', function(){
+      adminAccountSearch = adminAccountsSearchEl.value;
+      admRenderAccounts();
+    });
+  }
+  var adminAccountsListEl = document.getElementById('adminAccountsList');
+  if (adminAccountsListEl){
+    adminAccountsListEl.addEventListener('click', function(e){
+      var row = e.target.closest('.admin-account-row');
+      if (!row) return;
+      var uid = row.getAttribute('data-user-id');
+      adminAccountExpandedId = (adminAccountExpandedId === uid) ? null : uid;
       admRenderAccounts();
     });
   }
@@ -7898,17 +8435,36 @@
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
     admUpdatePendingCount();
-    var rows = admFilterBookings(adminBookingsCache.rows, adminFilter);
-    // Les demandes en attente remontent en premier (période conservée par
-    // ailleurs) : ce sont celles qui demandent une action, jamais enfouies
-    // sous des rendez-vous déjà confirmés/traités.
-    rows = rows.slice().sort(function(a, b){
-      var pa = a.status === 'PENDING' ? 0 : 1;
-      var pb = b.status === 'PENDING' ? 0 : 1;
-      return pa - pb;
+    // Les rendez-vous annulés/refusés (status='CANCELLED') sont exclus de la
+    // liste principale — jamais supprimés de Supabase, juste filtrés ici —
+    // et ne réapparaissent que dans l'Historique (adminBkShowHistory), qui
+    // montre alors UNIQUEMENT ceux-là, toutes périodes confondues.
+    var scoped = adminBookingsCache.rows.filter(function(b){
+      return adminBkShowHistory ? b.status === 'CANCELLED' : b.status !== 'CANCELLED';
     });
+    var rows = adminBkShowHistory ? scoped.slice() : admFilterBookings(scoped, adminFilter);
+    if (adminBkShowHistory){
+      // Historique : plus récent en premier, indépendamment du filtre de
+      // période (masqué dans ce mode, voir admRenderBkArea).
+      rows.sort(function(a, b){
+        var da = new Date(a.date + 'T' + (a.start_time || '00:00'));
+        var db = new Date(b.date + 'T' + (b.start_time || '00:00'));
+        return db.getTime() - da.getTime();
+      });
+    } else {
+      // Les demandes en attente remontent en premier (période conservée par
+      // ailleurs) : ce sont celles qui demandent une action, jamais enfouies
+      // sous des rendez-vous déjà confirmés/traités.
+      rows.sort(function(a, b){
+        var pa = a.status === 'PENDING' ? 0 : 1;
+        var pb = b.status === 'PENDING' ? 0 : 1;
+        return pa - pb;
+      });
+    }
     if (!rows.length){
-      listEl.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
+      listEl.innerHTML = adminBkShowHistory
+        ? '<div class="ec-empty"><strong>Aucun historique</strong>Aucun rendez-vous annulé ni devis refusé.</div>'
+        : '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
       return;
     }
     var html = '<div class="ec-list">';
@@ -7972,7 +8528,7 @@
     var listEl = document.getElementById('adminBkList');
     if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
     sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
       .order('date', { ascending:true })
       .order('start_time', { ascending:true })
       .limit(500)
@@ -8008,7 +8564,11 @@
         if (!custIds.length){
           loadEmails().then(function(emails){
             adminBookingsCache = { rows: rows, profiles: {}, emails: emails };
-            admRenderList();
+            admRenderBkArea();
+            admRenderRecentRequests();
+            admHandleDeepLink();
+            admRenderDashboardStats();
+            admRenderQuotesPage();
           });
           return;
         }
@@ -8032,7 +8592,11 @@
             map[r.user_id].email = r.email;
           });
           adminBookingsCache = { rows: rows, profiles: map, emails: emails };
-          admRenderList();
+          admRenderBkArea();
+          admRenderRecentRequests();
+          admHandleDeepLink();
+          admRenderDashboardStats();
+          admRenderQuotesPage();
         });
       });
   }
@@ -8059,7 +8623,9 @@
       if (res.error){ window.alert('Impossible de mettre à jour ce rendez-vous.'); return; }
       var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
       if (row) row.status = newStatus;
-      admRenderList();
+      admRenderBkArea();
+      admRenderDashboardStats();
+      admRenderQuotesPage();
     });
   }
 
@@ -8188,14 +8754,684 @@
     });
   }
 
+  // ---------- Planning hebdomadaire (vue par défaut de "Tous les
+  // rendez-vous") ----------
+  // Ne relit jamais Supabase directement : travaille uniquement sur
+  // adminBookingsCache.rows, déjà chargé par admLoadBookings() — mêmes
+  // données réelles que la Liste, juste une autre présentation. N'affiche
+  // que les rendez-vous status='CONFIRMED' (les demandes en attente et
+  // l'historique des annulés/refusés restent dans la Liste/l'Historique,
+  // voir admRenderList).
+  var ADMIN_PLANNING_DAY_NAMES = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  var ADMIN_PLANNING_MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  var ADMIN_PLANNING_START_HOUR = 7;
+  var ADMIN_PLANNING_END_HOUR = 20;
+  var ADMIN_PLANNING_HOUR_PX = 60;
+  var adminPlanningWeekStart = admMondayOf(new Date());
+
+  function admPad2(n){ return (n < 10 ? '0' : '') + n; }
+  function admMondayOf(d){
+    var date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var day = date.getDay();
+    var diff = (day === 0 ? -6 : 1 - day);
+    date.setDate(date.getDate() + diff);
+    return date;
+  }
+  function admAddDays(d, n){
+    var date = new Date(d.getTime());
+    date.setDate(date.getDate() + n);
+    return date;
+  }
+  function admIsoDate(d){
+    return d.getFullYear() + '-' + admPad2(d.getMonth() + 1) + '-' + admPad2(d.getDate());
+  }
+  function admTimeToMinutes(t){
+    if (!t) return 0;
+    var p = String(t).split(':');
+    return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+  }
+  function admWeekLabel(weekStart){
+    var weekEnd = admAddDays(weekStart, 6);
+    var sameMonth = weekStart.getMonth() === weekEnd.getMonth() && weekStart.getFullYear() === weekEnd.getFullYear();
+    if (sameMonth){
+      return weekStart.getDate() + ' – ' + weekEnd.getDate() + ' ' + ADMIN_PLANNING_MONTH_NAMES[weekStart.getMonth()] + ' ' + weekStart.getFullYear();
+    }
+    return weekStart.getDate() + ' ' + ADMIN_PLANNING_MONTH_NAMES[weekStart.getMonth()] + ' – ' +
+      weekEnd.getDate() + ' ' + ADMIN_PLANNING_MONTH_NAMES[weekEnd.getMonth()] + ' ' + weekEnd.getFullYear();
+  }
+  function admPlanningRowsForWeek(weekStart){
+    if (!adminBookingsCache) return [];
+    var isoStart = admIsoDate(weekStart);
+    var isoEnd = admIsoDate(admAddDays(weekStart, 6));
+    return adminBookingsCache.rows.filter(function(b){
+      return b.status === 'CONFIRMED' && b.date >= isoStart && b.date <= isoEnd;
+    });
+  }
+  // Le rayon horaire 7h-20h (spec) ne doit jamais faire disparaître un
+  // rendez-vous réel confirmé en dehors de cette plage : on l'élargit au
+  // besoin pour la semaine affichée, sans jamais rogner une donnée réelle.
+  function admPlanningHourBounds(rows){
+    var startHour = ADMIN_PLANNING_START_HOUR, endHour = ADMIN_PLANNING_END_HOUR;
+    rows.forEach(function(b){
+      var startMin = admTimeToMinutes(b.start_time);
+      var duration = b.service_duration_minutes || 60;
+      var bStartHour = Math.floor(startMin / 60);
+      var bEndHour = Math.ceil((startMin + duration) / 60);
+      if (bStartHour < startHour) startHour = bStartHour;
+      if (bEndHour > endHour) endHour = bEndHour;
+    });
+    return { start: startHour, end: endHour };
+  }
+
+  function admRenderPlanning(){
+    var container = document.getElementById('adminBkPlanning');
+    if (!container) return;
+    var labelEl = document.getElementById('adminBkPlanningLabel');
+    if (labelEl) labelEl.textContent = admWeekLabel(adminPlanningWeekStart);
+    if (!adminBookingsCache){
+      container.innerHTML = '<p class="ec-loading">Chargement…</p>';
+      return;
+    }
+
+    var rows = admPlanningRowsForWeek(adminPlanningWeekStart);
+    var bounds = admPlanningHourBounds(rows);
+    var startHour = bounds.start, endHour = bounds.end;
+    var gridHeight = (endHour - startHour) * ADMIN_PLANNING_HOUR_PX;
+    var today = new Date(); today.setHours(0,0,0,0);
+
+    var days = [];
+    var headHtml = '<div class="admin-bk-planning-corner"></div>';
+    for (var i = 0; i < 7; i++){
+      var d = admAddDays(adminPlanningWeekStart, i);
+      days.push(d);
+      var isToday = admIsoDate(d) === admIsoDate(today);
+      headHtml += '<div class="admin-bk-planning-daycol-head' + (isToday ? ' is-today' : '') + '">' +
+        '<div class="admin-bk-planning-day-name">' + ADMIN_PLANNING_DAY_NAMES[i] + '</div>' +
+        '<div class="admin-bk-planning-day-date">' + admPad2(d.getDate()) + '/' + admPad2(d.getMonth() + 1) + '</div>' +
+        '</div>';
+    }
+
+    var hourGutterHtml = '';
+    for (var h = startHour; h < endHour; h++){
+      hourGutterHtml += '<div class="admin-bk-planning-hour-label" style="height:' + ADMIN_PLANNING_HOUR_PX + 'px;"><span>' + admPad2(h) + ':00</span></div>';
+    }
+
+    var dayColsHtml = '';
+    days.forEach(function(d){
+      var isoDay = admIsoDate(d);
+      var dayRows = rows.filter(function(b){ return b.date === isoDay; });
+      var linesHtml = '';
+      for (var h2 = startHour; h2 < endHour; h2++){
+        linesHtml += '<div class="admin-bk-planning-hourline" style="height:' + ADMIN_PLANNING_HOUR_PX + 'px;"></div>';
+      }
+      var eventsHtml = '';
+      dayRows.forEach(function(b){
+        var contact = admContactFor(b, adminBookingsCache.profiles);
+        var svcName = (b.services && b.services.name) || 'Intervention';
+        var startMin = admTimeToMinutes(b.start_time);
+        var duration = b.service_duration_minutes || 60;
+        var endMin = startMin + duration;
+        var top = ((startMin - startHour * 60) / 60) * ADMIN_PLANNING_HOUR_PX;
+        var height = Math.max((duration / 60) * ADMIN_PLANNING_HOUR_PX, 24);
+        var timeLabel = admPad2(Math.floor(startMin / 60)) + ':' + admPad2(startMin % 60) + ' – ' +
+          admPad2(Math.floor(endMin / 60)) + ':' + admPad2(endMin % 60);
+        eventsHtml += '<div class="admin-bk-event" data-booking-id="' + b.id + '" style="top:' + top + 'px; height:' + height + 'px;">' +
+          '<span class="admin-bk-event-time">' + timeLabel + '</span>' +
+          '<span class="admin-bk-event-title">' + admEscape(svcName) + '</span>' +
+          '<span class="admin-bk-event-meta">' + admEscape(contact.name) + (contact.address ? ' · ' + admEscape(contact.address) : '') + '</span>' +
+          '<span class="admin-bk-event-price">' + admFmtEuros(b.total_cents) + admStatusBadgeHtml(b.status) + '</span>' +
+          '</div>';
+      });
+      dayColsHtml += '<div class="admin-bk-planning-daycol" style="height:' + gridHeight + 'px;">' + linesHtml + eventsHtml + '</div>';
+    });
+
+    container.innerHTML =
+      '<div class="admin-bk-planning-scroll"><div class="admin-bk-planning-table">' +
+        '<div class="admin-bk-planning-headrow">' + headHtml + '</div>' +
+        '<div class="admin-bk-planning-bodyrow">' +
+          '<div class="admin-bk-planning-hourgutter">' + hourGutterHtml + '</div>' +
+          dayColsHtml +
+        '</div>' +
+      '</div></div>' +
+      (rows.length ? '' : '<p class="admin-bk-planning-empty">Aucun rendez-vous confirmé pour cette semaine.</p>');
+  }
+
+  // Point d'entrée unique de (re)rendu de "Tous les rendez-vous" : bascule
+  // entre planning/liste selon adminBkViewMode et adminBkShowHistory, et
+  // appelle le rendu correspondant. Utilisé aussi bien au premier chargement
+  // qu'après tout changement de statut (admUpdateBookingStatus) — garantit
+  // que planning et liste restent toujours synchronisés avec le même cache.
+  function admRenderBkArea(){
+    var listEl = document.getElementById('adminBkList');
+    var planningEl = document.getElementById('adminBkPlanning');
+    var planningNavEl = document.getElementById('adminBkPlanningNav');
+    var periodFiltersEl = document.getElementById('adminBkFilters');
+    var historyBtn = document.getElementById('adminBkHistoryBtn');
+
+    Array.prototype.forEach.call(document.querySelectorAll('.admin-bk-view-tab'), function(btn){
+      btn.classList.toggle('is-active', !adminBkShowHistory && btn.getAttribute('data-admin-bk-view') === adminBkViewMode);
+    });
+    if (historyBtn) historyBtn.classList.toggle('is-active', adminBkShowHistory);
+
+    var showPlanning = !adminBkShowHistory && adminBkViewMode === 'planning';
+    if (planningEl) planningEl.hidden = !showPlanning;
+    if (planningNavEl) planningNavEl.hidden = !showPlanning;
+    if (listEl) listEl.hidden = showPlanning;
+    if (periodFiltersEl) periodFiltersEl.hidden = showPlanning || adminBkShowHistory;
+
+    if (showPlanning) admRenderPlanning();
+    else admRenderList();
+  }
+
+  var adminBkViewToggleEl = document.getElementById('adminBkViewToggle');
+  if (adminBkViewToggleEl){
+    adminBkViewToggleEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.admin-bk-view-tab');
+      if (!btn) return;
+      adminBkViewMode = btn.getAttribute('data-admin-bk-view');
+      adminBkShowHistory = false;
+      admRenderBkArea();
+    });
+  }
+  var adminBkHistoryBtnEl = document.getElementById('adminBkHistoryBtn');
+  if (adminBkHistoryBtnEl){
+    adminBkHistoryBtnEl.addEventListener('click', function(){
+      adminBkShowHistory = !adminBkShowHistory;
+      admRenderBkArea();
+    });
+  }
+  var adminBkPlanningNavEl = document.getElementById('adminBkPlanningNav');
+  if (adminBkPlanningNavEl){
+    adminBkPlanningNavEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-admin-planning-nav]');
+      if (!btn) return;
+      var action = btn.getAttribute('data-admin-planning-nav');
+      if (action === 'prev') adminPlanningWeekStart = admAddDays(adminPlanningWeekStart, -7);
+      else if (action === 'next') adminPlanningWeekStart = admAddDays(adminPlanningWeekStart, 7);
+      else adminPlanningWeekStart = admMondayOf(new Date());
+      admRenderPlanning();
+    });
+  }
+  // État initial des onglets/visibilité avant tout chargement de données
+  // (admLoadBookings appelle admRenderBkArea() une fois les données prêtes).
+  admRenderBkArea();
+
+  // ---------- Fiche détaillée d'un rendez-vous (clic sur un bloc du
+  // planning) ----------
+  function admOpenBookingModal(id){
+    if (!adminBookingsCache) return;
+    var b = adminBookingsCache.rows.filter(function(x){ return x.id === id; })[0];
+    if (!b) return;
+    var contact = admContactFor(b, adminBookingsCache.profiles);
+    var svcName = (b.services && b.services.name) || 'Intervention';
+    var overlay = document.getElementById('adminBkModalOverlay');
+    var body = document.getElementById('adminBkModalBody');
+    if (!overlay || !body) return;
+
+    var statusOptions = [['CONFIRMED','Confirmé'], ['COMPLETED','Terminé'], ['CANCELLED','Annulé']];
+    var optionsHtml = statusOptions.map(function(o){
+      return '<option value="' + o[0] + '"' + (o[0] === b.status ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('');
+    if (!statusOptions.some(function(o){ return o[0] === b.status; })){
+      optionsHtml += '<option value="' + admEscape(b.status) + '" selected>' + admEscape(b.status) + '</option>';
+    }
+
+    body.innerHTML =
+      '<h3 class="admin-bk-modal-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</h3>' +
+      '<p class="admin-bk-modal-ref">Réf. ' + admEscape(b.reference) + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</p>' +
+      '<div class="admin-bk-modal-rows">' +
+        (contact.phone ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Téléphone</span><span>📞 ' + admEscape(contact.phone) + '</span></div>' : '') +
+        (contact.email ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">E-mail</span><span>✉️ ' + admEscape(contact.email) + '</span></div>' : '') +
+        (contact.address ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Adresse</span><span>📍 ' + admEscape(contact.address) + '</span></div>' : '') +
+        '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prestation</span><span>' + admEscape(svcName) + '</span></div>' +
+        '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prix</span><span>' + admFmtEuros(b.service_price_cents) +
+          (b.travel_fee_cents > 0 ? ' + ' + admFmtEuros(b.travel_fee_cents) + ' déplacement' : '') + ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span></div>' +
+      '</div>' +
+      (b.notes ? '<p class="admin-bk-modal-note">💬 ' + admEscape(b.notes) + '</p>' : '') +
+      '<div class="admin-bk-modal-status-row">' +
+        '<label for="adminBkModalStatusSelect">Statut</label>' +
+        '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
+      '</div>';
+
+    overlay.hidden = false;
+  }
+  function admCloseBookingModal(){
+    var overlay = document.getElementById('adminBkModalOverlay');
+    if (overlay) overlay.hidden = true;
+  }
+  var adminBkPlanningEl = document.getElementById('adminBkPlanning');
+  if (adminBkPlanningEl){
+    adminBkPlanningEl.addEventListener('click', function(e){
+      var ev = e.target.closest('.admin-bk-event');
+      if (!ev) return;
+      admOpenBookingModal(ev.getAttribute('data-booking-id'));
+    });
+  }
+  var adminBkModalOverlayEl = document.getElementById('adminBkModalOverlay');
+  if (adminBkModalOverlayEl){
+    adminBkModalOverlayEl.addEventListener('click', function(e){
+      if (e.target === adminBkModalOverlayEl) admCloseBookingModal();
+    });
+    adminBkModalOverlayEl.addEventListener('change', function(e){
+      var sel = e.target.closest('#adminBkModalStatusSelect');
+      if (!sel) return;
+      var id = sel.getAttribute('data-booking-id');
+      sel.disabled = true;
+      admUpdateBookingStatus(id, sel.value, function(err){
+        if (!err) admCloseBookingModal();
+        else sel.disabled = false;
+      });
+    });
+  }
+  var adminBkModalCloseEl = document.getElementById('adminBkModalClose');
+  if (adminBkModalCloseEl){
+    adminBkModalCloseEl.addEventListener('click', admCloseBookingModal);
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    var overlay = document.getElementById('adminBkModalOverlay');
+    if (overlay && !overlay.hidden) admCloseBookingModal();
+  });
+
+  // ---------- Demandes récentes (lu/non lu) ----------
+  // Ne relit jamais Supabase séparément : travaille sur adminBookingsCache.
+  // rows, déjà chargé par admLoadBookings() (même source que Planning/Liste,
+  // juste étendue de created_at + admin_viewed_at) — jamais de données
+  // fictives, toujours les vraies réservations. N'affecte ni ne dépend du
+  // rendu du planning (admRenderPlanning), qui reste inchangé.
+  var adminReqFilter = 'new';
+  var adminDeepLinkHandled = false;
+
+  function admFmtDateTime(iso){
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return admPad2(d.getDate()) + '/' + admPad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' à ' + admPad2(d.getHours()) + ':' + admPad2(d.getMinutes());
+  }
+
+  function admUpdateReqBadge(){
+    var badge = document.getElementById('adminReqBadge');
+    var sidebarBadge = document.getElementById('admSidebarReqBadge');
+    if (!adminBookingsCache) return;
+    var count = adminBookingsCache.rows.filter(function(b){ return !b.admin_viewed_at; }).length;
+    [badge, sidebarBadge].forEach(function(el){
+      if (!el) return;
+      if (count > 0){
+        el.hidden = false;
+        el.textContent = String(count);
+      } else {
+        el.hidden = true;
+      }
+    });
+  }
+
+  function admRenderRecentRequests(){
+    var listEl = document.getElementById('adminReqList');
+    if (!listEl || !adminBookingsCache) return;
+    admUpdateReqBadge();
+    var rows = adminBookingsCache.rows.slice().sort(function(a, b){
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    if (adminReqFilter === 'new') rows = rows.filter(function(b){ return !b.admin_viewed_at; });
+    if (!rows.length){
+      listEl.innerHTML = adminReqFilter === 'new'
+        ? '<div class="ec-empty"><strong>Aucune nouvelle demande</strong>Toutes les demandes ont été consultées.</div>'
+        : '<div class="ec-empty"><strong>Aucune demande</strong>Aucune réservation enregistrée pour le moment.</div>';
+      return;
+    }
+    var html = '<div class="ec-list">';
+    rows.forEach(function(b){
+      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var isNew = !b.admin_viewed_at;
+      html += '<div class="ec-row admin-req-row' + (isNew ? ' admin-req-row-new' : '') + '" data-booking-id="' + b.id + '">' +
+        '<div class="ec-row-info">' +
+          '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) +
+            (isNew ? ' <span class="ec-badge admin-req-new-badge">Nouveau</span>' : '') + '</span>' +
+          '<span class="ec-row-meta">📥 Demande reçue le ' + admFmtDateTime(b.created_at) + '</span>' +
+          '<span class="ec-row-meta">📅 Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+          (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
+          (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
+          (contact.email ? '<span class="ec-row-meta">✉️ ' + admEscape(contact.email) + '</span>' : '') +
+          '<span class="ec-row-meta">💶 Prix estimé : ' + admFmtEuros(b.total_cents) + '</span>' +
+          '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  // État optimiste (badge/liste mis à jour avant la réponse serveur) : un
+  // clic doit se sentir immédiat. Annulé si l'update Supabase échoue.
+  function admMarkRequestViewed(id){
+    if (!adminBookingsCache) return;
+    var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+    if (!row || row.admin_viewed_at) return;
+    row.admin_viewed_at = new Date().toISOString();
+    admRenderRecentRequests();
+    sb.client.from('bookings').update({ admin_viewed_at: row.admin_viewed_at }).eq('id', id).then(function(res){
+      if (res.error){
+        row.admin_viewed_at = null;
+        admRenderRecentRequests();
+      }
+    });
+  }
+
+  var adminReqListEl = document.getElementById('adminReqList');
+  if (adminReqListEl){
+    adminReqListEl.addEventListener('click', function(e){
+      var row = e.target.closest('.admin-req-row');
+      if (!row) return;
+      admMarkRequestViewed(row.getAttribute('data-booking-id'));
+    });
+  }
+  var adminReqFiltersEl = document.getElementById('adminReqFilters');
+  if (adminReqFiltersEl){
+    adminReqFiltersEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-admin-req-filter]');
+      if (!btn) return;
+      adminReqFilter = btn.getAttribute('data-admin-req-filter');
+      Array.prototype.forEach.call(adminReqFiltersEl.querySelectorAll('[data-admin-req-filter]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      admRenderRecentRequests();
+    });
+  }
+
+  // Ouverture directe sur la demande concernée depuis une notification push
+  // (lien "?booking=<id>", voir le bloc push de notify-admin-booking) :
+  // fonctionne aussi si l'admin doit d'abord se connecter, car le paramètre
+  // reste dans l'URL jusqu'au premier admLoadBookings() réussi après coup.
+  function admHandleDeepLink(){
+    if (adminDeepLinkHandled || !adminBookingsCache) return;
+    var params = new URLSearchParams(window.location.search);
+    var bookingId = params.get('booking');
+    if (!bookingId) return;
+    var exists = adminBookingsCache.rows.some(function(b){ return b.id === bookingId; });
+    if (!exists) return;
+    adminDeepLinkHandled = true;
+    admMarkRequestViewed(bookingId);
+    adminReqFilter = 'all';
+    if (adminReqFiltersEl){
+      Array.prototype.forEach.call(adminReqFiltersEl.querySelectorAll('[data-admin-req-filter]'), function(b){
+        b.classList.toggle('is-active', b.getAttribute('data-admin-req-filter') === 'all');
+      });
+    }
+    admRenderRecentRequests();
+    setTimeout(function(){
+      var target = document.querySelector('.admin-req-row[data-booking-id="' + bookingId + '"]');
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('admin-req-row-highlight');
+      setTimeout(function(){ target.classList.remove('admin-req-row-highlight'); }, 2600);
+    }, 60);
+  }
+
+  // ---------- Notifications push (vraies Web Push Notifications) ----------
+  // Service Worker (sw.js, enregistré au chargement de la page, voir tout en
+  // haut du fichier) + Push API/Notifications API + abonnement stocké dans
+  // admin_push_subscriptions (RLS : chaque admin ne gère que ses propres
+  // lignes, voir 0012_admin_requests_and_push.sql). Aucune clé privée ici :
+  // seule la clé PUBLIQUE VAPID (window.sudVapidPublicKey, servie par
+  // get-public-config) est utilisée côté navigateur — l'envoi effectif se
+  // fait côté serveur (notify-admin-booking) avec la clé privée, jamais
+  // exposée au frontend.
+  function admUrlBase64ToUint8Array(base64String){
+    var padding = new Array(((4 - base64String.length % 4) % 4) + 1).join('=');
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var rawData = window.atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+  function admIsIOS(){
+    return /iP(hone|od|ad)/.test(navigator.userAgent) && !window.MSStream;
+  }
+  function admIsStandalone(){
+    return window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }
+  function admPushSupported(){
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  }
+
+  function admRefreshPushUI(){
+    var btn = document.getElementById('adminPushToggleBtn');
+    var statusEl = document.getElementById('adminPushStatus');
+    var iosNote = document.getElementById('adminPushIosNote');
+    var unsupportedNote = document.getElementById('adminPushUnsupportedNote');
+    if (!btn || !statusEl) return;
+
+    if (admIsIOS() && !admIsStandalone()){
+      btn.hidden = true;
+      if (iosNote) iosNote.hidden = false;
+      if (unsupportedNote) unsupportedNote.hidden = true;
+      statusEl.textContent = 'Désactivées';
+      statusEl.className = 'admin-push-status is-off';
+      return;
+    }
+    if (iosNote) iosNote.hidden = true;
+
+    if (!admPushSupported()){
+      btn.hidden = true;
+      if (unsupportedNote) unsupportedNote.hidden = false;
+      statusEl.textContent = 'Non disponible sur ce navigateur';
+      statusEl.className = 'admin-push-status is-off';
+      return;
+    }
+    if (unsupportedNote) unsupportedNote.hidden = true;
+    btn.hidden = false;
+    btn.disabled = false;
+
+    if (Notification.permission === 'denied'){
+      btn.disabled = true;
+      btn.textContent = 'Notifications bloquées par le navigateur';
+      statusEl.textContent = 'Désactivées (bloquées)';
+      statusEl.className = 'admin-push-status is-off';
+      return;
+    }
+
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      if (sub){
+        btn.textContent = '🔕 Désactiver les notifications';
+        statusEl.textContent = 'Activées';
+        statusEl.className = 'admin-push-status is-on';
+      } else {
+        btn.textContent = '🔔 Activer les notifications';
+        statusEl.textContent = 'Désactivées';
+        statusEl.className = 'admin-push-status is-off';
+      }
+    }).catch(function(){});
+  }
+
+  function admEnablePush(){
+    var btn = document.getElementById('adminPushToggleBtn');
+    var statusEl = document.getElementById('adminPushStatus');
+    if (!window.sudVapidPublicKey){
+      if (statusEl){ statusEl.textContent = 'Configuration indisponible, réessayez plus tard.'; statusEl.className = 'admin-push-status is-off'; }
+      return;
+    }
+    if (btn) btn.disabled = true;
+    Notification.requestPermission().then(function(perm){
+      if (perm !== 'granted'){ var e = new Error('permission-denied'); throw e; }
+      return navigator.serviceWorker.ready;
+    }).then(function(reg){
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: admUrlBase64ToUint8Array(window.sudVapidPublicKey)
+      });
+    }).then(function(sub){
+      var json = sub.toJSON();
+      return sb.client.auth.getUser().then(function(userRes){
+        var uid = userRes && userRes.data && userRes.data.user && userRes.data.user.id;
+        if (!uid){ var e = new Error('no-user'); throw e; }
+        return sb.client.from('admin_push_subscriptions').upsert({
+          user_id: uid,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth_key: json.keys.auth,
+          enabled: true,
+          user_agent: navigator.userAgent
+        }, { onConflict: 'endpoint' });
+      });
+    }).then(function(){
+      admRefreshPushUI();
+    }).catch(function(){
+      admRefreshPushUI();
+    });
+  }
+
+  function admDisablePush(){
+    var btn = document.getElementById('adminPushToggleBtn');
+    if (btn) btn.disabled = true;
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      if (!sub) return null;
+      var endpoint = sub.endpoint;
+      return sub.unsubscribe().then(function(){
+        return sb.client.from('admin_push_subscriptions').update({ enabled: false }).eq('endpoint', endpoint);
+      });
+    }).then(function(){
+      admRefreshPushUI();
+    }).catch(function(){
+      admRefreshPushUI();
+    });
+  }
+
+  var adminPushToggleBtnEl = document.getElementById('adminPushToggleBtn');
+  if (adminPushToggleBtnEl){
+    adminPushToggleBtnEl.addEventListener('click', function(){
+      if (adminPushToggleBtnEl.textContent.indexOf('Désactiver') !== -1) admDisablePush();
+      else admEnablePush();
+    });
+  }
+
+  // ---------- Refonte visuelle : navigation par pages (sidebar) ----------
+  // Purement présentation : bascule [hidden] sur les .adm-page existantes,
+  // aucune des sections qu'elles contiennent n'a changé d'id/de classe ni de
+  // comportement (Planning, Demandes récentes, Inscriptions, Paramètres sont
+  // exactement les mêmes qu'avant, seulement déplacées dans cette coquille).
+  function admStatusBadgeHtml(status){
+    var map = {
+      CONFIRMED: ['adm-badge-confirmed', 'Confirmé'],
+      PENDING: ['adm-badge-pending', 'En attente'],
+      COMPLETED: ['adm-badge-completed', 'Terminé'],
+      CANCELLED: ['adm-badge-cancelled', 'Annulé']
+    };
+    var conf = map[status];
+    if (!conf) return '';
+    return ' <span class="adm-badge ' + conf[0] + '">' + conf[1] + '</span>';
+  }
+
+  function admShowPage(key){
+    Array.prototype.forEach.call(document.querySelectorAll('.adm-page'), function(sec){
+      sec.hidden = sec.getAttribute('data-adm-page') !== key;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.adm-nav-btn'), function(btn){
+      var active = btn.getAttribute('data-adm-page') === key;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+  var admSidebarNavEl = document.getElementById('admSidebarNav');
+  if (admSidebarNavEl){
+    admSidebarNavEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.adm-nav-btn');
+      if (!btn) return;
+      admShowPage(btn.getAttribute('data-adm-page'));
+    });
+  }
+  // Raccourcis "Ouvrir le planning" / "Voir les dernières demandes" du
+  // Tableau de bord — mêmes cibles que la sidebar, juste un autre point
+  // d'entrée.
+  document.addEventListener('click', function(e){
+    var goto = e.target.closest('[data-adm-goto]');
+    if (!goto) return;
+    admShowPage(goto.getAttribute('data-adm-goto'));
+  });
+
+  // ---------- Tableau de bord : cartes compactes ----------
+  // Aucune nouvelle requête Supabase : uniquement des dérivés calculés sur
+  // adminBookingsCache.rows, déjà chargé par admLoadBookings() (même donnée
+  // réelle que Planning/Liste/Demandes récentes/Devis).
+  function admIsQuoteBooking(b){
+    var name = (b.services && b.services.name) || '';
+    return name.toLowerCase().indexOf('devis') !== -1;
+  }
+  function admRenderDashboardStats(){
+    if (!adminBookingsCache) return;
+    var todayIso = admIsoDate(new Date());
+    var weekStart = admMondayOf(new Date());
+    var weekEnd = admAddDays(weekStart, 6);
+    var isoWeekStart = admIsoDate(weekStart), isoWeekEnd = admIsoDate(weekEnd);
+    var rows = adminBookingsCache.rows.filter(function(b){ return b.status !== 'CANCELLED'; });
+
+    var todayCount = rows.filter(function(b){ return b.date === todayIso; }).length;
+    var weekCount = rows.filter(function(b){ return b.date >= isoWeekStart && b.date <= isoWeekEnd; }).length;
+    var newCount = adminBookingsCache.rows.filter(function(b){ return !b.admin_viewed_at; }).length;
+    var quotesPendingCount = adminBookingsCache.rows.filter(function(b){
+      return admIsQuoteBooking(b) && b.status === 'PENDING';
+    }).length;
+
+    var elToday = document.getElementById('admStatToday');
+    var elNew = document.getElementById('admStatNew');
+    var elWeek = document.getElementById('admStatWeek');
+    var elQuotes = document.getElementById('admStatQuotes');
+    if (elToday) elToday.textContent = String(todayCount);
+    if (elNew) elNew.textContent = String(newCount);
+    if (elWeek) elWeek.textContent = String(weekCount);
+    if (elQuotes) elQuotes.textContent = String(quotesPendingCount);
+  }
+
+  // ---------- Devis : liste en lecture, réutilise la fiche détaillée du
+  // planning (admOpenBookingModal) pour ouvrir/modifier un devis — aucune
+  // nouvelle écriture Supabase, aucun nouveau composant de fiche. ----------
+  function admRenderQuotesPage(){
+    var listEl = document.getElementById('adminQuotesList');
+    if (!listEl || !adminBookingsCache) return;
+    var rows = adminBookingsCache.rows.filter(admIsQuoteBooking).slice().sort(function(a, b){
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    if (!rows.length){
+      listEl.innerHTML = '<p class="admin-accounts-hint">Aucune demande de devis pour le moment.</p>';
+      return;
+    }
+    var html = '<div class="admin-accounts-list">';
+    rows.forEach(function(b){
+      var contact = admContactFor(b, adminBookingsCache.profiles);
+      html += '<div class="admin-account-row" data-booking-id="' + b.id + '">' +
+        '<div class="admin-account-row-summary">' +
+          '<span class="admin-account-row-name">' + admEscape(contact.name) + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admFmtDate(b.date) + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(b.reference) + '</span>' +
+          admStatusBadgeHtml(b.status) +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+  var adminQuotesListEl = document.getElementById('adminQuotesList');
+  if (adminQuotesListEl){
+    adminQuotesListEl.addEventListener('click', function(e){
+      var row = e.target.closest('.admin-account-row');
+      if (!row) return;
+      admOpenBookingModal(row.getAttribute('data-booking-id'));
+    });
+  }
+
   function initAdminPanel(role){
     var panel = document.getElementById('espaceProAdminPanel');
     if (!panel) return;
     if (role === 'admin'){
       panel.hidden = false;
+      admShowPage('dashboard');
       admLoadAccounts();
       admLoadBookings();
       admLoadTravelSettings();
+      admRefreshPushUI();
     } else {
       panel.hidden = true;
     }

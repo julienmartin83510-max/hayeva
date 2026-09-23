@@ -31,17 +31,19 @@
 // tentatives de re-livraison du webhook, et on journalise l'erreur (console
 // Supabase > Edge Functions > Logs) pour pouvoir la diagnostiquer.
 //
-// FUTUR : notification push HAYEVA (iPhone/PWA). Ce fichier est structuré
-// pour que l'ajout futur d'un second canal soit un ajout, pas une reprise :
-// une fois les infos de réservation résolues (contactName, categoryLabel,
-// prestationLabel, date, heure...), il suffira d'ajouter un second bloc
-// d'envoi (ex. Web Push / APNs via un service tiers) juste après l'appel
-// Resend ci-dessous, avec ses propres secrets. Rien n'est mis en place
-// maintenant : ça demande de choisir un service tiers (Web Push nécessite
-// des clés VAPID, APNs un certificat Apple Developer), une décision à
-// prendre explicitement avant d'y toucher.
+// NOTIFICATION PUSH (Web Push réelle, PWA/iPhone/Android) : ajoutée comme
+// second canal, juste après l'appel Resend ci-dessous, en réutilisant les
+// mêmes infos de réservation déjà résolues (contactName, categoryLabel,
+// prestationLabel, date, heure, adresse, prix). Lit admin_push_subscriptions
+// (service_role, bypass RLS comme le reste de cette fonction) et envoie via
+// web-push (VAPID) — jamais bloquant : toute erreur y reste locale à son
+// propre bloc try/catch, sans jamais affecter l'e-mail déjà envoyé ni la
+// réponse 200 de cette fonction. VAPID_PRIVATE_KEY n'est lue qu'ici, jamais
+// exposée au frontend (qui ne connaît que VAPID_PUBLIC_KEY, servie par
+// get-public-config).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -89,9 +91,13 @@ Deno.serve(async (req: Request) => {
     }
     const booking = payload.record;
 
+    // Ni l'e-mail ni le push ne sont plus une condition d'arrêt l'un pour
+    // l'autre (avant : un RESEND_API_KEY/ADMIN_NOTIFICATION_EMAIL manquant
+    // coupait TOUTE la fonction avant même d'atteindre le bloc push
+    // ci-dessous) — chaque canal vérifie désormais sa propre config et
+    // s'ignore silencieusement si elle manque, sans empêcher l'autre.
     if (!RESEND_API_KEY || !ADMIN_EMAIL) {
-      console.error('notify-admin-booking: RESEND_API_KEY ou ADMIN_NOTIFICATION_EMAIL manquant — notification ignorée, réservation non affectée.');
-      return new Response('missing config', { status: 200 });
+      console.error('notify-admin-booking: RESEND_API_KEY ou ADMIN_NOTIFICATION_EMAIL manquant — e-mail admin ignoré (le push, ci-dessous, reste tenté).');
     }
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -186,22 +192,91 @@ Deno.serve(async (req: Request) => {
       </div>
     `;
 
-    const emailRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [ADMIN_EMAIL],
-        subject,
-        html,
-      }),
-    });
+    if (RESEND_API_KEY && ADMIN_EMAIL) {
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: [ADMIN_EMAIL],
+          subject,
+          html,
+        }),
+      });
 
-    if (!emailRes.ok) {
-      console.error('notify-admin-booking: échec envoi Resend', emailRes.status, await emailRes.text());
+      if (!emailRes.ok) {
+        console.error('notify-admin-booking: échec envoi Resend', emailRes.status, await emailRes.text());
+      }
+    }
+
+    // ---- Notification push (Web Push / PWA, Espace Administration) ----
+    // Best-effort, jamais bloquant : un échec ici (abonnement expiré, clé
+    // VAPID absente, service push indisponible...) ne doit jamais faire
+    // échouer cette fonction ni, a fortiori, la réservation déjà enregistrée
+    // en base avant que ce webhook ne se déclenche.
+    try {
+      const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
+      const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
+      const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:contact@hayeva.fr';
+
+      if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+        const { data: subs } = await supabase
+          .from('admin_push_subscriptions')
+          .select('id, endpoint, p256dh, auth_key')
+          .eq('enabled', true);
+
+        if (subs && subs.length) {
+          webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+          const priceLabel = `${((booking.total_cents || 0) / 100).toFixed(2).replace('.', ',')} €`;
+          const pushBody = [
+            `${prestationLabel} – ${priceLabel}`,
+            contactName,
+            `${fmtDate(booking.date)} à ${(booking.start_time || '').slice(0, 5)}`,
+            contactAddress || null,
+          ].filter(Boolean).join('\n');
+
+          // Le paramètre ?booking=<id> doit précéder le fragment #espacePro
+          // pour rester lisible par location.search côté navigateur (tout ce
+          // qui suit un # fait partie du fragment, jamais de la query string
+          // — ADMIN_PANEL_URL contient déjà "#espacePro" par défaut, d'où
+          // cette reconstruction plutôt qu'une simple concaténation).
+          const hashIdx = ADMIN_PANEL_URL.indexOf('#');
+          const panelBase = hashIdx === -1 ? ADMIN_PANEL_URL : ADMIN_PANEL_URL.slice(0, hashIdx);
+          const panelHash = hashIdx === -1 ? 'espacePro' : ADMIN_PANEL_URL.slice(hashIdx + 1);
+          const pushUrl = `${panelBase}?booking=${booking.id}#${panelHash}`;
+
+          const pushPayload = JSON.stringify({
+            title: '🔔 Nouvelle réservation HAYEVA',
+            body: pushBody,
+            bookingId: booking.id,
+            url: pushUrl,
+          });
+
+          await Promise.all(subs.map(async (sub: { id: string; endpoint: string; p256dh: string; auth_key: string }) => {
+            try {
+              await webpush.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
+                pushPayload,
+              );
+            } catch (pushErr: unknown) {
+              const statusCode = (pushErr as { statusCode?: number })?.statusCode;
+              console.error('notify-admin-booking: échec envoi push', sub.id, statusCode);
+              // Abonnement expiré/révoqué (410 Gone / 404) : désactivé pour ne
+              // plus retenter indéfiniment un envoi voué à échouer à chaque
+              // future réservation.
+              if (statusCode === 404 || statusCode === 410) {
+                await supabase.from('admin_push_subscriptions').update({ enabled: false }).eq('id', sub.id);
+              }
+            }
+          }));
+        }
+      }
+    } catch (pushBlockErr) {
+      console.error('notify-admin-booking: bloc notification push — erreur inattendue', pushBlockErr);
     }
 
     return new Response('ok', { status: 200 });
