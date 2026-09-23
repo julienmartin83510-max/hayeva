@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HAYEVA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -109,25 +110,17 @@
     --sky-accent-soft:#D6ECF7;
     color-scheme: light;
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --sand:#264056;
-      --sand-deep:#2F4C64;
-      --cream:#365A76;
-      --terracotta:#7EB1DD;
-      --terracotta-deep:#A0C8E8;
-      --sky:#9FC2E2;
-      --sky-deep:#8AB4D9;
-      --ink:#F8F3E9;
-      --ink-soft:#D3DEE8;
-      --line:rgba(248,243,233,0.16);
-      --white:#16283A;
-      --cat-chauffage:#E8927C;
-      --cat-plomberie:#6FB2E0;
-      --cat-clim-a:#A9D8ED;
-      --cat-clim-b:#6FB8DE;
-    }
-  }
+  /* Le basculement automatique de toute la palette selon
+     prefers-color-scheme:dark (réglage sombre de l'appareil du visiteur) a
+     été retiré : aucune interface de ce site n'expose de bouton pour
+     activer un thème sombre (data-theme="dark" n'est jamais posé par du
+     JS) — ce n'était donc pas une fonctionnalité choisie par le visiteur,
+     juste une fuite du thème système qui assombrissait le fond de page et
+     les sections derrière les éléments déjà épinglés clairs (header, hero,
+     portail...), créant des bandes/zones sombres inattendues. Le site
+     reste maintenant visuellement identique quel que soit le thème de
+     l'appareil. La règle :root[data-theme="dark"] ci-dessous reste en
+     place, inerte, si un vrai bouton de thème est ajouté un jour. */
   :root[data-theme="dark"]{
     --sand:#264056;
     --sand-deep:#2F4C64;
@@ -264,9 +257,18 @@
     outline:2px solid var(--sky-deep);
     outline-offset:2px;
   }
+  /* Fond de page épinglé en blanc fixe (pas var(--sand)) : ce site n'expose
+     aucun bouton pour activer le thème sombre nulle part dans l'interface —
+     data-theme="dark" n'est jamais posé par du JS. Le seul déclencheur est
+     prefers-color-scheme:dark (réglage sombre de l'appareil du visiteur),
+     qui basculait alors tout le fond de page en bleu marine derrière les
+     sections/éléments déjà épinglés clairs (header, hero, portail...),
+     créant des bandes sombres inattendues autour d'eux plutôt qu'un vrai
+     thème sombre cohérent. Même principe que le header/hero/portail déjà
+     épinglés plus haut dans ce fichier, pour la même raison. */
   body{
     margin:0;
-    background:var(--sand);
+    background:#FFFFFF;
     color:var(--ink);
     font-family:"Poppins", system-ui, sans-serif;
     padding-inline:0;
@@ -335,10 +337,38 @@
   .headerbar{
     display:flex;
     align-items:center;
-    gap:12px;
-    padding-block:16px;
-    min-height:78px;
+    flex-wrap:nowrap;
+    gap:clamp(4px, 1vw, 12px);
+    padding-block:clamp(10px, 1.8vw, 16px);
+    min-height:64px;
   }
+  /* ----------------------------------------------------------------
+     Logique responsive UNIQUE du header : UNE SEULE LIGNE HORIZONTALE à
+     TOUTES les largeurs, jamais de menu hamburger ni de panneau vertical
+     (voir .nav-toggle/.mobile-nav plus bas, définitivement désactivés).
+     Logo, sélecteur Particulier/Pro, liens et "Se connecter" vivent tous
+     dans .headerbar-scroll, un seul conteneur flex qui se réduit
+     progressivement via clamp() selon la largeur de viewport, et ne
+     devient horizontalement scrollable (overflow-x:auto, scrollbar
+     masquée) QUE si tout ne tient vraiment plus, même au plancher de
+     taille — sur desktop/tablette ça ne se voit jamais (mesuré à
+     1920/1440/1366/1024/768px). Seul le bouton téléphone (.call-btn)
+     reste toujours fixe/visible en dehors de cette zone scrollable
+     (peut passer en icône seule sur très petit téléphone, voir plus
+     bas), pour ne jamais prendre toute la largeur restante. */
+  .headerbar-scroll{
+    display:flex;
+    align-items:center;
+    flex-wrap:nowrap;
+    gap:clamp(4px, 1vw, 12px);
+    flex:1 1 auto;
+    min-width:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+  .headerbar-scroll::-webkit-scrollbar{ display:none; }
   .brand{
     display:flex;
     align-items:center;
@@ -346,26 +376,14 @@
   }
   .header-logo{
     display:block;
-    height:36px;
+    height:clamp(22px, 3vw, 36px);
     width:auto;
   }
-  /* ----------------------------------------------------------------
-     Logique responsive UNIQUE du header, en deux états seulement —
-     jamais d'état intermédiaire compressé :
-       1) ÉTAT COMPLET (voir --hdr-full-nav plus bas) : logo, sélecteur
-          Particulier/Pro en toutes lettres, les 9 liens, Se connecter,
-          téléphone — tous à taille confortable, fixe, jamais rétrécie.
-       2) ÉTAT COMPACT (en dessous) : logo, sélecteur en icônes seules,
-          téléphone (icône), bouton ☰ — la nav et "Se connecter" passent
-          dans le panneau qui s'ouvre au clic.
-     Le seuil (voir tout en bas du bloc header) est celui où l'état
-     complet tient réellement, mesuré dans le navigateur — jamais un
-     nombre choisi arbitrairement ni un rétrécissement forcé en dessous.
-     ---------------------------------------------------------------- */
   nav.links{
-    display:none;
+    display:flex;
+    flex-wrap:nowrap;
     align-items:center;
-    gap:7px;
+    gap:clamp(2px, 0.9vw, 7px);
     flex:none;
   }
   nav.links a{
@@ -377,10 +395,10 @@
     color:var(--hdr-navy-soft);
     font-family:"Poppins", "Outfit", sans-serif;
     font-weight:500;
-    font-size:0.88rem;
+    font-size:clamp(0.6rem, 0.82vw, 0.88rem);
     letter-spacing:0.01em;
     line-height:1.2;
-    padding:8px 1px;
+    padding:8px clamp(1px, 0.4vw, 6px);
     position:relative;
     transition:color .2s;
   }
@@ -395,98 +413,72 @@
   .call-btn{
     display:inline-flex;
     align-items:center;
-    gap:7px;
+    gap:clamp(4px, 0.6vw, 7px);
     background:linear-gradient(135deg, var(--hdr-blue) 0%, var(--hdr-blue-deep) 100%);
     color:#fff;
     font-weight:700;
-    font-size:0.8rem;
+    font-size:clamp(0.66rem, 0.7vw, 0.8rem);
     letter-spacing:0.02em;
     text-decoration:none;
-    padding:9px 12px;
+    padding:clamp(6px, 1.2vw, 9px) clamp(6px, 1.4vw, 12px);
     border-radius:999px;
     white-space:nowrap;
     box-shadow:0 8px 18px -10px rgba(14,134,201,0.6);
     transition:transform .2s, box-shadow .2s;
     flex:none;
-    margin-left:auto;
+    margin-left:clamp(2px, 0.8vw, 12px);
   }
   .call-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 22px -8px rgba(14,134,201,0.65); }
   .call-btn svg{ flex:none; }
 
-  .nav-toggle{
-    display:inline-flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    gap:5px;
-    width:40px;
-    height:40px;
-    flex:none;
-    background:transparent;
-    border:1.5px solid var(--hdr-line);
-    border-radius:8px;
-    cursor:pointer;
-    padding:0;
-    margin-left:auto;
-  }
-  .nav-toggle span{
-    display:block;
-    width:18px;
-    height:2px;
-    border-radius:2px;
-    background:var(--hdr-navy);
-    transition:transform .2s ease, opacity .2s ease;
-  }
-  .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
-  .nav-toggle[aria-expanded="true"] span:nth-child(2){ opacity:0; }
-  .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+  /* Menu hamburger / panneau mobile : gardés dans le DOM (JS de rendu
+     inchangé, inoffensif) mais définitivement désactivés visuellement, à
+     TOUTES les largeurs — demande explicite : plus jamais de bascule vers
+     un menu ☰ ni de navigation verticale, quelle que soit la largeur
+     d'écran. nav.links (ci-dessus) reste la seule navigation, toujours
+     horizontale. */
+  .nav-toggle, .mobile-nav{ display:none !important; }
 
-  .mobile-nav{
-    display:flex;
-    flex-direction:column;
-    border-top:1px solid var(--hdr-line);
-    background:var(--hdr-bg);
-    padding:8px 24px 18px;
+  /* Resserrement supplémentaire ≤1365px : au-delà de ce seuil (1366-1920px,
+     mesuré réellement, voir tests), tout tient déjà sans qu'aucun élément ne
+     touche son plancher. En dessous, le texte des liens (déjà au plancher
+     via clamp() ci-dessus) ne peut plus rétrécir sans devenir illisible :
+     c'est donc le sélecteur Particulier/Pro, "Se connecter", le logo et les
+     espacements qui doivent encore céder un peu de place, avant que
+     nav.links (seul élément scrollable) n'ait besoin de défiler. */
+  @media (max-width:1365px){
+    .header-logo{ height:24px; }
+    .mode-switch{ gap:0; padding:2px; }
+    button.mode-btn{ padding:4px 6px; gap:2px; }
+    .mode-btn-icon{ font-size:0.72rem; }
+    .mode-btn-text{ font-size:0.52rem; }
+    button.header-login-link{ font-size:0.62rem; padding:0 6px; height:28px; gap:3px; }
+    button.header-login-link svg{ width:12px; height:12px; }
+    .call-btn{ font-size:0.66rem; padding:6px 8px; gap:3px; }
+    .call-btn svg{ width:12px; height:12px; }
+    .headerbar{ gap:4px; }
+    .headerbar-scroll{ gap:4px; }
+    nav.links{ gap:1px; }
+    nav.links a{ font-size:0.58rem; padding:8px 2px; }
   }
-  .mobile-nav a{
-    display:block;
-    padding:13px 4px;
-    text-decoration:none;
-    color:var(--hdr-navy);
-    font-weight:600;
-    font-size:0.98rem;
-    border-bottom:1px solid var(--hdr-line);
-  }
-  .mobile-nav a:last-child{ border-bottom:none; }
-  .mobile-nav-sep{ height:12px; border-bottom:1px solid var(--hdr-line); margin-bottom:6px; }
 
-  /* État complet : affiché uniquement à partir du seuil mesuré où le
-     contenu tient réellement sans rien rétrécir (voir commentaire plus
-     haut). En dessous, .header-login-link (Se connecter) et le libellé
-     texte du sélecteur passent dans/à côté du panneau ☰. */
-  @media (min-width:1440px){
-    nav.links{ display:flex; }
-    .nav-toggle{ display:none; }
-    .mobile-nav{ display:none !important; }
-    button.header-login-link{ display:inline-flex; }
-  }
-  /* Sélecteurs qualifiés par le tag (button.header-login-link,
-     button.mode-btn) : specificité volontairement plus haute que les
-     règles de base plus loin dans la feuille, pour que ce média-query ne
-     dépende jamais de son ordre dans le fichier — exactement le genre de
-     contradiction "qui gagne selon l'ordre" à éliminer ici. */
-  @media (max-width:1439px){
-    button.header-login-link{ display:none; }
-    .mode-btn-text{ display:none; }
-    button.mode-btn{ padding:9px 10px; }
-    .mode-switch{ gap:1px; }
+  /* Téléphone (≤600px) : même quand chaque élément est déjà à son plancher
+     de taille lisible, logo + sélecteur + 8 liens + "Se connecter" ne
+     tiennent physiquement plus tous ensemble sur une largeur de téléphone
+     (mesuré réellement). Conformément à la consigne, .headerbar-scroll
+     devient alors la zone scrollable horizontalement (jamais de retour à
+     la ligne, jamais de menu ☰) ; seul le bouton téléphone reste fixe et
+     passe en icône seule pour ne pas prendre toute la largeur restante. */
+  @media (max-width:600px){
+    .call-btn-text{ display:none; }
+    .call-btn{ padding:8px; gap:0; }
   }
 
   /* ---------- Sélecteur Particulier / Professionnel ---------- */
   .mode-switch{
     display:inline-flex;
     align-items:center;
-    gap:2px;
+    gap:clamp(1px, 0.3vw, 2px);
     padding:3px;
     border-radius:999px;
     background:var(--hdr-bg);
@@ -496,23 +488,23 @@
   .mode-btn{
     display:inline-flex;
     align-items:center;
-    gap:4px;
-    padding:6px 8px;
+    gap:clamp(2px, 0.4vw, 4px);
+    padding:clamp(5px, 0.8vw, 6px) clamp(6px, 1vw, 8px);
     border:none;
     border-radius:999px;
     background:transparent;
     color:var(--hdr-navy-soft);
     font-family:"Poppins", sans-serif;
     font-weight:600;
-    font-size:0.66rem;
-    letter-spacing:0.03em;
+    font-size:clamp(0.56rem, 0.75vw, 0.66rem);
+    letter-spacing:0.02em;
     text-transform:uppercase;
     white-space:nowrap;
     cursor:pointer;
     transition:background .32s ease, color .32s ease, box-shadow .32s ease, transform .18s ease;
   }
   .mode-btn:hover{ color:var(--hdr-navy); }
-  .mode-btn-icon{ font-size:0.92rem; line-height:1; }
+  .mode-btn-icon{ font-size:clamp(0.78rem, 0.95vw, 0.92rem); line-height:1; }
   .mode-btn.is-active[data-mode-btn="particulier"]{
     background:#FFFFFF;
     color:#1C2B3A;
@@ -524,10 +516,8 @@
     box-shadow:0 4px 16px -5px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(201,161,90,0.38);
   }
   .mode-btn.is-active:active{ transform:scale(0.97); }
-  /* Le passage en icône seule (sélecteur + "Se connecter" masqué) est déjà
-     géré une seule fois par @media (max-width:1439px) plus haut : aucune
-     règle supplémentaire ici, pour ne jamais superposer deux logiques de
-     rétrécissement contradictoires. */
+  /* Le texte "Particulier"/"Professionnel" reste toujours visible (jamais
+     remplacé par icône seule) : seul clamp() ci-dessus réduit sa taille. */
 
   /* ---------- Hero ----------
      Le conteneur .wrap générique plafonne à 1120px pour les sections de
@@ -2558,9 +2548,10 @@
      l'accent bleu de la charte), mais toujours en retrait visuel par rapport
      au CTA principal (.call-btn, rempli plein terracotta). */
   .header-login-link{
-    display:inline-flex; align-items:center; gap:6px; flex:none; height:37px; box-sizing:border-box;
-    font-family:"Poppins",sans-serif; font-weight:600; font-size:0.79rem;
-    color:var(--hdr-blue, #1AA6EE); text-decoration:none; padding:0 11px; border-radius:999px;
+    display:inline-flex; align-items:center; gap:clamp(3px, 0.5vw, 6px); flex:none;
+    height:clamp(30px, 3.6vw, 37px); box-sizing:border-box;
+    font-family:"Poppins",sans-serif; font-weight:600; font-size:clamp(0.62rem, 0.68vw, 0.79rem);
+    color:var(--hdr-blue, #1AA6EE); text-decoration:none; padding:0 clamp(5px, 1.2vw, 11px); border-radius:999px;
     border:1.5px solid var(--hdr-blue, #1AA6EE);
     background:#fff;
     transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
@@ -2572,7 +2563,7 @@
     transform:translateY(-1px);
   }
   .header-login-link:hover svg{ transform:translateX(2px); }
-  .header-login-link svg{ width:16px; height:16px; flex:none; transition:transform .2s ease; }
+  .header-login-link svg{ width:clamp(13px, 1.6vw, 16px); height:clamp(13px, 1.6vw, 16px); flex:none; transition:transform .2s ease; }
 
   /* ================================================================
      REFONTE PHOTOS RÉELLES — sections éditoriales par métier, mosaïques,
@@ -2824,33 +2815,35 @@
 
 <header>
   <div class="wrap headerbar">
-    <div class="brand">
-      <a href="#accueil" aria-label="HAYEVA — Accueil">
-        <img class="header-logo" src="images/brand/hayeva-logo.png"
-             srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
-             sizes="130px" alt="HAYEVA" width="900" height="607">
-      </a>
-    </div>
-    <div class="mode-switch" id="modeSwitch" role="group" aria-label="Choisir votre profil : particulier ou professionnel">
-      <button type="button" class="mode-btn is-active" data-mode-btn="particulier" aria-pressed="true">
-        <span class="mode-btn-icon" aria-hidden="true">👤</span><span class="mode-btn-text">Particulier</span>
+    <div class="headerbar-scroll" id="headerbarScroll">
+      <div class="brand">
+        <a href="#accueil" aria-label="HAYEVA — Accueil">
+          <img class="header-logo" src="images/brand/hayeva-logo.png"
+               srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
+               sizes="130px" alt="HAYEVA" width="900" height="607">
+        </a>
+      </div>
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="Choisir votre profil : particulier ou professionnel">
+        <button type="button" class="mode-btn is-active" data-mode-btn="particulier" aria-pressed="true">
+          <span class="mode-btn-icon" aria-hidden="true">👤</span><span class="mode-btn-text">Particulier</span>
+        </button>
+        <button type="button" class="mode-btn" data-mode-btn="professionnel" aria-pressed="false">
+          <span class="mode-btn-icon" aria-hidden="true">🏢</span><span class="mode-btn-text">Professionnel</span>
+        </button>
+      </div>
+      <nav class="links" id="navLinks">
+        <a href="#services">Services</a>
+        <a href="#rdv">Rendez-<br>vous</a>
+        <a href="#tarifs">Tarifs</a>
+        <a href="#zone">Zone<br>d'intervention</a>
+        <a href="#pourquoi">Pourquoi<br>nous</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <button type="button" class="header-login-link" id="headerLoginBtn" hidden>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h11M11 8l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Se connecter
       </button>
-      <button type="button" class="mode-btn" data-mode-btn="professionnel" aria-pressed="false">
-        <span class="mode-btn-icon" aria-hidden="true">🏢</span><span class="mode-btn-text">Professionnel</span>
-      </button>
     </div>
-    <nav class="links" id="navLinks">
-      <a href="#services">Services</a>
-      <a href="#rdv">Rendez-<br>vous</a>
-      <a href="#tarifs">Tarifs</a>
-      <a href="#zone">Zone<br>d'intervention</a>
-      <a href="#pourquoi">Pourquoi<br>nous</a>
-      <a href="#contact">Contact</a>
-    </nav>
-    <button type="button" class="header-login-link" id="headerLoginBtn" hidden>
-      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h11M11 8l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Se connecter
-    </button>
     <a class="call-btn" href="tel:+33671262302" aria-label="Appeler le 06 71 26 23 02">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.4 0 .8-.2 1L6.6 10.8z" fill="currentColor"/></svg>
       <span class="call-btn-text">06 71 26 23 02</span>
@@ -8773,7 +8766,19 @@
   document.getElementById('portalEyebrow').textContent = 'Bienvenue chez';
   document.getElementById('portalSubtitle').textContent = brand.tagline;
 
-  document.body.style.overflow = 'hidden';
+  // Arrivée directe via un lien externe portant #espacePro ou #espaceClient
+  // (ex. le bouton "Voir le rendez-vous" de l'e-mail de notification admin) :
+  // saute le portail "Bienvenue" et ouvre directement l'espace concerné, sans
+  // transition (le portail n'a jamais été affiché, rien à faire disparaître).
+  var initialHash = (window.location.hash || '').toLowerCase();
+  if (initialHash === '#espacepro' || initialHash === '#espaceclient'){
+    portal.hidden = true;
+    var initialTarget = initialHash === '#espacepro' ? 'espacePro' : 'espaceClient';
+    if (window.sudSetMode) window.sudSetMode(initialTarget === 'espacePro' ? 'professionnel' : 'particulier');
+    openEspace(initialTarget);
+  } else {
+    document.body.style.overflow = 'hidden';
+  }
 
   var customerBtn = document.getElementById('portalCustomerBtn');
   var customerBtnLabel = document.getElementById('portalCustomerBtnLabel');
