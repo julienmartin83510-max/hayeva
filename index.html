@@ -1316,6 +1316,10 @@
     font-weight:800;
     font-size:1.05rem;
   }
+  .summary-card .s-row-warning .s-label,
+  .summary-card .s-row-warning .s-value{
+    color:#B5762A;
+  }
   .booking-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:16px;}
   .booking-nav{
     display:flex;
@@ -2183,6 +2187,35 @@
     font-size:0.8rem; font-style:italic; color:var(--ink); background:var(--sand-deep);
     border-radius:8px; padding:7px 10px; margin-top:2px; max-width:44ch;
   }
+  .admin-bk-travel-warning{ color:#B5762A; font-weight:700; }
+  .admin-bk-email-status{
+    display:inline-flex; align-items:center; font-size:0.78rem; font-weight:700;
+    border-radius:999px; padding:3px 10px; margin-right:8px;
+  }
+  .admin-bk-email-sent{ background:rgba(74,150,101,0.15); color:#3C7A52; }
+  .admin-bk-email-pending{ background:var(--sand-deep); color:var(--ink-soft); }
+  .admin-bk-email-failed{ background:rgba(196,90,64,0.15); color:#A6432A; }
+  .admin-bk-resend-email-btn{
+    font-size:0.78rem; font-weight:700; color:var(--terracotta); background:none;
+    border:1px solid var(--terracotta); border-radius:999px; padding:3px 12px; cursor:pointer;
+  }
+  .admin-bk-resend-email-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .admin-travel-settings-form{
+    display:flex; flex-direction:column; gap:14px; max-width:420px;
+    background:var(--sand); border:1px solid var(--line); border-radius:14px; padding:20px;
+  }
+  .admin-travel-settings-form label{ display:flex; flex-direction:column; gap:6px; font-size:0.88rem; font-weight:600; color:var(--ink-soft); }
+  .admin-travel-settings-form input{
+    font:inherit; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:var(--cream); color:var(--ink);
+  }
+  .admin-travel-settings-hint{ font-size:0.78rem; color:var(--ink-soft); }
+  #adminTravelSettingsSave{
+    background:var(--terracotta); color:#fff; border:none; border-radius:999px; padding:10px 20px;
+    font-weight:700; cursor:pointer;
+  }
+  #adminTravelSettingsSave:disabled{ opacity:0.6; cursor:not-allowed; }
+  .admin-travel-settings-msg.is-success{ color:#3C7A52; font-weight:600; }
+  .admin-travel-settings-msg.is-error{ color:#A6432A; font-weight:600; }
   .ec-next-appt{
     background:var(--navy-fixed); color:#fff; border-radius:16px; padding:24px 26px; margin-bottom:26px;
   }
@@ -3693,7 +3726,7 @@
       </div>
 
       <p class="price-note-small">Main-d'œuvre : à partir de 50 € TTC selon durée de l'intervention, voir devis.</p>
-      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km autour de Fréjus. Au-delà, des frais kilométriques (0,70 €/km) sont calculés et affichés avant confirmation de votre rendez-vous.</p>
+      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
       <p class="price-disclaimer">Tarifs TTC donnés à titre indicatif, hors fournitures sauf mention contraire — un devis précis vous est toujours confirmé avant intervention.</p>
       <p class="photo-tip">💳 Profitez de -10% si vous réglez votre prestation à l'avance — contactez-nous pour en profiter.</p>
       <p class="photo-tip">📷 Une photo de la panne ou de l'installation nous aide souvent à vous donner un tarif précis avant même notre venue : décrivez votre besoin dans le formulaire de réservation, nous vous recontactons pour l'obtenir facilement.</p>
@@ -4284,7 +4317,7 @@
         </div>
       </div>
       <p class="price-note-small">Ces prestations correspondent à un contrôle visuel et fonctionnel réalisé dans le cadre des compétences de HAYEVA (plomberie, chauffage, climatisation). Elles ne constituent ni une certification officielle, ni un diagnostic réglementaire, ni une attestation de conformité.</p>
-      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km. Au-delà, les éventuels frais de déplacement sont calculés et affichés avant confirmation du rendez-vous.</p>
+      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
 
       <div class="pro-report">
         <h3>Un compte-rendu clair après chaque Check</h3>
@@ -4332,7 +4365,7 @@
       <div class="tarifs-pro" id="tarifsPro">
         <h3>Tarifs professionnels — remise multi-logements</h3>
         <div class="tarifs-pro-grid" id="tarifsProGrid"></div>
-        <p class="price-note-small" style="margin-top:14px;">🚐 Frais de déplacement calculés séparément selon l'adresse (20 km inclus depuis Fréjus, puis 0,70 €/km) et affichés avant confirmation.</p>
+        <p class="price-note-small" style="margin-top:14px;">🚐 Déplacement inclus jusqu'à 20 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
       </div>
     </div>
   </section>
@@ -4536,6 +4569,28 @@
             <button type="button" class="gallery-filter-btn" data-admin-filter="all">Tout</button>
           </div>
           <div id="adminBkList"><p class="ec-loading">Chargement…</p></div>
+
+          <div class="section-head espace-pro-intro" style="margin-top:44px;">
+            <p class="eyebrow">Administration<span class="rule"></span></p>
+            <h2>Paramètres des déplacements</h2>
+            <p>Barème appliqué à toutes les nouvelles demandes. Une modification ici n'affecte jamais les rendez-vous déjà enregistrés (leur tarif reste celui appliqué au moment de la réservation).</p>
+          </div>
+          <form id="adminTravelSettingsForm" class="admin-travel-settings-form">
+            <label>Point de départ (nom affiché)
+              <input type="text" id="adminTravelOriginLabel" placeholder="Fréjus">
+            </label>
+            <label>Rayon inclus (km)
+              <input type="number" id="adminTravelRadius" min="0" step="0.5" required>
+            </label>
+            <label>Tarif au km supplémentaire (€ TTC)
+              <input type="number" id="adminTravelRate" min="0" step="0.01" required>
+            </label>
+            <p class="admin-travel-settings-hint">Le calcul compte le trajet aller-retour : au-delà du rayon inclus, chaque km supplémentaire aller est facturé deux fois (aller + retour).</p>
+            <div class="admin-bk-propose-form-row">
+              <button type="submit" id="adminTravelSettingsSave">Enregistrer</button>
+              <p class="admin-travel-settings-msg" id="adminTravelSettingsMsg" hidden></p>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -5105,6 +5160,23 @@
   var TRAVEL_ORIGIN = { label: 'Fréjus', lat: 43.4340, lon: 6.7356 };
   var FREE_TRAVEL_KM = 20;
   var EXTRA_KM_PRICE = 0.70;
+  // Ces trois valeurs par défaut ne servent qu'avant le premier chargement
+  // (ou si Supabase est indisponible) : dès que possible, elles sont
+  // remplacées par travel_settings_public — barème modifiable par l'admin
+  // (voir supabase/migrations/0007_travel_and_emails.sql) sans toucher au
+  // code. Un ancien rendez-vous garde de toute façon le tarif applicable au
+  // moment de la réservation (snapshoté côté serveur), donc changer ce
+  // barème n'affecte jamais rétroactivement une réservation déjà faite.
+  (function loadTravelSettings(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    sb.client.from('travel_settings_public').select('*').maybeSingle().then(function(res){
+      if (!res || res.error || !res.data) return;
+      TRAVEL_ORIGIN = { label: res.data.origin_label || TRAVEL_ORIGIN.label, lat: res.data.origin_lat, lon: res.data.origin_lng };
+      FREE_TRAVEL_KM = res.data.included_radius_km;
+      EXTRA_KM_PRICE = res.data.rate_per_km_cents / 100;
+    }).catch(function(){});
+  })();
   // Coefficient appliqué à la distance à vol d'oiseau pour approcher une distance
   // routière tant qu'aucune API d'itinéraire réelle n'est branchée (voir estimateTravelKm).
   var ROAD_DISTANCE_FACTOR = 1.3;
@@ -5181,11 +5253,19 @@
     return Math.round(straight * ROAD_DISTANCE_FACTOR * 10) / 10;
   }
 
+  // Le kilométrage facturable compte l'aller-retour (règle HAYEVA) : une
+  // distance de 60 km ne facture pas 40 km supplémentaires (60-20) mais bien
+  // 80 km (2 × (60-20)), soit 56 € et non 28 € à 0,70 €/km. Même formule
+  // exactement que compute_travel_fee_cents() côté serveur (source de
+  // vérité pour le montant réellement enregistré) : ceci n'est qu'un
+  // aperçu, affiché avant confirmation pour que le client connaisse le
+  // montant avant de réserver, jamais après coup.
   function computeTravelFee(km){
     if (km === null || km === undefined) return null;
-    var extraKm = Math.max(0, Math.round((km - FREE_TRAVEL_KM) * 10) / 10);
-    var fee = Math.round(extraKm * EXTRA_KM_PRICE * 100) / 100;
-    return { km: km, extraKm: extraKm, fee: fee };
+    var extraKmOneWay = Math.max(0, Math.round((km - FREE_TRAVEL_KM) * 10) / 10);
+    var billableKm = Math.round(extraKmOneWay * 2 * 10) / 10;
+    var fee = Math.round(billableKm * EXTRA_KM_PRICE * 100) / 100;
+    return { km: km, extraKm: billableKm, fee: fee };
   }
 
   function fmtEuros(n){
@@ -5251,12 +5331,29 @@
     return parsePriceEuros(svc.price);
   }
 
+  // Ne renvoie JAMAIS null silencieusement : une adresse non reconnue (donc
+  // aucune distance calculable) doit se traduire par status:'unavailable' et
+  // un message "à vérifier", jamais par l'absence totale d'information (qui
+  // finissait par ressembler, à l'affichage, à un déplacement gratuit —
+  // c'est exactement le bug constaté avec une demande de devis pour Nice).
   function travelSummaryLines(svc, address){
+    if (!String(address || '').trim()){
+      return { status:'empty', km:null, extraKm:0, base: currentServiceBaseEuros(svc), travelFee:0, total:null,
+        distanceLabel: '', travelLabel: '', totalLabel: null };
+    }
     var km = estimateTravelKm(address);
-    if (km === null) return null;
-    var travel = computeTravelFee(km);
     var base = currentServiceBaseEuros(svc);
+    if (km === null){
+      return {
+        status:'unavailable', km:null, extraKm:0, base:base, travelFee:null, total:null,
+        distanceLabel: '⚠️ Frais de déplacement à vérifier',
+        travelLabel: 'Nous n\'avons pas pu calculer automatiquement la distance pour cette adresse. HAYEVA vérifiera les éventuels frais de déplacement avant confirmation du rendez-vous.',
+        totalLabel: null
+      };
+    }
+    var travel = computeTravelFee(km);
     var out = {
+      status:'ok',
       km: km,
       extraKm: travel.extraKm,
       base: base,
@@ -5493,27 +5590,40 @@
     return null;
   }
 
+  // Texte d'adresse à utiliser pour l'estimation de déplacement, quel que
+  // soit le chemin (invité/devis : champ libre bkAddress ; particulier
+  // connecté + prestation réservable directement : adresse structurée
+  // sélectionnée ou nouvelle adresse en cours de saisie). La règle de
+  // déplacement s'applique à TOUTES les prestations, jamais seulement au
+  // devis gratuit.
+  function currentInterventionAddressText(){
+    var showBlock = bkAuthContext.isRealCustomer && bkAuthContext.resolvedParams && !bkAuthContext.resolvedParams.quoteOnly;
+    if (!showBlock) return bkAddress.value || '';
+    if (bkAddressSelect && bkAddressSelect.value && bkAddressSelect.value !== '__new__'){
+      var opt = bkAddressSelect.options[bkAddressSelect.selectedIndex];
+      return opt ? opt.textContent : '';
+    }
+    return [(bkNewAddrAddress && bkNewAddrAddress.value), (bkNewAddrCity && bkNewAddrCity.value)].filter(Boolean).join(' ');
+  }
+
   function buildSummary(){
     var svc = currentService();
     var endTime = fmtTime(state.time + svc.duration);
     var isRaffleEntry = isPackId(svc.id) && isRaffleActive();
     var packLine = packSummaryLine(svc);
-    // Réservation réelle (customer connecté, service direct-bookable) : le
-    // total facturé vient exclusivement de create_booking() côté serveur.
-    // On n'affiche donc jamais ici une estimation locale de déplacement
-    // combinée en un faux "TOTAL TTC" — seulement une mention neutre.
-    var isRealCustomerBooking = bkAuthContext.isRealCustomer && bkAuthContext.resolvedParams && !bkAuthContext.resolvedParams.quoteOnly;
-    var travel = isRealCustomerBooking ? null : travelSummaryLines(svc, bkAddress.value);
+    var travel = travelSummaryLines(svc, currentInterventionAddressText());
     var multi = proMultiInfo(svc);
     var isPro = document.documentElement.getAttribute('data-mode') === 'professionnel';
+    var isQuoteOnly = bkAuthContext.resolvedParams && bkAuthContext.resolvedParams.quoteOnly;
 
     var travelRows = '';
-    if (travel){
-      travelRows +=
-        '<div class="s-row"><span class="s-label">Déplacement — 20 premiers km</span><span class="s-value">Inclus</span></div>';
+    if (travel.status === 'unavailable'){
+      travelRows += '<div class="s-row s-row-warning"><span class="s-label">⚠️ Déplacement</span><span class="s-value">À vérifier par HAYEVA</span></div>';
+    } else if (travel.status === 'ok'){
+      travelRows += '<div class="s-row"><span class="s-label">Distance</span><span class="s-value">'+travel.km+' km (estimée)</span></div>';
+      travelRows += '<div class="s-row"><span class="s-label">Déplacement — '+FREE_TRAVEL_KM+' premiers km</span><span class="s-value">Inclus</span></div>';
       if (travel.extraKm > 0){
-        travelRows +=
-          '<div class="s-row"><span class="s-label">Km supplémentaires ('+travel.extraKm+' km)</span><span class="s-value">'+fmtEuros(travel.travelFee)+'</span></div>';
+        travelRows += '<div class="s-row"><span class="s-label">Km supplémentaires ('+travel.extraKm+' km)</span><span class="s-value">'+fmtEuros(travel.travelFee)+'</span></div>';
       }
     }
 
@@ -5529,25 +5639,41 @@
       }
     }
 
+    // "Devis gratuit" ≠ "déplacement gratuit" : la prestation et le
+    // déplacement sont TOUJOURS deux lignes distinctes, jamais fusionnées
+    // en un seul montant qui masquerait le second.
+    var prestationRow = isQuoteOnly
+      ? '<div class="s-row"><span class="s-label">Devis</span><span class="s-value">0,00 €</span></div>'
+      : '';
+
     var totalRow = '';
     if (multi && !multi.est.quoteOnly){
-      var multiTotal = roundCommercialPrice(multi.est.total + (travel ? travel.travelFee : 0));
-      totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(multiTotal)+'</span></div>';
-    } else if (!multi && travel && travel.total !== null){
-      totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(travel.total)+'</span></div>';
+      var multiTotal = roundCommercialPrice(multi.est.total + (travel.status === 'ok' ? travel.travelFee : 0));
+      totalRow = travel.status === 'unavailable'
+        ? '<div class="s-row s-row-total"><span class="s-label">TOTAL</span><span class="s-value">'+fmtEuros(multi.est.total)+' + déplacement à vérifier</span></div>'
+        : '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(multiTotal)+'</span></div>';
+    } else if (!multi){
+      if (travel.status === 'unavailable'){
+        var baseAmount = isQuoteOnly ? 0 : (travel.base || 0);
+        totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL</span><span class="s-value">'+fmtEuros(baseAmount)+' + déplacement à vérifier</span></div>';
+      } else if (travel.status === 'ok'){
+        var totalAmount = isQuoteOnly ? travel.travelFee : (travel.total !== null ? travel.total : null);
+        if (totalAmount !== null){
+          totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(totalAmount)+'</span></div>';
+        }
+      }
     }
 
     bookingSummary.innerHTML =
       (isPro && bkCompany && bkCompany.value.trim() ? '<div class="s-row"><span class="s-label">Entreprise / Conciergerie</span><span class="s-value">'+bkCompany.value+'</span></div>' : '') +
       '<div class="s-row"><span class="s-label">Prestation</span><span class="s-value">'+svcLabel(svc)+'</span></div>'+
       (packLine ? '<div class="s-row"><span class="s-label">Options</span><span class="s-value">'+packLine+'</span></div>' : '') +
+      prestationRow +
       '<div class="s-row"><span class="s-label">Date</span><span class="s-value">'+fmtDateLong(state.date)+'</span></div>'+
       '<div class="s-row"><span class="s-label">Horaire</span><span class="s-value">'+fmtTime(state.time)+' – '+endTime+'</span></div>'+
-      (travel ? '<div class="s-row"><span class="s-label">Distance</span><span class="s-value">'+travel.km+' km (estimée)</span></div>' : '') +
       travelRows +
       multiRows +
       totalRow +
-      (isRealCustomerBooking ? '<div class="s-row"><span class="s-label">Frais de déplacement</span><span class="s-value">Calculés séparément selon l’adresse d’intervention</span></div>' : '') +
       '<div class="s-row"><span class="s-label">Nom</span><span class="s-value">'+(bkName.value || '—')+'</span></div>'+
       '<div class="s-row"><span class="s-label">Téléphone</span><span class="s-value">'+(bkPhone.value || '—')+'</span></div>' +
       '<div class="s-row"><span class="s-label">E-mail</span><span class="s-value">'+(bkEmail.value || '—')+'</span></div>' +
@@ -5821,6 +5947,12 @@
       var guestName = (bkName.value || '').trim();
       var guestEmail = (bkEmail.value || '').trim();
       if (!isCustomer && (!guestName || !guestEmail)) return { kind:'missing-contact' };
+      // Distance recalculée juste avant l'envoi (jamais réutilisée depuis un
+      // affichage potentiellement périmé si l'adresse a été modifiée entre
+      // temps) ; le serveur ne fait de toute façon confiance qu'à cette
+      // valeur pour RECALCULER le tarif (compute_travel_fee_cents), jamais à
+      // un montant envoyé directement par le client.
+      var travelForSubmit = travelSummaryLines(svc, addressText);
       var params = {
         p_service_slug: serviceSlug,
         p_date: toISODateLocal(state.date),
@@ -5830,7 +5962,8 @@
         p_guest_name: isCustomer ? null : guestName,
         p_guest_email: isCustomer ? null : guestEmail,
         p_guest_phone: isCustomer ? null : (bkPhone.value || '').trim(),
-        p_guest_address: isCustomer ? null : (addressText || null)
+        p_guest_address: isCustomer ? null : (addressText || null),
+        p_one_way_distance_km: travelForSubmit.status === 'ok' ? travelForSubmit.km : null
       };
       return sb.client.rpc('create_guest_or_quote_booking', params).then(function(rpcRes){
         if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
@@ -5854,13 +5987,15 @@
           if (resolved.quoteOnly) return attemptDirectInsertBooking(svc, session);
           return resolveAddressForBooking(session.user.id).then(function(addrOutcome){
             if (addrOutcome.kind === 'address-error') return addrOutcome;
+            var travelForSubmit = travelSummaryLines(svc, currentInterventionAddressText());
             return sb.client.rpc('create_booking', {
               p_service_slug: resolved.serviceSlug,
               p_service_pack_slug: resolved.packSlug,
               p_date: toISODateLocal(state.date),
               p_start_time: fmtTime(state.time) + ':00',
               p_customer_address_id: addrOutcome.addressId,
-              p_notes: (bkComment.value || '').trim() || null
+              p_notes: (bkComment.value || '').trim() || null,
+              p_one_way_distance_km: travelForSubmit.status === 'ok' ? travelForSubmit.km : null
             }).then(function(rpcRes){
               if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
               return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {}, isCustomer: true };
@@ -5970,19 +6105,19 @@
   function updateTravelEstimateNote(){
     if (!travelEstimateNote) return;
     var svc = currentService();
-    var travel = svc ? travelSummaryLines(svc, bkAddress.value) : null;
-    if (!bkAddress.value.trim()){
+    var travel = svc ? travelSummaryLines(svc, bkAddress.value) : { status:'empty' };
+    if (travel.status === 'empty'){
       travelEstimateNote.textContent = '';
       travelEstimateNote.classList.remove('is-muted');
       return;
     }
-    if (!travel){
-      travelEstimateNote.textContent = 'Distance non calculée automatiquement pour cette adresse — le déplacement éventuel vous sera confirmé avant intervention.';
+    if (travel.status === 'unavailable'){
+      travelEstimateNote.textContent = '⚠️ Frais de déplacement à vérifier — nous confirmerons le montant avant votre rendez-vous.';
       travelEstimateNote.classList.add('is-muted');
       return;
     }
     travelEstimateNote.classList.remove('is-muted');
-    travelEstimateNote.textContent = travel.distanceLabel + ' · ' + travel.travelLabel;
+    travelEstimateNote.textContent = '🚐 ' + travel.distanceLabel + ' · ' + travel.travelLabel;
   }
 
   [bkName, bkPhone, bkEmail, bkAddress].forEach(function(input){
@@ -7488,6 +7623,20 @@
     return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : d;
   }
   function admFmtTime(t){ return t ? String(t).slice(0,5) : ''; }
+  function admFmtEuros(cents){
+    return ((cents || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
+  }
+  var ADMIN_EMAIL_TYPE_LABEL = { received:'Demande reçue', confirmed:'Confirmation', cancelled:'Annulation' };
+  function admEmailStatusHtml(b, emails){
+    var row = emails && emails[b.id + ':received'];
+    if (!row) return '<span class="admin-bk-email-status admin-bk-email-pending">✉ E-mail non envoyé</span>';
+    if (row.status === 'sent') return '<span class="admin-bk-email-status admin-bk-email-sent">✉ E-mail envoyé</span>';
+    if (row.status === 'failed'){
+      return '<span class="admin-bk-email-status admin-bk-email-failed">⚠ Échec d\'envoi</span>' +
+        '<button type="button" class="admin-bk-resend-email-btn" data-booking-id="' + b.id + '" data-email-type="received">Renvoyer</button>';
+    }
+    return '<span class="admin-bk-email-status admin-bk-email-pending">✉ Envoi en cours…</span>';
+  }
 
   function admContactFor(b, profileMap){
     if (b.guest_name){
@@ -7664,13 +7813,21 @@
       if (!ADMIN_STATUS_OPTIONS.some(function(o){ return o[0] === b.status; })){
         optionsHtml += '<option value="' + admEscape(b.status) + '" selected>' + admEscape(b.status) + '</option>';
       }
+      var travelLine = b.distance_calculation_status !== 'ok'
+        ? '<span class="ec-row-meta admin-bk-travel-warning">⚠️ Déplacement à vérifier — prestation ' + admFmtEuros(b.service_price_cents) + '</span>'
+        : '<span class="ec-row-meta">🚐 ' + (b.one_way_distance_km != null ? b.one_way_distance_km + ' km aller · ' : '') +
+          'prestation ' + admFmtEuros(b.service_price_cents) +
+          (b.travel_fee_cents > 0 ? ' + déplacement ' + admFmtEuros(b.travel_fee_cents) + ' (' + admFmtEuros(b.travel_rate_per_km_cents) + '/km)' : ' + déplacement inclus') +
+          ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span>';
       html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
         '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
         '<span class="ec-row-meta">' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
         (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
         (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
+        travelLine +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         (b.notes ? '<span class="admin-bk-note">💬 ' + admEscape(b.notes) + '</span>' : '') +
+        '<span class="ec-row-meta">' + admEmailStatusHtml(b, adminBookingsCache.emails) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
         (b.status === 'PENDING' ?
           '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">✅ Accepter</button>' +
@@ -7703,7 +7860,7 @@
     var listEl = document.getElementById('adminBkList');
     if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
     sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
       .order('date', { ascending:true })
       .order('start_time', { ascending:true })
       .limit(500)
@@ -7716,17 +7873,41 @@
         var custIds = Array.prototype.filter.call(rows, function(b){ return b.customer_user_id && !b.guest_name; })
           .map(function(b){ return b.customer_user_id; });
         custIds = custIds.filter(function(id, i){ return custIds.indexOf(id) === i; });
+        var bookingIds = rows.map(function(b){ return b.id; });
+
+        function loadEmails(){
+          if (!bookingIds.length) return Promise.resolve({});
+          return sb.client.from('booking_emails')
+            .select('booking_id, email_type, status, error_message, sent_at, created_at')
+            .in('booking_id', bookingIds)
+            .order('created_at', { ascending:false })
+            .then(function(er){
+              var map = {};
+              (er.data || []).forEach(function(row){
+                // La plus récente par (booking, type) en premier (tri
+                // created_at desc ci-dessus) : ne garder que celle-là.
+                var key = row.booking_id + ':' + row.email_type;
+                if (!map[key]) map[key] = row;
+              });
+              return map;
+            });
+        }
+
         if (!custIds.length){
-          adminBookingsCache = { rows: rows, profiles: {} };
-          admRenderList();
+          loadEmails().then(function(emails){
+            adminBookingsCache = { rows: rows, profiles: {}, emails: emails };
+            admRenderList();
+          });
           return;
         }
         Promise.all([
           sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
-          sb.client.from('profiles').select('user_id,email').in('user_id', custIds)
+          sb.client.from('profiles').select('user_id,email').in('user_id', custIds),
+          loadEmails()
         ]).then(function(res2){
           var cp = res2[0].data || [];
           var pf = res2[1].data || [];
+          var emails = res2[2];
           var map = {};
           cp.forEach(function(r){
             map[r.user_id] = map[r.user_id] || {};
@@ -7738,7 +7919,7 @@
             map[r.user_id] = map[r.user_id] || {};
             map[r.user_id].email = r.email;
           });
-          adminBookingsCache = { rows: rows, profiles: map };
+          adminBookingsCache = { rows: rows, profiles: map, emails: emails };
           admRenderList();
         });
       });
@@ -7864,6 +8045,35 @@
         msgEl.hidden = false;
       });
     });
+
+    // Renvoi d'un e-mail client en échec : appelle resend-booking-email
+    // (même mécanisme d'authentification que propose-alternative-slot —
+    // jeton de session admin, revérifié côté serveur).
+    adminListEl.addEventListener('click', function(e){
+      var resendBtn = e.target.closest('.admin-bk-resend-email-btn');
+      if (!resendBtn) return;
+      var id = resendBtn.getAttribute('data-booking-id');
+      var emailType = resendBtn.getAttribute('data-email-type');
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Envoi…';
+      sb.client.auth.getSession().then(function(res){
+        var token = res && res.data && res.data.session && res.data.session.access_token;
+        if (!token) throw new Error('no-session');
+        return fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/resend-booking-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ booking_id: id, email_type: emailType })
+        });
+      }).then(function(res){
+        if (!res.ok) throw new Error('http-' + res.status);
+        return res.json();
+      }).then(function(){
+        admLoadBookings();
+      }).catch(function(){
+        resendBtn.disabled = false;
+        resendBtn.textContent = "Échec — réessayer";
+      });
+    });
   }
 
   function initAdminPanel(role){
@@ -7873,9 +8083,57 @@
       panel.hidden = false;
       admLoadAccounts();
       admLoadBookings();
+      admLoadTravelSettings();
     } else {
       panel.hidden = true;
     }
+  }
+
+  // ---------- Paramètres des déplacements (rayon inclus / tarif au km) ----------
+  // Lit/écrit directement travel_settings (RLS : lecture et écriture
+  // réservées à is_admin(), voir 0007_travel_and_emails.sql) — une seule
+  // ligne, jamais recréée. Chaque réservation garde son propre snapshot du
+  // tarif au moment où elle a été faite (colonnes sur bookings) : modifier
+  // ce formulaire n'affecte donc jamais rétroactivement une réservation déjà
+  // enregistrée, uniquement les nouvelles demandes à venir.
+  function admLoadTravelSettings(){
+    var form = document.getElementById('adminTravelSettingsForm');
+    if (!form) return;
+    sb.client.from('travel_settings').select('*').eq('id', true).maybeSingle().then(function(res){
+      if (res.error || !res.data) return;
+      document.getElementById('adminTravelOriginLabel').value = res.data.origin_label || '';
+      document.getElementById('adminTravelRadius').value = res.data.included_radius_km;
+      document.getElementById('adminTravelRate').value = (res.data.rate_per_km_cents / 100).toFixed(2);
+    });
+  }
+  var adminTravelSettingsForm = document.getElementById('adminTravelSettingsForm');
+  if (adminTravelSettingsForm){
+    adminTravelSettingsForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      var saveBtn = document.getElementById('adminTravelSettingsSave');
+      var msgEl = document.getElementById('adminTravelSettingsMsg');
+      var radius = parseFloat(document.getElementById('adminTravelRadius').value);
+      var rateEuros = parseFloat(document.getElementById('adminTravelRate').value);
+      if (!(radius >= 0) || !(rateEuros >= 0)) return;
+      saveBtn.disabled = true;
+      msgEl.hidden = true;
+      sb.client.from('travel_settings').update({
+        origin_label: document.getElementById('adminTravelOriginLabel').value.trim() || 'Fréjus',
+        included_radius_km: radius,
+        rate_per_km_cents: Math.round(rateEuros * 100),
+        updated_at: new Date().toISOString()
+      }).eq('id', true).then(function(res){
+        saveBtn.disabled = false;
+        msgEl.hidden = false;
+        if (res.error){
+          msgEl.className = 'admin-travel-settings-msg is-error';
+          msgEl.textContent = "Échec de l'enregistrement. Réessayez.";
+        } else {
+          msgEl.className = 'admin-travel-settings-msg is-success';
+          msgEl.textContent = 'Barème mis à jour.';
+        }
+      });
+    });
   }
 
   // ---- Génération .ics (Europe/Paris, VTIMEZONE standard UE) ----
