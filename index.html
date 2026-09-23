@@ -2487,6 +2487,18 @@
     .sud-veil{ transition:none; }
     .sud-fade-in{ animation:none; }
   }
+  .bk-confirm-overlay{
+    position:fixed; inset:0; z-index:10060; display:flex; align-items:center; justify-content:center;
+    background:rgba(16,27,36,0.55); padding:20px; backdrop-filter:blur(2px);
+  }
+  .bk-confirm-box{
+    background:var(--cream); border-radius:16px; padding:28px 26px; max-width:360px; width:100%;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.4); text-align:center;
+  }
+  .bk-confirm-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.05rem; color:var(--ink); margin-bottom:8px; }
+  .bk-confirm-detail{ font-size:0.92rem; color:var(--ink-soft); margin-bottom:22px; }
+  .bk-confirm-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .bk-confirm-actions .btn-primary, .bk-confirm-actions .btn-secondary{ flex:1 1 140px; }
   .portal-scroll{ width:100%; height:100%; overflow-y:auto; display:flex; align-items:center; justify-content:center; }
   /* Photo Côte d'Azur (Saint-Jean-Cap-Ferrat, mer/côte/relief/villégétation
      méditerranéenne, licence Unsplash) en fond, recouverte d'un traitement
@@ -2890,6 +2902,21 @@
 </style>
 
 <div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
+
+<!-- Confirmation du créneau choisi (étape 2 de la réservation) : simple
+     popup "Vous confirmez ?", le parcours de réservation continue ensuite
+     exactement comme avant (étape coordonnées, puis confirmation finale) —
+     aucun changement du système de réservation lui-même. -->
+<div class="bk-confirm-overlay" id="bkConfirmOverlay" hidden>
+  <div class="bk-confirm-box">
+    <p class="bk-confirm-title">Vous confirmez ce créneau ?</p>
+    <p class="bk-confirm-detail" id="bkConfirmDetail"></p>
+    <div class="bk-confirm-actions">
+      <button type="button" class="btn-secondary" id="bkConfirmCancel">Modifier</button>
+      <button type="button" class="btn-primary" id="bkConfirmOk">Oui, confirmer</button>
+    </div>
+  </div>
+</div>
 <div id="sitePortal">
   <div class="portal-bg" aria-hidden="true">
     <img class="portal-bg-img" id="portalBgImg"
@@ -5373,12 +5400,39 @@
       btn.className = 'time-pill' + (state.time === mins ? ' selected' : '');
       btn.textContent = fmtTime(mins);
       btn.addEventListener('click', function(){
-        state.time = mins;
-        renderTimeOptions();
-        updateNav();
+        showBkConfirmModal(state.date, mins, function(confirmed){
+          if (confirmed) state.time = mins;
+          renderTimeOptions();
+          updateNav();
+        });
       });
       timeOptionsEl.appendChild(btn);
     });
+  }
+
+  // Popup "Vous confirmez ce créneau ?" après le choix d'une heure — simple
+  // garde-fou contre un clic accidentel, le parcours de réservation continue
+  // ensuite exactement comme avant (étape coordonnées, puis confirmation
+  // finale existante) : rien d'autre ne change dans le système de
+  // réservation. callback(true) si confirmé, callback(false) si "Modifier".
+  function showBkConfirmModal(dateObj, mins, callback){
+    var overlay = document.getElementById('bkConfirmOverlay');
+    var detail = document.getElementById('bkConfirmDetail');
+    var okBtn = document.getElementById('bkConfirmOk');
+    var cancelBtn = document.getElementById('bkConfirmCancel');
+    if (!overlay || !detail || !okBtn || !cancelBtn){ callback(true); return; }
+    detail.textContent = fmtDateLong(dateObj) + ' à ' + fmtTime(mins);
+    overlay.hidden = false;
+    function cleanup(result){
+      overlay.hidden = true;
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      callback(result);
+    }
+    function onOk(){ cleanup(true); }
+    function onCancel(){ cleanup(false); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
   }
 
   function packSummaryLine(svc){
