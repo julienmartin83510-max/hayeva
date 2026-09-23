@@ -325,16 +325,16 @@
     border-bottom:1px solid var(--hdr-line);
   }
   /* Le header a besoin de plus de largeur que .wrap (1120px) pour que toute
-     la navigation tienne sur une ligne dès 1280px : override scopé à
+     la navigation ait une chance de tenir sur une ligne : override scopé à
      "header .wrap", .wrap générique inchangé partout ailleurs. */
   header .wrap{
-    max-width:1680px;
-    padding-inline:clamp(20px, 3vw, 40px);
+    max-width:1800px;
+    padding-inline:clamp(20px, 2.5vw, 40px);
   }
   .headerbar{
     display:flex;
     align-items:center;
-    gap:clamp(10px, 1.6vw, 28px);
+    gap:24px;
     padding-block:18px;
     min-height:82px;
   }
@@ -348,40 +348,43 @@
     height:44px;
     width:auto;
   }
-  /* Header commun à toutes les pages/modes (Particulier ET Professionnel) :
-     nav.links est le même conteneur, seul son contenu (NAV_PARTICULIER_DESKTOP
-     ou NAV_PRO_DESKTOP) change selon le mode. Ces règles s'appliquent donc
-     identiquement des deux côtés. */
+  /* ----------------------------------------------------------------
+     Logique responsive UNIQUE du header, en deux états seulement —
+     jamais d'état intermédiaire compressé :
+       1) ÉTAT COMPLET (voir --hdr-full-nav plus bas) : logo, sélecteur
+          Particulier/Pro en toutes lettres, les 9 liens, Se connecter,
+          téléphone — tous à taille confortable, fixe, jamais rétrécie.
+       2) ÉTAT COMPACT (en dessous) : logo, sélecteur en icônes seules,
+          téléphone (icône), bouton ☰ — la nav et "Se connecter" passent
+          dans le panneau qui s'ouvre au clic.
+     Le seuil (voir tout en bas du bloc header) est celui où l'état
+     complet tient réellement, mesuré dans le navigateur — jamais un
+     nombre choisi arbitrairement ni un rétrécissement forcé en dessous.
+     ---------------------------------------------------------------- */
   nav.links{
     display:none;
     align-items:center;
-    gap:clamp(6px, 1vw, 18px);
-    flex:1 1 auto;
-    min-width:0;
-    justify-content:center;
+    gap:20px;
+    flex:none;
   }
   nav.links a{
     display:inline-flex;
-    flex:0 1 auto;
-    min-width:0;
-    overflow:hidden;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    text-decoration:none;
+    flex:none;
     white-space:nowrap;
+    align-items:center;
+    text-decoration:none;
     color:var(--hdr-navy-soft);
     font-family:"Poppins", "Outfit", sans-serif;
     font-weight:500;
     font-size:0.95rem;
     letter-spacing:0.01em;
     line-height:1.2;
-    padding:8px 4px;
+    padding:8px 2px;
     position:relative;
     transition:color .2s;
   }
   nav.links a::after{
-    content:''; position:absolute; left:4px; right:4px; bottom:2px; height:2px;
+    content:''; position:absolute; left:2px; right:2px; bottom:2px; height:2px;
     background:var(--hdr-blue); border-radius:2px;
     transform:scaleX(0); transform-origin:center;
     transition:transform .2s ease;
@@ -404,6 +407,7 @@
     box-shadow:0 8px 18px -10px rgba(14,134,201,0.6);
     transition:transform .2s, box-shadow .2s;
     flex:none;
+    margin-left:auto;
   }
   .call-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 22px -8px rgba(14,134,201,0.65); }
   .call-btn svg{ flex:none; }
@@ -422,6 +426,7 @@
     border-radius:8px;
     cursor:pointer;
     padding:0;
+    margin-left:auto;
   }
   .nav-toggle span{
     display:block;
@@ -454,28 +459,26 @@
   .mobile-nav a:last-child{ border-bottom:none; }
   .mobile-nav-sep{ height:12px; border-bottom:1px solid var(--hdr-line); margin-bottom:6px; }
 
-  /* Navigation complète sur une ligne dès 1280px, comme demandé. Entre
-     1280 et 1439px, le texte du sélecteur Particulier/Pro et le numéro de
-     téléphone passent en icône seule pour laisser toute la place aux 9
-     liens ; à partir de 1440px, tout s'affiche en toutes lettres. */
-  @media (min-width:1280px){
+  /* État complet : affiché uniquement à partir du seuil mesuré où le
+     contenu tient réellement sans rien rétrécir (voir commentaire plus
+     haut). En dessous, .header-login-link (Se connecter) et le libellé
+     texte du sélecteur passent dans/à côté du panneau ☰. */
+  @media (min-width:1800px){
     nav.links{ display:flex; }
     .nav-toggle{ display:none; }
     .mobile-nav{ display:none !important; }
+    button.header-login-link{ display:inline-flex; }
   }
-  @media (min-width:1280px) and (max-width:1439px){
+  /* Sélecteurs qualifiés par le tag (button.header-login-link,
+     button.mode-btn) : specificité volontairement plus haute que les
+     règles de base plus loin dans la feuille, pour que ce média-query ne
+     dépende jamais de son ordre dans le fichier — exactement le genre de
+     contradiction "qui gagne selon l'ordre" à éliminer ici. */
+  @media (max-width:1799px){
+    button.header-login-link{ display:none; }
     .mode-btn-text{ display:none; }
-    .mode-btn{ padding:9px 10px; }
-    .call-btn-text{ display:none; }
-    .call-btn{ padding:11px 13px; }
-    .headerbar{ gap:10px; }
-    nav.links{ gap:4px; }
-    nav.links a{ padding:8px 2px; font-size:0.88rem; }
-    .header-login-link{ padding:0 12px; font-size:0.78rem; }
-  }
-  @media (max-width:420px){
-    .call-btn-text{ display:none; }
-    .call-btn{ padding:11px 13px; }
+    button.mode-btn{ padding:9px 10px; }
+    .mode-switch{ gap:1px; }
   }
 
   /* ---------- Sélecteur Particulier / Professionnel ---------- */
@@ -520,18 +523,10 @@
     box-shadow:0 4px 16px -5px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(201,161,90,0.38);
   }
   .mode-btn.is-active:active{ transform:scale(0.97); }
-  @media (max-width:420px){
-    .mode-btn-text{ display:none; }
-    .mode-btn{ padding:9px 11px; }
-    .mode-switch{ gap:1px; }
-  }
-  /* En dessous de 480px, la barre logo + switch + téléphone + menu ne tient
-     plus sur une seule ligne sans se comprimer ou déborder horizontalement :
-     le logo passe sur sa propre ligne plutôt que de réduire le texte. */
-  @media (max-width:479px){
-    .headerbar{ flex-wrap:wrap; row-gap:10px; gap:10px; padding-block:12px; min-height:0; }
-    .brand{ flex:1 1 100%; }
-  }
+  /* Le passage en icône seule (sélecteur + "Se connecter" masqué) est déjà
+     géré une seule fois par @media (max-width:1799px) plus haut : aucune
+     règle supplémentaire ici, pour ne jamais superposer deux logiques de
+     rétrécissement contradictoires. */
 
   /* ---------- Hero ----------
      Le conteneur .wrap générique plafonne à 1120px pour les sections de
@@ -5986,6 +5981,29 @@
           if (toggle) toggle.setAttribute('aria-expanded', 'false');
         });
       });
+      // "Se connecter" : miroir mobile de #headerLoginBtn, ajouté à part
+      // (jamais dans NAV_*_MOBILE) car sa visibilité dépend de la session
+      // en cours, pas du mode Particulier/Pro — resynchronisée par
+      // refreshHeaderLoginBtn() (script du portail) à chaque changement
+      // d'état d'authentification, y compris après un ré-rendu ici.
+      var sep = document.createElement('div');
+      sep.className = 'mobile-nav-sep';
+      var loginLink = document.createElement('a');
+      loginLink.href = '#';
+      loginLink.id = 'mobileLoginLink';
+      loginLink.textContent = '🔐 Se connecter';
+      loginLink.hidden = true;
+      loginLink.addEventListener('click', function(e){
+        e.preventDefault();
+        mobileNav.hidden = true;
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        var hlb = document.getElementById('headerLoginBtn');
+        if (hlb) hlb.click();
+      });
+      mobileNav.appendChild(sep);
+      mobileNav.appendChild(loginLink);
+      var existingHlb = document.getElementById('headerLoginBtn');
+      if (existingHlb) loginLink.hidden = existingHlb.hidden;
     }
   }
 
@@ -8674,6 +8692,8 @@
     if (sb && sb.configured){
       var refreshHeaderLoginBtn = function(session){
         headerLoginBtn.hidden = !!session;
+        var mobileLoginLink = document.getElementById('mobileLoginLink');
+        if (mobileLoginLink) mobileLoginLink.hidden = !!session;
       };
       sb.client.auth.getSession().then(function(res){
         refreshHeaderLoginBtn(res && res.data && res.data.session);
@@ -8683,6 +8703,8 @@
       });
     } else {
       headerLoginBtn.hidden = true;
+      var mobileLoginLinkNoSb = document.getElementById('mobileLoginLink');
+      if (mobileLoginLinkNoSb) mobileLoginLinkNoSb.hidden = true;
     }
   }
 })();
