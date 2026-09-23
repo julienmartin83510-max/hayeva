@@ -306,33 +306,48 @@
     border-radius:2px;
   }
 
-  /* ---------- Header ---------- */
+  /* ---------- Header ----------
+     Épinglé en clair en permanence (jetons --hdr-*), comme le Hero : un
+     header blanc premium, jamais une barre bleu nuit, quel que soit le
+     thème clair/sombre choisi par le visiteur. */
   header{
+    --hdr-bg:#FFFFFF;
+    --hdr-navy:#12213D;
+    --hdr-navy-soft:#5B6B80;
+    --hdr-blue:#1AA6EE;
+    --hdr-blue-deep:#0E86C9;
+    --hdr-line:rgba(18,33,61,0.10);
     position:sticky;
     top:env(safe-area-inset-top, 0px);
     z-index:50;
-    background:color-mix(in srgb, var(--sand) 88%, transparent);
-    backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,0.94);
+    backdrop-filter:saturate(1.3) blur(8px);
+    border-bottom:1px solid var(--hdr-line);
+  }
+  /* Le header a besoin de plus de largeur que .wrap (1120px) pour que toute
+     la navigation tienne sur une ligne dès 1280px : override scopé à
+     "header .wrap", .wrap générique inchangé partout ailleurs. */
+  header .wrap{
+    max-width:1680px;
+    padding-inline:clamp(20px, 3vw, 40px);
   }
   .headerbar{
     display:flex;
     align-items:center;
-    gap:16px;
-    padding-block:14px;
+    gap:clamp(10px, 1.6vw, 28px);
+    padding-block:18px;
+    min-height:82px;
   }
   .brand{
     display:flex;
     align-items:center;
-    gap:10px;
-    font-family:"Poppins",sans-serif;
-    font-size:clamp(1.35rem, 3vw, 1.75rem);
-    white-space:nowrap;
-    min-width:0;
     flex:none;
   }
-  .brand .b-sud{color:var(--ink);}
-  .brand .b-rest{font-weight:400; color:var(--ink-soft);}
+  .header-logo{
+    display:block;
+    height:44px;
+    width:auto;
+  }
   /* Header commun à toutes les pages/modes (Particulier ET Professionnel) :
      nav.links est le même conteneur, seul son contenu (NAV_PARTICULIER_DESKTOP
      ou NAV_PRO_DESKTOP) change selon le mode. Ces règles s'appliquent donc
@@ -340,47 +355,58 @@
   nav.links{
     display:none;
     align-items:center;
-    gap:14px;
-    font-size:0.76rem;
-    font-weight:600;
-    text-transform:uppercase;
-    letter-spacing:0.02em;
-    flex:1;
+    gap:clamp(6px, 1vw, 18px);
+    flex:1 1 auto;
+    min-width:0;
     justify-content:center;
   }
   nav.links a{
-    display:flex;
-    flex:1 1 0;
+    display:inline-flex;
+    flex:0 1 auto;
     min-width:0;
+    overflow:hidden;
     align-items:center;
     justify-content:center;
     text-align:center;
     text-decoration:none;
-    color:var(--ink-soft);
+    white-space:nowrap;
+    color:var(--hdr-navy-soft);
+    font-family:"Poppins", "Outfit", sans-serif;
+    font-weight:500;
+    font-size:0.95rem;
+    letter-spacing:0.01em;
+    line-height:1.2;
+    padding:8px 4px;
+    position:relative;
     transition:color .2s;
-    line-height:1.25;
-    min-height:32px;
   }
-  nav.links a:hover{color:var(--terracotta-deep);}
+  nav.links a::after{
+    content:''; position:absolute; left:4px; right:4px; bottom:2px; height:2px;
+    background:var(--hdr-blue); border-radius:2px;
+    transform:scaleX(0); transform-origin:center;
+    transition:transform .2s ease;
+  }
+  nav.links a:hover{ color:var(--hdr-navy); }
+  nav.links a:hover::after{ transform:scaleX(1); }
   .call-btn{
     display:inline-flex;
     align-items:center;
     gap:8px;
-    background:var(--terracotta);
-    color:var(--white);
+    background:linear-gradient(135deg, var(--hdr-blue) 0%, var(--hdr-blue-deep) 100%);
+    color:#fff;
     font-weight:700;
     font-size:0.84rem;
     letter-spacing:0.02em;
     text-decoration:none;
     padding:10px 18px;
-    border-radius:8px;
+    border-radius:999px;
     white-space:nowrap;
-    box-shadow:0 6px 16px -8px var(--terracotta-deep);
-    transition:transform .2s, background .2s;
+    box-shadow:0 8px 18px -10px rgba(14,134,201,0.6);
+    transition:transform .2s, box-shadow .2s;
     flex:none;
-    margin-left:auto;
   }
-  .call-btn:hover{background:var(--terracotta-deep); transform:translateY(-1px);}
+  .call-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 22px -8px rgba(14,134,201,0.65); }
+  .call-btn svg{ flex:none; }
 
   .nav-toggle{
     display:inline-flex;
@@ -392,7 +418,7 @@
     height:40px;
     flex:none;
     background:transparent;
-    border:1.5px solid var(--line);
+    border:1.5px solid var(--hdr-line);
     border-radius:8px;
     cursor:pointer;
     padding:0;
@@ -402,7 +428,7 @@
     width:18px;
     height:2px;
     border-radius:2px;
-    background:var(--ink);
+    background:var(--hdr-navy);
     transition:transform .2s ease, opacity .2s ease;
   }
   .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
@@ -412,26 +438,40 @@
   .mobile-nav{
     display:flex;
     flex-direction:column;
-    border-top:1px solid var(--line);
-    background:var(--sand);
+    border-top:1px solid var(--hdr-line);
+    background:var(--hdr-bg);
     padding:8px 24px 18px;
   }
   .mobile-nav a{
     display:block;
     padding:13px 4px;
     text-decoration:none;
-    color:var(--ink);
+    color:var(--hdr-navy);
     font-weight:600;
     font-size:0.98rem;
-    border-bottom:1px solid var(--line);
+    border-bottom:1px solid var(--hdr-line);
   }
   .mobile-nav a:last-child{ border-bottom:none; }
-  .mobile-nav-sep{ height:12px; border-bottom:1px solid var(--line); margin-bottom:6px; }
+  .mobile-nav-sep{ height:12px; border-bottom:1px solid var(--hdr-line); margin-bottom:6px; }
 
-  @media (min-width:1360px){
+  /* Navigation complète sur une ligne dès 1280px, comme demandé. Entre
+     1280 et 1439px, le texte du sélecteur Particulier/Pro et le numéro de
+     téléphone passent en icône seule pour laisser toute la place aux 9
+     liens ; à partir de 1440px, tout s'affiche en toutes lettres. */
+  @media (min-width:1280px){
     nav.links{ display:flex; }
     .nav-toggle{ display:none; }
     .mobile-nav{ display:none !important; }
+  }
+  @media (min-width:1280px) and (max-width:1439px){
+    .mode-btn-text{ display:none; }
+    .mode-btn{ padding:9px 10px; }
+    .call-btn-text{ display:none; }
+    .call-btn{ padding:11px 13px; }
+    .headerbar{ gap:10px; }
+    nav.links{ gap:4px; }
+    nav.links a{ padding:8px 2px; font-size:0.88rem; }
+    .header-login-link{ padding:0 12px; font-size:0.78rem; }
   }
   @media (max-width:420px){
     .call-btn-text{ display:none; }
@@ -445,8 +485,8 @@
     gap:2px;
     padding:3px;
     border-radius:999px;
-    background:var(--sand-deep);
-    border:1px solid var(--line);
+    background:var(--hdr-bg);
+    border:1px solid var(--hdr-line);
     flex:none;
   }
   .mode-btn{
@@ -457,7 +497,7 @@
     border:none;
     border-radius:999px;
     background:transparent;
-    color:var(--ink-soft);
+    color:var(--hdr-navy-soft);
     font-family:"Poppins", sans-serif;
     font-weight:600;
     font-size:0.7rem;
@@ -467,7 +507,7 @@
     cursor:pointer;
     transition:background .32s ease, color .32s ease, box-shadow .32s ease, transform .18s ease;
   }
-  .mode-btn:hover{ color:var(--ink); }
+  .mode-btn:hover{ color:var(--hdr-navy); }
   .mode-btn-icon{ font-size:0.92rem; line-height:1; }
   .mode-btn.is-active[data-mode-btn="particulier"]{
     background:#FFFFFF;
@@ -489,7 +529,7 @@
      plus sur une seule ligne sans se comprimer ou déborder horizontalement :
      le logo passe sur sa propre ligne plutôt que de réduire le texte. */
   @media (max-width:479px){
-    .headerbar{ flex-wrap:wrap; row-gap:10px; gap:10px; padding-block:12px; }
+    .headerbar{ flex-wrap:wrap; row-gap:10px; gap:10px; padding-block:12px; min-height:0; }
     .brand{ flex:1 1 100%; }
   }
 
@@ -2348,12 +2388,12 @@
   .portal-bg{ position:absolute; inset:0; z-index:0; overflow:hidden; background:var(--terracotta-deep); }
   .portal-bg-img{
     position:absolute; inset:0; width:100%; height:100%;
-    object-fit:cover; object-position:32% center;
-    filter:saturate(0.85) brightness(0.82) blur(1.2px);
+    object-fit:cover; object-position:center center;
+    filter:saturate(0.92) brightness(0.85) blur(3px);
     transform:scale(1.1);
     opacity:0;
   }
-  @media (max-width:760px){ .portal-bg-img{ object-position:24% center; } }
+  @media (max-width:760px){ .portal-bg-img{ object-position:center center; } }
   @media (prefers-reduced-motion: no-preference){
     .portal-bg-img{ animation:portalBgFade 1.3s ease-out forwards, portalBgZoom 18s ease-out forwards; }
   }
@@ -2474,15 +2514,15 @@
   .header-login-link{
     display:inline-flex; align-items:center; gap:7px; flex:none; height:40px; box-sizing:border-box;
     font-family:"Poppins",sans-serif; font-weight:600; font-size:0.83rem;
-    color:var(--sky-accent); text-decoration:none; padding:0 16px; border-radius:999px;
-    border:1.5px solid var(--sky-accent);
-    background:rgba(90,169,214,0.12);
+    color:var(--hdr-blue, #1AA6EE); text-decoration:none; padding:0 16px; border-radius:999px;
+    border:1.5px solid var(--hdr-blue, #1AA6EE);
+    background:#fff;
     transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
     white-space:nowrap;
   }
   .header-login-link:hover{
-    background:rgba(90,169,214,0.22);
-    box-shadow:0 4px 14px -6px rgba(90,169,214,0.55);
+    background:rgba(26,166,238,0.1);
+    box-shadow:0 4px 14px -6px rgba(26,166,238,0.5);
     transform:translateY(-1px);
   }
   .header-login-link:hover svg{ transform:translateX(2px); }
@@ -2728,7 +2768,11 @@
 <header>
   <div class="wrap headerbar">
     <div class="brand">
-      <span><span class="b-sud brand-wordmark">HAYEVA</span><span class="b-rest"></span></span>
+      <a href="#accueil" aria-label="HAYEVA — Accueil">
+        <img class="header-logo" src="images/brand/hayeva-logo.png"
+             srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
+             sizes="130px" alt="HAYEVA" width="900" height="607">
+      </a>
     </div>
     <div class="mode-switch" id="modeSwitch" role="group" aria-label="Choisir votre profil : particulier ou professionnel">
       <button type="button" class="mode-btn is-active" data-mode-btn="particulier" aria-pressed="true">
@@ -2769,7 +2813,7 @@
 </header>
 
 <main>
-  <section class="hero">
+  <section class="hero" id="accueil">
     <div class="hero-wave-decor" aria-hidden="true">
       <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
         <defs>
@@ -5891,31 +5935,33 @@
   // timer, aucun changement automatique : seul un clic (ou une navigation
   // directe vers l'URL) change le mode.
   var NAV_PARTICULIER_DESKTOP = [
+    ['#accueil', 'Accueil'],
     ['#services', 'Services'],
-    ['#rdv', 'Rendez-<br>vous'],
+    ['#rdv', 'Rendez-vous'],
     ['#tarifs', 'Tarifs'],
-    ['#zone', "Zone<br>d'intervention"],
+    ['#zone', "Zone d'intervention"],
     ['#faq', 'FAQ'],
-    ['#pourquoi', 'Pourquoi<br>nous'],
+    ['#pourquoi', 'Pourquoi nous ?'],
     ['#contact', 'Contact'],
-    ['#espaceClient', 'Espace<br>client']
+    ['#espaceClient', 'Espace client']
   ];
   var NAV_PRO_DESKTOP = [
-    ['#pro', 'Check<br>technique'],
-    ['#multiLogements', 'Multi-<br>logements'],
-    ['#tarifsPro', 'Tarifs<br>pro'],
-    ['#zone', "Zone<br>d'intervention"],
+    ['#accueil', 'Accueil'],
+    ['#pro', 'Check technique'],
+    ['#multiLogements', 'Multi-logements'],
+    ['#tarifsPro', 'Tarifs pro'],
+    ['#zone', "Zone d'intervention"],
     ['#faq', 'FAQ'],
     ['#contact', 'Contact'],
-    ['#espacePro', 'Espace<br>pro']
+    ['#espacePro', 'Espace pro']
   ];
   var NAV_PARTICULIER_MOBILE = [
-    ['#services', 'Services'], ['#rdv', 'Rendez-vous'], ['#tarifs', 'Tarifs'],
-    ['#zone', "Zone d'intervention"], ['#faq', 'FAQ'], ['#pourquoi', 'Pourquoi nous'], ['#contact', 'Contact'],
+    ['#accueil', 'Accueil'], ['#services', 'Services'], ['#rdv', 'Rendez-vous'], ['#tarifs', 'Tarifs'],
+    ['#zone', "Zone d'intervention"], ['#faq', 'FAQ'], ['#pourquoi', 'Pourquoi nous ?'], ['#contact', 'Contact'],
     ['#espaceClient', '🔐 Espace Client', 'sep']
   ];
   var NAV_PRO_MOBILE = [
-    ['#pro', 'Check technique'], ['#multiLogements', 'Multi-logements'], ['#tarifsPro', 'Tarifs pro'],
+    ['#accueil', 'Accueil'], ['#pro', 'Check technique'], ['#multiLogements', 'Multi-logements'], ['#tarifsPro', 'Tarifs pro'],
     ['#zone', "Zone d'intervention"], ['#faq', 'FAQ'], ['#contact', 'Contact'],
     ['#espacePro', '🔐 Espace Pro', 'sep']
   ];
