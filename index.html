@@ -2401,21 +2401,17 @@
     .sud-fade-in{ animation:none; }
   }
   .portal-scroll{ width:100%; height:100%; overflow-y:auto; display:flex; align-items:center; justify-content:center; }
-  /* Photo Côte d'Azur en fond, recouverte d'un traitement bleu nuit pour
-     rester lisible : image plein cadre, léger flou + désaturation, puis un
-     empilement de dégradés (assombrissement général + halo doux derrière le
-     texte + vignette sur les bords).
-     EN ATTENTE D'UNE VRAIE PHOTO : aucune photo de paysage Côte d'Azur /
-     Fréjus / Saint-Raphaël n'existe actuellement dans les assets du projet
-     (uniquement des photos de chantier/technicien, impropres à cet usage).
-     Plutôt que de réutiliser une photo inadaptée, .portal-bg-img reste
-     masquée et .portal-bg affiche un dégradé bleu azur (mer → ciel) le temps
-     qu'une vraie photo soit fournie — voir portal-bg-img[src] ci-dessous
-     pour réactiver l'image dès qu'un fichier images/portal/portal-bg-*.jpg
-     adapté existe. */
+  /* Photo Côte d'Azur (Saint-Jean-Cap-Ferrat, mer/côte/relief/villégétation
+     méditerranéenne, licence Unsplash) en fond, recouverte d'un traitement
+     bleu nuit pour rester lisible : image plein cadre, léger flou +
+     désaturation, puis un empilement de dégradés (assombrissement général +
+     halo doux derrière le texte + vignette sur les bords). Même fichier et
+     même traitement réutilisés sur les portes Espace Particulier/Pro (voir
+     .auth-bg plus bas) pour une identité visuelle continue pendant tout le
+     parcours de connexion. */
   .portal-bg{
     position:absolute; inset:0; z-index:0; overflow:hidden;
-    background:linear-gradient(165deg, #0a2436 0%, #0f4160 30%, #1478a0 58%, #2aa7c4 82%, #4bc3d6 100%);
+    background:#0a2436;
   }
   .portal-bg-img{
     position:absolute; inset:0; width:100%; height:100%;
@@ -2423,7 +2419,6 @@
     filter:saturate(0.92) brightness(0.85) blur(3px);
     transform:scale(1.1);
     opacity:0;
-    display:none; /* réactiver (supprimer cette ligne) une fois une vraie photo Côte d'Azur en place */
   }
   @media (max-width:760px){ .portal-bg-img{ object-position:center center; } }
   @media (prefers-reduced-motion: no-preference){
@@ -2542,6 +2537,56 @@
     padding-block:48px 40px;
   }
   body.espace-overlay-lock{ overflow:hidden; }
+
+  /* ---------- Écrans de connexion Particulier/Pro : même photo Côte d'Azur
+     et même traitement que le portail "Bienvenue" (identité visuelle
+     continue pendant tout le parcours de connexion) ----------
+     .gate-bg-active est posée/retirée en JS (voir handleRealSession /
+     setGateView / renderLocked-Unlocked) exactement quand l'écran de
+     connexion/inscription/mot de passe oublié est affiché — jamais quand le
+     tableau de bord (déjà connecté) est visible, qui garde son thème clair
+     normal. Les jetons --ink/--ink-soft/--line/--cream/--sand/--terracotta
+     sont redéfinis localement dans ce scope : tout ce qui les utilise déjà
+     (titres, textes, cartes, champs de formulaire, liens) devient
+     automatiquement clair-sur-sombre et verre dépoli, sans dupliquer les
+     règles une par une. */
+  .auth-bg{
+    position:absolute; inset:0; z-index:0; overflow:hidden; display:none;
+  }
+  .auth-bg-img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:center center;
+    filter:saturate(0.92) brightness(0.85) blur(3px);
+    transform:scale(1.05);
+  }
+  .auth-bg-overlay{
+    position:absolute; inset:0; z-index:0; pointer-events:none; display:none;
+    background:
+      radial-gradient(ellipse 780px 560px at 50% 30%, rgba(10,20,32,0.22) 0%, transparent 68%),
+      linear-gradient(180deg, rgba(8,20,32,0.58) 0%, rgba(10,24,36,0.34) 38%, rgba(8,18,28,0.62) 100%),
+      radial-gradient(ellipse 1200px 800px at 50% 50%, transparent 46%, rgba(5,14,22,0.4) 100%);
+  }
+  #espaceClient.is-open.gate-bg-active,
+  #espacePro.is-open.gate-bg-active{
+    background:#0a2436;
+    --ink:#FBF7EF; --ink-soft:rgba(251,247,239,0.82); --line:rgba(255,255,255,0.22);
+    --cream:rgba(15,25,34,0.55); --sand:rgba(15,25,34,0.5); --sand-deep:rgba(15,25,34,0.4);
+    --terracotta:#5AA9D6; --terracotta-deep:#3E8BC2; --sky-deep:#8FCCEF;
+  }
+  #espaceClient.is-open.gate-bg-active .auth-bg,
+  #espacePro.is-open.gate-bg-active .auth-bg,
+  #espaceClient.is-open.gate-bg-active .auth-bg-overlay,
+  #espacePro.is-open.gate-bg-active .auth-bg-overlay{
+    display:block;
+  }
+  #espaceClient.is-open > .wrap, #espacePro.is-open > .wrap{ position:relative; z-index:1; }
+  /* Cartes de connexion/inscription en verre dépoli : même traitement que
+     .portal-card. Sans effet visible tant que .gate-bg-active n'est pas
+     posée (fond opaque clair normal derrière), donc sûr à appliquer sans
+     condition ici. */
+  .espace-pro-login-card{
+    backdrop-filter:blur(18px) saturate(1.15); -webkit-backdrop-filter:blur(18px) saturate(1.15);
+  }
   /* Bouton "Se connecter" du header : visible uniquement quand personne
      n'est connecté (géré en JS, voir script du portail). */
   /* Bouton secondaire, clairement cliquable (contour + fond teinté dans
@@ -2760,14 +2805,9 @@
 <div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
 <div id="sitePortal">
   <div class="portal-bg" aria-hidden="true">
-    <!-- src/srcset volontairement retirés : l'ancienne photo (technicien)
-         ne correspond plus à l'usage souhaité (paysage Côte d'Azur), et la
-         charger inutilement en arrière-plan alors qu'elle reste masquée
-         (display:none, voir .portal-bg-img) gaspillerait de la bande
-         passante pour rien. Dès qu'un fichier images/portal/portal-bg-*.jpg
-         adapté existe : remettre src/srcset ci-dessous ET supprimer
-         `display:none` sur .portal-bg-img (voir CSS). -->
     <img class="portal-bg-img" id="portalBgImg"
+      src="images/portal/portal-bg-md.jpg"
+      srcset="images/portal/portal-bg-sm.jpg 800w, images/portal/portal-bg-md.jpg 1280w, images/portal/portal-bg-lg.jpg 1920w"
       sizes="100vw"
       alt="" loading="eager" fetchpriority="high">
   </div>
@@ -4135,6 +4175,12 @@
   </section>
 
   <section id="espacePro" hidden>
+    <div class="auth-bg" aria-hidden="true">
+      <img class="auth-bg-img" src="images/portal/portal-bg-md.jpg"
+        srcset="images/portal/portal-bg-sm.jpg 800w, images/portal/portal-bg-md.jpg 1280w, images/portal/portal-bg-lg.jpg 1920w"
+        sizes="100vw" alt="" loading="lazy">
+    </div>
+    <div class="auth-bg-overlay" aria-hidden="true"></div>
     <div class="wrap">
 
       <div id="espaceProGate">
@@ -4357,6 +4403,12 @@
   </section>
 
   <section id="espaceClient" hidden>
+    <div class="auth-bg" aria-hidden="true">
+      <img class="auth-bg-img" src="images/portal/portal-bg-md.jpg"
+        srcset="images/portal/portal-bg-sm.jpg 800w, images/portal/portal-bg-md.jpg 1280w, images/portal/portal-bg-lg.jpg 1920w"
+        sizes="100vw" alt="" loading="lazy">
+    </div>
+    <div class="auth-bg-overlay" aria-hidden="true"></div>
     <div class="wrap">
 
       <div id="espaceClientGate">
@@ -6813,11 +6865,17 @@
     if (adminPanelOnLock) adminPanelOnLock.hidden = true;
     if (loginForm) loginForm.hidden = false;
     if (signupForm) signupForm.hidden = true;
+    // Photo Côte d'Azur + verre dépoli sur l'écran de connexion/inscription
+    // (jamais sur le tableau de bord une fois connecté, voir renderUnlocked).
+    var section = document.getElementById('espacePro');
+    if (section) section.classList.add('gate-bg-active');
   }
   function renderUnlocked(type, label){
     currentSessionType = type;
     gate.hidden = true;
     dashboard.hidden = false;
+    var lockedSection = document.getElementById('espacePro');
+    if (lockedSection) lockedSection.classList.remove('gate-bg-active');
     if (dashBannerText) dashBannerText.textContent = label;
     // Reste dans l'écran plein écran déjà ouvert (ou ne l'ouvre pas du tout
     // s'il s'agit d'une restauration silencieuse de session au chargement de
@@ -7567,6 +7625,11 @@
     if (signupForm) signupForm.hidden = (view !== 'signup');
     if (resetForm) resetForm.hidden = (view !== 'reset');
     if (resetInvalid) resetInvalid.hidden = (view !== 'reset-invalid');
+    // Photo Côte d'Azur + traitement verre dépoli uniquement sur les écrans
+    // de connexion/inscription/mot de passe (jamais sur le tableau de bord,
+    // qui garde son thème clair normal une fois connecté).
+    var section = document.getElementById('espaceClient');
+    if (section) section.classList.toggle('gate-bg-active', view !== 'dashboard');
   }
   function renderLocked(){
     setGateView('login');
