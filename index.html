@@ -2068,6 +2068,8 @@
   .ec-badge-completed{ background:rgba(47,122,79,0.15); color:#2F7A4F; }
   .ec-badge-cancelled{ background:rgba(178,58,58,0.12); color:#B23A3A; }
   .ec-badge-draft{ background:var(--sand-deep); color:var(--ink-soft); }
+  .ec-badge-particulier{ background:var(--sky-accent-soft); color:var(--sky-accent); }
+  .ec-badge-professionnel{ background:var(--amber-soft); color:var(--amber); }
 
   /* ---------- Administration (Espace Pro, global_role='admin') ---------- */
   .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
@@ -4292,6 +4294,18 @@
              (client conciergerie/mobil-home) ne voit jamais ce panneau :
              ce sont ses propres logements ci-dessus qui le concernent. -->
         <div class="espace-pro-admin" id="espaceProAdminPanel" hidden>
+          <div class="section-head espace-pro-intro">
+            <p class="eyebrow">Administration<span class="rule"></span></p>
+            <h2>Inscriptions</h2>
+            <p>Tous les comptes Particuliers et Professionnels créés sur HAYEVA, les plus récents en premier.</p>
+          </div>
+          <div class="admin-bk-filters" id="adminAccountsFilters" role="group" aria-label="Filtrer par type de compte">
+            <button type="button" class="gallery-filter-btn is-active" data-admin-account-filter="all">Tous</button>
+            <button type="button" class="gallery-filter-btn" data-admin-account-filter="customer">Particuliers</button>
+            <button type="button" class="gallery-filter-btn" data-admin-account-filter="professional">Professionnels</button>
+          </div>
+          <div id="adminAccountsList"><p class="ec-loading">Chargement…</p></div>
+
           <div class="section-head espace-pro-intro" style="margin-top:44px;">
             <p class="eyebrow">Administration<span class="rule"></span></p>
             <h2>Tous les rendez-vous</h2>
@@ -7180,6 +7194,100 @@
     });
   }
 
+  // ---------- Administration : liste des inscriptions (comptes Particulier
+  // et Professionnel) ----------
+  // Lit directement profiles/customer_profiles/professional_accounts (RLS
+  // "self or admin" déjà en place, voir 0001_init.sql) : aucune nouvelle
+  // table, aucune nouvelle policy. Les comptes 'admin' (l'équipe HAYEVA elle-
+  // même) sont volontairement exclus : cet écran répertorie les inscriptions
+  // clients, pas les comptes internes.
+  var adminAccountsCache = null;
+  var adminAccountFilter = 'all';
+
+  function admFilterAccounts(rows, filter){
+    if (filter === 'all') return rows;
+    return rows.filter(function(r){ return r.type === filter; });
+  }
+
+  function admRenderAccounts(){
+    var listEl = document.getElementById('adminAccountsList');
+    if (!listEl || !adminAccountsCache) return;
+    var rows = admFilterAccounts(adminAccountsCache, adminAccountFilter);
+    if (!rows.length){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucune inscription</strong>Aucun compte pour ce filtre.</div>';
+      return;
+    }
+    var html = '<div class="ec-list">';
+    rows.forEach(function(r){
+      var badgeClass = r.type === 'professional' ? 'ec-badge-professionnel' : 'ec-badge-particulier';
+      var badgeLabel = r.type === 'professional' ? 'Professionnel' : 'Particulier';
+      html += '<div class="ec-row"><div class="ec-row-info">' +
+        '<span class="ec-row-title">' + admEscape(r.displayName) + ' <span class="ec-badge ' + badgeClass + '">' + badgeLabel + '</span></span>' +
+        (r.email ? '<span class="ec-row-meta">✉️ ' + admEscape(r.email) + '</span>' : '') +
+        (r.phone ? '<span class="ec-row-meta">📞 ' + admEscape(r.phone) + '</span>' : '') +
+        (r.siret ? '<span class="ec-row-meta">SIRET ' + admEscape(r.siret) + '</span>' : '') +
+        '<span class="ec-row-meta">Inscrit le ' + admFmtDate(r.created_at) + '</span>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  function admLoadAccounts(){
+    var listEl = document.getElementById('adminAccountsList');
+    if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    Promise.all([
+      sb.client.from('profiles').select('user_id,email,global_role,created_at')
+        .in('global_role', ['customer','professional'])
+        .order('created_at', { ascending:false })
+        .limit(500),
+      sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone'),
+      sb.client.from('professional_accounts').select('created_by,legal_name,siret,phone')
+    ]).then(function(res){
+      if (res[0].error){
+        if (listEl) listEl.innerHTML = '<div class="ec-empty"><strong>Chargement impossible</strong>Réessayez dans un instant.</div>';
+        return;
+      }
+      var profilesRows = res[0].data || [];
+      var custMap = {};
+      (res[1].data || []).forEach(function(c){ custMap[c.user_id] = c; });
+      var proMap = {};
+      (res[2].data || []).forEach(function(p){ proMap[p.created_by] = p; });
+
+      adminAccountsCache = profilesRows.map(function(p){
+        if (p.global_role === 'professional'){
+          var pa = proMap[p.user_id];
+          return {
+            type: 'professional', email: p.email, created_at: p.created_at,
+            displayName: (pa && pa.legal_name) || p.email,
+            phone: pa && pa.phone, siret: pa && pa.siret
+          };
+        }
+        var cp = custMap[p.user_id];
+        var fullName = cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : '';
+        return {
+          type: 'customer', email: p.email, created_at: p.created_at,
+          displayName: fullName || p.email,
+          phone: cp && cp.phone
+        };
+      });
+      admRenderAccounts();
+    });
+  }
+
+  var adminAccountsFiltersEl = document.getElementById('adminAccountsFilters');
+  if (adminAccountsFiltersEl){
+    adminAccountsFiltersEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-admin-account-filter]');
+      if (!btn) return;
+      adminAccountFilter = btn.getAttribute('data-admin-account-filter');
+      Array.prototype.forEach.call(adminAccountsFiltersEl.querySelectorAll('[data-admin-account-filter]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      admRenderAccounts();
+    });
+  }
+
   function admRenderList(){
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
@@ -7308,6 +7416,7 @@
     if (!panel) return;
     if (role === 'admin'){
       panel.hidden = false;
+      admLoadAccounts();
       admLoadBookings();
     } else {
       panel.hidden = true;
