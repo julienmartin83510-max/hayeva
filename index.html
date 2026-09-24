@@ -56,6 +56,18 @@ if ('serviceWorker' in navigator){
   // dans ce fichier : les centraliser aussi est un chantier séparé, plus
   // large, non fait à cette étape.
   window.SUD_BRAND = { name: 'HAYEVA', tagline: 'Plomberie • Chauffage • Climatisation' };
+
+  // ---------- LANCEMENT HAYEVA (temporaire) ----------
+  // bookingOpeningDate : première date réservable (AAAA-MM-JJ). Le
+  //   calendrier de réservation ne propose aucune date antérieure. La même
+  //   règle est imposée côté serveur (supabase/migrations/
+  //   0015_booking_opening_date.sql) : ce réglage n'est qu'un confort
+  //   d'affichage, jamais la protection elle-même.
+  // showNotice : bandeaux « Entreprise en cours de création » (classe
+  //   .launch-notice). Passer à false les masque partout ; pour les retirer
+  //   définitivement, supprimer les blocs HTML/CSS marqués « LANCEMENT ».
+  window.HAYEVA_LAUNCH = { bookingOpeningDate: '2026-11-01', showNotice: true };
+  if (!window.HAYEVA_LAUNCH.showNotice) document.documentElement.setAttribute('data-launch-notice', 'off');
 </script>
 <style>
   /* L'attribut [hidden] natif n'est masqué que par la feuille de style par
@@ -733,6 +745,61 @@ if ('serviceWorker' in navigator){
     flex-wrap:wrap;
   }
   .trustline .dot{width:5px;height:5px;border-radius:50%;background:var(--hl-blue); flex:none;}
+
+  /* ---------- LANCEMENT (temporaire) : bandeau « Entreprise en cours de
+     création » + mention d'ouverture dans la réservation ----------
+     Bloc autonome : à supprimer d'un seul tenant avec les éléments HTML
+     marqués « LANCEMENT » (ou masqué via window.HAYEVA_LAUNCH.showNotice). */
+  /* Couleurs propres au bloc (les jetons --hl-* n'existent que dans .hero) :
+     reprennent exactement la charte du hero. */
+  .launch-notice, .launch-booking-hint{
+    --ln-navy:#12213D; --ln-navy-soft:#55637A; --ln-orange:#E85A12;
+    --ln-line:rgba(18,33,61,0.12);
+  }
+  .launch-notice{
+    display:flex; align-items:center; gap:10px;
+    width:fit-content; max-width:100%;
+    margin:0 auto 26px;
+    padding:9px 18px 9px 14px;
+    background:linear-gradient(135deg, #FFFFFF 0%, var(--ivory) 100%);
+    border:1px solid var(--ln-line);
+    border-radius:999px;
+    box-shadow:0 10px 24px -18px rgba(18,33,61,0.45);
+    font-family:"Poppins",sans-serif; font-size:0.84rem; line-height:1.45;
+    color:var(--ln-navy-soft);
+    text-align:left;
+  }
+  .launch-notice strong{ color:var(--ln-navy); font-weight:600; }
+  .launch-notice sup, .launch-booking-hint sup{ font-size:0.68em; line-height:0; }
+  .launch-notice-dot{
+    flex:none; width:8px; height:8px; border-radius:50%;
+    background:var(--ln-orange);
+    box-shadow:0 0 0 4px rgba(232,90,18,0.14);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .launch-notice-dot{ animation:launchDotPulse 2.8s ease-in-out infinite; }
+  }
+  @keyframes launchDotPulse{
+    0%,100%{ box-shadow:0 0 0 4px rgba(232,90,18,0.14); }
+    50%{ box-shadow:0 0 0 7px rgba(232,90,18,0.05); }
+  }
+  /* Variante section Réservation : alignée à gauche comme le reste de
+     l'en-tête de section (et neutralise .section-head p). */
+  .section-head .launch-notice-booking{ margin:18px 0 0; font-size:0.84rem; }
+  .launch-booking-hint{
+    margin:-6px 0 14px; padding-left:12px;
+    border-left:3px solid var(--ln-orange);
+    font-size:0.88rem; line-height:1.5; color:var(--ln-navy-soft);
+  }
+  @media (max-width:560px){
+    .launch-notice{
+      border-radius:14px; padding:10px 14px; gap:9px;
+      font-size:0.8rem; align-items:flex-start;
+    }
+    .launch-notice-dot{ margin-top:6px; }
+  }
+  html[data-launch-notice="off"] .launch-notice,
+  html[data-launch-notice="off"] .launch-booking-hint{ display:none !important; }
 
   /* ---------- Hero scene ---------- */
   .scene-card{
@@ -3470,6 +3537,13 @@ if ('serviceWorker' in navigator){
            sizes="(min-width:640px) 320px, 240px"
            alt="HAYEVA" loading="eager" fetchpriority="high">
 
+      <!-- LANCEMENT (temporaire) : bandeau à retirer à la création officielle
+           de l'entreprise — voir window.HAYEVA_LAUNCH en tête de fichier. -->
+      <p class="launch-notice" role="note">
+        <span class="launch-notice-dot" aria-hidden="true"></span>
+        <span class="launch-notice-text"><strong>Entreprise en cours de création</strong> — Interventions disponibles à partir du 1<sup>er</sup>&nbsp;novembre&nbsp;2026</span>
+      </p>
+
       <div data-audience="particulier">
         <p class="hero-eyebrow-light">Plomberie • Chauffage • Climatisation</p>
         <h1>Votre confort, entre de bonnes mains.</h1>
@@ -4319,6 +4393,11 @@ if ('serviceWorker' in navigator){
         <p class="eyebrow">Réservation en ligne</p>
         <h2>Prenez rendez-vous en quelques clics.</h2>
         <p>Choisissez votre prestation, une date et un horaire, puis envoyez votre demande. Nous vous confirmons la disponibilité du créneau par retour rapide.</p>
+        <!-- LANCEMENT (temporaire) : à retirer à la création officielle de l'entreprise. -->
+        <p class="launch-notice launch-notice-booking" role="note">
+          <span class="launch-notice-dot" aria-hidden="true"></span>
+          <span class="launch-notice-text"><strong>Entreprise en cours de création</strong> — Interventions disponibles à partir du 1<sup>er</sup>&nbsp;novembre&nbsp;2026</span>
+        </p>
       </div>
 
       <div class="booking-card">
@@ -4355,6 +4434,8 @@ if ('serviceWorker' in navigator){
 
         <div class="booking-step" data-step="2" hidden>
           <h3>2 · Choisissez le rendez-vous</h3>
+          <!-- LANCEMENT (temporaire) : à retirer à la création officielle de l'entreprise. -->
+          <p class="launch-booking-hint">Prise de rendez-vous ouverte pour les interventions à partir du 1<sup>er</sup>&nbsp;novembre&nbsp;2026.</p>
           <div class="date-scroll" id="dateOptions"></div>
           <h3 style="margin-top:24px;">Choisissez un horaire</h3>
           <div class="time-grid" id="timeOptions"><p class="hint">Sélectionnez d'abord une date.</p></div>
@@ -5556,10 +5637,22 @@ if ('serviceWorker' in navigator){
     return d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   }
 
+  // Première date réservable (voir window.HAYEVA_LAUNCH, en tête de fichier) :
+  // aucune date antérieure n'est proposée. Les jours fermés (dimanche) restent
+  // exclus comme d'habitude — si la date d'ouverture tombe un jour fermé, le
+  // premier jour proposé est le jour ouvert suivant.
+  function bookingOpeningDate(){
+    var iso = window.HAYEVA_LAUNCH && window.HAYEVA_LAUNCH.bookingOpeningDate;
+    var p = iso ? String(iso).split('-') : null;
+    return (p && p.length === 3) ? new Date(+p[0], +p[1] - 1, +p[2]) : null;
+  }
+
   function nextAvailableDates(){
     var out = [];
     var cursor = new Date();
     cursor.setHours(0,0,0,0);
+    var opening = bookingOpeningDate();
+    if (opening && cursor < opening) cursor = opening;
     var maxDate = new Date(2027, 2, 31);
     while (cursor <= maxDate){
       if (cursor.getDay() !== 0) out.push(new Date(cursor));
@@ -6594,7 +6687,7 @@ if ('serviceWorker' in navigator){
           var rmsg = (outcome.error && outcome.error.message) || '';
           if (/authentification requise/i.test(rmsg)){
             msg = 'Votre session a expiré. Merci de vous reconnecter à votre Espace Client avant de confirmer, puis recommencez votre demande.';
-          } else if (/créneau/i.test(rmsg) || /adresse/i.test(rmsg)){
+          } else if (/créneau/i.test(rmsg) || /adresse/i.test(rmsg) || /1er novembre/i.test(rmsg)){
             msg = rmsg;
           }
         } else if (outcome.kind === 'missing-contact'){
@@ -8431,6 +8524,17 @@ if ('serviceWorker' in navigator){
     }
   }
 
+  // Date minimale proposable (ouverture des rendez-vous, voir
+  // window.HAYEVA_LAUNCH) — aussi revérifiée côté serveur par
+  // propose-alternative-slot.
+  function admProposeMinAttr(){
+    var iso = window.HAYEVA_LAUNCH && window.HAYEVA_LAUNCH.bookingOpeningDate;
+    var today = new Date();
+    var todayIso = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
+    var min = (iso && iso > todayIso) ? iso : todayIso;
+    return ' min="' + min + '"';
+  }
+
   function admRenderList(){
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
@@ -8507,7 +8611,7 @@ if ('serviceWorker' in navigator){
         (b.status === 'PENDING' ?
           '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
             '<div class="admin-bk-propose-form-row">' +
-              '<label>Nouvelle date<input type="date" class="admin-bk-propose-date" required></label>' +
+              '<label>Nouvelle date<input type="date" class="admin-bk-propose-date"' + admProposeMinAttr() + ' required></label>' +
               '<label>Nouvelle heure<input type="time" class="admin-bk-propose-time" required></label>' +
             '</div>' +
             '<label>Message (facultatif)<textarea class="admin-bk-propose-message" placeholder="Un mot pour votre client…"></textarea></label>' +

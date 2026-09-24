@@ -26,6 +26,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
+const BOOKING_OPENING_DATE = '2026-11-01';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => (
@@ -77,6 +78,16 @@ Deno.serve(async (req: Request) => {
     const message = body.message ? String(body.message).slice(0, 500) : null;
     if (!bookingId || !proposedDate || !proposedTime) {
       return json({ error: 'missing_fields' }, 400);
+    }
+    // Ouverture des rendez-vous (même règle que booking_opening_date() côté
+    // SQL, migration 0015) : jamais de créneau proposé avant le 01/11/2026.
+    // Le format AAAA-MM-JJ / HH:MM est aussi imposé ici, ces deux valeurs
+    // étant ensuite insérées telles quelles dans l'e-mail.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(proposedDate)) || !/^\d{2}:\d{2}/.test(String(proposedTime))) {
+      return json({ error: 'invalid_fields' }, 400);
+    }
+    if (String(proposedDate) < BOOKING_OPENING_DATE) {
+      return json({ error: 'before_opening_date' }, 400);
     }
 
     const { data: booking } = await supabase
