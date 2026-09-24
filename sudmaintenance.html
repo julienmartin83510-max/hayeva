@@ -8371,6 +8371,20 @@ if ('serviceWorker' in navigator){
     search: function(query){
       return matchingServices(query);
     },
+    // Ajout pour l'Assistant Hayeva (widget IA) : même moteur de recherche
+    // que search()/matchingServices(), mais expose le score de confiance —
+    // nécessaire pour ne suggérer un tarif que si la correspondance est
+    // réellement solide (voir tryShowBookingCta), jamais pour une phrase de
+    // conversation longue où un seul mot-clé isolé matcherait par hasard.
+    // N'affecte jamais search() ni la recherche "De quoi avez-vous besoin ?"
+    // qui continue d'utiliser matchingServices() telle quelle.
+    searchScored: function(query){
+      var q = normalizeText(query.trim());
+      if (!q || q.length < 2) return [];
+      return SERVICES.map(function(s){ return { service:s, score:scoreService(s, q) }; })
+        .filter(function(x){ return x.score > 0; })
+        .sort(function(a, b){ return b.score - a.score; });
+    },
     categoryMeta: function(id){
       return categoryMeta(id);
     },
@@ -14747,11 +14761,26 @@ if ('serviceWorker' in navigator){
   // de réservation, exactement comme la recherche existante — pas même le
   // bouton devis, pour ne jamais laisser entendre que cette prestation
   // pourrait être réalisée.
+  // Seuil de confiance minimum pour proposer un TARIF précis suite à une
+  // phrase de conversation libre (pas une recherche courte et délibérée
+  // comme "De quoi avez-vous besoin ?", qui elle garde son comportement
+  // d'origine via search()/matchingServices() — jamais touché ici).
+  // Calibré empiriquement sur l'échelle de scoreService() : un seul mot-clé
+  // isolé au milieu d'une phrase de plusieurs mots (ex. "casse" dans "Nice,
+  // tuyau cassé") reste sous ce seuil, tandis qu'une correspondance réelle à
+  // au moins la moitié des mots de la phrase (ex. "robinet" + "fuit") ou un
+  // vrai mot-clé/titre passe au-dessus. Corrige le bug où une prestation
+  // sans rapport (ex. "Débouchage WC" pour "tuyau cassé") apparaissait dès
+  // qu'un score strictement positif suffisait.
+  var AI_CTA_MIN_CONFIDENCE = 35;
   function tryShowBookingCta(userText){
     if (!window.sudBooking) return false;
     if (window.sudBooking.isClimRepairQuery && window.sudBooking.isClimRepairQuery(userText)) return false;
-    var matches = window.sudBooking.search(userText) || [];
-    addBookingCta(matches);
+    var scored = (window.sudBooking.searchScored ? window.sudBooking.searchScored(userText) : []) || [];
+    var confidentMatches = scored
+      .filter(function(x){ return x.score >= AI_CTA_MIN_CONFIDENCE; })
+      .map(function(x){ return x.service; });
+    addBookingCta(confidentMatches);
     return true;
   }
 
