@@ -1,0 +1,13 @@
+-- ============================================================
+-- Rayon de déplacement inclus : 20 km → 25 km autour de Fréjus
+-- ============================================================
+-- travel_settings est la source de vérité unique déjà en place
+-- (0007_travel_and_emails.sql) : le frontend (FREE_TRAVEL_KM) et
+-- compute_travel_fee_cents() la lisent tous les deux, aucune autre
+-- constante ne pilote réellement le calcul facturé. Ligne singleton
+-- (id = true), donc une simple mise à jour, aucun changement de schéma.
+-- N'affecte jamais une réservation déjà existante : le tarif appliqué est
+-- toujours figé au moment de la réservation (service_price_cents/
+-- travel_fee_cents/total_cents déjà snapshotés sur chaque ligne de
+-- bookings), jamais recalculé rétroactivement.
+update travel_settings set included_radius_km = 25 where id = true;

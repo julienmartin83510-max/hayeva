@@ -16,6 +16,7 @@
 // jamais supposé côté client).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -107,35 +108,40 @@ Deno.serve(async (req: Request) => {
       : fmtEuros(booking.total_cents || 0);
 
     let subject: string;
-    let introHtml: string;
+    let introText: string;
+    let badgeLabel: string;
+    let badgeTone: 'confirmed' | 'cancelled';
     if (emailType === 'confirmed') {
       subject = '✓ Votre rendez-vous HAYEVA est confirmé';
-      introHtml = `<p style="margin-top:0;">Bonne nouvelle, votre rendez-vous HAYEVA est <strong>confirmé</strong>.</p>`;
+      introText = 'Bonne nouvelle, votre rendez-vous HAYEVA est <strong>confirmé</strong>.';
+      badgeLabel = '✅ Confirmée';
+      badgeTone = 'confirmed';
     } else {
       subject = 'Votre demande de rendez-vous HAYEVA a été annulée';
-      introHtml = `<p style="margin-top:0;">Votre demande de rendez-vous n'a malheureusement pas pu être retenue. N'hésitez pas à nous contacter ou à effectuer une nouvelle demande pour un autre créneau.</p>`;
+      introText = 'Votre demande de rendez-vous n\'a malheureusement pas pu être retenue. N\'hésitez pas à nous contacter ou à effectuer une nouvelle demande pour un autre créneau.';
+      badgeLabel = '✖ Annulée';
+      badgeTone = 'cancelled';
     }
 
-    const html = `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#16222c;">
-        <h2 style="color:#101B24;margin-bottom:6px;">Bonjour ${escapeHtml(firstName || '')},</h2>
-        ${introHtml}
-        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px;">
-          <tr><td style="padding:6px 0;color:#5B6B78;width:150px;">Prestation</td><td style="padding:6px 0;font-weight:600;">${escapeHtml(serviceName)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Date</td><td style="padding:6px 0;">${fmtDate(booking.date)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Heure</td><td style="padding:6px 0;">${(booking.start_time || '').slice(0, 5)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Adresse d'intervention</td><td style="padding:6px 0;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
-          ${emailType === 'confirmed' ? `
-          <tr><td style="padding:6px 0;color:#5B6B78;">Prix prestation</td><td style="padding:6px 0;">${priceLine}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Frais de déplacement</td><td style="padding:6px 0;">${travelLine}</td></tr>
-          <tr><td style="padding:8px 0;color:#101B24;font-weight:700;border-top:1px solid #e5e0d5;">Total</td><td style="padding:8px 0;font-weight:700;border-top:1px solid #e5e0d5;">${totalLine}</td></tr>
-          ` : ''}
-        </table>
-        ${booking.customer_user_id ? `<p style="margin-top:22px;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:600;font-size:14px;">Voir mon rendez-vous</a></p>` : ''}
-        <p style="margin-top:26px;">À bientôt,<br>L'équipe HAYEVA</p>
-        <p style="margin-top:20px;font-size:12px;color:#8A97A3;">Réf. ${escapeHtml(booking.reference || '')}</p>
-      </div>
-    `;
+    const detailsRows = emailType === 'confirmed' ? `
+      <tr><td style="padding:7px 0;color:#5B6B78;">Prix prestation</td><td style="padding:7px 0;text-align:right;">${priceLine}</td></tr>
+      <tr><td style="padding:7px 0;color:#5B6B78;">Frais de déplacement</td><td style="padding:7px 0;text-align:right;">${travelLine}</td></tr>
+      <tr><td style="padding:10px 0 0;color:#101B24;font-weight:700;border-top:1px solid #E5E0D5;">Total</td><td style="padding:10px 0 0;font-weight:700;text-align:right;border-top:1px solid #E5E0D5;">${totalLine}</td></tr>
+    ` : '';
+
+    const html = renderEmailShell(`
+      <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour ${escapeHtml(firstName || '')},</h2>
+      <p style="margin:0 0 18px; font-size:15px;">${introText}</p>
+      ${statusBadgeHtml(badgeLabel, badgeTone)}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:7px 0;color:#5B6B78;width:150px;">Prestation</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(serviceName)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Date</td><td style="padding:7px 0;text-align:right;">${fmtDate(booking.date)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Créneau</td><td style="padding:7px 0;text-align:right;">${(booking.start_time || '').slice(0, 5)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Adresse</td><td style="padding:7px 0;text-align:right;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
+        ${detailsRows}
+      </table>
+      ${booking.customer_user_id ? `<p style="margin:22px 0 0;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir mon rendez-vous</a></p>` : ''}
+    `, escapeHtml(booking.reference || ''));
 
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',

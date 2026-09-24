@@ -44,6 +44,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
+import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -171,26 +172,24 @@ Deno.serve(async (req: Request) => {
     const prestationLabel = packName ? `${serviceName} — ${packName}` : serviceName;
     const subject = `🔔 Nouveau rendez-vous HAYEVA – ${categoryLabel}`;
 
-    const html = `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#16222c;">
-        <h2 style="color:#101B24;margin-bottom:18px;">Nouveau rendez-vous HAYEVA</h2>
-        <table style="width:100%;border-collapse:collapse;font-size:14px;">
-          <tr><td style="padding:6px 0;color:#5B6B78;width:120px;">Client</td><td style="padding:6px 0;font-weight:600;">${escapeHtml(contactName)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Téléphone</td><td style="padding:6px 0;">${contactPhone ? escapeHtml(contactPhone) : '—'}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">E-mail</td><td style="padding:6px 0;">${contactEmail ? escapeHtml(contactEmail) : '—'}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Type</td><td style="padding:6px 0;">${escapeHtml(categoryLabel)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Prestation</td><td style="padding:6px 0;">${escapeHtml(prestationLabel)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Date</td><td style="padding:6px 0;">${fmtDate(booking.date)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Heure</td><td style="padding:6px 0;">${(booking.start_time || '').slice(0, 5)}</td></tr>
-          <tr><td style="padding:6px 0;color:#5B6B78;">Adresse</td><td style="padding:6px 0;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
-          ${booking.notes ? `<tr><td style="padding:6px 0;color:#5B6B78;vertical-align:top;">Commentaire</td><td style="padding:6px 0;">${escapeHtml(booking.notes)}</td></tr>` : ''}
-        </table>
-        <p style="margin-top:26px;">
-          <a href="${ADMIN_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:600;font-size:14px;">Voir le rendez-vous</a>
-        </p>
-        <p style="margin-top:20px;font-size:12px;color:#8A97A3;">Réf. ${escapeHtml(booking.reference || '')}</p>
-      </div>
-    `;
+    const html = renderEmailShell(`
+      <h2 style="margin:0 0 16px; font-size:20px; color:#101B24;">Nouveau rendez-vous HAYEVA</h2>
+      ${statusBadgeHtml('🔔 Nouvelle demande', 'received')}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:7px 0;color:#5B6B78;width:130px;">Client</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(contactName)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Téléphone</td><td style="padding:7px 0;text-align:right;">${contactPhone ? escapeHtml(contactPhone) : '—'}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">E-mail</td><td style="padding:7px 0;text-align:right;">${contactEmail ? escapeHtml(contactEmail) : '—'}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Type</td><td style="padding:7px 0;text-align:right;">${escapeHtml(categoryLabel)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Prestation</td><td style="padding:7px 0;text-align:right;">${escapeHtml(prestationLabel)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Date</td><td style="padding:7px 0;text-align:right;">${fmtDate(booking.date)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Créneau</td><td style="padding:7px 0;text-align:right;">${(booking.start_time || '').slice(0, 5)}</td></tr>
+        <tr><td style="padding:7px 0;color:#5B6B78;">Adresse</td><td style="padding:7px 0;text-align:right;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
+        ${booking.notes ? `<tr><td style="padding:7px 0;color:#5B6B78;vertical-align:top;">Commentaire</td><td style="padding:7px 0;text-align:right;">${escapeHtml(booking.notes)}</td></tr>` : ''}
+      </table>
+      <p style="margin:24px 0 0;">
+        <a href="${ADMIN_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir le rendez-vous</a>
+      </p>
+    `, escapeHtml(booking.reference || ''));
 
     if (RESEND_API_KEY && ADMIN_EMAIL) {
       const emailRes = await fetch('https://api.resend.com/emails', {

@@ -1,6 +1,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HAYEVA</title>
+<title>HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus</title>
+<meta name="description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
+<!-- Balises statiques de secours pour les robots/aperçus qui n'exécutent pas
+     le JavaScript (partage iMessage/WhatsApp/réseaux sociaux, premier
+     passage d'un crawler) : mêmes textes que updateMeta() ci-dessous, qui
+     continue de les affiner en direct selon le mode Particulier/
+     Professionnel pour un navigateur réel — aucun changement à cette
+     fonction existante. URL provisoire : hayeva.fr pointe aujourd'hui vers
+     une page de parking OVH, pas vers ce site — à corriger avant le
+     lancement (voir rapport), en attendant ces balises utilisent l'URL
+     réellement en ligne. -->
+<link rel="canonical" href="https://hayeva.netlify.app/">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HAYEVA">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:title" content="HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus">
+<meta property="og:description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
+<meta property="og:url" content="https://hayeva.netlify.app/">
+<meta property="og:image" content="https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus">
+<meta name="twitter:description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
+<meta name="twitter:image" content="https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg">
+<link rel="icon" type="image/png" sizes="192x192" href="images/pwa/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="images/pwa/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@300;500&family=Outfit:wght@300;400&display=swap" rel="stylesheet">
@@ -37,6 +62,94 @@
   }
   window.sudSupabase = { client: client, configured: !!client };
 })();
+
+// ============================================================
+// Mesure d'audience interne, anonyme — aucun service tiers (voir la page
+// légale "Cookies" pour le détail). Un seul mécanisme : une table
+// analytics_events, jamais de Realtime Presence (voir 0019_visitor_
+// analytics.sql). session_id est un UUID aléatoire, jamais lié à un
+// compte, jamais accompagné d'une IP, stocké uniquement en sessionStorage
+// (jamais localStorage) — réinitialisé à chaque nouvelle visite/onglet,
+// pour qu'un F5 ne crée jamais un nouveau "visiteur unique".
+// ============================================================
+(function(){
+  function uuidv4(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+  var sessionId = null;
+  try {
+    sessionId = sessionStorage.getItem('sud_session_id');
+    if (!sessionId){
+      sessionId = uuidv4();
+      sessionStorage.setItem('sud_session_id', sessionId);
+    }
+  } catch(e){
+    sessionId = uuidv4();
+  }
+
+  function currentPage(){
+    var h = (location.hash || '').replace(/^#\/?/, '');
+    if (!h || h.indexOf('legal/') === 0 || h.indexOf('espace') === 0) return h.indexOf('legal/') === 0 ? h : 'accueil';
+    return h;
+  }
+
+  // Fire-and-forget, jamais bloquant : aucun await, une erreur reste locale
+  // à ce module et ne doit jamais ralentir ni casser le reste du site.
+  function sudTrack(eventType, page){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    try {
+      sb.client.from('analytics_events').insert({
+        event_type: eventType,
+        session_id: sessionId,
+        page: page || currentPage()
+      }).then(function(res){
+        if (res.error) console.error('sudTrack:', eventType, res.error);
+      });
+    } catch(e){ console.error('sudTrack: erreur inattendue', eventType, e); }
+  }
+  window.sudTrack = sudTrack;
+
+  // page_view : au chargement initial, puis à chaque navigation vers une
+  // section nommée (mêmes ancres que la navigation existante du site).
+  window.addEventListener('load', function(){ sudTrack('page_view'); });
+  window.addEventListener('hashchange', function(){ sudTrack('page_view'); });
+
+  // heartbeat : toutes les ~60s, uniquement onglet visible — se met en
+  // pause tout seul en arrière-plan/onglet fermé (aucune détection
+  // compliquée à écrire, l'API du navigateur s'en charge).
+  var heartbeatTimer = null;
+  function startHeartbeat(){
+    if (heartbeatTimer) return;
+    sudTrack('heartbeat');
+    heartbeatTimer = setInterval(function(){ sudTrack('heartbeat'); }, 60000);
+  }
+  function stopHeartbeat(){
+    if (!heartbeatTimer) return;
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') startHeartbeat();
+    else stopHeartbeat();
+  });
+  if (document.visibilityState === 'visible') startHeartbeat();
+
+  // contact_clicked / phone_clicked : délégation globale sur les liens
+  // tel:/mailto: déjà présents partout sur le site (header, footer, contact,
+  // FAQ...) — aucun lien existant modifié.
+  document.addEventListener('click', function(e){
+    var link = e.target.closest && e.target.closest('a[href^="tel:"], a[href^="mailto:"]');
+    if (!link) return;
+    var href = link.getAttribute('href') || '';
+    sudTrack(href.indexOf('tel:') === 0 ? 'phone_clicked' : 'contact_clicked');
+  });
+})();
+
 // Enregistrement du Service Worker (sw.js) : nécessaire pour recevoir de
 // vraies Web Push Notifications même site fermé (Espace Administration).
 // N'active/ne demande rien lui-même — juste l'enregistrement du fichier ;
@@ -327,6 +440,16 @@ if ('serviceWorker' in navigator){
     margin-top:10px;
     border-radius:2px;
   }
+
+  /* ---------- Bandeau pré-ouverture (HAYEVA pas encore officiellement
+     lancée — retirer ce bloc et son <div class="opening-banner"> le jour
+     de l'ouverture officielle, aucun autre changement nécessaire). ---------- */
+  .opening-banner{
+    background:var(--terracotta-deep); color:#F2E8D6; text-align:center;
+    padding:10px 16px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.82rem;
+  }
+  .opening-banner p{ margin:0; max-width:900px; margin-inline:auto; line-height:1.4; }
+  .opening-banner strong{ color:#F0C879; }
 
   /* ---------- Header ----------
      Épinglé en clair en permanence (jetons --hdr-*), comme le Hero : un
@@ -1349,6 +1472,25 @@ if ('serviceWorker' in navigator){
   .summary-card .s-row-warning .s-value{
     color:#B5762A;
   }
+  .summary-card .s-row-free-travel .s-label,
+  .summary-card .s-row-free-travel .s-value{
+    color:#8A6416;
+    font-weight:800;
+  }
+  .bk-privacy-note{
+    font-size:0.78rem; color:var(--ink-soft); line-height:1.5; margin-top:4px;
+  }
+  .bk-privacy-note a{ color:var(--sky-deep); }
+  .bk-legal-consent{
+    display:flex; flex-direction:column; gap:10px; margin-top:16px;
+    padding:14px 16px; background:var(--sand-deep); border:1px solid var(--line); border-radius:12px;
+  }
+  #bkEarlyExecutionBlock{ display:flex; flex-direction:column; gap:10px; margin-top:4px; padding-top:10px; border-top:1px dashed var(--line); }
+  .bk-consent-check{
+    display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.86rem; line-height:1.5; color:var(--ink);
+  }
+  .bk-consent-check input{ margin-top:3px; flex-shrink:0; width:16px; height:16px; }
+  .bk-consent-check a{ color:var(--sky-deep); }
   .booking-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:16px;}
   .booking-nav{
     display:flex;
@@ -1615,6 +1757,22 @@ if ('serviceWorker' in navigator){
     padding:4px 11px;
     border-radius:999px;
     white-space:nowrap;
+  }
+  /* Avantage "Déplacement offert" — packs d'entretien Premium uniquement
+     (voir isFreeTravelPack côté JS / is_free_travel_pack côté SQL). Élégant
+     et discret plutôt que criard : léger liseré doré sur la carte, un badge
+     compact au même emplacement que .pack-badge, et une ligne de rappel
+     sous le prix. */
+  .pack-free-travel{ border-color:#C9A24A; }
+  .pack-badge-travel{
+    background:linear-gradient(135deg, #D9B25C, #B5842E);
+    color:#fff;
+    box-shadow:0 4px 12px -5px rgba(181,132,46,0.65);
+  }
+  .pack-features li.pack-feature-highlight{ font-weight:800; color:#B5842E; }
+  .pack-features li.pack-feature-highlight::before{ content:"🎁"; }
+  .pack-travel-note{
+    font-size:0.78rem; font-weight:700; color:#8A6416; margin:4px 0 0;
   }
   .price-list{list-style:none; margin:0; padding:0;}
   .price-row{
@@ -1991,6 +2149,27 @@ if ('serviceWorker' in navigator){
     display:inline-block; font-size:0.68rem; font-weight:700; letter-spacing:0.03em; text-transform:uppercase;
     color:var(--ink-soft); background:var(--sand-deep); border:1px solid var(--line); border-radius:999px; padding:3px 9px; margin-top:8px;
   }
+  /* "Mes rendez-vous" (carte Espace Professionnel) : vraies données Supabase
+     liées au compte pro connecté (voir renderApptSummary/loadApptSummary),
+     plus aucune dépendance au localStorage/à l'appareil. */
+  .espace-pro-appt-list{ display:flex; flex-direction:column; gap:8px; margin-top:2px; }
+  .espace-pro-appt-item{
+    border:1px solid var(--line); border-radius:10px; padding:9px 11px; background:var(--sand);
+  }
+  .espace-pro-appt-date{ font-weight:700; font-size:0.82rem; color:var(--ink); }
+  .espace-pro-appt-service{ font-size:0.82rem; color:var(--ink); margin-top:2px; }
+  .espace-pro-appt-address{ font-size:0.78rem; color:var(--ink-soft); margin-top:2px; }
+  .espace-pro-appt-meta{ font-size:0.78rem; color:var(--ink-soft); margin-top:4px; font-weight:600; }
+  .espace-pro-appt-meta .is-confirmed{ color:#2F7A4F; }
+  .espace-pro-appt-meta .is-pending{ color:#B5762A; }
+  .espace-pro-appt-meta .is-completed{ color:var(--ink-soft); }
+  .espace-pro-appt-meta .is-cancelled{ color:#B23A3A; }
+  .espace-pro-appt-empty, .espace-pro-appt-loading{ font-size:0.85rem; color:var(--ink-soft); }
+  .espace-pro-appt-all-btn{
+    margin-top:12px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem; color:var(--terracotta);
+    background:none; border:1px solid var(--terracotta); border-radius:999px; padding:7px 14px; cursor:pointer;
+  }
+  .espace-pro-appt-all-btn:hover{ background:var(--terracotta); color:#fff; }
   .espace-pro-props{
     background:var(--cream);
     border:1px solid var(--line);
@@ -2136,6 +2315,79 @@ if ('serviceWorker' in navigator){
   .ec-badge-draft{ background:var(--sand-deep); color:var(--ink-soft); }
   .ec-badge-particulier{ background:var(--sky-accent-soft); color:var(--sky-accent); }
   .ec-badge-professionnel{ background:var(--amber-soft); color:var(--amber); }
+
+  /* ---------- Actions "Déplacer" / "Annuler" (Mes rendez-vous, Espace
+     Client) — jetons GLOBAUX uniquement (--sand/--ink/--line/...), jamais
+     --adm-* : ces boutons et leurs modales vivent hors de
+     #espaceProAdminPanel, exactement la même classe de bug que celle
+     corrigée sur la fiche planning admin (voir plus haut). ---------- */
+  .ec-appt-actions{ display:flex; gap:8px; flex-wrap:wrap; width:100%; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); }
+  .ec-appt-move-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--terracotta-deep);
+    background:transparent; border:1.5px solid var(--terracotta-deep); border-radius:999px; padding:8px 16px;
+    cursor:pointer; transition:background .18s, color .18s;
+  }
+  .ec-appt-move-btn:hover{ background:var(--terracotta-deep); color:#fff; }
+  .ec-appt-cancel-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:#8A2E2E;
+    background:transparent; border:1.5px solid rgba(138,46,46,0.35); border-radius:999px; padding:8px 16px;
+    cursor:pointer; transition:background .18s, color .18s, border-color .18s;
+  }
+  .ec-appt-cancel-btn:hover{ background:#8A2E2E; border-color:#8A2E2E; color:#fff; }
+
+  /* ---------- Modale "Déplacer mon rendez-vous" ---------- */
+  .ec-move-overlay{
+    position:fixed; inset:0; z-index:10065; display:flex; justify-content:center;
+    background:rgba(16,27,46,0.55); padding:20px; backdrop-filter:blur(2px); overflow-y:auto;
+  }
+  .ec-move-overlay[hidden]{ display:none; }
+  .ec-move-box{
+    background:var(--cream); border-radius:18px; padding:26px 24px; max-width:460px; width:100%;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.4); position:relative; margin-block:auto;
+  }
+  .ec-move-close{
+    position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%;
+    background:var(--sand-deep); border:1px solid var(--line); color:var(--ink); font-size:1rem; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .ec-move-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.05rem; color:var(--ink); margin:0 30px 4px 0; }
+  .ec-move-sub{ font-size:0.84rem; color:var(--ink-soft); margin-bottom:16px; }
+  .ec-move-dates{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; -webkit-overflow-scrolling:touch; }
+  .ec-move-date-pill{
+    flex:0 0 auto; width:60px; padding:9px 4px; border-radius:12px; border:1.5px solid var(--line);
+    background:var(--sand); text-align:center; cursor:pointer; font-family:"Poppins",sans-serif;
+  }
+  .ec-move-date-pill .d-name{ display:block; font-size:0.65rem; text-transform:uppercase; color:var(--ink-soft); }
+  .ec-move-date-pill .d-num{ display:block; font-size:1.05rem; font-weight:800; color:var(--ink); }
+  .ec-move-date-pill.is-selected{ border-color:var(--terracotta-deep); background:var(--terracotta-deep); }
+  .ec-move-date-pill.is-selected .d-name, .ec-move-date-pill.is-selected .d-num{ color:#fff; }
+  .ec-move-times{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .ec-move-time-pill{
+    padding:8px 14px; border-radius:999px; border:1.5px solid var(--line); background:var(--sand);
+    font-size:0.82rem; font-weight:700; cursor:pointer; color:var(--ink);
+  }
+  .ec-move-time-pill.is-selected{ background:var(--terracotta-deep); border-color:var(--terracotta-deep); color:#fff; }
+  .ec-move-recap{
+    background:var(--sand-deep); border-radius:12px; padding:14px 16px; margin-bottom:16px; font-size:0.86rem;
+  }
+  .ec-move-recap-row{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; color:var(--ink); }
+  .ec-move-recap-row .lbl{ color:var(--ink-soft); }
+  .ec-move-error{ color:#8A2E2E; font-size:0.84rem; margin:0 0 12px; }
+  .ec-move-actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+
+  /* ---------- Modale "Annuler mon rendez-vous" ---------- */
+  .ec-cancel-overlay{
+    position:fixed; inset:0; z-index:10065; display:flex; align-items:center; justify-content:center;
+    background:rgba(16,27,46,0.55); padding:20px;
+  }
+  .ec-cancel-overlay[hidden]{ display:none; }
+  .ec-cancel-box{
+    background:var(--cream); border-radius:18px; padding:26px 24px; max-width:380px; width:100%;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.4); text-align:center;
+  }
+  .ec-cancel-box p{ font-size:0.94rem; color:var(--ink); margin:0 0 20px; }
+  .ec-cancel-error{ color:#8A2E2E; font-size:0.84rem; margin:0 0 14px; }
+  .ec-cancel-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 
   /* ================================================================
      ESPACE ADMINISTRATION HAYEVA — refonte visuelle premium (2026-09-23)
@@ -2333,6 +2585,30 @@ if ('serviceWorker' in navigator){
     color:var(--adm-coral-deep); background:var(--adm-coral-soft);
     border-radius:999px; padding:6px 14px;
   }
+
+  /* ---------- Statistiques ---------- */
+  .admin-stats-chart{
+    display:flex; align-items:flex-end; gap:8px; height:140px; padding:14px 10px 0;
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:14px;
+    box-shadow:var(--adm-shadow-sm); margin-bottom:8px;
+  }
+  .admin-stats-bar-col{ flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end; }
+  .admin-stats-bar{ width:100%; max-width:34px; border-radius:6px 6px 0 0; background:var(--adm-ocean); min-height:3px; transition:height .25s ease; }
+  .admin-stats-bar-value{ font-size:0.72rem; font-weight:700; color:var(--adm-ink); }
+  .admin-stats-bar-label{ font-size:0.68rem; color:var(--adm-ink-soft); text-transform:capitalize; }
+  .admin-stats-funnel{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:14px;
+    box-shadow:var(--adm-shadow-sm); padding:18px 20px; margin-bottom:8px;
+  }
+  .admin-stats-funnel-step{ display:flex; flex-direction:column; align-items:center; gap:2px; min-width:120px; }
+  .admin-stats-funnel-value{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; color:var(--adm-ink); }
+  .admin-stats-funnel-label{ font-size:0.78rem; color:var(--adm-ink-soft); text-align:center; }
+  .admin-stats-funnel-arrow{ color:var(--adm-ink-soft); font-size:1.1rem; }
+  .admin-stats-funnel-rate{
+    font-family:"Poppins",sans-serif; font-weight:800; color:var(--adm-green);
+    background:var(--adm-green-soft); border-radius:999px; padding:6px 14px; font-size:0.85rem;
+  }
   .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
   .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
   @media (max-width:760px){
@@ -2440,6 +2716,20 @@ if ('serviceWorker' in navigator){
   }
   .admin-bk-history-btn:hover{ border-color:var(--adm-coral); color:var(--adm-coral-deep); }
   .admin-bk-history-btn.is-active{ background:var(--adm-coral); border-color:var(--adm-coral); color:#fff; }
+  /* Bouton discret de rafraîchissement manuel (Demandes récentes) : la
+     synchronisation Realtime couvre le cas normal, ce bouton reste utile en
+     secours (reprise après une coupure réseau, etc.). */
+  .adm-refresh-btn{
+    font-family:"Poppins",sans-serif; font-weight:600; font-size:0.78rem; color:var(--adm-ink-soft);
+    background:transparent; border:1px solid var(--adm-line); border-radius:999px; padding:8px 14px; cursor:pointer;
+    margin-left:auto; white-space:nowrap; transition:border-color .2s, color .2s;
+  }
+  .adm-refresh-btn:hover{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
+  .adm-retry-btn{
+    margin-top:10px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:var(--adm-ocean);
+    background:none; border:1px solid var(--adm-ocean); border-radius:999px; padding:7px 16px; cursor:pointer;
+  }
+  .adm-retry-btn:hover{ background:var(--adm-ocean); color:#fff; }
 
   .admin-bk-planning-nav{
     display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;
@@ -2496,7 +2786,32 @@ if ('serviceWorker' in navigator){
   /* Fiche détaillée d'un rendez-vous (clic sur un bloc du planning) — même
      patron que .bk-confirm-overlay (margin-block:auto plutôt que
      align-items:center pour ne jamais rogner le haut du contenu sur mobile,
-     voir le commentaire sur .portal-scroll plus haut). */
+     voir le commentaire sur .portal-scroll plus haut).
+
+     BUG CORRIGÉ (2026-09-24) : cette fiche (#adminBkModalOverlay) est placée
+     tout en haut du <body> (voir son HTML), donc EN DEHORS de
+     #espaceProAdminPanel — elle n'hérite jamais des jetons --adm-* posés
+     uniquement sur ce dernier (voir le commentaire "Périmètre STRICT"
+     ci-dessus). Résultat : .admin-bk-modal utilisait var(--adm-card-bg) non
+     défini ici → fond transparent au-dessus d'un fond d'overlay sombre =
+     fiche quasi invisible. Correction strictement visuelle : on repose ici
+     sa PROPRE copie des jetons --adm-* (mêmes valeurs claires/sombres que
+     #espaceProAdminPanel) directement sur .admin-bk-modal-overlay, pour
+     qu'elle soit toujours lisible quel que soit son emplacement dans le
+     DOM — sans déplacer la fiche dans le DOM (risque de casser son
+     position:fixed si un ancêtre admin pose un jour un transform/filter) et
+     sans toucher au planning, à Supabase ni à la logique de réservation. */
+  .admin-bk-modal-overlay{
+    --adm-sand:#F2E9DA; --adm-card-bg:#FFFFFF;
+    --adm-ink:#212C3D; --adm-ink-soft:#5B6B80; --adm-line:rgba(33,44,61,0.10);
+    --adm-ocean:#2C6FB3;
+  }
+  @media (prefers-color-scheme: dark){
+    .admin-bk-modal-overlay{
+      --adm-sand:#1E2A3D; --adm-card-bg:#1A2333;
+      --adm-ink:#EEF2F7; --adm-ink-soft:rgba(238,242,247,0.68); --adm-line:rgba(238,242,247,0.12);
+    }
+  }
   .admin-bk-modal-overlay{
     position:fixed; inset:0; z-index:10060; display:flex; justify-content:center;
     background:rgba(16,27,46,0.6); padding:20px; backdrop-filter:blur(2px); overflow-y:auto;
@@ -2833,6 +3148,92 @@ if ('serviceWorker' in navigator){
     font-family:"Poppins",sans-serif;
     font-weight:800;
     color:var(--beige-fixed);
+  }
+
+  /* ---------- Footer — rubrique "Informations légales" ---------- */
+  /* Accessible depuis TOUTES les pages (le <footer> est commun à toute la
+     SPA) — liens ouvrant l'overlay juridique partagé (#legalOverlay),
+     jamais de contenu légal caché dans une popup isolée. */
+  .footer-legal-row{
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;
+    font-size:0.76rem; padding-bottom:16px;
+  }
+  .footer-legal-label{
+    text-transform:uppercase; letter-spacing:0.06em; font-weight:700;
+    color:color-mix(in srgb, var(--beige-fixed) 55%, transparent);
+    margin-right:4px;
+  }
+  .footer-legal-row a{
+    color:color-mix(in srgb, var(--beige-fixed) 82%, transparent);
+    text-decoration:none; border-bottom:1px solid transparent;
+  }
+  .footer-legal-row a:hover, .footer-legal-row a:focus-visible{
+    color:var(--beige-fixed); border-bottom-color:currentColor;
+  }
+
+  /* ---------- Overlay juridique (Mentions légales, CGV, Confidentialité,
+     Cookies, Médiation, Rétractation) ---------- */
+  /* Un seul overlay partagé par les 6 documents (contenu déjà présent dans
+     le HTML, jamais injecté depuis une chaîne JS) : navigation interne pour
+     passer de l'un à l'autre sans fermer/rouvrir, adressable par hash
+     (#legal/mentions, #legal/cgv, ...) pour un lien direct/partage. */
+  .legal-overlay{
+    position:fixed; inset:0; z-index:10080;
+    background:rgba(10,16,22,0.55);
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:24px 16px; overflow-y:auto;
+  }
+  .legal-overlay-inner{
+    background:var(--sand); color:var(--ink);
+    width:100%; max-width:820px; border-radius:18px;
+    box-shadow:0 24px 60px rgba(10,16,22,0.35);
+    margin:auto; overflow:hidden;
+  }
+  .legal-overlay-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; background:var(--navy-fixed); color:var(--beige-fixed);
+  }
+  .legal-overlay-brand{ font-family:"Poppins",sans-serif; font-weight:800; letter-spacing:0.03em; }
+  .legal-overlay-close{
+    appearance:none; border:1px solid rgba(255,255,255,0.3); background:transparent;
+    color:var(--beige-fixed); width:32px; height:32px; border-radius:50%;
+    font-size:1rem; line-height:1; cursor:pointer;
+  }
+  .legal-overlay-close:hover{ background:rgba(255,255,255,0.12); }
+  .legal-overlay-nav{
+    display:flex; flex-wrap:wrap; gap:6px; padding:14px 20px;
+    border-bottom:1px solid var(--line); background:var(--sand-deep);
+  }
+  .legal-nav-btn{
+    appearance:none; border:1px solid var(--line); background:var(--white);
+    color:var(--ink-soft); font-size:0.76rem; font-weight:600;
+    padding:7px 12px; border-radius:999px; cursor:pointer; white-space:nowrap;
+  }
+  .legal-nav-btn:hover{ color:var(--ink); border-color:var(--sky-accent); }
+  .legal-nav-btn.is-active{ background:var(--terracotta-deep); border-color:var(--terracotta-deep); color:#fff; }
+  .legal-overlay-content{ padding:26px 28px 34px; max-height:70vh; overflow-y:auto; }
+  .legal-page h2{ margin:0 0 4px; font-size:1.3rem; }
+  .legal-page p.legal-updated{ margin:0 0 20px; font-size:0.78rem; color:var(--ink-soft); }
+  .legal-page h3{ margin:26px 0 8px; font-size:1.02rem; color:var(--terracotta-deep); }
+  .legal-page p, .legal-page li{ font-size:0.92rem; line-height:1.62; color:var(--ink); }
+  .legal-page ul, .legal-page ol{ margin:6px 0 14px; padding-left:22px; }
+  .legal-page table{ width:100%; border-collapse:collapse; margin:10px 0 18px; font-size:0.88rem; }
+  .legal-page table th, .legal-page table td{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .legal-page table th{ color:var(--ink-soft); font-weight:700; width:42%; }
+  .legal-placeholder{
+    display:inline-block; background:var(--amber-soft); color:#7A5111;
+    font-weight:700; font-size:0.85em; padding:1px 7px; border-radius:5px;
+    border:1px dashed #C9932F;
+  }
+  .legal-page a{ color:var(--sky-deep); }
+  .legal-retraction-form{
+    background:var(--sand-deep); border:1px solid var(--line); border-radius:12px;
+    padding:16px 18px; margin-top:14px; font-size:0.88rem; line-height:1.7;
+  }
+  @media (max-width:600px){
+    .legal-overlay{ padding:0; }
+    .legal-overlay-inner{ max-width:100%; min-height:100%; border-radius:0; }
+    .legal-overlay-content{ max-height:none; padding:20px 16px 30px; }
   }
 
   /* ---------- Portail d'entrée ---------- */
@@ -3344,6 +3745,33 @@ if ('serviceWorker' in navigator){
     <div id="adminBkModalBody"></div>
   </div>
 </div>
+<!-- "Déplacer mon rendez-vous" (Espace Client) — jetons globaux uniquement,
+     voir le commentaire CSS ".ec-appt-actions" pour pourquoi. -->
+<div class="ec-move-overlay" id="ecMoveOverlay" hidden>
+  <div class="ec-move-box" role="dialog" aria-modal="true" aria-labelledby="ecMoveTitle">
+    <button type="button" class="ec-move-close" id="ecMoveClose" aria-label="Fermer">✕</button>
+    <h3 class="ec-move-title" id="ecMoveTitle">Déplacer mon rendez-vous</h3>
+    <p class="ec-move-sub" id="ecMoveSub"></p>
+    <div class="ec-move-dates" id="ecMoveDates"></div>
+    <div class="ec-move-times" id="ecMoveTimes"></div>
+    <div class="ec-move-recap" id="ecMoveRecap" hidden></div>
+    <p class="ec-move-error" id="ecMoveError" hidden></p>
+    <div class="ec-move-actions">
+      <button type="button" class="btn-secondary" id="ecMoveCancelBtn">Annuler</button>
+      <button type="button" class="btn-primary" id="ecMoveConfirmBtn" disabled>Confirmer le déplacement</button>
+    </div>
+  </div>
+</div>
+<div class="ec-cancel-overlay" id="ecCancelOverlay" hidden>
+  <div class="ec-cancel-box" role="dialog" aria-modal="true" aria-labelledby="ecCancelTitle">
+    <p id="ecCancelTitle">Êtes-vous sûr de vouloir annuler ce rendez-vous ?</p>
+    <p class="ec-cancel-error" id="ecCancelError" hidden></p>
+    <div class="ec-cancel-actions">
+      <button type="button" class="btn-secondary" id="ecCancelKeepBtn">Garder mon rendez-vous</button>
+      <button type="button" class="btn-primary" id="ecCancelConfirmBtn" style="background:#8A2E2E;">Oui, annuler</button>
+    </div>
+  </div>
+</div>
 <div id="sitePortal">
   <div class="portal-bg" aria-hidden="true">
     <img class="portal-bg-img" id="portalBgImg"
@@ -3359,12 +3787,17 @@ if ('serviceWorker' in navigator){
   <div class="portal-scroll">
   <div class="portal-inner">
     <p class="portal-eyebrow" id="portalEyebrow"></p>
-    <h1 class="portal-title" id="portalTitle">
+    <!-- h2 (pas h1) : ce logo d'écran d'accueil n'est pas le titre principal
+         de la page — un seul <h1> doit rester sur le site (voir le hero
+         "Votre confort, entre de bonnes mains."), h1/h2/h3 partagent de
+         toute façon la même règle CSS de base, donc aucun changement
+         visuel. -->
+    <h2 class="portal-title" id="portalTitle">
       <img class="portal-logo-img" src="images/brand/hayeva-logo.png"
            srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
            sizes="(max-width:600px) 200px, 300px"
            alt="HAYEVA" width="900" height="607">
-    </h1>
+    </h2>
     <p class="portal-subtitle" id="portalSubtitle"></p>
 
     <div class="portal-cards">
@@ -3396,6 +3829,10 @@ if ('serviceWorker' in navigator){
 
 <div class="edge-glow edge-glow-left" aria-hidden="true"></div>
 <div class="edge-glow edge-glow-right" aria-hidden="true"></div>
+
+<div class="opening-banner" role="note">
+  <p>🚧 Entreprise en cours de création — Interventions disponibles à partir du <strong>1er novembre 2026</strong></p>
+</div>
 
 <header>
   <div class="wrap headerbar">
@@ -3487,7 +3924,9 @@ if ('serviceWorker' in navigator){
 
       <div data-audience="pro" hidden>
         <p class="hero-eyebrow-light">Conciergeries · Locations saisonnières · Mobil-homes</p>
-        <h1>La maintenance technique de vos hébergements.</h1>
+        <!-- h2 : un seul <h1> par page (voir le hero Particulier), même
+             raisonnement que pour .portal-title ci-dessus. -->
+        <h2>La maintenance technique de vos hébergements.</h2>
         <p class="hero-subtitle-light">Simplifiez la maintenance de vos locations.</p>
         <div class="hero-ctas">
           <a class="btn-hero-primary" href="#pro">Découvrir nos services professionnels</a>
@@ -3918,7 +4357,8 @@ if ('serviceWorker' in navigator){
               <p class="pack-extra">2ᵉ unité : -20 € (59 € TTC)</p>
               <button type="button" class="pack-cta" data-pack="clim-confort">Choisir Confort</button>
             </div>
-            <div class="pack-card">
+            <div class="pack-card pack-free-travel">
+              <span class="pack-badge pack-badge-travel">Déplacement offert</span>
               <h4>Pack Premium</h4>
               <p class="pack-tagline">L'entretien intégral</p>
               <ul class="pack-features">
@@ -3928,10 +4368,11 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle approfondi de l'installation</li>
                 <li>Remplacement des piles de la télécommande</li>
                 <li>Compte rendu d'intervention</li>
-                <li>Déplacement inclus</li>
+                <li class="pack-feature-highlight">Déplacement 100% offert</li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -30 € (99 € TTC)</p>
+              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance</p>
               <button type="button" class="pack-cta" data-pack="clim-premium">Choisir Premium</button>
             </div>
           </div>
@@ -3981,7 +4422,8 @@ if ('serviceWorker' in navigator){
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-confort">Choisir Confort</button>
             </div>
-            <div class="pack-card">
+            <div class="pack-card pack-free-travel">
+              <span class="pack-badge pack-badge-travel">Déplacement offert</span>
               <h4>Pack Premium</h4>
               <p class="pack-tagline">Entretien &amp; tranquillité</p>
               <ul class="pack-features">
@@ -3991,9 +4433,10 @@ if ('serviceWorker' in navigator){
                 <li>Purge si nécessaire</li>
                 <li>Contrôle du thermostat / régulation</li>
                 <li>Compte rendu d'intervention</li>
-                <li>Déplacement inclus</li>
+                <li class="pack-feature-highlight">Déplacement 100% offert</li>
               </ul>
               <p class="pack-price">169 € <small>TTC</small></p>
+              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance</p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-premium">Choisir Premium</button>
             </div>
           </div>
@@ -4032,7 +4475,8 @@ if ('serviceWorker' in navigator){
               <p class="pack-price">169 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-confort">Choisir Confort</button>
             </div>
-            <div class="pack-card">
+            <div class="pack-card pack-free-travel">
+              <span class="pack-badge pack-badge-travel">Déplacement offert</span>
               <h4>Pack Premium</h4>
               <p class="pack-tagline">Entretien &amp; tranquillité</p>
               <ul class="pack-features">
@@ -4043,9 +4487,10 @@ if ('serviceWorker' in navigator){
                 <li>Purge si nécessaire</li>
                 <li>Contrôle visuel des éléments accessibles de l'alimentation fioul</li>
                 <li>Compte rendu détaillé d'intervention</li>
-                <li>Déplacement inclus</li>
+                <li class="pack-feature-highlight">Déplacement 100% offert</li>
               </ul>
               <p class="pack-price">219 € <small>TTC</small></p>
+              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance</p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-premium">Choisir Premium</button>
             </div>
           </div>
@@ -4082,7 +4527,7 @@ if ('serviceWorker' in navigator){
       </div>
 
       <p class="price-note-small">Main-d'œuvre : à partir de 50 € TTC selon durée de l'intervention, voir devis.</p>
-      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
+      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 25 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
       <p class="price-disclaimer">Tarifs TTC donnés à titre indicatif, hors fournitures sauf mention contraire — un devis précis vous est toujours confirmé avant intervention.</p>
       <p class="photo-tip">💳 Profitez de -10% si vous réglez votre prestation à l'avance — contactez-nous pour en profiter.</p>
       <p class="photo-tip">📷 Une photo de la panne ou de l'installation nous aide souvent à vous donner un tarif précis avant même notre venue : décrivez votre besoin dans le formulaire de réservation, nous vous recontactons pour l'obtenir facilement.</p>
@@ -4384,7 +4829,7 @@ if ('serviceWorker' in navigator){
             <label id="bkAddressFreeTextLabel" style="position:relative;">Ville / adresse d'intervention
               <input id="bkAddress" type="text" placeholder="12 avenue de la République, Fréjus…" autocomplete="off">
               <ul class="address-suggestions" id="bkAddressSuggestions" hidden></ul>
-              <span class="travel-hint">Déplacement inclus dans un rayon de 20 km autour de Fréjus. Au-delà, des frais kilométriques peuvent s'appliquer et sont indiqués avant confirmation du rendez-vous.</span>
+              <span class="travel-hint">Déplacement inclus dans un rayon de 25 km autour de Fréjus. Au-delà, des frais kilométriques peuvent s'appliquer et sont indiqués avant confirmation du rendez-vous.</span>
               <span class="travel-note" id="travelEstimateNote"></span>
             </label>
             <label class="full" id="bkCustomerAddressBlock" hidden>Adresse d'intervention (Espace Client)
@@ -4400,9 +4845,28 @@ if ('serviceWorker' in navigator){
               <textarea id="bkComment" rows="2" placeholder="Décrivez rapidement le problème ou l'intervention souhaitée…"></textarea>
             </label>
           </div>
+          <p class="bk-privacy-note">Les informations recueillies ci-dessus sont utilisées par HAYEVA pour traiter votre demande de rendez-vous et vous recontacter. En savoir plus : <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a>.</p>
           <h3 style="margin-top:24px;">Récapitulatif</h3>
           <div class="summary-card" id="bookingSummary"></div>
           <p class="hint" id="bkPendingHint">Ce créneau n'est pas définitivement confirmé : nous validons sa disponibilité rapidement par téléphone ou SMS après réception de votre demande.</p>
+
+          <div class="bk-legal-consent">
+            <label class="bk-consent-check">
+              <input type="checkbox" id="bkCgvAccept">
+              <span>J'ai pris connaissance et j'accepte les <a href="#legal/cgv" data-legal-link="cgv">Conditions générales de vente et de prestations de services</a> de HAYEVA.</span>
+            </label>
+            <div id="bkEarlyExecutionBlock" hidden>
+              <label class="bk-consent-check">
+                <input type="checkbox" id="bkEarlyExecutionRequest">
+                <span>Compte tenu de la date choisie, je demande expressément que la prestation commence avant la fin du délai légal de rétractation de 14 jours.</span>
+              </label>
+              <label class="bk-consent-check">
+                <input type="checkbox" id="bkEarlyExecutionAck">
+                <span>Je reconnais que, la prestation étant intégralement exécutée avant la fin de ce délai, je perdrai mon droit de rétractation une fois son exécution complète (<a href="#legal/retractation" data-legal-link="retractation">en savoir plus</a>).</span>
+              </label>
+            </div>
+          </div>
+
           <p class="field-error" id="bkSubmitError" hidden></p>
         </div>
 
@@ -4441,7 +4905,8 @@ if ('serviceWorker' in navigator){
       <div>
         <p class="eyebrow">Zone d'intervention</p>
         <h2 style="margin-top:10px; font-size:clamp(1.5rem,2.6vw,1.9rem);">Tout le Var, toutes les Alpes-Maritimes.</h2>
-        <p style="margin-top:12px; margin-bottom:26px;">Basés à Fréjus, nous nous déplaçons dans l'intégralité du Var (83) et des Alpes-Maritimes (06), pour les particuliers comme pour les professionnels — pas seulement les villes listées ci-dessous.</p>
+        <p style="margin-top:12px; margin-bottom:10px;">Basés à Fréjus, nous nous déplaçons dans l'intégralité du Var (83) et des Alpes-Maritimes (06), pour les particuliers comme pour les professionnels — pas seulement les villes listées ci-dessous.</p>
+        <p style="margin-bottom:26px; font-size:0.9rem; color:var(--ink-soft);">🚐 Déplacement inclus dans un rayon de 25 km autour de Fréjus (distance calculée par itinéraire routier réel, jamais à vol d'oiseau). Au-delà, des frais kilométriques peuvent s'appliquer et sont toujours indiqués avant confirmation du rendez-vous — quelle que soit la commune, l'éligibilité au rayon inclus dépend de la distance routière réelle jusqu'à votre adresse exacte.</p>
 
         <div class="dept-block">
           <h3>Alpes-Maritimes (06)</h3>
@@ -4674,7 +5139,7 @@ if ('serviceWorker' in navigator){
         </div>
       </div>
       <p class="price-note-small">Ces prestations correspondent à un contrôle visuel et fonctionnel réalisé dans le cadre des compétences de HAYEVA (plomberie, chauffage, climatisation). Elles ne constituent ni une certification officielle, ni un diagnostic réglementaire, ni une attestation de conformité.</p>
-      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 20 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
+      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 25 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
 
       <div class="pro-report">
         <h3>Un compte-rendu clair après chaque Check</h3>
@@ -4722,7 +5187,7 @@ if ('serviceWorker' in navigator){
       <div class="tarifs-pro" id="tarifsPro">
         <h3>Tarifs professionnels — remise multi-logements</h3>
         <div class="tarifs-pro-grid" id="tarifsProGrid"></div>
-        <p class="price-note-small" style="margin-top:14px;">🚐 Déplacement inclus jusqu'à 20 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
+        <p class="price-note-small" style="margin-top:14px;">🚐 Déplacement inclus jusqu'à 25 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
       </div>
     </div>
   </section>
@@ -4815,6 +5280,7 @@ if ('serviceWorker' in navigator){
                 <input type="password" id="suPasswordConfirm" autocomplete="new-password" required>
               </label>
             </div>
+            <p class="bk-privacy-note">Les données de ce formulaire sont utilisées par HAYEVA pour créer et gérer votre compte professionnel. En savoir plus : <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a>.</p>
             <p class="espace-pro-form-error" id="espaceProSignupError" hidden></p>
             <p class="espace-pro-form-success" id="espaceProSignupSuccess" hidden></p>
             <button type="submit" class="btn-primary" id="espaceProSignupSubmit">Créer mon compte professionnel</button>
@@ -4840,7 +5306,7 @@ if ('serviceWorker' in navigator){
 
         <div class="section-head espace-pro-intro">
           <p class="eyebrow">Tableau de bord<span class="rule"></span></p>
-          <h2>Bonjour 👋</h2>
+          <h2>Bonjour THE BIG BOSS 👑</h2>
           <p>Ajoutez vos logements, suivez vos rendez-vous et retrouvez leur historique.</p>
         </div>
 
@@ -4849,9 +5315,10 @@ if ('serviceWorker' in navigator){
             <h3>🏠 Mes logements</h3>
             <p>Ajoutez, consultez et supprimez vos logements ci-dessous.</p>
           </div>
-          <div class="espace-pro-card">
+          <div class="espace-pro-card espace-pro-card-appts">
             <h3>📅 Mes rendez-vous</h3>
-            <p id="espaceProApptSummary">Aucune demande envoyée depuis cet appareil pour le moment.</p>
+            <div id="espaceProApptSummary" class="espace-pro-appt-list"><p class="espace-pro-appt-loading">Chargement…</p></div>
+            <button type="button" class="espace-pro-appt-all-btn" id="espaceProApptAllBtn" hidden>Voir tous mes rendez-vous</button>
           </div>
           <div class="espace-pro-card is-soon">
             <h3>📄 Mes rapports</h3>
@@ -4925,6 +5392,9 @@ if ('serviceWorker' in navigator){
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="quotes" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">📄</span><span class="adm-nav-label">Devis</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="stats" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">📊</span><span class="adm-nav-label">Statistiques</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">⚙️</span><span class="adm-nav-label">Paramètres</span>
@@ -5004,9 +5474,12 @@ if ('serviceWorker' in navigator){
                   <h2 class="adm-page-title">🔔 Demandes récentes <span class="admin-req-badge" id="adminReqBadge" hidden>0</span></h2>
                   <p class="adm-page-sub">Toutes les réservations reçues sur HAYEVA, les plus récentes en premier.</p>
                 </div>
-                <div class="admin-bk-filters" id="adminReqFilters" role="group" aria-label="Filtrer les demandes">
-                  <button type="button" class="gallery-filter-btn is-active" data-admin-req-filter="new">Nouvelles</button>
-                  <button type="button" class="gallery-filter-btn" data-admin-req-filter="all">Toutes</button>
+                <div class="admin-bk-toolbar">
+                  <div class="admin-bk-filters" id="adminReqFilters" role="group" aria-label="Filtrer les demandes">
+                    <button type="button" class="gallery-filter-btn is-active" data-admin-req-filter="new">Nouvelles</button>
+                    <button type="button" class="gallery-filter-btn" data-admin-req-filter="all">Toutes</button>
+                  </div>
+                  <button type="button" class="adm-refresh-btn" id="adminReqRefreshBtn" title="Recharger les demandes depuis Supabase">↻ Actualiser</button>
                 </div>
                 <div id="adminReqList"><p class="ec-loading">Chargement…</p></div>
               </section>
@@ -5034,6 +5507,52 @@ if ('serviceWorker' in navigator){
                   <p class="adm-page-sub">Demandes de devis gratuit, les plus récentes en premier — cliquez pour ouvrir la fiche complète.</p>
                 </div>
                 <div id="adminQuotesList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageStats" data-adm-page="stats" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">📊 Statistiques</h2>
+                  <p class="adm-page-sub">Fréquentation du site — mesure d'audience interne et anonyme, aucun service tiers.</p>
+                </div>
+
+                <div class="adm-quicklinks" id="admStatsPeriodFilters">
+                  <button type="button" class="gallery-filter-btn is-active" data-adm-stats-period="today">Aujourd'hui</button>
+                  <button type="button" class="gallery-filter-btn" data-adm-stats-period="7d">7 jours</button>
+                  <button type="button" class="gallery-filter-btn" data-adm-stats-period="30d">30 jours</button>
+                </div>
+
+                <div class="adm-stats-grid">
+                  <div class="adm-stat-card adm-stat-ocean">
+                    <span class="adm-stat-icon">🟢</span>
+                    <span class="adm-stat-value" id="admStatOnline">—</span>
+                    <span class="adm-stat-label">En ligne maintenant</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-turquoise">
+                    <span class="adm-stat-icon">👤</span>
+                    <span class="adm-stat-value" id="admStatVisitors">—</span>
+                    <span class="adm-stat-label" id="admStatVisitorsLabel">Visiteurs aujourd'hui</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-coral">
+                    <span class="adm-stat-icon">👁</span>
+                    <span class="adm-stat-value" id="admStatPageviews">—</span>
+                    <span class="adm-stat-label" id="admStatPageviewsLabel">Pages vues aujourd'hui</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-sand">
+                    <span class="adm-stat-icon">📅</span>
+                    <span class="adm-stat-value" id="admStat7d">—</span>
+                    <span class="adm-stat-label">Visiteurs — 7 derniers jours</span>
+                  </div>
+                </div>
+
+                <h3 class="adm-subhead">Visites — 7 derniers jours</h3>
+                <div id="admStatsChart" class="admin-stats-chart"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead">Conversion</h3>
+                <div id="admStatsFunnel" class="admin-stats-funnel"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead">Pages populaires</h3>
+                <div id="admStatsPages" class="ec-list"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
@@ -5181,6 +5700,7 @@ if ('serviceWorker' in navigator){
                 <input type="password" id="ecSuPasswordConfirm" autocomplete="new-password" required>
               </label>
             </div>
+            <p class="bk-privacy-note">Les données de ce formulaire sont utilisées par HAYEVA pour créer et gérer votre compte particulier. En savoir plus : <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a>.</p>
             <p class="espace-pro-form-error" id="espaceClientSignupError" hidden></p>
             <p class="espace-pro-form-success" id="espaceClientSignupSuccess" hidden></p>
             <button type="submit" class="btn-primary" id="espaceClientSignupSubmit">Créer mon compte</button>
@@ -5315,6 +5835,15 @@ if ('serviceWorker' in navigator){
 </main>
 
 <footer>
+  <div class="wrap footer-legal-row" id="footerLegalRow" aria-label="Informations légales">
+    <span class="footer-legal-label">Informations légales</span>
+    <a href="#legal/mentions" data-legal-link="mentions">Mentions légales</a>
+    <a href="#legal/cgv" data-legal-link="cgv">CGV / CGS</a>
+    <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a>
+    <a href="#legal/cookies" data-legal-link="cookies">Cookies</a>
+    <a href="#legal/mediation" data-legal-link="mediation">Médiation</a>
+    <a href="#legal/retractation" data-legal-link="retractation">Rétractation</a>
+  </div>
   <div class="wrap footer-row">
     <span class="footer-brand brand-wordmark">HAYEVA</span>
     <span style="text-transform:uppercase; letter-spacing:0.04em;">Climatisation · Chauffage · Plomberie — Fréjus, Alpes-Maritimes (06) et Var (83)</span>
@@ -5327,6 +5856,331 @@ if ('serviceWorker' in navigator){
     var footerBrandName = (window.SUD_BRAND && window.SUD_BRAND.name) || 'HAYEVA';
     document.getElementById('year').textContent = '© ' + new Date().getFullYear() + ' ' + footerBrandName;
   }catch(e){}
+</script>
+
+<!-- ============================================================
+     OVERLAY JURIDIQUE — Mentions légales / CGV-CGS / Politique de
+     confidentialité / Cookies / Médiation / Rétractation.
+     Contenu écrit directement en HTML (jamais injecté depuis une chaîne
+     JS) : plus simple à relire/maintenir pour un texte juridique long, et
+     lisible même si JavaScript ne s'exécute pas. Toute information légale
+     non encore définitivement connue (SIREN, SIRET, adresse du siège,
+     assurance, médiateur...) est affichée avec la balise
+     "[À COMPLÉTER]" — jamais inventée. Voir la check-list envoyée en fin
+     de mission pour la liste complète à compléter avant mise en ligne.
+     ============================================================ -->
+<div class="legal-overlay" id="legalOverlay" hidden>
+  <div class="legal-overlay-inner">
+    <div class="legal-overlay-topbar">
+      <span class="legal-overlay-brand">HAYEVA — Informations légales</span>
+      <button type="button" class="legal-overlay-close" id="legalOverlayClose" aria-label="Fermer">✕</button>
+    </div>
+    <nav class="legal-overlay-nav" id="legalOverlayNav">
+      <button type="button" class="legal-nav-btn" data-legal-page="mentions">Mentions légales</button>
+      <button type="button" class="legal-nav-btn" data-legal-page="cgv">CGV / CGS</button>
+      <button type="button" class="legal-nav-btn" data-legal-page="confidentialite">Confidentialité</button>
+      <button type="button" class="legal-nav-btn" data-legal-page="cookies">Cookies</button>
+      <button type="button" class="legal-nav-btn" data-legal-page="mediation">Médiation</button>
+      <button type="button" class="legal-nav-btn" data-legal-page="retractation">Rétractation</button>
+    </nav>
+    <div class="legal-overlay-content" id="legalOverlayContent">
+
+      <!-- ========== MENTIONS LÉGALES ========== -->
+      <article class="legal-page" data-legal-page="mentions" hidden>
+        <h2>Mentions légales</h2>
+        <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
+
+        <h3>Édition du site</h3>
+        <table>
+          <tr><th>Nom commercial</th><td>HAYEVA</td></tr>
+          <tr><th>Entrepreneur / raison sociale</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Forme juridique</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Adresse professionnelle</th><td><span class="legal-placeholder">[À COMPLÉTER – ADRESSE PROFESSIONNELLE]</span></td></tr>
+          <tr><th>SIREN</th><td><span class="legal-placeholder">[À COMPLÉTER – SIREN]</span></td></tr>
+          <tr><th>SIRET (établissement principal)</th><td><span class="legal-placeholder">[À COMPLÉTER – SIRET]</span></td></tr>
+          <tr><th>RCS / Répertoire des métiers</th><td><span class="legal-placeholder">[À COMPLÉTER SI APPLICABLE]</span></td></tr>
+          <tr><th>N° de TVA intracommunautaire</th><td><span class="legal-placeholder">[À COMPLÉTER SI APPLICABLE]</span></td></tr>
+          <tr><th>E-mail</th><td><a href="mailto:julienmartin83510@gmail.com">julienmartin83510@gmail.com</a></td></tr>
+          <tr><th>Téléphone</th><td><a href="tel:+33671262302">06 71 26 23 02</a></td></tr>
+          <tr><th>Directeur de la publication</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+        </table>
+        <p>HAYEVA exerce une activité de plomberie, dépannage plomberie, chauffage, dépannage chauffage, entretien de climatisation et maintenance technique, principalement à Fréjus et dans les départements des Alpes-Maritimes (06) et du Var (83).</p>
+
+        <h3>Hébergement du site</h3>
+        <p>Le site est hébergé par :</p>
+        <table>
+          <tr><th>Hébergeur</th><td>Netlify, Inc.</td></tr>
+          <tr><th>Adresse</th><td>44 Montgomery Street, Suite 300, San Francisco, CA 94104, États-Unis</td></tr>
+          <tr><th>Site internet</th><td>https://www.netlify.com</td></tr>
+        </table>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">Ces informations correspondent à l'hébergeur techniquement utilisé au moment de la rédaction de cette page (nom de domaine <code>hayeva.netlify.app</code> constaté en production). À vérifier et mettre à jour avant l'ouverture commerciale si l'hébergement change (par exemple lors du passage à un nom de domaine définitif). Le bureau d'enregistrement (registrar) du nom de domaine, le cas échéant différent de l'hébergeur, sera ajouté ici séparément si nécessaire.</p>
+
+        <h3>Assurance professionnelle</h3>
+        <table>
+          <tr><th>Assureur</th><td><span class="legal-placeholder">[À COMPLÉTER – ASSURANCE PROFESSIONNELLE]</span></td></tr>
+          <tr><th>N° de police</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Couverture géographique</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+        </table>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">Ces informations seront complétées dès la souscription effective des garanties professionnelles applicables à l'activité de HAYEVA. Aucune mention de garantie (assurance responsabilité civile professionnelle, garantie décennale ou autre) n'est affirmée tant que les références réelles n'ont pas été renseignées ici.</p>
+
+        <h3>Propriété intellectuelle</h3>
+        <p>L'ensemble des contenus présents sur ce site (textes, photographies, logo, mise en page) est la propriété de HAYEVA ou de ses partenaires, sauf mention contraire, et ne peut être reproduit sans autorisation préalable.</p>
+      </article>
+
+      <!-- ========== CGV / CGS ========== -->
+      <article class="legal-page" data-legal-page="cgv" hidden>
+        <h2>Conditions générales de vente et de prestations de services</h2>
+        <p class="legal-updated">Version en vigueur : 2026-09-24 — applicable à toute demande de rendez-vous ou de devis passée depuis cette date.</p>
+
+        <h3>Article 1 — Objet et champ d'application</h3>
+        <p>Les présentes conditions générales de vente et de prestations de services (« CGV ») régissent les relations entre HAYEVA et toute personne (« le client ») sollicitant, via le site, une prestation de plomberie, dépannage plomberie, chauffage, dépannage chauffage, entretien de climatisation ou maintenance technique. Elles s'appliquent à l'exclusion de toute autre condition, sauf accord écrit contraire. Une section spécifique (Article 20) adapte certaines clauses aux clients professionnels agissant dans le cadre de leur activité (relations B2B).</p>
+
+        <h3>Article 2 — Identité du professionnel</h3>
+        <p>Voir la page « Mentions légales » pour l'identité complète, l'adresse professionnelle et les coordonnées de contact de HAYEVA.</p>
+
+        <h3>Article 3 — Caractéristiques des prestations</h3>
+        <p>Les prestations proposées (entretien, dépannage, remplacement d'équipements, installation) sont décrites sur le site avec leur contenu, leur durée indicative et leur prix. Le client sélectionne la prestation correspondant le plus précisément à son besoin ; en cas de doute, HAYEVA peut ajuster la qualification exacte de l'intervention après diagnostic sur place, avec information préalable du client conformément à l'Article 9.</p>
+
+        <h3>Article 4 — Demande de rendez-vous : une demande, pas une commande ferme</h3>
+        <p>Toute demande de rendez-vous effectuée depuis le site constitue une <strong>demande non engageante</strong> : elle n'entraîne pas d'obligation de paiement immédiat et ne vaut pas acceptation automatique par HAYEVA. HAYEVA vérifie la disponibilité réelle du créneau demandé et confirme (ou propose un autre créneau, ou refuse) la demande par téléphone, SMS ou e-mail. Le contrat entre HAYEVA et le client n'est formé qu'au moment de cette confirmation expresse par HAYEVA.</p>
+        <p>Avant l'envoi de sa demande, le client peut consulter de façon lisible : la prestation sélectionnée, son prix, les frais de déplacement (lorsqu'ils sont déterminables), le total lorsqu'il peut être calculé, la date et le créneau demandés, l'adresse d'intervention ainsi que les présentes CGV.</p>
+
+        <h3>Article 5 — Devis</h3>
+        <p>Pour les prestations ne pouvant faire l'objet d'un prix fixe en ligne (diagnostic nécessaire, intervention complexe, remplacement d'équipement non standard), un devis gratuit et sans engagement est établi par HAYEVA avant toute intervention. Le devis précise la nature des travaux, leur coût détaillé et sa durée de validité. Aucune prestation supplémentaire payante non prévue au devis initial n'est réalisée sans information préalable du client et accord exprès de sa part.</p>
+
+        <h3>Article 6 — Formation du contrat</h3>
+        <p>Le contrat est formé au moment où HAYEVA confirme expressément le rendez-vous demandé (Article 4) ou, pour une prestation sur devis, au moment où le client accepte le devis proposé. À compter de cette confirmation, la prestation, son prix et le rendez-vous convenu engagent les deux parties, sous réserve des dispositions relatives au droit de rétractation (Article 13).</p>
+
+        <h3>Article 7 — Prix</h3>
+        <p>Les prix affichés sur le site sont exprimés en euros, toutes taxes comprises (TTC). Ils correspondent à la prestation décrite dans les conditions normales d'intervention. Un tarif affiché comme indicatif, ou une prestation fonctionnant uniquement sur devis, est clairement signalée comme telle : aucun montant non définitif n'est présenté comme un prix ferme.</p>
+
+        <h3>Article 8 — Frais de déplacement</h3>
+        <p>Le déplacement est inclus dans un rayon de 25 km autour de Fréjus. Au-delà, des frais kilométriques peuvent s'appliquer ; lorsqu'ils sont calculables, ils sont annoncés avant la confirmation du rendez-vous. Certains forfaits d'entretien haut de gamme (Pack Premium climatisation, chaudière gaz, chaudière fioul) incluent le déplacement offert, quelle que soit la distance : cette information est indiquée clairement sur la fiche du pack concerné et reportée dans le récapitulatif de la demande.</p>
+
+        <h3>Article 9 — Diagnostics et prestations complémentaires</h3>
+        <p>Lorsqu'un diagnostic réalisé sur place révèle la nécessité d'une prestation complémentaire non initialement prévue, HAYEVA en informe le client et recueille son accord avant toute réalisation et toute facturation supplémentaire.</p>
+
+        <h3>Article 10 — Fournitures et pièces</h3>
+        <p>Certaines prestations incluent la fourniture de pièces (mentionné sur la fiche prestation). Sauf accord contraire, les pièces fournies par HAYEVA sont facturées au prix indiqué dans le forfait ou le devis. Le client peut, pour certaines interventions, fournir lui-même les pièces ; HAYEVA en informe alors les conséquences éventuelles sur la garantie de la prestation.</p>
+
+        <h3>Article 11 — Modalités de paiement</h3>
+        <p>Sauf mention contraire indiquée avant confirmation, le paiement s'effectue au moment ou à l'issue de l'intervention, selon les moyens de paiement proposés par HAYEVA (carte, virement, espèces, chèque). Aucun prélèvement en ligne n'est effectué au moment de la demande de rendez-vous.</p>
+
+        <h3>Article 12 — Délais et modalités d'intervention</h3>
+        <p>Les délais annoncés sont donnés à titre indicatif et dépendent des disponibilités réelles de HAYEVA. En cas d'indisponibilité au créneau initialement demandé, HAYEVA propose un autre créneau au client, qui reste libre de l'accepter ou de le refuser.</p>
+
+        <h3>Article 13 — Droit de rétractation</h3>
+        <p>Lorsque le client a la qualité de consommateur et que le contrat est conclu à distance, il dispose, sauf exception légale, d'un délai de rétractation de 14 jours dans les conditions détaillées sur la page dédiée « Rétractation », qui fait partie intégrante des présentes CGV.</p>
+
+        <h3>Article 14 — Intervention demandée avant la fin du délai de rétractation</h3>
+        <p>Lorsque le client souhaite que la prestation commence avant l'expiration du délai de rétractation de 14 jours, le parcours de réservation du site lui permet de formuler cette demande expresse et de reconnaître qu'il perdra son droit de rétractation une fois la prestation intégralement exécutée, conformément aux articles L221-18 et suivants et L221-28 du Code de la consommation. Cette demande et cette reconnaissance sont conservées, horodatées, en lien avec la réservation concernée.</p>
+
+        <h3>Article 15 — Prestations entièrement exécutées</h3>
+        <p>Conformément à l'article L221-28 du Code de la consommation, le droit de rétractation ne peut plus être exercé une fois la prestation de service entièrement exécutée, lorsque son exécution a commencé après accord préalable exprès du client et renoncement exprès à son droit de rétractation dans les conditions de l'Article 14.</p>
+
+        <h3>Article 16 — Garanties légales applicables</h3>
+        <p>Les prestations et fournitures bénéficient des garanties légales applicables : garantie légale de conformité (articles L217-3 et suivants du Code de la consommation, pour les fournitures neuves) et garantie des vices cachés (articles 1641 et suivants du Code civil). Les informations relatives à l'assurance professionnelle de HAYEVA figurent sur la page « Mentions légales ».</p>
+
+        <h3>Article 17 — Responsabilité</h3>
+        <p>HAYEVA s'engage à exécuter ses prestations avec soin et conformément aux règles de l'art. Sa responsabilité ne peut être engagée en cas de force majeure, de mauvaise information fournie par le client, ou de dommage préexistant non signalé lors de la prise de rendez-vous. Aucune clause des présentes CGV n'a pour effet de priver le client des droits qu'il tient impérativement de la loi.</p>
+
+        <h3>Article 18 — Force majeure</h3>
+        <p>HAYEVA ne peut être tenue responsable de tout retard ou inexécution résultant d'un cas de force majeure au sens de l'article 1218 du Code civil.</p>
+
+        <h3>Article 19 — Réclamations et médiation de la consommation</h3>
+        <p>Toute réclamation peut être adressée à HAYEVA via les coordonnées figurant sur la page « Mentions légales ». À défaut de résolution amiable, le client consommateur peut recourir gratuitement au médiateur de la consommation dans les conditions détaillées sur la page « Médiation ».</p>
+
+        <h3>Article 20 — Clients professionnels (relations B2B)</h3>
+        <p>Lorsque le client agit en qualité de professionnel pour les besoins de son activité (compte « Espace professionnel »), les dispositions du Code de la consommation réservées aux consommateurs (notamment le droit de rétractation des Articles 13 à 15) ne lui sont pas applicables de plein droit. Les modalités de collaboration (facturation, échéances, volumes) peuvent faire l'objet de conditions particulières convenues séparément avec HAYEVA.</p>
+
+        <h3>Article 21 — Protection des données personnelles</h3>
+        <p>Le traitement des données personnelles du client est décrit sur la page « Politique de confidentialité », qui fait partie intégrante des présentes CGV.</p>
+
+        <h3>Article 22 — Droit applicable et règlement des litiges</h3>
+        <p>Les présentes CGV sont soumises au droit français. En cas de litige, et après recherche d'une solution amiable (y compris via la médiation prévue à l'Article 19), les tribunaux français compétents seront saisis dans les conditions de droit commun.</p>
+      </article>
+
+      <!-- ========== POLITIQUE DE CONFIDENTIALITÉ ========== -->
+      <article class="legal-page" data-legal-page="confidentialite" hidden>
+        <h2>Politique de confidentialité</h2>
+        <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
+
+        <h3>Responsable du traitement</h3>
+        <p>HAYEVA, dont l'identité complète figure sur la page « Mentions légales », est responsable des traitements de données personnelles décrits ci-dessous. Pour toute question ou exercice de vos droits : <a href="mailto:julienmartin83510@gmail.com">julienmartin83510@gmail.com</a>.</p>
+
+        <h3>Données collectées</h3>
+        <p>Selon votre usage du site, HAYEVA peut traiter : nom, prénom, adresse e-mail, numéro de téléphone, adresse(s) d'intervention et logements enregistrés, informations de réservation (prestation, date, créneau, prix), historique des interventions, devis, informations de compte (particulier ou professionnel, y compris SIRET lorsque renseigné pour un compte professionnel).</p>
+
+        <h3>Finalités et bases juridiques</h3>
+        <table>
+          <tr><th>Finalité</th><th>Base juridique</th></tr>
+          <tr><td>Gestion des demandes de rendez-vous et devis, exécution des prestations</td><td>Exécution du contrat / mesures précontractuelles à la demande du client</td></tr>
+          <tr><td>Création et gestion du compte Espace particulier / Espace professionnel</td><td>Exécution du contrat</td></tr>
+          <tr><td>Envoi des e-mails automatiques liés à une réservation (accusé de réception, confirmation, annulation)</td><td>Exécution du contrat / obligation légale d'information</td></tr>
+          <tr><td>Réponse aux demandes de contact</td><td>Intérêt légitime à répondre aux sollicitations</td></tr>
+          <tr><td>Sécurité du site et prévention de la fraude</td><td>Intérêt légitime</td></tr>
+          <tr><td>Respect des obligations comptables et légales</td><td>Obligation légale</td></tr>
+          <tr><td>Mesure d'audience interne et anonyme (nombre de visites, pages consultées) — voir la page « Cookies »</td><td>Intérêt légitime à mesurer la fréquentation de son propre site, données strictement anonymisées</td></tr>
+        </table>
+
+        <h3>Destinataires des données</h3>
+        <p>Les données sont accessibles aux personnels de HAYEVA habilités (espace Administration). Elles peuvent être transmises aux sous-traitants techniques listés ci-dessous, dans la stricte mesure nécessaire au fonctionnement du site, jamais à des fins commerciales de tiers.</p>
+
+        <h3>Sous-traitants et services tiers réellement utilisés</h3>
+        <table>
+          <tr><th>Prestataire</th><th>Rôle</th></tr>
+          <tr><td>Supabase</td><td>Hébergement de la base de données, authentification des comptes et fonctions serveur (réservations, e-mails automatiques). <span class="legal-placeholder">[À COMPLÉTER – RÉGION D'HÉBERGEMENT SUPABASE]</span></td></tr>
+          <tr><td>Netlify, Inc.</td><td>Hébergement du site internet</td></tr>
+          <tr><td>Resend</td><td>Envoi des e-mails automatiques liés aux réservations</td></tr>
+          <tr><td>Mapbox</td><td>Suggestion d'adresses et calcul de la distance/du trajet jusqu'à l'adresse d'intervention indiquée</td></tr>
+          <tr><td>OpenStreetMap</td><td>Affichage de la carte de la zone d'intervention (aucune donnée personnelle transmise autre que la zone de carte consultée)</td></tr>
+          <tr><td>Google Fonts</td><td>Chargement des polices de caractères du site</td></tr>
+        </table>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">Aucun cookie ou traceur publicitaire, aucune solution d'analyse d'audience (Google Analytics ou équivalent) et aucun outil de paiement en ligne ne sont utilisés par le site à ce jour — voir la page « Cookies » pour le détail exact.</p>
+
+        <h3>Durées de conservation</h3>
+        <table>
+          <tr><th>Données</th><th>Durée</th></tr>
+          <tr><td>Compte client / professionnel actif</td><td>Durée de la relation, puis archivage limité aux obligations légales (notamment comptables)</td></tr>
+          <tr><td>Données de réservation et de facturation</td><td>Durée nécessaire au traitement du dossier, puis durée de conservation légale applicable aux documents commerciaux et comptables (en principe 10 ans à compter de la clôture de l'exercice, article L123-22 du Code de commerce)</td></tr>
+          <tr><td>Compte inactif</td><td>Suppression ou anonymisation après une période d'inactivité raisonnable, sauf obligation légale de conservation plus longue</td></tr>
+          <tr><td>Journaux techniques (sécurité, envoi des e-mails)</td><td>Durée strictement nécessaire au diagnostic technique et à la sécurité</td></tr>
+        </table>
+
+        <h3>Vos droits</h3>
+        <p>Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, d'effacement (lorsqu'applicable), de limitation, d'opposition (lorsqu'applicable) et de portabilité (lorsqu'applicable) sur vos données. Vous pouvez exercer ces droits en écrivant à <a href="mailto:julienmartin83510@gmail.com">julienmartin83510@gmail.com</a>, en précisant votre identité. Vous disposez également du droit d'introduire une réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL) — <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>.</p>
+
+        <h3>Sécurité</h3>
+        <p>HAYEVA met en œuvre les mesures techniques et organisationnelles raisonnables pour protéger vos données contre l'accès non autorisé, la perte ou l'altération (authentification sécurisée des comptes, cloisonnement des accès entre comptes particuliers, professionnels et administration).</p>
+      </article>
+
+      <!-- ========== COOKIES ========== -->
+      <article class="legal-page" data-legal-page="cookies" hidden>
+        <h2>Cookies et traceurs</h2>
+        <p class="legal-updated">Dernière mise à jour : 24/09/2026 — d'après un audit réel du site, pas une mention générique.</p>
+        <p>Le site HAYEVA n'utilise <strong>aucun cookie ni traceur publicitaire</strong>, <strong>aucun outil de mesure d'audience tiers</strong> (type Google Analytics) et <strong>aucun pixel de réseau social</strong>. Aucun bandeau de consentement « Tout accepter / Tout refuser / Personnaliser » n'est donc affiché, car il serait inutile : le site ne dépose aucun traceur soumis à consentement au sens de l'article 82 de la loi Informatique et Libertés.</p>
+
+        <h3>Ce que le site utilise réellement</h3>
+        <table>
+          <tr><th>Élément</th><th>Nature</th></tr>
+          <tr><td><code>localStorage</code> du navigateur (préférence d'affichage, brouillon de la démonstration « Espace professionnel » hors connexion)</td><td>Stockage strictement nécessaire au fonctionnement de l'interface, conservé uniquement sur votre appareil, non transmis à HAYEVA</td></tr>
+          <tr><td>Jeton de connexion Supabase (<code>sessionStorage</code>/<code>localStorage</code>)</td><td>Strictement nécessaire pour rester connecté à votre Espace particulier/professionnel — exempté de consentement</td></tr>
+          <tr><td>Police Google Fonts</td><td>Ressource technique chargée depuis les serveurs Google pour l'affichage des polices du site</td></tr>
+          <tr><td>Fond de carte OpenStreetMap et suggestions d'adresse Mapbox</td><td>Ressources techniques nécessaires à l'affichage de la carte et à la saisie d'adresse</td></tr>
+          <tr><td>Identifiant de mesure d'audience interne (<code>sessionStorage</code>, <code>sud_session_id</code>)</td><td>Nombre aléatoire, propre à HAYEVA (aucun outil tiers), utilisé uniquement pour compter de façon agrégée et anonyme les visites du site — voir ci-dessous</td></tr>
+        </table>
+        <p>Ces éléments sont strictement nécessaires au fonctionnement du site ou au suivi d'une demande explicitement engagée par vous (connexion à votre espace) : ils sont exemptés de consentement préalable au sens de la réglementation applicable, mais vous en êtes informé ici par transparence.</p>
+
+        <h3>Mesure d'audience interne (statistiques de fréquentation)</h3>
+        <p>HAYEVA mesure la fréquentation de son propre site (nombre de visites, pages consultées) exclusivement à des fins statistiques internes, pour son propre usage administratif — jamais à des fins publicitaires, jamais transmis à un tiers, jamais croisé avec un compte client ou professionnel. Cette mesure repose sur :</p>
+        <ul>
+          <li>un identifiant technique aléatoire, généré dans votre navigateur et stocké uniquement en <code>sessionStorage</code> (effacé à la fermeture de l'onglet, jamais transmis à un autre site) ;</li>
+          <li>aucune adresse IP conservée ;</li>
+          <li>aucune tentative d'identification individuelle : l'objectif est uniquement de compter, de façon agrégée, le nombre de visites et les pages consultées.</li>
+        </ul>
+        <p>Cet outil, strictement interne et non intrusif, entre dans le cadre de l'exemption de consentement prévue pour les solutions de mesure d'audience répondant à des critères stricts (finalité strictement statistique, données non recoupées, absence de transfert à des tiers). Les données collectées sont conservées 13 mois maximum, puis supprimées.</p>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">Si HAYEVA venait à ajouter, plus tard, un outil de mesure d'audience tiers ou un traceur publicitaire nécessitant le consentement, un véritable gestionnaire de consentement (Tout accepter / Tout refuser / Personnaliser, modifiable à tout moment, refus aussi accessible que l'acceptation) serait alors mis en place avant toute activation, et cette page serait mise à jour en conséquence.</p>
+      </article>
+
+      <!-- ========== MÉDIATION ========== -->
+      <article class="legal-page" data-legal-page="mediation" hidden>
+        <h2>Médiation de la consommation</h2>
+        <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
+        <p>Conformément aux articles L616-1 et suivants du Code de la consommation, tout client consommateur a le droit de recourir gratuitement à un médiateur de la consommation en vue de la résolution amiable d'un litige qui l'opposerait à HAYEVA, après une tentative préalable de résolution directe auprès de HAYEVA (voir la page « Mentions légales » pour nous contacter).</p>
+        <table>
+          <tr><th>Médiateur</th><td><span class="legal-placeholder">[À COMPLÉTER – MÉDIATEUR DE LA CONSOMMATION]</span></td></tr>
+          <tr><th>Adresse</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Site internet</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+        </table>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">HAYEVA adhérera à un médiateur de la consommation habilité avant l'ouverture commerciale officielle du site ; les coordonnées exactes seront renseignées ici et dans les CGV dès l'adhésion effective. Le client peut également, le cas échéant, recourir à la plateforme européenne de règlement en ligne des litiges : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
+      </article>
+
+      <!-- ========== RÉTRACTATION ========== -->
+      <article class="legal-page" data-legal-page="retractation" hidden>
+        <h2>Droit de rétractation</h2>
+        <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
+
+        <h3>Quand s'applique-t-il ?</h3>
+        <p>Lorsque vous êtes un consommateur (particulier n'agissant pas pour les besoins de son activité professionnelle) et que le contrat avec HAYEVA est conclu à distance (via ce site) ou hors établissement, vous disposez, sauf exception légale, d'un délai de <strong>14 jours francs</strong> pour exercer votre droit de rétractation, sans avoir à justifier de motif ni à supporter de pénalité, conformément aux articles L221-18 et suivants du Code de la consommation.</p>
+
+        <h3>Point de départ du délai</h3>
+        <p>Pour une prestation de service, ce délai court à compter du jour de la conclusion du contrat (c'est-à-dire, pour HAYEVA, à compter de la confirmation expresse du rendez-vous — voir Article 6 des CGV).</p>
+
+        <h3>Exception : intervention réalisée avant la fin du délai</h3>
+        <p>Si vous avez expressément demandé que la prestation commence avant la fin de ce délai de 14 jours (case dédiée proposée lors de votre demande de rendez-vous lorsque la date choisie le rend nécessaire) et que la prestation a été <strong>intégralement exécutée</strong> avant la fin du délai, vous perdez votre droit de rétractation à compter de cette exécution complète, conformément à l'article L221-28 du Code de la consommation. Si la prestation n'est qu'en partie exécutée à la date à laquelle vous exercez votre rétractation, vous devrez payer un montant correspondant aux services fournis jusqu'à la communication de votre décision de vous rétracter.</p>
+
+        <h3>Comment exercer votre droit de rétractation ?</h3>
+        <p>Avant l'expiration du délai, informez HAYEVA de votre décision de vous rétracter au moyen d'une déclaration dénuée d'ambiguïté (courrier, e-mail à <a href="mailto:julienmartin83510@gmail.com">julienmartin83510@gmail.com</a>, téléphone au <a href="tel:+33671262302">06 71 26 23 02</a>), ou en utilisant le formulaire type ci-dessous.</p>
+
+        <div class="legal-retraction-form">
+          <p><strong>Formulaire type de rétractation</strong><br>(à compléter et renvoyer uniquement si vous souhaitez vous rétracter)</p>
+          <p>À l'attention de HAYEVA — <span class="legal-placeholder">[À COMPLÉTER – ADRESSE PROFESSIONNELLE]</span> — <a href="mailto:julienmartin83510@gmail.com">julienmartin83510@gmail.com</a></p>
+          <p>Je/nous (*) notifie/notifions (*) par la présente ma/notre (*) rétractation du contrat portant sur la prestation ci-dessous :</p>
+          <p>— Prestation demandée : ……………………………………………<br>
+          — Référence de la réservation : ……………………………………………<br>
+          — Commandée/demandée le : ……………………………………………<br>
+          — Nom du/des consommateur(s) : ……………………………………………<br>
+          — Adresse du/des consommateur(s) : ……………………………………………<br>
+          — Signature du/des consommateur(s) (uniquement en cas de notification du présent formulaire sur papier) : ……………………………………………<br>
+          — Date : ……………………………………………</p>
+          <p style="font-size:0.8rem; color:var(--ink-soft);">(*) Rayer la mention inutile.</p>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var overlay = document.getElementById('legalOverlay');
+  if (!overlay) return;
+  var VALID_KEYS = ['mentions','cgv','confidentialite','cookies','mediation','retractation'];
+  var pages = overlay.querySelectorAll('.legal-page');
+  var navBtns = overlay.querySelectorAll('.legal-nav-btn');
+  var contentEl = document.getElementById('legalOverlayContent');
+
+  function openLegal(key, opts){
+    if (VALID_KEYS.indexOf(key) === -1) key = 'mentions';
+    pages.forEach(function(p){ p.hidden = p.getAttribute('data-legal-page') !== key; });
+    navBtns.forEach(function(b){ b.classList.toggle('is-active', b.getAttribute('data-legal-page') === key); });
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    if (contentEl) contentEl.scrollTop = 0;
+    if (!opts || !opts.silent){
+      if (location.hash !== '#legal/' + key) location.hash = 'legal/' + key;
+    }
+  }
+  window.sudOpenLegal = openLegal;
+
+  function closeLegal(){
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+    if (/^#legal\//.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  document.getElementById('legalOverlayClose').addEventListener('click', closeLegal);
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeLegal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !overlay.hidden) closeLegal(); });
+  navBtns.forEach(function(b){
+    b.addEventListener('click', function(){ openLegal(b.getAttribute('data-legal-page')); });
+  });
+  // Tout lien portant data-legal-link (footer, CGV inline dans le tunnel de
+  // réservation, etc.) ouvre l'overlay directement, sans dépendre du hash.
+  document.addEventListener('click', function(e){
+    var link = e.target.closest && e.target.closest('[data-legal-link]');
+    if (!link) return;
+    e.preventDefault();
+    openLegal(link.getAttribute('data-legal-link'));
+  });
+
+  function checkHash(){
+    var m = /^#legal\/([a-z]+)$/.exec(location.hash);
+    if (m && VALID_KEYS.indexOf(m[1]) !== -1) openLegal(m[1], { silent:true });
+  }
+  window.addEventListener('hashchange', checkHash);
+  checkHash();
+})();
 </script>
 
 <script>
@@ -5556,10 +6410,20 @@ if ('serviceWorker' in navigator){
     return d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   }
 
+  // Ouverture officielle HAYEVA : 1er novembre 2026. Aucune intervention ne
+  // peut être réservée avant cette date. Ce 1er novembre 2026 tombe un
+  // dimanche (jour fermé, voir hoursForDate) : le premier créneau réel reste
+  // donc automatiquement lundi 2 novembre via le filtre "jour !== dimanche"
+  // déjà présent ci-dessous — la date d'OUVERTURE affichée ailleurs sur le
+  // site (bandeau .opening-banner) reste elle bien le 1er novembre, jamais
+  // modifiée par cette histoire de dimanche fermé.
+  var HAYEVA_OPENING_DATE = new Date(2026, 10, 1);
+
   function nextAvailableDates(){
     var out = [];
     var cursor = new Date();
     cursor.setHours(0,0,0,0);
+    if (cursor < HAYEVA_OPENING_DATE) cursor = new Date(HAYEVA_OPENING_DATE);
     var maxDate = new Date(2027, 2, 31);
     while (cursor <= maxDate){
       if (cursor.getDay() !== 0) out.push(new Date(cursor));
@@ -5567,6 +6431,18 @@ if ('serviceWorker' in navigator){
     }
     return out;
   }
+
+  // Exposées pour le module "Déplacer mon rendez-vous" (Espace Client) —
+  // mêmes fonctions, jamais une copie : la disponibilité proposée pour un
+  // déplacement suit exactement les mêmes règles qu'une nouvelle
+  // réservation, par construction plutôt que par duplication.
+  window.sudAvailability = {
+    hoursForDate: hoursForDate,
+    slotsForDate: slotsForDate,
+    nextAvailableDates: nextAvailableDates,
+    fmtTime: fmtTime,
+    fmtDateLong: fmtDateLong
+  };
 
   var state = { serviceId:null, date:null, time:null };
   var raffleTicket = null;
@@ -5627,6 +6503,41 @@ if ('serviceWorker' in navigator){
   var bkNavRow = document.getElementById('bkNavRow');
   var bkRestart = document.getElementById('bkRestart');
   var progressEls = document.querySelectorAll('#bkProgress span');
+  var bkCgvAccept = document.getElementById('bkCgvAccept');
+  var bkEarlyExecutionBlock = document.getElementById('bkEarlyExecutionBlock');
+  var bkEarlyExecutionRequest = document.getElementById('bkEarlyExecutionRequest');
+  var bkEarlyExecutionAck = document.getElementById('bkEarlyExecutionAck');
+  // Version des CGV affichées au client au moment de sa demande — envoyée
+  // au serveur et conservée sur la réservation (preuve de la version
+  // acceptée). À faire évoluer si le contenu de la page CGV change.
+  var CGV_VERSION = '2026-09-24';
+
+  // Le mécanisme légal de "demande expresse d'exécution avant la fin du
+  // délai de rétractation" (Code de la consommation, art. L221-28) n'a de
+  // sens que si la prestation peut réellement débuter avant l'expiration
+  // de ce délai de 14 jours à compter de la demande — donc seulement si la
+  // date choisie tombe dans les 14 jours suivant aujourd'hui. Un
+  // professionnel connecté (compte B2B) n'est pas concerné par le droit de
+  // rétractation des consommateurs (voir CGV, article 20).
+  function bkEarlyExecutionApplies(){
+    if (!state.date) return false;
+    var isPro = document.documentElement.getAttribute('data-mode') === 'professionnel';
+    if (isPro) return false;
+    var msPerDay = 24 * 60 * 60 * 1000;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var diffDays = Math.round((state.date.getTime() - today.getTime()) / msPerDay);
+    return diffDays >= 0 && diffDays < 14;
+  }
+
+  function refreshBkLegalConsentUI(){
+    if (!bkEarlyExecutionBlock) return;
+    var applies = bkEarlyExecutionApplies();
+    bkEarlyExecutionBlock.hidden = !applies;
+    if (!applies){
+      bkEarlyExecutionRequest.checked = false;
+      bkEarlyExecutionAck.checked = false;
+    }
+  }
 
   var PACK_META = {
     'clim-essentiel': { base:59, discount:10 },
@@ -5635,6 +6546,21 @@ if ('serviceWorker' in navigator){
   };
 
   function isPackId(id){ return !!PACK_META[id]; }
+
+  // ---------- Déplacement 100% offert sur les packs d'entretien Premium ----------
+  // Les 3 packs les plus complets/chers de chaque catégorie d'entretien (clim,
+  // chaudière gaz, chaudière fioul) — jamais les autres prestations/packs, dont
+  // le calcul de déplacement standard (25 km inclus puis 0,70 €/km) reste
+  // strictement inchangé. Ces mêmes slugs sont vérifiés côté serveur dans
+  // is_free_travel_pack() (voir 0014_free_travel_premium_packs.sql) : cet
+  // affichage n'est qu'un aperçu, jamais la source de vérité du montant
+  // réellement facturé.
+  var FREE_TRAVEL_PACK_IDS = {
+    'clim-premium': true,
+    'chauffage-chaudiere-gaz-premium': true,
+    'chauffage-chaudiere-fioul-premium': true
+  };
+  function isFreeTravelPack(id){ return !!FREE_TRAVEL_PACK_IDS[id]; }
 
   /* ---------- Frais de déplacement (configuration) ----------
      Point de départ : adresse professionnelle exacte (coordonnées uniquement,
@@ -5646,7 +6572,7 @@ if ('serviceWorker' in navigator){
      Prévu pour évoluer : freeTravelKm/extraKmPrice pourront plus tard varier
      par zone ou par commune (ex. TRAVEL_ZONE_OVERRIDES[communeId] = {...}). */
   var TRAVEL_ORIGIN = { label: 'Fréjus', lat: 43.4340, lon: 6.7356 };
-  var FREE_TRAVEL_KM = 20;
+  var FREE_TRAVEL_KM = 25;
   var EXTRA_KM_PRICE = 0.70;
   // Ces trois valeurs par défaut ne servent qu'avant le premier chargement
   // (ou si Supabase est indisponible) : dès que possible, elles sont
@@ -5876,6 +6802,20 @@ if ('serviceWorker' in navigator){
   // c'est exactement le bug constaté avec une demande de devis pour Nice).
   function travelSummaryLines(svc, address){
     var base = currentServiceBaseEuros(svc);
+    if (isFreeTravelPack(svc.id)){
+      // Toujours 0 €, immédiatement, sans attendre ni dépendre du calcul de
+      // distance (celui-ci continue en arrière-plan pour être enregistré à
+      // titre indicatif — voir requestTravelQuote —, mais n'influence jamais
+      // ce montant). Se remet à jour automatiquement dès que svc.id change,
+      // puisque travelSummaryLines() est réévaluée à chaque rendu.
+      return {
+        status:'free', km: travelState.status === 'ok' ? travelState.distanceKm : null, extraKm:0, base:base,
+        distanceLabel: '', travelLabel: 'Déplacement : 0 € — OFFERT avec ce pack', travelFee:0,
+        total: base !== null ? roundCommercialPrice(base) : null,
+        totalLabel: base !== null ? 'Total TTC estimé : ' + fmtEuros(roundCommercialPrice(base)) : null,
+        quote: travelState.status === 'ok' ? travelState.quote : null
+      };
+    }
     if (!String(address || '').trim()){
       return { status:'empty', km:null, extraKm:0, base:base, travelFee:0, total:null,
         distanceLabel: '', travelLabel: '', totalLabel: null, quote:null };
@@ -6159,7 +7099,9 @@ if ('serviceWorker' in navigator){
     var isQuoteOnly = bkAuthContext.resolvedParams && bkAuthContext.resolvedParams.quoteOnly;
 
     var travelRows = '';
-    if (travel.status === 'computing'){
+    if (travel.status === 'free'){
+      travelRows += '<div class="s-row s-row-free-travel"><span class="s-label">🎁 Déplacement</span><span class="s-value">0 € — OFFERT avec ce pack</span></div>';
+    } else if (travel.status === 'computing'){
       travelRows += '<div class="s-row"><span class="s-label">Déplacement</span><span class="s-value">Calcul en cours…</span></div>';
     } else if (travel.status === 'unavailable'){
       travelRows += '<div class="s-row s-row-warning"><span class="s-label">⚠️ Déplacement</span><span class="s-value">À vérifier par HAYEVA</span></div>';
@@ -6200,7 +7142,7 @@ if ('serviceWorker' in navigator){
       if (travel.status === 'unavailable'){
         var baseAmount = isQuoteOnly ? 0 : (travel.base || 0);
         totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL</span><span class="s-value">'+fmtEuros(baseAmount)+' + déplacement à vérifier</span></div>';
-      } else if (travel.status === 'ok'){
+      } else if (travel.status === 'ok' || travel.status === 'free'){
         var totalAmount = isQuoteOnly ? travel.travelFee : (travel.total !== null ? travel.total : null);
         if (totalAmount !== null){
           totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(totalAmount)+'</span></div>';
@@ -6313,8 +7255,17 @@ if ('serviceWorker' in navigator){
   // l'écran : c'est la cause du bug « redirection vers Zone d'intervention »
   // (showStep changeait bien d'étape mais ne faisait jamais défiler la
   // page, qui restait donc là où était le clic).
+  // "booking_started" : une seule fois par session, dès que le client
+  // atteint l'étape 2 (date/heure) — signal propre de "début de
+  // réservation", jamais redéclenché à chaque retour en arrière/avant dans
+  // le tunnel.
+  var bookingStartedTracked = false;
   function showStep(n, skipScroll){
     step = n;
+    if (n === 2 && !bookingStartedTracked && window.sudTrack){
+      bookingStartedTracked = true;
+      window.sudTrack('booking_started', 'rdv');
+    }
     stepEls().forEach(function(el){
       el.hidden = Number(el.getAttribute('data-step')) !== n;
     });
@@ -6325,6 +7276,7 @@ if ('serviceWorker' in navigator){
     bkNavRow.style.display = n === 4 ? 'none' : 'flex';
     if (n === 1) renderStep1View();
     if (n === 3){
+      refreshBkLegalConsentUI();
       refreshBkAuthContext().then(function(){
         prefillBkContactFields();
         renderBkAddressUI();
@@ -6356,7 +7308,11 @@ if ('serviceWorker' in navigator){
       } else {
         addressOk = !!bkAddress.value.trim();
       }
-      bkNext.disabled = !(bkName.value.trim() && bkPhone.value.trim() && emailOk && addressOk);
+      var legalOk = !!(bkCgvAccept && bkCgvAccept.checked);
+      if (legalOk && bkEarlyExecutionBlock && !bkEarlyExecutionBlock.hidden){
+        legalOk = !!(bkEarlyExecutionRequest && bkEarlyExecutionRequest.checked && bkEarlyExecutionAck && bkEarlyExecutionAck.checked);
+      }
+      bkNext.disabled = !(bkName.value.trim() && bkPhone.value.trim() && emailOk && addressOk && legalOk);
     }
   }
 
@@ -6477,6 +7433,37 @@ if ('serviceWorker' in navigator){
   // (service actif, créneau non passé, nom/e-mail requis si invité, rôle
   // réel de l'appelant via auth.uid()) — jamais de confiance aveugle dans
   // les paramètres reçus.
+  function bkLegalConsentParams(){
+    return {
+      p_cgv_version: CGV_VERSION,
+      p_early_execution_requested: !!(bkEarlyExecutionRequest && bkEarlyExecutionRequest.checked),
+      p_withdrawal_forfeited_ack: !!(bkEarlyExecutionAck && bkEarlyExecutionAck.checked)
+    };
+  }
+
+  // Envoie la preuve d'acceptation des CGV (et, le cas échéant, la demande
+  // d'exécution anticipée / reconnaissance de perte du droit de
+  // rétractation) avec la réservation. Si la migration ajoutant ces
+  // paramètres côté Supabase (0016_legal_compliance.sql) n'est pas encore
+  // appliquée, PostgREST répond PGRST202 (aucune fonction ne correspond à
+  // cette liste de paramètres) : on retente alors une seule fois sans ces
+  // champs plutôt que de bloquer toute réservation — jamais de régression
+  // du parcours de réservation existant le temps que la migration soit
+  // exécutée côté Supabase.
+  function callBookingRpc(sb, fnName, baseParams){
+    var fullParams = {};
+    for (var k in baseParams) fullParams[k] = baseParams[k];
+    var legal = bkLegalConsentParams();
+    for (var lk in legal) fullParams[lk] = legal[lk];
+    return sb.client.rpc(fnName, fullParams).then(function(res){
+      if (res.error && res.error.code === 'PGRST202'){
+        console.error('callBookingRpc: paramètres de consentement CGV non reconnus par Supabase (migration 0016 non appliquée ?) — nouvelle tentative sans ces champs.', res.error);
+        return sb.client.rpc(fnName, baseParams);
+      }
+      return res;
+    });
+  }
+
   function attemptDirectInsertBooking(svc, session){
     var sb = window.sudSupabase;
     return fetchBookingCatalog().then(function(catalog){
@@ -6517,7 +7504,7 @@ if ('serviceWorker' in navigator){
         p_guest_address: isCustomer ? null : (addressText || null),
         p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null
       };
-      return sb.client.rpc('create_guest_or_quote_booking', params).then(function(rpcRes){
+      return callBookingRpc(sb, 'create_guest_or_quote_booking', params).then(function(rpcRes){
         if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
         return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {}, isCustomer: isCustomer };
       });
@@ -6540,7 +7527,7 @@ if ('serviceWorker' in navigator){
           return resolveAddressForBooking(session.user.id).then(function(addrOutcome){
             if (addrOutcome.kind === 'address-error') return addrOutcome;
             var travelForSubmit = travelSummaryLines(svc, currentInterventionAddressText());
-            return sb.client.rpc('create_booking', {
+            return callBookingRpc(sb, 'create_booking', {
               p_service_slug: resolved.serviceSlug,
               p_service_pack_slug: resolved.packSlug,
               p_date: toISODateLocal(state.date),
@@ -6579,6 +7566,8 @@ if ('serviceWorker' in navigator){
           bkConfirmReal.hidden = false;
           if (bkGoToAppointmentsBtn) bkGoToAppointmentsBtn.hidden = !outcome.isCustomer;
           if (window.sudEspaceClientRefresh) window.sudEspaceClientRefresh();
+          if (window.sudEspaceProApptRefresh) window.sudEspaceProApptRefresh();
+          if (window.sudTrack) window.sudTrack('booking_completed', 'rdv');
           showStep(4);
           return;
         }
@@ -6675,6 +7664,11 @@ if ('serviceWorker' in navigator){
       travelEstimateNote.classList.add('is-muted');
       return;
     }
+    if (travel.status === 'free'){
+      travelEstimateNote.textContent = '🎁 Déplacement offert avec ce pack — 0 €, quelle que soit la distance.';
+      travelEstimateNote.classList.remove('is-muted');
+      return;
+    }
     travelEstimateNote.classList.remove('is-muted');
     travelEstimateNote.textContent = '🚐 ' + travel.distanceLabel + ' · ' + travel.travelLabel;
   }
@@ -6688,6 +7682,9 @@ if ('serviceWorker' in navigator){
   });
   [bkNewAddrLabel, bkNewAddrAddress, bkNewAddrPostal, bkNewAddrCity].forEach(function(input){
     input.addEventListener('input', updateNav);
+  });
+  [bkCgvAccept, bkEarlyExecutionRequest, bkEarlyExecutionAck].forEach(function(input){
+    if (input) input.addEventListener('change', updateNav);
   });
   // Adresse déjà enregistrée sélectionnée dans la liste (particulier
   // connecté) : si elle a été géocodée (lat/lng présents — voir
@@ -7242,7 +8239,6 @@ if ('serviceWorker' in navigator){
 
   // ---------- Espace professionnel : logements enregistrés (localStorage, cet appareil uniquement) ----------
   var PROP_KEY = 'sudpro_properties';
-  var APPT_KEY = 'sudpro_appointments';
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
@@ -7291,47 +8287,114 @@ if ('serviceWorker' in navigator){
   }
   renderProps();
 
-  // ---------- Espace professionnel : historique des demandes envoyées depuis cet appareil ----------
-  function loadAppts(){
-    try { return JSON.parse(localStorage.getItem(APPT_KEY) || '[]'); } catch(e){ return []; }
+  // ---------- Espace professionnel : "Mes rendez-vous" — vraies données
+  // Supabase liées au compte connecté, plus aucune dépendance au navigateur/
+  // à l'appareil/au localStorage. Sécurité : cette requête ne fait AUCUN
+  // filtre de sécurité côté JS — elle sélectionne dans bookings sans jamais
+  // préciser explicitement quel professional_account_id lire, et c'est la
+  // policy RLS "bookings: owner or admin read" (0001_init.sql), qui
+  // restreint déjà la lecture à customer_user_id = auth.uid() OR
+  // professional_account_id in (select my_professional_account_ids()) OR
+  // is_admin(), qui garantit qu'un compte pro connecté ne reçoit jamais que
+  // ses propres réservations — jamais celles d'un autre professionnel. Le
+  // tri "à venir / historique" ci-dessous n'est qu'un choix d'affichage sur
+  // des lignes déjà scopées par Postgres, pas un filtre de sécurité.
+  var espaceProApptCache = null;
+  var espaceProApptShowAll = false;
+  var ESPACE_PRO_APPT_STATUS_LABEL = {
+    PENDING: ['En attente', 'is-pending'],
+    CONFIRMED: ['Confirmé', 'is-confirmed'],
+    IN_PROGRESS: ['En cours', 'is-pending'],
+    COMPLETED: ['Terminé', 'is-completed'],
+    CANCELLED: ['Annulé', 'is-cancelled'],
+    NO_SHOW: ['Absence', 'is-cancelled']
+  };
+  var ESPACE_PRO_APPT_DAY_NAMES = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var ESPACE_PRO_APPT_MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function espaceProApptFmtDateTime(dateStr, timeStr){
+    var d = new Date(dateStr + 'T00:00:00');
+    var dayName = ESPACE_PRO_APPT_DAY_NAMES[d.getDay()];
+    var label = dayName.charAt(0).toUpperCase() + dayName.slice(1) + ' ' + d.getDate() + ' ' + ESPACE_PRO_APPT_MONTH_NAMES[d.getMonth()];
+    return label + ' — ' + (timeStr ? String(timeStr).slice(0, 5) : '');
   }
-  function saveAppts(list){
-    try { localStorage.setItem(APPT_KEY, JSON.stringify(list)); } catch(e){}
+  function espaceProApptFmtEuros(cents){
+    return ((cents || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
   }
+
   function renderApptSummary(){
     var el = document.getElementById('espaceProApptSummary');
+    var allBtn = document.getElementById('espaceProApptAllBtn');
     if (!el) return;
-    var list = loadAppts();
-    if (!list.length){
-      el.textContent = 'Aucune demande envoyée depuis cet appareil pour le moment.';
+    if (!espaceProApptCache){
+      el.innerHTML = '<p class="espace-pro-appt-loading">Chargement…</p>';
       return;
     }
-    var last = list[list.length - 1];
-    el.textContent = list.length + ' demande(s) envoyée(s) depuis cet appareil. Dernière : ' + last.summary;
-  }
-  renderApptSummary();
+    if (allBtn) allBtn.hidden = espaceProApptCache.length === 0;
+    if (allBtn) allBtn.textContent = espaceProApptShowAll ? 'Voir uniquement les prochains' : 'Voir tous mes rendez-vous';
 
-  var bkNextBtn = document.getElementById('bkNext');
-  if (bkNextBtn){
-    bkNextBtn.addEventListener('click', function(){
-      setTimeout(function(){
-        var step4 = document.querySelector('.booking-step[data-step="4"]');
-        if (!step4 || step4.hidden || document.documentElement.getAttribute('data-mode') !== 'professionnel') return;
-        var rows = document.querySelectorAll('#bookingSummary .s-row');
-        var parts = [];
-        Array.prototype.forEach.call(rows, function(row){
-          var label = row.querySelector('.s-label');
-          var value = row.querySelector('.s-value');
-          if (!label || !value) return;
-          var lt = label.textContent;
-          if (lt === 'Prestation' || lt === 'Date' || lt === 'Horaire') parts.push(value.textContent);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var rows = espaceProApptCache.filter(function(b){
+      if (espaceProApptShowAll) return true;
+      // "à venir" : ni annulé/refusé (seul statut de refus existant, voir
+      // admin-bk-refuse-btn) ni déjà passé.
+      if (b.status === 'CANCELLED') return false;
+      var d = new Date(b.date + 'T00:00:00');
+      return d.getTime() >= today.getTime();
+    });
+    rows = rows.slice().sort(function(a, b){
+      var da = a.date + 'T' + (a.start_time || '00:00');
+      var db = b.date + 'T' + (b.start_time || '00:00');
+      if (espaceProApptShowAll) return da < db ? 1 : (da > db ? -1 : 0);
+      return da < db ? -1 : (da > db ? 1 : 0);
+    });
+
+    if (!rows.length){
+      el.innerHTML = '<p class="espace-pro-appt-empty">' +
+        (espaceProApptShowAll ? 'Aucun rendez-vous enregistré.' : 'Aucun rendez-vous à venir.') + '</p>';
+      return;
+    }
+    var html = '';
+    rows.forEach(function(b){
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var statusInfo = ESPACE_PRO_APPT_STATUS_LABEL[b.status] || [b.status, ''];
+      html += '<div class="espace-pro-appt-item">' +
+        '<div class="espace-pro-appt-date">' + espaceProApptFmtDateTime(b.date, b.start_time) + '</div>' +
+        '<div class="espace-pro-appt-service">' + escapeHtml(svcName) + '</div>' +
+        (b.guest_address ? '<div class="espace-pro-appt-address">' + escapeHtml(b.guest_address) + '</div>' : '') +
+        '<div class="espace-pro-appt-meta">' + espaceProApptFmtEuros(b.total_cents) + ' • <span class="' + statusInfo[1] + '">' + escapeHtml(statusInfo[0]) + '</span></div>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function loadApptSummary(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured){ espaceProApptCache = []; renderApptSummary(); return; }
+    sb.client.auth.getSession().then(function(res){
+      var session = res && res.data && res.data.session;
+      if (!session){ espaceProApptCache = []; renderApptSummary(); return; }
+      return sb.client.from('bookings')
+        .select('date, start_time, status, total_cents, guest_address, services(name)')
+        .order('date', { ascending:false })
+        .order('start_time', { ascending:false })
+        .then(function(bres){
+          espaceProApptCache = bres.error ? [] : (bres.data || []);
+          renderApptSummary();
         });
-        if (!parts.length) return;
-        var list = loadAppts();
-        list.push({ id: Date.now(), summary: parts.join(' — ') });
-        saveAppts(list);
-        renderApptSummary();
-      }, 0);
+    }).catch(function(){ espaceProApptCache = []; renderApptSummary(); });
+  }
+  loadApptSummary();
+  // Rappelée après une nouvelle demande envoyée avec succès (voir le
+  // gestionnaire de bkNext plus haut, même schéma que sudEspaceClientRefresh
+  // déjà utilisé pour l'Espace Client) : la nouvelle réservation apparaît
+  // immédiatement, sans recharger la page.
+  window.sudEspaceProApptRefresh = loadApptSummary;
+
+  var espaceProApptAllBtnEl = document.getElementById('espaceProApptAllBtn');
+  if (espaceProApptAllBtnEl){
+    espaceProApptAllBtnEl.addEventListener('click', function(){
+      espaceProApptShowAll = !espaceProApptShowAll;
+      renderApptSummary();
     });
   }
 })();
@@ -7452,7 +8515,7 @@ if ('serviceWorker' in navigator){
     { cat:'deplacements', popular:true, q:"Le déplacement est-il compris ?",
       a:"Le déplacement est inclus dans la limite de {{FREE_KM}} autour de Fréjus. Au-delà, des frais de {{EXTRA_KM_PRICE}}/km sont calculés selon la distance et affichés avant la confirmation de votre rendez-vous." },
     { cat:'deplacements', popular:false, q:"Comment calculez-vous la distance ?",
-      a:"La distance est estimée jusqu'au lieu d'intervention à partir d'une estimation de trajet routier, et non simplement à vol d'oiseau. Lorsqu'un service de calcul d'itinéraire réel sera connecté, cette estimation sera automatiquement remplacée par la distance routière exacte." },
+      a:"La distance est calculée par itinéraire routier réel jusqu'à votre adresse, jamais à vol d'oiseau — c'est cette même distance routière qui détermine si votre adresse se situe dans le rayon inclus." },
     { cat:'deplacements', popular:false, q:"Pourquoi ai-je des frais de déplacement ?",
       a:"Lorsque votre adresse se situe au-delà de la zone de déplacement incluse dans la prestation, un supplément peut s'appliquer. Son montant est présenté avant la confirmation." },
     { cat:'deplacements', popular:false, q:"Qu'est-ce qu'une « tournée dans votre secteur » ?",
@@ -7466,13 +8529,15 @@ if ('serviceWorker' in navigator){
     { cat:'reservation-faq', popular:false, q:"Puis-je réserver depuis mon téléphone ?",
       a:"Oui. Le système de réservation est entièrement compatible avec smartphone, tablette et ordinateur." },
     { cat:'reservation-faq', popular:false, q:"Puis-je modifier mon rendez-vous ?",
-      a:"Contactez {{BRAND}} suffisamment tôt pour demander une modification de votre créneau." },
+      a:"Oui. Depuis votre Espace Particulier, ouvrez « Mes rendez-vous » puis « Déplacer mon rendez-vous » : choisissez une nouvelle date et un nouvel horaire disponibles, le changement est immédiat." },
     { cat:'reservation-faq', popular:false, q:"Puis-je annuler mon rendez-vous ?",
-      a:"Oui. Contactez-nous dès que possible pour annuler ou déplacer votre rendez-vous." },
+      a:"Oui. Depuis votre Espace Particulier, ouvrez « Mes rendez-vous » puis « Annuler mon rendez-vous » — une confirmation vous est demandée avant l'annulation définitive." },
     { cat:'reservation-faq', popular:false, q:"Pourquoi certains créneaux ne sont-ils pas disponibles ?",
       a:"Les disponibilités tiennent compte des interventions déjà programmées, de leur durée, des déplacements et du temps de battement nécessaire entre deux rendez-vous." },
     { cat:'reservation-faq', popular:false, q:"Pourquoi l'adresse exacte est-elle demandée ?",
       a:"Elle permet notamment d'organiser l'intervention, de calculer le trajet et, lorsque cela s'applique, les éventuels frais de déplacement." },
+    { cat:'reservation-faq', popular:true, q:"À partir de quand puis-je réserver une intervention ?",
+      a:"{{BRAND}} ouvre officiellement le 1er novembre 2026. Vous pouvez dès maintenant consulter les prestations et tarifs, mais aucune intervention ne peut être réservée avant cette date." },
 
     // ---- Particulier : Zone d'intervention ----
     { cat:'zone-faq', popular:true, q:"Dans quelles villes intervenez-vous ?",
@@ -7858,6 +8923,10 @@ if ('serviceWorker' in navigator){
     dashboard.hidden = true;
     var adminPanelOnLock = document.getElementById('espaceProAdminPanel');
     if (adminPanelOnLock) adminPanelOnLock.hidden = true;
+    // Coupe l'abonnement Realtime des réservations à la déconnexion : pas de
+    // canal qui continue d'écouter pour une session qui n'est plus active.
+    if (typeof admTeardownBkRealtime === 'function') admTeardownBkRealtime();
+    if (typeof admTeardownStatsRealtime === 'function') admTeardownStatsRealtime();
     if (loginForm) loginForm.hidden = false;
     if (signupForm) signupForm.hidden = true;
     // Photo Côte d'Azur + verre dépoli sur l'écran de connexion/inscription
@@ -7953,6 +9022,11 @@ if ('serviceWorker' in navigator){
       if (role === 'professional' || role === 'admin'){
         renderUnlocked('real', '🔐 Espace professionnel — ' + (session.user.email || 'connecté'));
         initAdminPanel(role);
+        // "Mes rendez-vous" est initialisé plus tôt (chargement de la page),
+        // avant qu'une session ne soit forcément déjà disponible : on le
+        // rafraîchit ici pour être sûr d'interroger Supabase avec la session
+        // réellement authentifiée, une fois le rôle confirmé.
+        if (window.sudEspaceProApptRefresh) window.sudEspaceProApptRefresh();
       } else {
         renderLocked();
         showMsg(loginError, "Ce compte n'est pas un compte professionnel. Si vous êtes un particulier, utilisez l'Espace Particulier.");
@@ -8292,6 +9366,7 @@ if ('serviceWorker' in navigator){
   var adminAccountType = 'customer';
   var adminAccountSearch = '';
   var adminAccountExpandedId = null;
+  var adminAccountsLoadFailed = false;
 
   function admNormalizePhone(s){
     return String(s || '').replace(/[^0-9+]/g, '');
@@ -8310,6 +9385,11 @@ if ('serviceWorker' in navigator){
     var query = adminAccountSearch.trim();
     if (!query){
       listEl.innerHTML = '<p class="admin-accounts-hint">Tapez un nom, un numéro ou un e-mail pour rechercher.</p>';
+      return;
+    }
+    if (adminAccountsLoadFailed){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les comptes</strong>' +
+        '<button type="button" class="adm-retry-btn" data-adm-retry="accounts">↻ Réessayer</button></div>';
       return;
     }
     if (!adminAccountsCache){
@@ -8349,6 +9429,7 @@ if ('serviceWorker' in navigator){
   }
 
   function admLoadAccounts(){
+    adminAccountsLoadFailed = false;
     Promise.all([
       sb.client.from('profiles').select('user_id,email,global_role,created_at')
         .in('global_role', ['customer','professional'])
@@ -8357,7 +9438,13 @@ if ('serviceWorker' in navigator){
       sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone'),
       sb.client.from('professional_accounts').select('created_by,legal_name,siret,phone')
     ]).then(function(res){
-      if (res[0].error) return;
+      var failed = res[0].error || res[1].error || res[2].error;
+      if (failed){
+        console.error('admLoadAccounts: échec de la requête Supabase (profiles/customer_profiles/professional_accounts)', failed);
+        adminAccountsLoadFailed = true;
+        admRenderAccounts();
+        return;
+      }
       var profilesRows = res[0].data || [];
       var custMap = {};
       (res[1].data || []).forEach(function(c){ custMap[c.user_id] = c; });
@@ -8381,6 +9468,10 @@ if ('serviceWorker' in navigator){
           phone: cp && cp.phone
         };
       });
+      admRenderAccounts();
+    }).catch(function(err){
+      console.error('admLoadAccounts: erreur réseau/inattendue', err);
+      adminAccountsLoadFailed = true;
       admRenderAccounts();
     });
   }
@@ -8431,6 +9522,31 @@ if ('serviceWorker' in navigator){
     }
   }
 
+  // Annotation "Annulé par le client" (Historique) — requête SÉPARÉE et
+  // volontairement isolée de admLoadBookings() (la requête partagée par
+  // Planning/Liste/Demandes récentes/Devis/Dashboard) : si les colonnes
+  // cancelled_by/cancelled_at n'existent pas encore (migration 0017 non
+  // appliquée), on l'ignore silencieusement plutôt que de risquer de
+  // recasser tout le reste de l'admin comme lors de l'incident
+  // admin_viewed_at. Purement une amélioration d'affichage, jamais
+  // bloquante.
+  var adminCancelledMetaCache = {};
+  function admLoadCancelledMeta(ids, onDone){
+    var missing = ids.filter(function(id){ return !(id in adminCancelledMetaCache); });
+    if (!missing.length){ onDone(); return; }
+    sb.client.from('bookings').select('id, cancelled_by, cancelled_at').in('id', missing).then(function(res){
+      if (!res.error){
+        (res.data || []).forEach(function(r){ adminCancelledMetaCache[r.id] = r; });
+      } else {
+        missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
+      }
+      onDone();
+    }).catch(function(){
+      missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
+      onDone();
+    });
+  }
+
   function admRenderList(){
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
@@ -8451,7 +9567,14 @@ if ('serviceWorker' in navigator){
         var db = new Date(b.date + 'T' + (b.start_time || '00:00'));
         return db.getTime() - da.getTime();
       });
-    } else {
+    }
+    if (adminBkShowHistory){
+      var histIds = rows.map(function(b){ return b.id; });
+      if (histIds.some(function(id){ return !(id in adminCancelledMetaCache); })){
+        admLoadCancelledMeta(histIds, function(){ if (adminBkShowHistory) admRenderList(); });
+      }
+    }
+    if (!adminBkShowHistory) {
       // Les demandes en attente remontent en premier (période conservée par
       // ailleurs) : ce sont celles qui demandent une action, jamais enfouies
       // sous des rendez-vous déjà confirmés/traités.
@@ -8487,12 +9610,17 @@ if ('serviceWorker' in navigator){
           'prestation ' + admFmtEuros(b.service_price_cents) +
           (b.travel_fee_cents > 0 ? ' + déplacement ' + admFmtEuros(b.travel_fee_cents) + ' (' + admFmtEuros(b.travel_rate_per_km_cents) + '/km)' : ' + déplacement inclus') +
           ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span>';
+      var cancelMeta = adminCancelledMetaCache[b.id];
+      var cancelledByLine = (b.status === 'CANCELLED' && cancelMeta && cancelMeta.cancelled_by === 'customer')
+        ? '<span class="ec-row-meta admin-bk-cancelled-by">🙍 Annulé par le client' + (cancelMeta.cancelled_at ? ' le ' + admFmtDateTime(cancelMeta.cancelled_at) : '') + '</span>'
+        : '';
       html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
         '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
         '<span class="ec-row-meta">' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
         (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
         (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
         travelLine +
+        cancelledByLine +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         (b.notes ? '<span class="admin-bk-note">💬 ' + admEscape(b.notes) + '</span>' : '') +
         '<span class="ec-row-meta">' + admEmailStatusHtml(b, adminBookingsCache.emails) + '</span>' +
@@ -8524,9 +9652,30 @@ if ('serviceWorker' in navigator){
     listEl.innerHTML = html;
   }
 
+  // Conteneurs qui dépendent tous de la MÊME requête bookings ci-dessous
+  // (Planning, Liste, Historique, Demandes récentes, Devis, cartes du
+  // Tableau de bord) : si elle échoue, aucun des deux ne doit rester bloqué
+  // sur "Chargement…" indéfiniment — chacun affiche le même message d'erreur
+  // avec un bouton Réessayer (voir data-adm-retry plus bas), et l'erreur
+  // réelle est toujours journalisée en console pour diagnostic.
+  var ADMIN_BK_DEPENDENT_LIST_IDS = ['adminBkList', 'adminBkPlanning', 'adminReqList', 'adminQuotesList'];
+  function admShowBkLoadError(){
+    var html = '<div class="ec-empty"><strong>Impossible de charger les demandes</strong>' +
+      '<button type="button" class="adm-retry-btn" data-adm-retry="bookings">↻ Réessayer</button></div>';
+    ADMIN_BK_DEPENDENT_LIST_IDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
+  }
+  function admSetBkLoadingState(){
+    ADMIN_BK_DEPENDENT_LIST_IDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    });
+  }
+
   function admLoadBookings(){
-    var listEl = document.getElementById('adminBkList');
-    if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    admSetBkLoadingState();
     sb.client.from('bookings')
       .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
       .order('date', { ascending:true })
@@ -8534,7 +9683,8 @@ if ('serviceWorker' in navigator){
       .limit(500)
       .then(function(res){
         if (res.error){
-          if (listEl) listEl.innerHTML = '<div class="ec-empty"><strong>Chargement impossible</strong>Réessayez dans un instant.</div>';
+          console.error('admLoadBookings: échec de la requête Supabase (table bookings)', res.error);
+          admShowBkLoadError();
           return;
         }
         var rows = res.data || [];
@@ -8561,8 +9711,13 @@ if ('serviceWorker' in navigator){
             });
         }
 
+        // "return" systématique ci-dessous (au lieu d'un .then() détaché) :
+        // sinon une erreur dans cette branche imbriquée ne remonterait
+        // jamais jusqu'au .catch() global, et resterait une exception non
+        // gérée silencieuse — exactement le genre de panne qui laissait
+        // Demandes récentes bloqué sur "Chargement…" sans aucun message.
         if (!custIds.length){
-          loadEmails().then(function(emails){
+          return loadEmails().then(function(emails){
             adminBookingsCache = { rows: rows, profiles: {}, emails: emails };
             admRenderBkArea();
             admRenderRecentRequests();
@@ -8570,9 +9725,8 @@ if ('serviceWorker' in navigator){
             admRenderDashboardStats();
             admRenderQuotesPage();
           });
-          return;
         }
-        Promise.all([
+        return Promise.all([
           sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
           sb.client.from('profiles').select('user_id,email').in('user_id', custIds),
           loadEmails()
@@ -8598,8 +9752,23 @@ if ('serviceWorker' in navigator){
           admRenderDashboardStats();
           admRenderQuotesPage();
         });
+      })
+      .catch(function(err){
+        console.error('admLoadBookings: erreur réseau/inattendue', err);
+        admShowBkLoadError();
       });
   }
+
+  // Bouton "↻ Réessayer" affiché dans n'importe quel bloc en échec
+  // (bookings ou comptes) — un seul gestionnaire délégué au document, plutôt
+  // qu'un par conteneur, puisque ces blocs sont régénérés à chaque rendu.
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-adm-retry]');
+    if (!btn) return;
+    var key = btn.getAttribute('data-adm-retry');
+    if (key === 'bookings') admLoadBookings();
+    else if (key === 'accounts') admLoadAccounts();
+  });
 
   var adminFiltersEl = document.getElementById('adminBkFilters');
   if (adminFiltersEl){
@@ -8626,6 +9795,7 @@ if ('serviceWorker' in navigator){
       admRenderBkArea();
       admRenderDashboardStats();
       admRenderQuotesPage();
+      admRenderRecentRequests();
     });
   }
 
@@ -8976,6 +10146,14 @@ if ('serviceWorker' in navigator){
       optionsHtml += '<option value="' + admEscape(b.status) + '" selected>' + admEscape(b.status) + '</option>';
     }
 
+    if (b.status === 'CANCELLED' && !(id in adminCancelledMetaCache)){
+      admLoadCancelledMeta([id], function(){ if (!overlay.hidden) admOpenBookingModal(id); });
+    }
+    var modalCancelMeta = adminCancelledMetaCache[id];
+    var modalCancelledByLine = (b.status === 'CANCELLED' && modalCancelMeta && modalCancelMeta.cancelled_by === 'customer')
+      ? '<p class="admin-bk-modal-note">🙍 Annulé par le client' + (modalCancelMeta.cancelled_at ? ' le ' + admFmtDateTime(modalCancelMeta.cancelled_at) : '') + '</p>'
+      : '';
+
     body.innerHTML =
       '<h3 class="admin-bk-modal-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</h3>' +
       '<p class="admin-bk-modal-ref">Réf. ' + admEscape(b.reference) + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</p>' +
@@ -8987,6 +10165,7 @@ if ('serviceWorker' in navigator){
         '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prix</span><span>' + admFmtEuros(b.service_price_cents) +
           (b.travel_fee_cents > 0 ? ' + ' + admFmtEuros(b.travel_fee_cents) + ' déplacement' : '') + ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span></div>' +
       '</div>' +
+      modalCancelledByLine +
       (b.notes ? '<p class="admin-bk-modal-note">💬 ' + admEscape(b.notes) + '</p>' : '') +
       '<div class="admin-bk-modal-status-row">' +
         '<label for="adminBkModalStatusSelect">Statut</label>' +
@@ -9095,7 +10274,27 @@ if ('serviceWorker' in navigator){
           (contact.email ? '<span class="ec-row-meta">✉️ ' + admEscape(contact.email) + '</span>' : '') +
           '<span class="ec-row-meta">💶 Prix estimé : ' + admFmtEuros(b.total_cents) + '</span>' +
           '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
-        '</div></div>';
+        '</div>' +
+        (b.status === 'PENDING' ?
+          '<div class="admin-bk-row-actions">' +
+            '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">✅ Accepter</button>' +
+            '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">❌ Refuser</button>' +
+            '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">🕐 Proposer un autre créneau</button>' +
+            '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
+              '<div class="admin-bk-propose-form-row">' +
+                '<label>Nouvelle date<input type="date" class="admin-bk-propose-date" required></label>' +
+                '<label>Nouvelle heure<input type="time" class="admin-bk-propose-time" required></label>' +
+              '</div>' +
+              '<label>Message (facultatif)<textarea class="admin-bk-propose-message" placeholder="Un mot pour votre client…"></textarea></label>' +
+              '<div class="admin-bk-propose-form-row">' +
+                '<button type="submit" class="admin-bk-propose-send">Envoyer la proposition</button>' +
+                '<button type="button" class="admin-bk-propose-cancel">Annuler</button>' +
+              '</div>' +
+              '<p class="admin-bk-propose-msg" hidden></p>' +
+            '</form>' +
+          '</div>'
+          : '') +
+        '</div>';
     });
     html += '</div>';
     listEl.innerHTML = html;
@@ -9119,10 +10318,89 @@ if ('serviceWorker' in navigator){
 
   var adminReqListEl = document.getElementById('adminReqList');
   if (adminReqListEl){
+    // Accepter/Refuser/Proposer un autre créneau : même bouton, même style,
+    // même fonction admUpdateBookingStatus() que dans Planning → Liste (voir
+    // adminListEl plus haut) — aucune logique dupliquée, juste rebranchée
+    // ici pour que ces actions soient aussi accessibles depuis "Demandes
+    // récentes", là où l'admin les cherche naturellement en premier. Ces
+    // boutons sont DANS la ligne .admin-req-row : on les traite en premier
+    // et on retourne, pour ne jamais aussi déclencher "marquer comme vue" en
+    // plus de l'action réellement cliquée.
     adminReqListEl.addEventListener('click', function(e){
+      var acceptBtn = e.target.closest('.admin-bk-accept-btn');
+      if (acceptBtn){
+        acceptBtn.disabled = true;
+        admUpdateBookingStatus(acceptBtn.getAttribute('data-booking-id'), 'CONFIRMED');
+        admMarkRequestViewed(acceptBtn.getAttribute('data-booking-id'));
+        return;
+      }
+      var refuseBtn = e.target.closest('.admin-bk-refuse-btn');
+      if (refuseBtn){
+        refuseBtn.disabled = true;
+        admUpdateBookingStatus(refuseBtn.getAttribute('data-booking-id'), 'CANCELLED');
+        admMarkRequestViewed(refuseBtn.getAttribute('data-booking-id'));
+        return;
+      }
+      var proposeBtn = e.target.closest('.admin-bk-propose-btn');
+      if (proposeBtn){
+        var row2 = e.target.closest('.admin-req-row');
+        var form = row2 && row2.querySelector('.admin-bk-propose-form');
+        if (form) form.hidden = !form.hidden;
+        return;
+      }
+      var cancelBtn = e.target.closest('.admin-bk-propose-cancel');
+      if (cancelBtn){
+        var formToClose = cancelBtn.closest('.admin-bk-propose-form');
+        if (formToClose) formToClose.hidden = true;
+        return;
+      }
       var row = e.target.closest('.admin-req-row');
       if (!row) return;
       admMarkRequestViewed(row.getAttribute('data-booking-id'));
+    });
+    // Envoi de la proposition de créneau alternatif — copie exacte du
+    // handler déjà utilisé sur adminListEl (même Edge Function
+    // propose-alternative-slot, même authentification par jeton de session
+    // admin revérifié côté serveur).
+    adminReqListEl.addEventListener('submit', function(e){
+      var form = e.target.closest('.admin-bk-propose-form');
+      if (!form) return;
+      e.preventDefault();
+      var id = form.getAttribute('data-booking-id');
+      var dateVal = form.querySelector('.admin-bk-propose-date').value;
+      var timeVal = form.querySelector('.admin-bk-propose-time').value;
+      var messageVal = form.querySelector('.admin-bk-propose-message').value.trim();
+      var msgEl = form.querySelector('.admin-bk-propose-msg');
+      var sendBtn = form.querySelector('.admin-bk-propose-send');
+      if (!dateVal || !timeVal) return;
+      msgEl.hidden = true;
+      msgEl.className = 'admin-bk-propose-msg';
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Envoi…';
+      sb.client.auth.getSession().then(function(res){
+        var token = res && res.data && res.data.session && res.data.session.access_token;
+        if (!token) throw new Error('no-session');
+        return fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/propose-alternative-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ booking_id: id, proposed_date: dateVal, proposed_time: timeVal, message: messageVal || null })
+        });
+      }).then(function(res){
+        if (!res.ok) throw new Error('http-' + res.status);
+        return res.json();
+      }).then(function(){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Envoyer la proposition';
+        msgEl.textContent = 'Proposition envoyée au client par e-mail.';
+        msgEl.className = 'admin-bk-propose-msg is-success';
+        msgEl.hidden = false;
+      }).catch(function(){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Envoyer la proposition';
+        msgEl.textContent = "Échec de l'envoi. Réessayez dans un instant.";
+        msgEl.className = 'admin-bk-propose-msg is-error';
+        msgEl.hidden = false;
+      });
     });
   }
   var adminReqFiltersEl = document.getElementById('adminReqFilters');
@@ -9135,6 +10413,17 @@ if ('serviceWorker' in navigator){
         b.classList.toggle('is-active', b === btn);
       });
       admRenderRecentRequests();
+    });
+  }
+  var adminReqRefreshBtnEl = document.getElementById('adminReqRefreshBtn');
+  if (adminReqRefreshBtnEl){
+    adminReqRefreshBtnEl.addEventListener('click', function(){
+      // Recharge tout (bookings), pas seulement Demandes récentes : la
+      // Realtime couvre déjà le cas normal, ce bouton sert de secours (ex.
+      // reprise après coupure réseau) et doit resynchroniser tous les
+      // écrans qui partagent la même donnée (Planning, Devis, Tableau de
+      // bord), pas seulement celui d'où il a été cliqué.
+      admLoadBookings();
     });
   }
 
@@ -9335,7 +10624,191 @@ if ('serviceWorker' in navigator){
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
   }
+
+  // ============================================================
+  // Statistiques — mesure d'audience interne (voir analytics_events,
+  // 0019_visitor_analytics.sql). Une seule requête (30 derniers jours,
+  // le maximum utile ici) réutilisée pour toutes les cartes/le graphique/
+  // l'entonnoir/les pages populaires — jamais une requête par widget.
+  // Lecture protégée par RLS (is_admin()) : un visiteur normal ne peut
+  // jamais lire ces données, même en appelant Supabase directement depuis
+  // sa console (déjà testé pour le même mécanisme is_admin() ailleurs dans
+  // ce projet).
+  // ============================================================
+  var admStatsPeriod = 'today';
+  var admStatsRowsCache = null;
+  var admStatsOnlineTimer = null;
+  var admStatsRealtimeChannel = null;
+
+  function admStatsPeriodStart(period){
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    if (period === '7d') d.setDate(d.getDate() - 6);
+    else if (period === '30d') d.setDate(d.getDate() - 29);
+    return d;
+  }
+
+  function admStatsUniqueSessions(rows, sinceMs, untilMs, eventType){
+    var uniq = {};
+    rows.forEach(function(r){
+      if (eventType && r.event_type !== eventType) return;
+      var t = new Date(r.created_at).getTime();
+      if (t >= sinceMs && (untilMs == null || t < untilMs)) uniq[r.session_id] = true;
+    });
+    return Object.keys(uniq).length;
+  }
+
+  function admStatsCountOnline(){
+    var sb = window.sudSupabase;
+    var el = document.getElementById('admStatOnline');
+    if (!sb || !sb.configured || !el) return;
+    var since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    sb.client.from('analytics_events').select('session_id').gte('created_at', since).then(function(res){
+      if (res.error){ el.textContent = '—'; return; }
+      var uniq = {};
+      (res.data || []).forEach(function(r){ uniq[r.session_id] = true; });
+      el.textContent = String(Object.keys(uniq).length);
+    });
+  }
+
+  function admStatsPeriodLabel(period){
+    if (period === '7d') return 'sur 7 jours';
+    if (period === '30d') return 'sur 30 jours';
+    return "aujourd'hui";
+  }
+
+  function admRenderStatsCards(rows){
+    var periodStart = admStatsPeriodStart(admStatsPeriod).getTime();
+    var visitors = admStatsUniqueSessions(rows, periodStart, null, 'page_view');
+    var pageviews = rows.filter(function(r){ return r.event_type === 'page_view' && new Date(r.created_at).getTime() >= periodStart; }).length;
+    var sevenDaysStart = admStatsPeriodStart('7d').getTime();
+    var visitors7d = admStatsUniqueSessions(rows, sevenDaysStart, null, 'page_view');
+    var label = admStatsPeriodLabel(admStatsPeriod);
+    document.getElementById('admStatVisitors').textContent = String(visitors);
+    document.getElementById('admStatVisitorsLabel').textContent = 'Visiteurs ' + label;
+    document.getElementById('admStatPageviews').textContent = String(pageviews);
+    document.getElementById('admStatPageviewsLabel').textContent = 'Pages vues ' + label;
+    document.getElementById('admStat7d').textContent = String(visitors7d);
+  }
+
+  function admRenderStatsChart(rows){
+    var el = document.getElementById('admStatsChart');
+    if (!el) return;
+    var days = [];
+    for (var i = 6; i >= 0; i--){
+      var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+      days.push(d);
+    }
+    var counts = days.map(function(d){
+      return admStatsUniqueSessions(rows, d.getTime(), d.getTime() + 24 * 60 * 60 * 1000, 'page_view');
+    });
+    var max = Math.max.apply(null, counts.concat([1]));
+    var dayNames = ['dim','lun','mar','mer','jeu','ven','sam'];
+    el.innerHTML = days.map(function(d, idx){
+      var h = Math.round((counts[idx] / max) * 100);
+      return '<div class="admin-stats-bar-col">' +
+        '<span class="admin-stats-bar-value">' + counts[idx] + '</span>' +
+        '<div class="admin-stats-bar" style="height:' + Math.max(h, 3) + '%"></div>' +
+        '<span class="admin-stats-bar-label">' + dayNames[d.getDay()] + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function admRenderStatsFunnel(rows){
+    var el = document.getElementById('admStatsFunnel');
+    if (!el) return;
+    var periodStart = admStatsPeriodStart(admStatsPeriod).getTime();
+    var visitors = admStatsUniqueSessions(rows, periodStart, null, 'page_view');
+    var started = admStatsUniqueSessions(rows, periodStart, null, 'booking_started');
+    var completed = admStatsUniqueSessions(rows, periodStart, null, 'booking_completed');
+    var rate = visitors > 0 ? ((completed / visitors) * 100).toFixed(1).replace('.', ',') : '0,0';
+    el.innerHTML =
+      '<div class="admin-stats-funnel-step"><span class="admin-stats-funnel-value">' + visitors + '</span><span class="admin-stats-funnel-label">Visiteurs</span></div>' +
+      '<span class="admin-stats-funnel-arrow">→</span>' +
+      '<div class="admin-stats-funnel-step"><span class="admin-stats-funnel-value">' + started + '</span><span class="admin-stats-funnel-label">Réservations commencées</span></div>' +
+      '<span class="admin-stats-funnel-arrow">→</span>' +
+      '<div class="admin-stats-funnel-step"><span class="admin-stats-funnel-value">' + completed + '</span><span class="admin-stats-funnel-label">Réservations créées</span></div>' +
+      '<span class="admin-stats-funnel-rate">Conversion : ' + rate + ' %</span>';
+  }
+
+  var ADM_STATS_PAGE_LABELS = {
+    accueil:'Accueil', services:'Services', tarifs:'Tarifs', rdv:'Rendez-vous',
+    zone:'Zone d\'intervention', faq:'FAQ', contact:'Contact', pourquoi:'Pourquoi nous',
+    espaceClient:'Espace Client', espacePro:'Espace Professionnel'
+  };
+  function admRenderStatsPages(rows){
+    var el = document.getElementById('admStatsPages');
+    if (!el) return;
+    var periodStart = admStatsPeriodStart(admStatsPeriod).getTime();
+    var counts = {};
+    rows.forEach(function(r){
+      if (r.event_type !== 'page_view') return;
+      if (new Date(r.created_at).getTime() < periodStart) return;
+      var p = r.page || 'accueil';
+      counts[p] = (counts[p] || 0) + 1;
+    });
+    var entries = Object.keys(counts).map(function(p){ return { page:p, count:counts[p] }; })
+      .sort(function(a, b){ return b.count - a.count; }).slice(0, 8);
+    if (!entries.length){
+      el.innerHTML = '<div class="ec-empty"><strong>Aucune donnée</strong>Pas encore de visite sur cette période.</div>';
+      return;
+    }
+    el.innerHTML = entries.map(function(e){
+      var label = ADM_STATS_PAGE_LABELS[e.page] || e.page;
+      return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">' + admEscape(label) + '</span></div>' +
+        '<span class="admin-bk-pending-count">' + e.count + '</span></div>';
+    }).join('');
+  }
+
+  function admLoadStats(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    admStatsCountOnline();
+    if (!admStatsOnlineTimer) admStatsOnlineTimer = setInterval(admStatsCountOnline, 30000);
+    var since = admStatsPeriodStart('30d').toISOString();
+    sb.client.from('analytics_events').select('event_type, session_id, page, created_at')
+      .gte('created_at', since)
+      .then(function(res){
+        if (res.error){
+          console.error('admLoadStats: échec de la requête analytics_events', res.error);
+          var chartEl = document.getElementById('admStatsChart');
+          if (chartEl) chartEl.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les statistiques</strong><button type="button" class="adm-retry-btn" data-adm-retry="stats">↻ Réessayer</button></div>';
+          return;
+        }
+        admStatsRowsCache = res.data || [];
+        admRenderStatsCards(admStatsRowsCache);
+        admRenderStatsChart(admStatsRowsCache);
+        admRenderStatsFunnel(admStatsRowsCache);
+        admRenderStatsPages(admStatsRowsCache);
+      });
+    if (!admStatsRealtimeChannel && sb.client){
+      admStatsRealtimeChannel = sb.client.channel('admin-stats-changes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'analytics_events' }, admStatsCountOnline)
+        .subscribe();
+    }
+  }
+  var admStatsPeriodFiltersEl = document.getElementById('admStatsPeriodFilters');
+  if (admStatsPeriodFiltersEl){
+    admStatsPeriodFiltersEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-adm-stats-period]');
+      if (!btn) return;
+      admStatsPeriod = btn.getAttribute('data-adm-stats-period');
+      Array.prototype.forEach.call(admStatsPeriodFiltersEl.querySelectorAll('[data-adm-stats-period]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      if (admStatsRowsCache){
+        admRenderStatsCards(admStatsRowsCache);
+        admRenderStatsFunnel(admStatsRowsCache);
+        admRenderStatsPages(admStatsRowsCache);
+      }
+    });
+  }
+  document.addEventListener('click', function(e){
+    var retryBtn = e.target.closest('[data-adm-retry="stats"]');
+    if (retryBtn) admLoadStats();
+  });
   var admSidebarNavEl = document.getElementById('admSidebarNav');
   if (admSidebarNavEl){
     admSidebarNavEl.addEventListener('click', function(e){
@@ -9422,6 +10895,47 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // ---------- Supabase Realtime : synchronisation live des réservations ----------
+  // Écoute INSERT et UPDATE sur bookings — RLS déjà correcte pour Realtime
+  // (la policy "bookings: owner or admin read", 0001_init.sql, s'applique
+  // aussi au flux postgres_changes : un admin reçoit tous les événements,
+  // jamais plus, aucune nouvelle policy nécessaire). Nécessite que la table
+  // soit ajoutée à la publication supabase_realtime — voir la migration
+  // dédiée. Un seul canal partagé, jamais dupliqué (admSetupBkRealtime()
+  // ignore un second appel si déjà actif) ; se contente de redéclencher un
+  // admLoadBookings() complet à chaque événement plutôt que de fusionner le
+  // cache manuellement ligne par ligne — bien plus fiable, et largement
+  // assez rapide pour un volume de quelques centaines de réservations.
+  // Couvre à la fois Demandes récentes, Planning/Liste, Devis et les cartes
+  // du Tableau de bord puisqu'ils partagent tous adminBookingsCache.
+  var adminBkRealtimeChannel = null;
+  function admSetupBkRealtime(){
+    if (adminBkRealtimeChannel || !sb || !sb.client) return;
+    adminBkRealtimeChannel = sb.client
+      .channel('admin-bookings-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, function(){
+        admLoadBookings();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, function(){
+        admLoadBookings();
+      })
+      .subscribe(function(status, err){
+        if (err) console.error('admSetupBkRealtime: erreur de connexion Realtime', err);
+      });
+  }
+  function admTeardownBkRealtime(){
+    if (!adminBkRealtimeChannel) return;
+    sb.client.removeChannel(adminBkRealtimeChannel);
+    adminBkRealtimeChannel = null;
+  }
+  // Arrête le canal Realtime et le sondage périodique du "En ligne
+  // maintenant" — évite des requêtes Supabase inutiles une fois l'admin
+  // déconnecté ou l'onglet Statistiques jamais rouvert.
+  function admTeardownStatsRealtime(){
+    if (admStatsOnlineTimer){ clearInterval(admStatsOnlineTimer); admStatsOnlineTimer = null; }
+    if (admStatsRealtimeChannel){ sb.client.removeChannel(admStatsRealtimeChannel); admStatsRealtimeChannel = null; }
+  }
+
   function initAdminPanel(role){
     var panel = document.getElementById('espaceProAdminPanel');
     if (!panel) return;
@@ -9432,8 +10946,11 @@ if ('serviceWorker' in navigator){
       admLoadBookings();
       admLoadTravelSettings();
       admRefreshPushUI();
+      admSetupBkRealtime();
     } else {
       panel.hidden = true;
+      admTeardownBkRealtime();
+      admTeardownStatsRealtime();
     }
   }
 
@@ -9936,6 +11453,21 @@ if ('serviceWorker' in navigator){
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
 
+  // Cache en mémoire de la dernière liste chargée — permet aux boutons
+  // "Déplacer"/"Annuler" de retrouver la réservation cliquée (prestation,
+  // durée, adresse) sans nouvelle requête. Toujours régénéré à chaque appel
+  // de ecLoadAppointments(), jamais de données obsolètes affichées.
+  var ecAppointmentsCache = [];
+
+  // "À venir et modifiable" : même esprit que le filtre déjà utilisé côté
+  // professionnel (renderApptSummary) — ni annulé, ni déjà passé/terminé.
+  function ecIsUpcomingModifiable(b){
+    if (b.status !== 'PENDING' && b.status !== 'CONFIRMED') return false;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var bDate = new Date(b.date + 'T00:00:00');
+    return bDate >= today;
+  }
+
   function ecLoadAppointments(){
     var panel = document.getElementById('ecPanelAppointments');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
@@ -9947,6 +11479,7 @@ if ('serviceWorker' in navigator){
       .then(function(res){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var rows = res.data || [];
+        ecAppointmentsCache = rows;
         if (!rows.length){
           panel.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
           return;
@@ -9964,19 +11497,255 @@ if ('serviceWorker' in navigator){
           if (b.travel_fee_cents) priceLine.push('Déplacement ' + ecFmtEuros(b.travel_fee_cents));
           if (b.discount_cents) priceLine.push('Réduction −' + ecFmtEuros(b.discount_cents));
           if (b.total_cents != null) priceLine.push('Total TTC ' + ecFmtEuros(b.total_cents));
-          html += '<div class="ec-row"><div class="ec-row-info">' +
+          html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
             '<span class="ec-row-title">' + ecEscape(svcName) + '</span>' +
             '<span class="ec-row-meta">' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) +
               (b.service_duration_minutes != null ? ' · ' + ecFmtDuration(b.service_duration_minutes) : '') +
               (addr ? ' · ' + ecEscape(addr) : '') + '</span>' +
             '<span class="ec-row-meta">Réf. ' + ecEscape(b.reference) + '</span>' +
             (priceLine.length ? '<span class="ec-row-meta">' + priceLine.join(' · ') + '</span>' : '') +
-            '</div>' + ecBadge(b.status) + '</div>';
+            '</div>' + ecBadge(b.status) +
+            (ecIsUpcomingModifiable(b) ?
+              '<div class="ec-appt-actions">' +
+                '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Déplacer mon rendez-vous</button>' +
+                '<button type="button" class="ec-appt-cancel-btn" data-booking-id="' + b.id + '">Annuler mon rendez-vous</button>' +
+              '</div>'
+              : '') +
+            '</div>';
         });
         html += '</div>';
         panel.innerHTML = html;
       })
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
+  }
+
+  // ---------- "Déplacer mon rendez-vous" ----------
+  // Réutilise exactement les fonctions du tunnel de réservation
+  // (window.sudAvailability, voir leur définition) : mêmes règles de
+  // disponibilité qu'une nouvelle réservation, par construction.
+  var ecMoveState = null;
+  var ecMoveOverlayEl = document.getElementById('ecMoveOverlay');
+  var ecMoveDatesEl = document.getElementById('ecMoveDates');
+  var ecMoveTimesEl = document.getElementById('ecMoveTimes');
+  var ecMoveRecapEl = document.getElementById('ecMoveRecap');
+  var ecMoveErrorEl = document.getElementById('ecMoveError');
+  var ecMoveConfirmBtn = document.getElementById('ecMoveConfirmBtn');
+  var ecMoveSubEl = document.getElementById('ecMoveSub');
+
+  // Ne jamais montrer un message technique Supabase/PostgREST au client.
+  // Nos fonctions RPC (reschedule_own_booking/cancel_own_booking) lèvent
+  // elles-mêmes des messages déjà rédigés en français pour le client (ex.
+  // "Ce créneau vient d'être réservé...") — ceux-là sont affichés tels
+  // quels (code Postgres 'P0001', une exception métier volontaire). Tout
+  // le reste (fonction introuvable, colonne manquante, erreur réseau...)
+  // est un problème d'infrastructure : jamais montré tel quel, remplacé
+  // par un message générique, l'erreur réelle restant journalisée en
+  // console pour le diagnostic.
+  function ecFriendlyRpcError(err){
+    if (!err) return 'Une erreur est survenue. Réessayez dans un instant.';
+    console.error('Espace Client — erreur RPC réservation', err);
+    if (err.code === 'P0001' && err.message) return err.message;
+    return 'Impossible de traiter votre demande pour le moment. Merci de réessayer dans un instant ou de nous contacter directement.';
+  }
+
+  function ecShowApptSuccessMessage(text){
+    var panel = document.getElementById('ecPanelAppointments');
+    if (!panel) return;
+    var p = document.createElement('p');
+    p.className = 'espace-pro-form-success';
+    p.textContent = text;
+    panel.insertBefore(p, panel.firstChild);
+    setTimeout(function(){ if (p.parentNode) p.parentNode.removeChild(p); }, 5000);
+  }
+
+  function ecShowMoveError(msg){
+    if (!ecMoveErrorEl) return;
+    ecMoveErrorEl.textContent = msg || '';
+    ecMoveErrorEl.hidden = !msg;
+  }
+
+  function ecRenderMoveDates(){
+    var avail = window.sudAvailability;
+    if (!avail || !ecMoveDatesEl) return;
+    var dates = avail.nextAvailableDates();
+    ecMoveDatesEl.innerHTML = '';
+    dates.forEach(function(d){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      var isSel = ecMoveState.date && d.toDateString() === ecMoveState.date.toDateString();
+      btn.className = 'ec-move-date-pill' + (isSel ? ' is-selected' : '');
+      var dayName = d.toLocaleDateString('fr-FR', { weekday:'short' }).replace('.','');
+      btn.innerHTML = '<span class="d-name">' + dayName + '</span><span class="d-num">' + d.getDate() + '</span>';
+      btn.addEventListener('click', function(){
+        ecMoveState.date = d;
+        ecMoveState.time = null;
+        ecRenderMoveDates();
+        ecRenderMoveTimes();
+        ecUpdateMoveConfirmState();
+      });
+      ecMoveDatesEl.appendChild(btn);
+    });
+  }
+
+  function ecRenderMoveTimes(){
+    var avail = window.sudAvailability;
+    if (!avail || !ecMoveTimesEl) return;
+    ecMoveTimesEl.innerHTML = '';
+    if (!ecMoveState.date){ return; }
+    var slots = avail.slotsForDate(ecMoveState.date, ecMoveState.durationMin);
+    if (!slots.length){
+      ecMoveTimesEl.innerHTML = '<p class="ec-row-meta">Aucun créneau ce jour-là.</p>';
+      return;
+    }
+    slots.forEach(function(t){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      var isSel = ecMoveState.time === t;
+      btn.className = 'ec-move-time-pill' + (isSel ? ' is-selected' : '');
+      btn.textContent = avail.fmtTime(t);
+      btn.addEventListener('click', function(){
+        ecMoveState.time = t;
+        ecRenderMoveTimes();
+        ecUpdateMoveConfirmState();
+      });
+      ecMoveTimesEl.appendChild(btn);
+    });
+  }
+
+  function ecUpdateMoveConfirmState(){
+    var avail = window.sudAvailability;
+    var ready = !!(ecMoveState.date && ecMoveState.time != null);
+    if (ready && ecMoveRecapEl){
+      ecMoveRecapEl.hidden = false;
+      ecMoveRecapEl.innerHTML =
+        '<div class="ec-move-recap-row"><span class="lbl">Ancien rendez-vous</span><span>' + ecEscape(ecMoveState.oldLabel) + '</span></div>' +
+        '<div class="ec-move-recap-row"><span class="lbl">Nouveau rendez-vous</span><span><strong>' + ecEscape(avail.fmtDateLong(ecMoveState.date)) + ' à ' + avail.fmtTime(ecMoveState.time) + '</strong></span></div>' +
+        '<div class="ec-move-recap-row"><span class="lbl">Prestation</span><span>' + ecEscape(ecMoveState.svcName) + '</span></div>' +
+        (ecMoveState.addr ? '<div class="ec-move-recap-row"><span class="lbl">Adresse</span><span>' + ecEscape(ecMoveState.addr) + '</span></div>' : '');
+    } else if (ecMoveRecapEl){
+      ecMoveRecapEl.hidden = true;
+    }
+    if (ecMoveConfirmBtn) ecMoveConfirmBtn.disabled = !ready;
+    ecShowMoveError('');
+  }
+
+  function ecOpenMoveModal(bookingId){
+    var b = ecAppointmentsCache.filter(function(x){ return x.id === bookingId; })[0];
+    if (!b || !window.sudAvailability) return;
+    var svcName = (b.services && b.services.name) || 'Service';
+    var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
+    ecMoveState = {
+      bookingId: bookingId,
+      durationMin: b.service_duration_minutes,
+      svcName: svcName,
+      addr: addr,
+      oldLabel: ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time),
+      date: null,
+      time: null
+    };
+    if (ecMoveSubEl) ecMoveSubEl.textContent = svcName + ' — actuellement ' + ecMoveState.oldLabel;
+    ecShowMoveError('');
+    ecRenderMoveDates();
+    ecRenderMoveTimes();
+    ecUpdateMoveConfirmState();
+    if (ecMoveOverlayEl) ecMoveOverlayEl.hidden = false;
+  }
+  function ecCloseMoveModal(){
+    if (ecMoveOverlayEl) ecMoveOverlayEl.hidden = true;
+    ecMoveState = null;
+  }
+  var ecMoveCloseBtn = document.getElementById('ecMoveClose');
+  var ecMoveCancelBtnEl = document.getElementById('ecMoveCancelBtn');
+  if (ecMoveCloseBtn) ecMoveCloseBtn.addEventListener('click', ecCloseMoveModal);
+  if (ecMoveCancelBtnEl) ecMoveCancelBtnEl.addEventListener('click', ecCloseMoveModal);
+  if (ecMoveOverlayEl){
+    ecMoveOverlayEl.addEventListener('click', function(e){ if (e.target === ecMoveOverlayEl) ecCloseMoveModal(); });
+  }
+  if (ecMoveConfirmBtn){
+    ecMoveConfirmBtn.addEventListener('click', function(){
+      if (!ecMoveState || !ecMoveState.date || ecMoveState.time == null) return;
+      var avail = window.sudAvailability;
+      ecMoveConfirmBtn.disabled = true;
+      ecShowMoveError('');
+      var y = ecMoveState.date.getFullYear(), m = ecMoveState.date.getMonth() + 1, d = ecMoveState.date.getDate();
+      var isoDate = y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+      var isoTime = avail.fmtTime(ecMoveState.time) + ':00';
+      sb.client.rpc('reschedule_own_booking', { p_booking_id: ecMoveState.bookingId, p_date: isoDate, p_start_time: isoTime })
+        .then(function(res){
+          if (res.error){
+            ecMoveConfirmBtn.disabled = false;
+            ecShowMoveError(ecFriendlyRpcError(res.error));
+            return;
+          }
+          ecCloseMoveModal();
+          ecLoadAppointments();
+          ecShowApptSuccessMessage('Votre rendez-vous a bien été déplacé.');
+        })
+        .catch(function(err){
+          ecMoveConfirmBtn.disabled = false;
+          ecShowMoveError(ecFriendlyRpcError(err));
+        });
+    });
+  }
+
+  // ---------- "Annuler mon rendez-vous" ----------
+  var ecCancelBookingId = null;
+  var ecCancelOverlayEl = document.getElementById('ecCancelOverlay');
+  var ecCancelErrorEl = document.getElementById('ecCancelError');
+  var ecCancelConfirmBtn = document.getElementById('ecCancelConfirmBtn');
+  function ecOpenCancelModal(bookingId){
+    ecCancelBookingId = bookingId;
+    if (ecCancelErrorEl){ ecCancelErrorEl.hidden = true; ecCancelErrorEl.textContent = ''; }
+    if (ecCancelConfirmBtn) ecCancelConfirmBtn.disabled = false;
+    if (ecCancelOverlayEl) ecCancelOverlayEl.hidden = false;
+  }
+  function ecCloseCancelModal(){
+    if (ecCancelOverlayEl) ecCancelOverlayEl.hidden = true;
+    ecCancelBookingId = null;
+  }
+  var ecCancelKeepBtn = document.getElementById('ecCancelKeepBtn');
+  if (ecCancelKeepBtn) ecCancelKeepBtn.addEventListener('click', ecCloseCancelModal);
+  if (ecCancelOverlayEl){
+    ecCancelOverlayEl.addEventListener('click', function(e){ if (e.target === ecCancelOverlayEl) ecCloseCancelModal(); });
+  }
+  if (ecCancelConfirmBtn){
+    ecCancelConfirmBtn.addEventListener('click', function(){
+      if (!ecCancelBookingId) return;
+      ecCancelConfirmBtn.disabled = true;
+      sb.client.rpc('cancel_own_booking', { p_booking_id: ecCancelBookingId })
+        .then(function(res){
+          if (res.error){
+            ecCancelConfirmBtn.disabled = false;
+            if (ecCancelErrorEl){
+              ecCancelErrorEl.textContent = ecFriendlyRpcError(res.error);
+              ecCancelErrorEl.hidden = false;
+            }
+            return;
+          }
+          ecCloseCancelModal();
+          ecLoadAppointments();
+          ecShowApptSuccessMessage('Votre rendez-vous a bien été annulé.');
+        })
+        .catch(function(err){
+          ecCancelConfirmBtn.disabled = false;
+          if (ecCancelErrorEl){
+            ecCancelErrorEl.textContent = ecFriendlyRpcError(err);
+            ecCancelErrorEl.hidden = false;
+          }
+        });
+    });
+  }
+
+  // Délégation sur le panneau "Mes rendez-vous" : boutons ajoutés à chaque
+  // rendu de ecLoadAppointments(), jamais besoin de re-attacher un listener.
+  var ecApptPanelEl = document.getElementById('ecPanelAppointments');
+  if (ecApptPanelEl){
+    ecApptPanelEl.addEventListener('click', function(e){
+      var moveBtn = e.target.closest('.ec-appt-move-btn');
+      if (moveBtn){ ecOpenMoveModal(moveBtn.getAttribute('data-booking-id')); return; }
+      var cancelBtn = e.target.closest('.ec-appt-cancel-btn');
+      if (cancelBtn){ ecOpenCancelModal(cancelBtn.getAttribute('data-booking-id')); return; }
+    });
   }
 
   function ecLoadInterventions(){
@@ -10686,7 +12455,7 @@ if ('serviceWorker' in navigator){
   // (phase de développement/test). Le faire passer à false — ou, plus
   // simplement, le fait d'ajouter un premier avis source:'real' — masque
   // définitivement les exemples fictifs pour les visiteurs.
-  var DEV_PREVIEW_DEMO_REVIEWS = true;
+  var DEV_PREVIEW_DEMO_REVIEWS = false;
 
   var hasRealReview = REVIEWS.some(function(r){ return r.source !== 'demo'; });
   if (!hasRealReview && !DEV_PREVIEW_DEMO_REVIEWS) return; // section reste hidden, rien n'est rendu
