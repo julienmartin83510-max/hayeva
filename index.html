@@ -113,6 +113,10 @@
     } catch(e){ console.error('sudTrack: erreur inattendue', eventType, e); }
   }
   window.sudTrack = sudTrack;
+  // Exposé pour l'Assistant IA (même identifiant anonyme de session que la
+  // mesure d'audience, même clé sessionStorage, jamais un second concept de
+  // session) — voir sudmaintenance.html, widget Assistant Hayeva.
+  window.sudGetSessionId = function(){ return sessionId; };
 
   // page_view : au chargement initial, puis à chaque navigation vers une
   // section nommée (mêmes ancres que la navigation existante du site).
@@ -2335,6 +2339,161 @@ if ('serviceWorker' in navigator){
   }
   .ec-appt-cancel-btn:hover{ background:#8A2E2E; border-color:#8A2E2E; color:#fff; }
 
+  /* ---------- Assistant Hayeva (widget flottant, espace public) ----------
+     Jetons globaux uniquement (--terracotta/--sky/--turquoise/--sand/
+     --ink/--line, déjà définis dans :root) : ce widget vit sur le site
+     public, jamais dans #espaceProAdminPanel ni .pro-shell, donc aucun
+     jeton "adm" ou "pro" scopé n'est utilisé ici. */
+  .ai-widget-toggle{
+    position:fixed; right:20px; bottom:20px; z-index:9200;
+    display:flex; align-items:center; gap:10px; background:transparent; border:none; padding:0; cursor:pointer;
+    transition:transform .18s;
+  }
+  .ai-widget-toggle:hover{ transform:translateY(-2px); }
+  .ai-widget-toggle[hidden]{ display:none; }
+
+  /* ---------- Personnage Hayeva — image statique unique (PNG transparent),
+     vivant uniquement grâce à des animations CSS. Aucune vidéo, aucun
+     WebGL. Taille fixe posée AVANT chargement de l'image (pas de CLS,
+     que le fichier existe ou non). ---------- */
+  .hayeva-char{
+    position:relative; width:64px; height:64px; border-radius:50%; overflow:hidden; flex:0 0 auto;
+    background:linear-gradient(135deg, var(--terracotta) 0%, var(--sky-deep) 140%);
+    box-shadow:0 12px 30px -10px rgba(16,27,46,0.45);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hayeva-char img{
+    width:100%; height:100%; object-fit:cover; object-position:center 15%; display:block;
+    animation:hayevaBreathe 4.5s ease-in-out infinite;
+  }
+  .hayeva-char-fallback-emoji{ display:none; font-size:1.3rem; }
+  .hayeva-char-missing img{ display:none; }
+  .hayeva-char-missing .hayeva-char-fallback-emoji{ display:inline-flex; }
+  @keyframes hayevaBreathe{
+    0%, 100%{ transform:translateY(0) scale(1); }
+    50%{ transform:translateY(-2px) scale(1.015); }
+  }
+  @keyframes hayevaGreet{
+    0%{ transform:scale(1) rotate(0); }
+    30%{ transform:scale(1.12) rotate(-4deg); }
+    60%{ transform:scale(1.05) rotate(3deg); }
+    100%{ transform:scale(1) rotate(0); }
+  }
+  @keyframes hayevaThink{
+    0%, 100%{ transform:scale(1); }
+    50%{ transform:scale(0.96); }
+  }
+  @keyframes hayevaGlow{
+    0%, 100%{ box-shadow:0 12px 30px -10px rgba(16,27,46,0.45), 0 0 0 0 rgba(47,182,168,0); }
+    50%{ box-shadow:0 12px 30px -10px rgba(16,27,46,0.45), 0 0 16px 4px rgba(47,182,168,0.5); }
+  }
+  @keyframes hayevaSuccess{
+    0%{ transform:translateY(0) scale(1); }
+    35%{ transform:translateY(-6px) scale(1.08); }
+    60%{ transform:translateY(1px) scale(0.99); }
+    100%{ transform:translateY(0) scale(1); }
+  }
+  .hayeva-char.is-greeting img{ animation:hayevaGreet .7s ease; }
+  .hayeva-char.is-thinking img{ animation:hayevaThink 1.1s ease-in-out infinite; }
+  .hayeva-char.is-talking{ animation:hayevaGlow 1.6s ease-in-out infinite; }
+  .hayeva-char.is-success img{ animation:hayevaSuccess .6s ease; }
+  @media (prefers-reduced-motion: reduce){
+    .hayeva-char, .hayeva-char img{ animation:none !important; }
+  }
+
+  .ai-widget-toggle-bubble{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--ink);
+    background:#fff; border-radius:999px; padding:10px 16px; white-space:nowrap;
+    box-shadow:0 8px 20px -8px rgba(16,27,46,0.3);
+  }
+  .ai-widget-toggle-fallback-label{
+    display:none; align-items:center; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem;
+    color:#fff; background:linear-gradient(135deg, var(--terracotta) 0%, var(--sky-deep) 140%);
+    border-radius:999px; padding:14px 20px; box-shadow:0 12px 30px -10px rgba(16,27,46,0.45); white-space:nowrap;
+  }
+  .ai-widget-toggle:has(.hayeva-char-missing) .hayeva-char,
+  .ai-widget-toggle:has(.hayeva-char-missing) .ai-widget-toggle-bubble{ display:none; }
+  .ai-widget-toggle:has(.hayeva-char-missing) .ai-widget-toggle-fallback-label{ display:inline-flex; }
+
+  .hayeva-char-mini{ width:36px; height:36px; box-shadow:none; }
+  .hayeva-char-mini .hayeva-char-fallback-emoji{ font-size:1rem; }
+  .ai-widget-panel{
+    position:fixed; right:20px; bottom:20px; z-index:9250; width:360px; max-width:calc(100vw - 32px);
+    height:520px; max-height:calc(100vh - 100px); background:var(--white); border-radius:20px;
+    box-shadow:0 24px 60px -16px rgba(16,27,46,0.5); display:flex; flex-direction:column; overflow:hidden;
+    animation:aiWidgetIn .22s ease;
+  }
+  @keyframes aiWidgetIn{ from{ opacity:0; transform:translateY(14px) scale(0.98); } to{ opacity:1; transform:none; } }
+  .ai-widget-panel[hidden]{ display:none; }
+  .ai-widget-header{
+    display:flex; align-items:center; gap:10px; padding:12px 14px 12px 12px;
+    background:linear-gradient(135deg, var(--terracotta) 0%, var(--sky-deep) 140%); color:#fff; flex:0 0 auto;
+  }
+  .ai-widget-header-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.98rem; flex:1 1 auto; }
+  .ai-widget-close{
+    background:rgba(255,255,255,0.15); border:none; color:#fff; width:28px; height:28px; border-radius:50%;
+    cursor:pointer; font-size:0.9rem; line-height:1; display:flex; align-items:center; justify-content:center;
+  }
+  .ai-widget-close:hover{ background:rgba(255,255,255,0.28); }
+  .ai-widget-messages{
+    flex:1 1 auto; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;
+    background:var(--sand-deep);
+  }
+  .ai-widget-msg{
+    max-width:84%; padding:10px 13px; border-radius:14px; font-size:0.86rem; line-height:1.5; white-space:pre-wrap;
+  }
+  .ai-widget-msg-assistant{
+    align-self:flex-start; background:var(--white); color:var(--ink); border:1px solid var(--line);
+    border-bottom-left-radius:4px;
+  }
+  .ai-widget-msg-user{
+    align-self:flex-end; background:var(--sky-deep); color:#fff; border-bottom-right-radius:4px;
+  }
+  .ai-widget-msg-safety{ background:var(--amber-soft); border-color:var(--amber); font-weight:600; }
+  .ai-widget-cta{
+    align-self:flex-start; display:flex; gap:8px; flex-wrap:wrap; margin-top:2px;
+  }
+  .ai-widget-cta-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:#fff;
+    background:var(--turquoise); border:none; border-radius:999px; padding:8px 16px; cursor:pointer;
+  }
+  .ai-widget-cta-btn:hover{ filter:brightness(1.08); }
+  .ai-widget-cta-btn-secondary{
+    background:transparent; color:var(--sky-deep); border:1.5px solid var(--sky-deep);
+  }
+  .ai-widget-cta-btn-secondary:hover{ background:var(--sky-deep); color:#fff; filter:none; }
+  .ai-widget-typing{
+    padding:4px 16px 10px; font-size:0.78rem; color:var(--ink-soft); font-style:italic; flex:0 0 auto;
+  }
+  .ai-widget-typing[hidden]{ display:none; }
+  @keyframes aiWidgetDot{ 0%,80%,100%{ opacity:0.25; } 40%{ opacity:1; } }
+  .ai-widget-typing-dots span{ display:inline-block; animation:aiWidgetDot 1.2s infinite; }
+  .ai-widget-typing-dots span:nth-child(2){ animation-delay:.2s; }
+  .ai-widget-typing-dots span:nth-child(3){ animation-delay:.4s; }
+  .ai-widget-form{
+    display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--white); flex:0 0 auto;
+  }
+  .ai-widget-form input{
+    flex:1 1 auto; font-family:inherit; font-size:0.86rem; padding:10px 13px; border-radius:12px;
+    border:1.5px solid var(--line); background:var(--sand-deep); color:var(--ink); min-width:0;
+  }
+  .ai-widget-form input:focus{ outline:none; border-color:var(--sky); }
+  .ai-widget-send{
+    flex:0 0 auto; width:40px; height:40px; border-radius:50%; border:none; background:var(--turquoise);
+    color:#fff; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .ai-widget-send:hover{ filter:brightness(1.08); }
+  .ai-widget-send[disabled]{ opacity:0.5; cursor:not-allowed; }
+  @media (max-width:480px){
+    .ai-widget-panel{
+      right:10px; left:10px; width:auto; bottom:10px; height:min(520px, calc(100vh - 88px));
+    }
+    .ai-widget-toggle{ right:14px; bottom:14px; }
+    .hayeva-char{ width:48px; height:48px; }
+    .ai-widget-toggle-bubble{ display:none; }
+    .ai-widget-toggle-fallback-label{ padding:12px 16px; font-size:0.8rem; }
+  }
+
   /* ---------- Modale "Déplacer mon rendez-vous" ---------- */
   .ec-move-overlay{
     position:fixed; inset:0; z-index:10065; display:flex; justify-content:center;
@@ -2854,6 +3013,61 @@ if ('serviceWorker' in navigator){
     30%, 70%{ box-shadow:0 0 0 3px var(--adm-ocean); }
   }
   .admin-req-row-highlight{ animation:adminReqHighlight 1.3s ease 2; }
+  .admin-req-open-hint{
+    align-self:center; flex:0 0 auto; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem;
+    color:var(--adm-ocean); white-space:nowrap;
+  }
+
+  /* ---------- Fiche détaillée : décision Accepter/Refuser (correction 2026-09-24) ----------
+     Un clic sur une carte de "Demandes récentes" n'ouvre plus QUE cette
+     fiche (admOpenBookingModal) : il ne modifie plus jamais un statut. Les
+     deux gros boutons ci-dessous sont l'unique façon de changer le statut
+     d'une demande PENDING, chacun avec sa propre confirmation. */
+  .admin-bk-modal-decision{ display:flex; gap:12px; flex-wrap:wrap; margin:18px 0 10px; }
+  .admin-bk-decision-btn{
+    flex:1 1 180px; display:flex; align-items:center; justify-content:center; gap:8px;
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:0.92rem; padding:14px 16px;
+    border-radius:12px; border:none; cursor:pointer; transition:filter .15s, transform .15s;
+  }
+  .admin-bk-decision-btn:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+  .admin-bk-decision-btn[disabled]{ opacity:0.55; cursor:not-allowed; transform:none; }
+  .admin-bk-decision-accept{ background:var(--adm-green); color:#fff; }
+  .admin-bk-decision-refuse{ background:var(--adm-red); color:#fff; }
+  .admin-bk-modal-propose-toggle{
+    display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700;
+    font-size:0.8rem; color:var(--adm-ocean); background:transparent; border:1.5px solid var(--adm-ocean);
+    border-radius:999px; padding:8px 16px; cursor:pointer; margin-bottom:6px;
+  }
+  .admin-bk-modal-propose-toggle:hover{ background:var(--adm-ocean); color:#fff; }
+  .admin-bk-refuse-form{
+    display:flex; flex-direction:column; gap:10px; background:var(--adm-sand); border-radius:12px;
+    padding:14px; margin-top:10px; box-sizing:border-box;
+  }
+  .admin-bk-refuse-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.8rem; font-weight:700; color:var(--adm-ink-soft); }
+  .admin-bk-refuse-form textarea{
+    font-family:inherit; font-size:0.86rem; padding:9px 11px; border-radius:8px; border:1.5px solid var(--adm-line);
+    background:var(--adm-card-bg); color:var(--adm-ink); width:100%; box-sizing:border-box; resize:vertical; min-height:60px;
+  }
+  .admin-bk-refuse-confirm{
+    background:var(--adm-red); color:#fff; border:none; border-radius:8px; padding:9px 16px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; cursor:pointer;
+  }
+  .admin-bk-refuse-confirm[disabled]{ opacity:0.6; cursor:not-allowed; }
+  .admin-bk-refuse-cancel{
+    background:transparent; border:1px solid var(--adm-line); color:var(--adm-ink-soft); border-radius:8px;
+    padding:9px 14px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.82rem; cursor:pointer;
+  }
+  .admin-bk-modal-delete-zone{
+    margin-top:22px; padding-top:16px; border-top:1.5px dashed var(--adm-line); text-align:center;
+  }
+  .admin-bk-delete-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:var(--adm-red);
+    background:transparent; border:1.5px solid var(--adm-red); border-radius:999px; padding:9px 18px; cursor:pointer;
+    transition:background .2s, color .2s;
+  }
+  .admin-bk-delete-btn:hover{ background:var(--adm-red); color:#fff; }
+  .admin-bk-delete-btn[disabled]{ opacity:0.55; cursor:not-allowed; }
+  .admin-bk-delete-hint{ margin-top:8px; font-size:0.76rem; color:var(--adm-ink-soft); }
 
   /* ---------- Notifications push ---------- */
   .admin-push-panel{
@@ -2878,6 +3092,209 @@ if ('serviceWorker' in navigator){
   .admin-push-ios-note ol{ margin:8px 0 0; padding-left:20px; }
   .admin-push-ios-note li{ margin-bottom:4px; }
   .admin-push-unsupported-note{ margin-top:14px; font-size:0.86rem; color:var(--adm-ink-soft); }
+
+  /* ---------- Chiffrage / Devis (outil interne admin) ---------- */
+  .qc-type-toggle{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .qc-settings-box{
+    background:var(--adm-sand); border:1px solid var(--adm-line); border-radius:14px; padding:16px 18px; margin-bottom:24px;
+  }
+  .qc-settings-summary{
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-family:"Poppins",sans-serif;
+    font-weight:700; font-size:0.9rem; color:var(--adm-ink); list-style:none;
+  }
+  .qc-settings-summary::-webkit-details-marker{ display:none; }
+  .qc-settings-summary::after{ content:'▾'; font-size:0.8rem; color:var(--adm-ink-soft); }
+  details[open] .qc-settings-summary::after{ content:'▴'; }
+  .qc-settings-box form{ margin-top:14px; }
+  .qc-catalog-hint{
+    background:var(--adm-ocean-soft); border:1px dashed var(--adm-ocean); border-radius:12px; padding:14px 16px;
+    font-size:0.86rem; color:var(--adm-ink); margin-bottom:16px; line-height:1.5;
+  }
+  .qc-catalog-hint strong{ display:block; margin-bottom:4px; }
+  .qc-supply-row{
+    display:grid; grid-template-columns:2fr 0.7fr 1fr 0.8fr auto; gap:8px; margin-bottom:8px; align-items:end;
+  }
+  @media (max-width:700px){ .qc-supply-row{ grid-template-columns:1fr 1fr; } }
+  .qc-supply-row label{ display:flex; flex-direction:column; gap:4px; font-size:0.74rem; font-weight:700; color:var(--adm-ink-soft); }
+  .qc-supply-row input{
+    font-family:inherit; font-size:0.86rem; padding:8px 9px; border-radius:8px; border:1.5px solid var(--adm-line);
+    background:var(--adm-card-bg); color:var(--adm-ink); width:100%; box-sizing:border-box;
+  }
+  .qc-supply-del{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--adm-red); background:var(--adm-red-soft);
+    border:none; border-radius:8px; padding:8px 10px; cursor:pointer; height:36px;
+  }
+  .qc-add-supply-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--adm-ocean); background:var(--adm-ocean-soft);
+    border:none; border-radius:10px; padding:9px 16px; cursor:pointer; margin-bottom:16px;
+  }
+  .qc-breakdown{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:14px; padding:18px 20px;
+    box-shadow:var(--adm-shadow-sm); margin:18px 0;
+  }
+  .qc-breakdown-row{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--adm-line); font-size:0.9rem; color:var(--adm-ink); }
+  .qc-breakdown-row:last-child{ border-bottom:none; }
+  .qc-breakdown-row.qc-total{ font-weight:800; font-size:1.15rem; padding-top:14px; }
+  .qc-breakdown-row.qc-ht{ color:var(--adm-ink-soft); font-size:0.82rem; }
+  .qc-why{ font-size:0.84rem; color:var(--adm-ink-soft); margin-top:10px; line-height:1.5; }
+  .qc-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+  .qc-prepared-box{
+    margin-top:16px; background:var(--adm-offwhite); border:1.5px dashed var(--adm-line); border-radius:12px; padding:14px 16px;
+    font-size:0.86rem; color:var(--adm-ink); white-space:pre-wrap; line-height:1.6;
+  }
+  .qc-disclaimer{ font-size:0.78rem; color:var(--adm-ink-soft); margin-top:6px; }
+  .qc-ai-prefill{
+    background:var(--adm-ocean-soft); border:1.5px dashed var(--adm-ocean); border-radius:14px; padding:14px 16px;
+    margin-bottom:20px;
+  }
+  .qc-ai-prefill label{ display:block; font-size:0.8rem; font-weight:700; color:var(--adm-ink); margin-bottom:8px; }
+  .qc-ai-prefill-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .qc-ai-prefill-row input{
+    flex:1 1 260px; min-width:0; font-family:inherit; font-size:0.88rem; padding:9px 12px; border-radius:10px;
+    border:1.5px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink);
+  }
+  .qc-ai-prefill-btn{
+    flex:0 0 auto; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.84rem; color:#fff;
+    background:var(--adm-ocean); border:none; border-radius:10px; padding:9px 16px; cursor:pointer; white-space:nowrap;
+  }
+  .qc-ai-prefill-btn:hover{ filter:brightness(1.08); }
+  .qc-ai-prefill-btn[disabled]{ opacity:0.6; cursor:not-allowed; }
+  .qc-ai-prefill-msg{ font-size:0.8rem; color:var(--adm-ink-soft); margin-top:8px; }
+  .qc-history-search{
+    width:100%; box-sizing:border-box; font-family:inherit; font-size:0.9rem; padding:10px 14px; border-radius:12px;
+    border:1.5px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink); margin-bottom:14px;
+  }
+
+  /* ================================================================
+     ESPACE PROFESSIONNEL — refonte navigation (2026-09-24)
+     ================================================================
+     Périmètre STRICT : uniquement la coquille de navigation propre au
+     compte professionnel connecté (.pro-shell). Jetons --pro-* posés
+     UNIQUEMENT sur .pro-shell (même principe que --adm-* posés uniquement
+     sur #espaceProAdminPanel juste au-dessus) : aucune redéfinition des
+     jetons globaux, aucun code partagé avec l'admin malgré un rendu
+     visuel identique. #espaceProAdminPanel reste totalement intact et
+     indépendant de ce bloc. */
+  .pro-shell{
+    --pro-navy:#101B2E; --pro-petrol:#17394A;
+    --pro-ocean:#2C6FB3; --pro-ocean-soft:rgba(44,111,179,0.12);
+    --pro-turquoise:#3FA9A0; --pro-turquoise-soft:rgba(63,169,160,0.14);
+    --pro-coral:#E8724C; --pro-coral-soft:rgba(232,114,76,0.14);
+    --pro-sand:#F2E9DA; --pro-offwhite:#F6F7FA; --pro-card-bg:#FFFFFF;
+    --pro-ink:#212C3D; --pro-ink-soft:#5B6B80; --pro-line:rgba(33,44,61,0.10);
+    --pro-shadow:0 14px 34px -18px rgba(16,27,46,0.22); --pro-shadow-sm:0 6px 18px -12px rgba(16,27,46,0.16);
+    display:flex; align-items:stretch; background:var(--pro-offwhite); border-radius:24px;
+    overflow:hidden; box-shadow:var(--pro-shadow); border:1px solid var(--pro-line); position:relative; isolation:isolate;
+    margin-top:22px;
+  }
+  @media (prefers-color-scheme: dark){
+    .pro-shell{
+      --pro-offwhite:#111826; --pro-card-bg:#1A2333; --pro-sand:#1E2A3D;
+      --pro-ink:#EEF2F7; --pro-ink-soft:rgba(238,242,247,0.68); --pro-line:rgba(238,242,247,0.12);
+    }
+  }
+  .pro-sidebar{
+    flex:0 0 220px; background:linear-gradient(165deg, var(--pro-navy) 0%, var(--pro-petrol) 145%);
+    padding:26px 14px; display:flex; flex-direction:column; gap:22px; position:relative; overflow:hidden;
+  }
+  .pro-sidebar-brand{ display:flex; justify-content:center; }
+  .pro-sidebar-logo{ height:34px; width:auto; filter:brightness(0) invert(1); opacity:0.95; }
+  .pro-sidebar-nav{ display:flex; flex-direction:column; gap:4px; flex:1 1 auto; }
+  .pro-nav-btn{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; font-family:"Poppins",sans-serif;
+    font-weight:600; font-size:0.87rem; color:rgba(255,255,255,0.7); background:transparent; border:none;
+    border-radius:12px; padding:11px 14px; cursor:pointer; transition:background .18s, color .18s; position:relative;
+  }
+  .pro-nav-btn:hover{ background:rgba(255,255,255,0.07); color:#fff; }
+  .pro-nav-btn.is-active{ background:rgba(255,255,255,0.13); color:#fff; }
+  .pro-nav-btn.is-active::before{
+    content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--pro-coral);
+  }
+  .pro-nav-icon{ font-size:1.05rem; flex:0 0 auto; line-height:1; }
+  .pro-nav-label{ flex:1 1 auto; }
+  .pro-sidebar-logout-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:rgba(255,255,255,0.82);
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); border-radius:12px; padding:10px 14px;
+    cursor:pointer; transition:background .18s;
+  }
+  .pro-sidebar-logout-btn:hover{ background:rgba(255,255,255,0.16); }
+  .pro-main{ flex:1 1 auto; min-width:0; padding:30px 32px 44px; background:var(--pro-offwhite); }
+  .pro-page[hidden]{ display:none; }
+  .pro-page-head{ margin-bottom:20px; }
+  .pro-eyebrow{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--pro-ocean); margin-bottom:6px;
+  }
+  .pro-page-title{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:1.4rem; color:var(--pro-ink); margin:0 0 6px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .pro-page-sub{ font-size:0.88rem; color:var(--pro-ink-soft); max-width:640px; }
+
+  @media (max-width:880px){
+    .pro-shell{ flex-direction:column; border-radius:18px; }
+    .pro-sidebar{
+      flex-direction:row; align-items:center; gap:8px; padding:10px; overflow-x:auto;
+      -webkit-overflow-scrolling:touch; position:sticky; top:0; z-index:6;
+    }
+    .pro-sidebar-brand{ display:none; }
+    .pro-sidebar-nav{ flex-direction:row; gap:6px; flex:1 1 auto; }
+    .pro-nav-btn{
+      flex-direction:column; gap:3px; flex:0 0 auto; width:auto; min-width:60px; min-height:52px;
+      align-items:center; justify-content:center; padding:8px 8px; text-align:center;
+    }
+    .pro-nav-btn.is-active::before{ left:10px; right:10px; top:auto; bottom:2px; height:3px; width:auto; }
+    .pro-nav-label{ font-size:0.58rem; line-height:1.15; }
+    .pro-nav-icon{ font-size:1.1rem; }
+    .pro-sidebar-logout-btn{ flex:0 0 auto; padding:8px 10px; font-size:0; width:38px; }
+    .pro-sidebar-logout-btn::before{ content:'⏻'; font-size:1rem; }
+    .pro-main{ padding:20px 14px 38px; }
+  }
+
+  .pro-stats-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:22px; }
+  @media (max-width:900px){ .pro-stats-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:460px){ .pro-stats-grid{ grid-template-columns:1fr; } }
+  .pro-stat-card{
+    background:var(--pro-card-bg); border:1px solid var(--pro-line); border-radius:16px; padding:16px 16px 14px;
+    display:flex; flex-direction:column; gap:6px; box-shadow:var(--pro-shadow-sm); position:relative; overflow:hidden;
+  }
+  .pro-stat-card::after{
+    content:''; position:absolute; right:-18px; top:-18px; width:72px; height:72px; border-radius:50%;
+  }
+  .pro-stat-ocean::after{ background:var(--pro-ocean-soft); }
+  .pro-stat-coral::after{ background:var(--pro-coral-soft); }
+  .pro-stat-turquoise::after{ background:var(--pro-turquoise-soft); }
+  .pro-stat-sand::after{ background:var(--pro-sand); }
+  .pro-stat-icon{ font-size:1.2rem; position:relative; z-index:1; }
+  .pro-stat-value{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.5rem; color:var(--pro-ink); position:relative; z-index:1; }
+  .pro-stat-label{ font-size:0.78rem; color:var(--pro-ink-soft); font-weight:600; position:relative; z-index:1; }
+  .pro-quicklinks{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
+  .pro-quicklink-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem; color:#fff; background:var(--pro-ocean);
+    border:none; border-radius:999px; padding:11px 20px; cursor:pointer; transition:filter .15s, transform .15s;
+  }
+  .pro-quicklink-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .pro-empty-state{
+    background:var(--pro-card-bg); border:1.5px dashed var(--pro-line); border-radius:14px; padding:28px 20px;
+    text-align:center; color:var(--pro-ink-soft); font-size:0.9rem;
+  }
+  .pro-empty-state strong{ display:block; color:var(--pro-ink); font-size:1rem; margin-bottom:6px; }
+  .pro-empty-badge{
+    display:inline-block; margin-top:10px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem;
+    color:var(--pro-ocean); background:var(--pro-ocean-soft); border-radius:999px; padding:4px 12px;
+  }
+  .pro-info-card{
+    background:var(--pro-card-bg); border:1px solid var(--pro-line); border-radius:14px; padding:18px 20px;
+    box-shadow:var(--pro-shadow-sm); display:flex; flex-direction:column; gap:8px; max-width:480px;
+  }
+  .pro-info-row{ display:flex; justify-content:space-between; gap:12px; font-size:0.88rem; padding:6px 0; border-bottom:1px solid var(--pro-line); }
+  .pro-info-row:last-child{ border-bottom:none; }
+  .pro-info-row span:first-child{ color:var(--pro-ink-soft); }
+  .pro-info-row span:last-child{ color:var(--pro-ink); font-weight:600; text-align:right; }
+  /* Composants "ec-*" (formulaires, listes, badges) volontairement
+     réutilisés tels quels dans les pages .pro-page — ce sont déjà des
+     classes partagées de la bibliothèque Espace (voir commentaire du bloc
+     ESPACE ADMINISTRATION ci-dessus), pas des classes propres à l'admin. */
 
   .ec-next-appt{
     background:var(--navy-fixed); color:#fff; border-radius:16px; padding:24px 26px; margin-bottom:26px;
@@ -3736,6 +4153,37 @@ if ('serviceWorker' in navigator){
       <button type="button" class="btn-primary" id="bkConfirmOk">Oui, confirmer</button>
     </div>
   </div>
+</div>
+<!-- Assistant Hayeva — widget flottant, espace public uniquement. Masqué
+     par défaut (JS l'affiche seulement si ai_settings_public.enabled).
+     Personnage : PNG transparent unique (images/assistant-character/
+     character.png, absent pour l'instant) animé uniquement en CSS/JS —
+     voir SPEC.md. Repli automatique sur l'apparence texte d'origine via
+     onerror si le fichier n'existe pas encore : jamais de bouton cassé. -->
+<button type="button" class="ai-widget-toggle" id="aiWidgetToggle" hidden>
+  <span class="hayeva-char" id="hayevaCharToggle" aria-hidden="true">
+    <img src="images/assistant-character/character.png" alt=""
+         onerror="this.closest('.hayeva-char').classList.add('hayeva-char-missing')">
+  </span>
+  <span class="ai-widget-toggle-bubble">Besoin d'aide ?</span>
+  <span class="ai-widget-toggle-fallback-label">✨ Assistant Hayeva</span>
+</button>
+<div class="ai-widget-panel" id="aiWidgetPanel" hidden role="dialog" aria-modal="false" aria-labelledby="aiWidgetTitle">
+  <div class="ai-widget-header">
+    <span class="hayeva-char hayeva-char-mini" id="hayevaCharPanel" aria-hidden="true">
+      <img src="images/assistant-character/character.png" alt=""
+           onerror="this.closest('.hayeva-char').classList.add('hayeva-char-missing')">
+      <span class="hayeva-char-fallback-emoji">✨</span>
+    </span>
+    <span class="ai-widget-header-title" id="aiWidgetTitle">Assistant Hayeva</span>
+    <button type="button" class="ai-widget-close" id="aiWidgetClose" aria-label="Fermer">✕</button>
+  </div>
+  <div class="ai-widget-messages" id="aiWidgetMessages"></div>
+  <p class="ai-widget-typing" id="aiWidgetTyping" hidden>Je réfléchis<span class="ai-widget-typing-dots"><span>.</span><span>.</span><span>.</span></span></p>
+  <form class="ai-widget-form" id="aiWidgetForm">
+    <input type="text" id="aiWidgetInput" placeholder="Décrivez votre problème…" autocomplete="off" maxlength="600">
+    <button type="submit" class="ai-widget-send" id="aiWidgetSend" aria-label="Envoyer">➤</button>
+  </form>
 </div>
 <!-- Fiche détaillée d'un rendez-vous, ouverte depuis un clic sur un bloc du
      planning hebdomadaire Administration (voir admOpenBookingModal). -->
@@ -5299,68 +5747,137 @@ if ('serviceWorker' in navigator){
       </div>
 
       <div id="espaceProDashboard" hidden>
-        <div class="espace-pro-dash-banner">
-          <span id="espaceProDashBannerText">🔐 Espace professionnel</span>
-          <button type="button" id="espaceProLogoutBtn">Se déconnecter</button>
-        </div>
+        <div class="pro-shell">
+          <nav class="pro-sidebar" aria-label="Navigation Espace Professionnel">
+            <div class="pro-sidebar-brand">
+              <img src="images/brand/hayeva-logo.png" alt="HAYEVA" class="pro-sidebar-logo">
+            </div>
+            <div class="pro-sidebar-nav" id="proSidebarNav" role="tablist">
+              <button type="button" class="pro-nav-btn is-active" data-pro-page="dashboard" role="tab" aria-selected="true">
+                <span class="pro-nav-icon" aria-hidden="true">🏠</span><span class="pro-nav-label">Tableau de bord</span>
+              </button>
+              <button type="button" class="pro-nav-btn" data-pro-page="logements" role="tab" aria-selected="false">
+                <span class="pro-nav-icon" aria-hidden="true">🏘</span><span class="pro-nav-label">Mes logements</span>
+              </button>
+              <button type="button" class="pro-nav-btn" data-pro-page="rendezvous" role="tab" aria-selected="false">
+                <span class="pro-nav-icon" aria-hidden="true">📅</span><span class="pro-nav-label">Mes rendez-vous</span>
+              </button>
+              <button type="button" class="pro-nav-btn" data-pro-page="rapports" role="tab" aria-selected="false">
+                <span class="pro-nav-icon" aria-hidden="true">📄</span><span class="pro-nav-label">Mes rapports</span>
+              </button>
+              <button type="button" class="pro-nav-btn" data-pro-page="factures" role="tab" aria-selected="false">
+                <span class="pro-nav-icon" aria-hidden="true">🧾</span><span class="pro-nav-label">Mes factures</span>
+              </button>
+              <button type="button" class="pro-nav-btn" data-pro-page="devis" role="tab" aria-selected="false">
+                <span class="pro-nav-icon" aria-hidden="true">📝</span><span class="pro-nav-label">Mes demandes de devis</span>
+              </button>
+              <button type="button" class="pro-nav-btn" data-pro-page="parametres" role="tab" aria-selected="false">
+                <span class="pro-nav-icon" aria-hidden="true">⚙️</span><span class="pro-nav-label">Paramètres</span>
+              </button>
+            </div>
+            <button type="button" class="pro-sidebar-logout-btn" id="espaceProLogoutBtn">Se déconnecter</button>
+          </nav>
 
-        <div class="section-head espace-pro-intro">
-          <p class="eyebrow">Tableau de bord<span class="rule"></span></p>
-          <h2>Bonjour THE BIG BOSS 👑</h2>
-          <p>Ajoutez vos logements, suivez vos rendez-vous et retrouvez leur historique.</p>
-        </div>
+          <div class="pro-main">
+            <section class="pro-page" id="proPageDashboard" data-pro-page="dashboard">
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Tableau de bord</p>
+                <h2 class="pro-page-title">Bonjour THE BIG BOSS 👑</h2>
+                <p class="pro-page-sub">Vue d'ensemble de vos logements et rendez-vous HAYEVA.</p>
+              </div>
+              <div class="pro-stats-grid" id="proStatsGrid">
+                <div class="pro-stat-card pro-stat-ocean">
+                  <span class="pro-stat-icon" aria-hidden="true">🏘</span>
+                  <span class="pro-stat-value" id="proStatProperties">—</span>
+                  <span class="pro-stat-label">Logements</span>
+                </div>
+                <div class="pro-stat-card pro-stat-turquoise">
+                  <span class="pro-stat-icon" aria-hidden="true">📅</span>
+                  <span class="pro-stat-value" id="proStatUpcoming">—</span>
+                  <span class="pro-stat-label">Rendez-vous à venir</span>
+                </div>
+                <div class="pro-stat-card pro-stat-coral">
+                  <span class="pro-stat-icon" aria-hidden="true">📄</span>
+                  <span class="pro-stat-value" id="proStatReports">Bientôt</span>
+                  <span class="pro-stat-label">Rapports disponibles</span>
+                </div>
+                <div class="pro-stat-card pro-stat-sand">
+                  <span class="pro-stat-icon" aria-hidden="true">🧾</span>
+                  <span class="pro-stat-value" id="proStatInvoices">Bientôt</span>
+                  <span class="pro-stat-label">Factures disponibles</span>
+                </div>
+              </div>
+              <div id="proNextApptCard"></div>
+              <div class="pro-quicklinks">
+                <button type="button" class="pro-quicklink-btn" data-pro-goto="rendezvous">📅 Voir mes rendez-vous</button>
+                <button type="button" class="pro-quicklink-btn" data-pro-goto="logements">🏘 Ajouter un logement</button>
+              </div>
+            </section>
 
-        <div class="espace-pro-grid">
-          <div class="espace-pro-card">
-            <h3>🏠 Mes logements</h3>
-            <p>Ajoutez, consultez et supprimez vos logements ci-dessous.</p>
-          </div>
-          <div class="espace-pro-card espace-pro-card-appts">
-            <h3>📅 Mes rendez-vous</h3>
-            <div id="espaceProApptSummary" class="espace-pro-appt-list"><p class="espace-pro-appt-loading">Chargement…</p></div>
-            <button type="button" class="espace-pro-appt-all-btn" id="espaceProApptAllBtn" hidden>Voir tous mes rendez-vous</button>
-          </div>
-          <div class="espace-pro-card is-soon">
-            <h3>📄 Mes rapports</h3>
-            <p>Comptes-rendus numériques par logement.</p>
-            <span class="espace-pro-soon-badge">Bientôt disponible</span>
-          </div>
-          <div class="espace-pro-card is-soon">
-            <h3>🧾 Mes factures</h3>
-            <p>Historique de facturation par logement.</p>
-            <span class="espace-pro-soon-badge">Bientôt disponible</span>
-          </div>
-          <div class="espace-pro-card is-soon">
-            <h3>📋 Mes demandes de devis</h3>
-            <p>Suivi de vos demandes de devis en cours.</p>
-            <span class="espace-pro-soon-badge">Bientôt disponible</span>
-          </div>
-          <div class="espace-pro-card">
-            <h3>📞 Une question ?</h3>
-            <p>Contactez-nous directement au <a href="tel:+33671262302">06 71 26 23 02</a>.</p>
-          </div>
-        </div>
+            <section class="pro-page" id="proPageLogements" data-pro-page="logements" hidden>
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Espace professionnel</p>
+                <h2 class="pro-page-title">🏘 Mes logements</h2>
+                <p class="pro-page-sub">Référence, adresse et type — synchronisés sur tous vos appareils.</p>
+              </div>
+              <div id="proPropertiesPanel"><p class="ec-loading">Chargement…</p></div>
+            </section>
 
-        <div class="espace-pro-props">
-          <h3>Mes logements</h3>
-          <p class="espace-pro-note">Référence, adresse et type — pour retrouver rapidement chaque logement lors d'une réservation.</p>
-          <form class="prop-form" id="propForm">
-            <label>Référence
-              <input type="text" id="propRef" placeholder="Ex. Villa Les Pins" required>
-            </label>
-            <label>Adresse / ville
-              <input type="text" id="propAddress" placeholder="Ex. Fréjus" required>
-            </label>
-            <label>Type
-              <select id="propType">
-                <option value="Location saisonnière">🏠 Location saisonnière</option>
-                <option value="Mobil-home">🚐 Mobil-home</option>
-              </select>
-            </label>
-            <button type="submit" class="btn-primary">Ajouter</button>
-          </form>
-          <div class="prop-list" id="propList"></div>
-          <p class="espace-pro-local-note">Ces informations sont stockées uniquement dans ce navigateur (aucun compte, aucun serveur) : elles ne sont ni partagées entre appareils, ni visibles par notre équipe tant que vous ne les transmettez pas via une demande de rendez-vous.</p>
+            <section class="pro-page" id="proPageRdv" data-pro-page="rendezvous" hidden>
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Espace professionnel</p>
+                <h2 class="pro-page-title">📅 Mes rendez-vous</h2>
+                <p class="pro-page-sub">Consultation, déplacement et annulation lorsque le rendez-vous le permet.</p>
+              </div>
+              <div id="espaceProApptSummary" class="espace-pro-appt-list"><p class="espace-pro-appt-loading">Chargement…</p></div>
+              <button type="button" class="espace-pro-appt-all-btn" id="espaceProApptAllBtn" hidden>Voir tous mes rendez-vous</button>
+            </section>
+
+            <section class="pro-page" id="proPageRapports" data-pro-page="rapports" hidden>
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Espace professionnel</p>
+                <h2 class="pro-page-title">📄 Mes rapports</h2>
+              </div>
+              <div class="pro-empty-state">
+                <strong>Comptes-rendus numériques par logement</strong>
+                Cette rubrique n'est pas encore développée.
+                <span class="pro-empty-badge">Bientôt disponible</span>
+              </div>
+            </section>
+
+            <section class="pro-page" id="proPageFactures" data-pro-page="factures" hidden>
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Espace professionnel</p>
+                <h2 class="pro-page-title">🧾 Mes factures</h2>
+              </div>
+              <div class="pro-empty-state">
+                <strong>Historique de facturation par logement</strong>
+                Cette rubrique n'est pas encore développée.
+                <span class="pro-empty-badge">Bientôt disponible</span>
+              </div>
+            </section>
+
+            <section class="pro-page" id="proPageDevis" data-pro-page="devis" hidden>
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Espace professionnel</p>
+                <h2 class="pro-page-title">📝 Mes demandes de devis</h2>
+              </div>
+              <div class="pro-empty-state">
+                <strong>Suivi de vos demandes de devis en cours</strong>
+                Cette rubrique n'est pas encore développée.
+                <span class="pro-empty-badge">Bientôt disponible</span>
+              </div>
+            </section>
+
+            <section class="pro-page" id="proPageParametres" data-pro-page="parametres" hidden>
+              <div class="pro-page-head">
+                <p class="pro-eyebrow">Espace professionnel</p>
+                <h2 class="pro-page-title">⚙️ Paramètres</h2>
+                <p class="pro-page-sub">Informations de votre compte professionnel.</p>
+              </div>
+              <div id="proSettingsPanel"><p class="ec-loading">Chargement…</p></div>
+            </section>
+          </div>
         </div>
 
         <!-- Visible uniquement pour profiles.global_role = 'admin' (voir
@@ -5387,6 +5904,9 @@ if ('serviceWorker' in navigator){
                   <span class="adm-nav-icon" aria-hidden="true">🔔</span><span class="adm-nav-label">Demandes récentes</span>
                   <span class="adm-nav-badge" id="admSidebarReqBadge" hidden>0</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="archives" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">🗄️</span><span class="adm-nav-label">Archives</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="accounts" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">👥</span><span class="adm-nav-label">Inscriptions</span>
                 </button>
@@ -5395,6 +5915,9 @@ if ('serviceWorker' in navigator){
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="stats" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">📊</span><span class="adm-nav-label">Statistiques</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="pricing" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">🧮</span><span class="adm-nav-label">Chiffrage</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">⚙️</span><span class="adm-nav-label">Paramètres</span>
@@ -5484,6 +6007,15 @@ if ('serviceWorker' in navigator){
                 <div id="adminReqList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
+              <section class="adm-page" id="admPageArchives" data-adm-page="archives" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">🗄️ Archives</h2>
+                  <p class="adm-page-sub">Demandes refusées ou annulées — la suppression définitive n'est possible que pour celles refusées par vous.</p>
+                </div>
+                <div id="adminArchivesList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
               <section class="adm-page" id="admPageAccounts" data-adm-page="accounts" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
@@ -5555,6 +6087,77 @@ if ('serviceWorker' in navigator){
                 <div id="admStatsPages" class="ec-list"><p class="ec-loading">Chargement…</p></div>
               </section>
 
+              <section class="adm-page" id="admPagePricing" data-adm-page="pricing" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration — usage interne uniquement</p>
+                  <h2 class="adm-page-title">🧮 Chiffrage</h2>
+                  <p class="adm-page-sub">Estimation rapide d'un prix à proposer sur place. N'affiche jamais un prix légal ou obligatoire — une indication interne à ajuster selon le cas réel.</p>
+                </div>
+
+                <details class="qc-settings-box" id="qcSettingsBox">
+                  <summary class="qc-settings-summary">⚙️ Réglages du calculateur (taux, déplacement, TVA)</summary>
+                  <form id="qcSettingsForm"><p class="ec-loading">Chargement…</p></form>
+                </details>
+
+                <h3 class="adm-subhead">Nouveau chiffrage</h3>
+                <div class="qc-type-toggle" id="qcTypeToggle" role="group" aria-label="Type de client">
+                  <button type="button" class="gallery-filter-btn is-active" data-qc-type="particulier">Particulier</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-type="professionnel">Professionnel</button>
+                </div>
+                <div class="qc-type-toggle" id="qcDomainToggle" role="group" aria-label="Domaine">
+                  <button type="button" class="gallery-filter-btn is-active" data-qc-domain="plomberie">🔧 Plomberie</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-domain="chauffage">🔥 Chauffage</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-domain="climatisation">❄️ Climatisation</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-domain="autre">🛠️ Autre</button>
+                </div>
+
+                <div class="qc-ai-prefill">
+                  <label for="qcAiDescription">✨ Décrivez l'intervention (facultatif) — l'IA pré-remplit le formulaire ci-dessous, à vérifier avant d'enregistrer</label>
+                  <div class="qc-ai-prefill-row">
+                    <input type="text" id="qcAiDescription" placeholder="Ex. Remplacement mitigeur cuisine + déplacement + environ 1h de travail">
+                    <button type="button" class="qc-ai-prefill-btn" id="qcAiPrefillBtn">✨ Pré-remplir avec l'IA</button>
+                  </div>
+                  <p class="qc-ai-prefill-msg" id="qcAiPrefillMsg" hidden></p>
+                </div>
+
+                <form class="ec-form" id="qcForm">
+                  <label class="ec-form-full">Intervention
+                    <input type="text" id="qcInterventionName" list="qcCatalogSuggestions" placeholder="Ex. Remplacement circulateur chauffage" required>
+                    <datalist id="qcCatalogSuggestions"></datalist>
+                  </label>
+                  <div class="ec-form-full" id="qcCatalogHint"></div>
+
+                  <label>Client (nom, facultatif)<input type="text" id="qcClientName" placeholder="Ex. M. Dupont"></label>
+                  <label>Nombre de techniciens<input type="number" id="qcTechCount" min="1" step="1" value="1"></label>
+                  <label>Temps de travail estimé (minutes)<input type="number" id="qcLaborMinutes" min="0" step="5" value="60"></label>
+                  <label>Taux horaire (€ HT)<input type="number" id="qcHourlyRate" min="0" step="0.01"></label>
+                  <label>Déplacement (km, aller simple)<input type="number" id="qcTravelKm" min="0" step="0.5" value="0"></label>
+                  <label>Tarif déplacement (€/km, aller-retour compté automatiquement)<input type="number" id="qcTravelRate" min="0" step="0.01"></label>
+
+                  <div class="ec-form-full">
+                    <p class="adm-subhead" style="margin:14px 0 8px;">Fournitures / pièces</p>
+                    <div id="qcSuppliesList"></div>
+                    <button type="button" class="qc-add-supply-btn" id="qcAddSupplyBtn">+ Ajouter une fourniture</button>
+                  </div>
+
+                  <label>Autres frais (€, consommables/divers)<input type="number" id="qcOtherFees" min="0" step="0.01" value="0"></label>
+                  <label>Remise (€)<input type="number" id="qcDiscount" min="0" step="0.01" value="0"></label>
+                </form>
+
+                <div class="qc-breakdown" id="qcBreakdown"></div>
+
+                <div class="qc-actions">
+                  <button type="button" class="btn-primary" id="qcPrepareBtn">📋 Préparer le devis</button>
+                  <button type="button" class="adm-quicklink-btn" id="qcSaveHistoryBtn">💾 Enregistrer dans l'historique</button>
+                </div>
+                <div class="qc-prepared-box" id="qcPreparedBox" hidden></div>
+                <p class="qc-disclaimer">Estimation interne HAYEVA — ne constitue pas un devis légal tant qu'il n'a pas été formellement communiqué au client.</p>
+
+                <h3 class="adm-subhead">Historique des chiffrages</h3>
+                <input type="search" class="qc-history-search" id="qcHistorySearch" placeholder="🔍 Rechercher par client ou intervention…">
+                <div id="qcHistoryList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
@@ -5594,6 +6197,9 @@ if ('serviceWorker' in navigator){
                   </div>
                   <p class="admin-push-unsupported-note" id="adminPushUnsupportedNote" hidden>Les notifications push ne sont pas prises en charge par ce navigateur.</p>
                 </div>
+
+                <h3 class="adm-subhead">✨ Assistant IA</h3>
+                <div id="aiSettingsPanel"><p class="ec-loading">Chargement…</p></div>
               </section>
 
             </div>
@@ -8237,55 +8843,289 @@ if ('serviceWorker' in navigator){
   }
   renderTarifsProGrid();
 
-  // ---------- Espace professionnel : logements enregistrés (localStorage, cet appareil uniquement) ----------
-  var PROP_KEY = 'sudpro_properties';
-
+  // ---------- Espace professionnel : logements — vraies données Supabase
+  // (table properties, liée à professional_account_id), synchronisées entre
+  // appareils. RLS déjà en place ("properties: account members or admin",
+  // 0001_init.sql) : un compte pro ne peut lire/écrire que les logements de
+  // SON professional_account_id, jamais ceux d'un autre professionnel —
+  // aucune nouvelle policy nécessaire, aucun filtre de sécurité côté JS
+  // requis au-delà de renseigner professional_account_id à l'insert (RLS
+  // vérifie de toute façon ce champ via le "with check"). ----------
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
       return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
     });
   }
-  function loadProps(){
-    try { return JSON.parse(localStorage.getItem(PROP_KEY) || '[]'); } catch(e){ return []; }
+
+  var proAccountId = null;
+  function proResolveAccountId(){
+    var sb = window.sudSupabase;
+    if (proAccountId) return Promise.resolve(proAccountId);
+    if (!sb || !sb.configured) return Promise.resolve(null);
+    return sb.client.auth.getSession().then(function(res){
+      var session = res && res.data && res.data.session;
+      if (!session) return null;
+      return sb.client.from('professional_members').select('professional_account_id')
+        .eq('user_id', session.user.id).limit(1).then(function(mres){
+          if (mres.error || !mres.data || !mres.data.length) return null;
+          proAccountId = mres.data[0].professional_account_id;
+          return proAccountId;
+        });
+    }).catch(function(){ return null; });
   }
-  function saveProps(list){
-    try { localStorage.setItem(PROP_KEY, JSON.stringify(list)); } catch(e){}
+
+  var PROPERTY_TYPE_LABELS = {
+    location_saisonniere: '🏠 Location saisonnière',
+    appartement: '🏢 Appartement',
+    maison_villa: '🏡 Maison / Villa',
+    mobil_home: '🚐 Mobil-home',
+    chalet: '⛺ Chalet',
+    autre: '📦 Autre'
+  };
+
+  var proPropertiesCache = null;
+  function proFetchProperties(){
+    return proResolveAccountId().then(function(accId){
+      if (!accId) return [];
+      var sb = window.sudSupabase;
+      return sb.client.from('properties').select('*').eq('professional_account_id', accId)
+        .order('created_at', { ascending:false }).then(function(res){
+          if (res.error) throw res.error;
+          return res.data || [];
+        });
+    });
   }
-  function renderProps(){
-    var el = document.getElementById('propList');
-    if (!el) return;
-    var list = loadProps();
-    if (!list.length){
-      el.innerHTML = '<p class="prop-empty">Aucun logement enregistré pour le moment.</p>';
+
+  function proLoadProperties(){
+    var panel = document.getElementById('proPropertiesPanel');
+    if (!panel) return;
+    panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    proFetchProperties().then(function(rows){
+      proPropertiesCache = rows;
+      renderProDashboardSummary();
+      var editingId = null;
+      var typeOptions = Object.keys(PROPERTY_TYPE_LABELS).map(function(k){
+        return '<option value="' + k + '">' + PROPERTY_TYPE_LABELS[k] + '</option>';
+      }).join('');
+      var html = '<form class="ec-form" id="proPropForm">' +
+        '<label>Référence<input type="text" id="proPropRef" placeholder="Ex. Villa Les Pins" required></label>' +
+        '<label>Nom (facultatif)<input type="text" id="proPropName" placeholder="Ex. Villa vue mer"></label>' +
+        '<label>Adresse<input type="text" id="proPropAddress" placeholder="12 rue des Pins" required></label>' +
+        '<label>Code postal<input type="text" id="proPropPostal" placeholder="83600"></label>' +
+        '<label>Ville<input type="text" id="proPropCity" placeholder="Fréjus"></label>' +
+        '<label>Type<select id="proPropType">' + typeOptions + '</select></label>' +
+        '<label class="ec-form-full">Notes d\'accès (facultatif)<input type="text" id="proPropNotes" placeholder="Ex. code portail 1234"></label>' +
+        '<button type="submit" class="btn-primary ec-form-full" id="proPropSubmit">Ajouter ce logement</button>' +
+        '<button type="button" class="ec-row-del ec-form-full" id="proPropCancelEdit" hidden>Annuler la modification</button>' +
+      '</form>';
+      if (!rows.length){
+        html += '<div class="ec-empty"><strong>Aucun logement enregistré</strong>Ajoutez votre premier logement ci-dessus.</div>';
+      } else {
+        html += '<div class="ec-list">';
+        rows.forEach(function(p){
+          var icon = (PROPERTY_TYPE_LABELS[p.property_type] || '📦').split(' ')[0];
+          html += '<div class="ec-row"><div class="ec-row-info">' +
+            '<span class="ec-row-title">' + icon + ' ' + escapeHtml(p.reference) + (p.name ? ' — ' + escapeHtml(p.name) : '') + '</span>' +
+            '<span class="ec-row-meta">' + escapeHtml(p.address) + (p.postal_code ? ', ' + escapeHtml(p.postal_code) : '') + (p.city ? ' ' + escapeHtml(p.city) : '') + '</span>' +
+            '</div><div style="display:flex; gap:8px; flex:0 0 auto; flex-wrap:wrap;">' +
+            '<button type="button" class="ec-row-del" data-prop-edit="' + p.id + '">Modifier</button>' +
+            '<button type="button" class="ec-row-del" data-prop-del="' + p.id + '">Supprimer</button></div></div>';
+        });
+        html += '</div>';
+      }
+      panel.innerHTML = html;
+
+      var form = document.getElementById('proPropForm');
+      var submitBtn = document.getElementById('proPropSubmit');
+      var cancelEditBtn = document.getElementById('proPropCancelEdit');
+      function stopEdit(){
+        editingId = null;
+        form.reset();
+        submitBtn.textContent = 'Ajouter ce logement';
+        cancelEditBtn.hidden = true;
+      }
+      cancelEditBtn.addEventListener('click', stopEdit);
+
+      if (form) form.addEventListener('submit', function(e){
+        e.preventDefault();
+        submitBtn.disabled = true;
+        var reference = document.getElementById('proPropRef').value.trim();
+        var name = document.getElementById('proPropName').value.trim() || null;
+        var address = document.getElementById('proPropAddress').value.trim();
+        var postal = document.getElementById('proPropPostal').value.trim() || null;
+        var city = document.getElementById('proPropCity').value.trim() || null;
+        var propertyType = document.getElementById('proPropType').value;
+        var notes = document.getElementById('proPropNotes').value.trim() || null;
+        var op = editingId
+          ? sb_properties_client().update({
+              reference: reference, name: name, address: address, postal_code: postal,
+              city: city, property_type: propertyType, access_notes: notes
+            }).eq('id', editingId)
+          : proResolveAccountId().then(function(accId){
+              if (!accId) throw new Error('Compte professionnel introuvable.');
+              return sb_properties_client().insert({
+                professional_account_id: accId, reference: reference, name: name, address: address,
+                postal_code: postal, city: city, property_type: propertyType, access_notes: notes
+              });
+            });
+        Promise.resolve(op).then(function(res){
+          submitBtn.disabled = false;
+          if (res && res.error){ console.error('proLoadProperties: écriture échouée', res.error); return; }
+          editingId = null;
+          proLoadProperties();
+        }).catch(function(err){
+          submitBtn.disabled = false;
+          console.error('proLoadProperties: écriture échouée', err);
+        });
+      });
+
+      function sb_properties_client(){ return window.sudSupabase.client.from('properties'); }
+
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-prop-edit]'), function(btn){
+        btn.addEventListener('click', function(){
+          var id = btn.getAttribute('data-prop-edit');
+          var p = rows.filter(function(r){ return String(r.id) === id; })[0];
+          if (!p) return;
+          editingId = p.id;
+          document.getElementById('proPropRef').value = p.reference || '';
+          document.getElementById('proPropName').value = p.name || '';
+          document.getElementById('proPropAddress').value = p.address || '';
+          document.getElementById('proPropPostal').value = p.postal_code || '';
+          document.getElementById('proPropCity').value = p.city || '';
+          document.getElementById('proPropType').value = p.property_type || 'autre';
+          document.getElementById('proPropNotes').value = p.access_notes || '';
+          submitBtn.textContent = 'Enregistrer les modifications';
+          cancelEditBtn.hidden = false;
+          form.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      });
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-prop-del]'), function(btn){
+        btn.addEventListener('click', function(){
+          var id = btn.getAttribute('data-prop-del');
+          if (!window.confirm('Supprimer ce logement ?')) return;
+          sb_properties_client().delete().eq('id', id).then(function(res){
+            if (res.error){ console.error('proLoadProperties: suppression échouée', res.error); return; }
+            proLoadProperties();
+          });
+        });
+      });
+    }).catch(function(err){
+      console.error('proLoadProperties: échec du chargement', err);
+      panel.innerHTML = '<div class="ec-empty"><strong>Impossible de charger vos logements</strong>Réessayez dans un instant.</div>';
+    });
+  }
+
+  // ---------- Espace professionnel : Paramètres — lecture seule des
+  // informations réelles du compte professionnel (aucun réglage fictif :
+  // aucune modification n'est possible depuis cette page tant qu'un
+  // parcours d'édition n'existe pas). ----------
+  function proLoadSettings(){
+    var panel = document.getElementById('proSettingsPanel');
+    if (!panel) return;
+    panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured){
+      panel.innerHTML = '<div class="ec-empty"><strong>Indisponible</strong></div>';
       return;
     }
-    el.innerHTML = list.map(function(p){
-      var icon = p.type === 'Mobil-home' ? '🚐' : '🏠';
-      return '<div class="prop-row"><div class="prop-row-info"><span class="prop-row-ref">'+icon+' '+escapeHtml(p.ref)+'</span><span class="prop-row-meta">'+escapeHtml(p.type)+' · '+escapeHtml(p.address)+'</span></div><button type="button" class="prop-row-del" data-id="'+p.id+'">Supprimer</button></div>';
-    }).join('');
-    Array.prototype.forEach.call(el.querySelectorAll('.prop-row-del'), function(btn){
-      btn.addEventListener('click', function(){
-        saveProps(loadProps().filter(function(p){ return String(p.id) !== btn.getAttribute('data-id'); }));
-        renderProps();
-      });
+    proResolveAccountId().then(function(accId){
+      if (!accId) throw new Error('Compte professionnel introuvable.');
+      return sb.client.from('professional_accounts')
+        .select('legal_name, trade_name, siret, address_line1, address_line2, postal_code, city, phone')
+        .eq('id', accId).single();
+    }).then(function(res){
+      if (res.error) throw res.error;
+      var a = res.data;
+      function row(label, value){
+        return '<div class="pro-info-row"><span>' + escapeHtml(label) + '</span><span>' + escapeHtml(value) + '</span></div>';
+      }
+      var addr = [a.address_line1, a.address_line2].filter(Boolean).join(', ');
+      var cityLine = [a.postal_code, a.city].filter(Boolean).join(' ');
+      var html = '<div class="pro-info-card">' +
+        row('Raison sociale', a.legal_name) +
+        (a.trade_name ? row('Nom commercial', a.trade_name) : '') +
+        (a.siret ? row('SIRET', a.siret) : '') +
+        (addr ? row('Adresse', addr) : '') +
+        (cityLine ? row('Ville', cityLine) : '') +
+        (a.phone ? row('Téléphone', a.phone) : '') +
+        '</div><p class="pro-page-sub" style="margin-top:14px;">Pour modifier ces informations, contactez HAYEVA.</p>';
+      panel.innerHTML = html;
+    }).catch(function(err){
+      console.error('proLoadSettings: échec', err);
+      panel.innerHTML = '<div class="ec-empty"><strong>Impossible de charger vos informations</strong></div>';
     });
   }
-  var propForm = document.getElementById('propForm');
-  if (propForm){
-    propForm.addEventListener('submit', function(e){
-      e.preventDefault();
-      var ref = document.getElementById('propRef').value.trim();
-      var address = document.getElementById('propAddress').value.trim();
-      var type = document.getElementById('propType').value;
-      if (!ref || !address) return;
-      var list = loadProps();
-      list.push({ id: Date.now(), ref: ref, address: address, type: type });
-      saveProps(list);
-      propForm.reset();
-      renderProps();
+
+  // ---------- Espace professionnel : tableau de bord compact — dérivés
+  // calculés sur les données déjà chargées (proPropertiesCache,
+  // espaceProApptCache), jamais de nouvelle requête dédiée. ----------
+  function renderProDashboardSummary(){
+    var elProps = document.getElementById('proStatProperties');
+    if (elProps) elProps.textContent = proPropertiesCache ? String(proPropertiesCache.length) : '—';
+
+    var elUpcoming = document.getElementById('proStatUpcoming');
+    var nextCardEl = document.getElementById('proNextApptCard');
+    if (!espaceProApptCache){
+      if (elUpcoming) elUpcoming.textContent = '—';
+      return;
+    }
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var upcoming = espaceProApptCache.filter(function(b){
+      if (b.status === 'CANCELLED') return false;
+      var d = new Date(b.date + 'T00:00:00');
+      return d.getTime() >= today.getTime();
+    }).slice().sort(function(a, b){
+      var da = a.date + 'T' + (a.start_time || '00:00');
+      var db = b.date + 'T' + (b.start_time || '00:00');
+      return da < db ? -1 : (da > db ? 1 : 0);
+    });
+    if (elUpcoming) elUpcoming.textContent = String(upcoming.length);
+    if (!nextCardEl) return;
+    if (!upcoming.length){
+      nextCardEl.innerHTML = '';
+      return;
+    }
+    var b = upcoming[0];
+    var svcName = (b.services && b.services.name) || 'Intervention';
+    var statusInfo = ESPACE_PRO_APPT_STATUS_LABEL[b.status] || [b.status, ''];
+    nextCardEl.innerHTML = '<div class="ec-next-appt"><p class="ec-eyebrow">Prochain rendez-vous</p>' +
+      '<h3>' + escapeHtml(svcName) + '</h3>' +
+      '<div class="ec-next-appt-meta">' +
+        '<span>📅 ' + espaceProApptFmtDateTime(b.date, b.start_time) + '</span>' +
+        '<span>' + escapeHtml(statusInfo[0]) + '</span>' +
+        (b.guest_address ? '<span>📍 ' + escapeHtml(b.guest_address) + '</span>' : '') +
+      '</div></div>';
+  }
+
+  // ---------- Espace professionnel : navigation (sidebar desktop / barre
+  // compacte mobile, même mécanisme que admShowPage() côté admin mais
+  // entièrement séparé — aucun code partagé, voir commentaire CSS
+  // .pro-shell). ----------
+  function proShowPage(key){
+    Array.prototype.forEach.call(document.querySelectorAll('.pro-page'), function(sec){
+      sec.hidden = sec.getAttribute('data-pro-page') !== key;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.pro-nav-btn'), function(btn){
+      var active = btn.getAttribute('data-pro-page') === key;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (key === 'logements') proLoadProperties();
+    if (key === 'parametres') proLoadSettings();
+  }
+  var proSidebarNavEl = document.getElementById('proSidebarNav');
+  if (proSidebarNavEl){
+    proSidebarNavEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.pro-nav-btn');
+      if (!btn) return;
+      proShowPage(btn.getAttribute('data-pro-page'));
     });
   }
-  renderProps();
+  document.addEventListener('click', function(e){
+    var goto = e.target.closest('[data-pro-goto]');
+    if (!goto) return;
+    proShowPage(goto.getAttribute('data-pro-goto'));
+  });
 
   // ---------- Espace professionnel : "Mes rendez-vous" — vraies données
   // Supabase liées au compte connecté, plus aucune dépendance au navigateur/
@@ -8324,6 +9164,7 @@ if ('serviceWorker' in navigator){
   function renderApptSummary(){
     var el = document.getElementById('espaceProApptSummary');
     var allBtn = document.getElementById('espaceProApptAllBtn');
+    if (typeof renderProDashboardSummary === 'function') renderProDashboardSummary();
     if (!el) return;
     if (!espaceProApptCache){
       el.innerHTML = '<p class="espace-pro-appt-loading">Chargement…</p>';
@@ -8384,6 +9225,13 @@ if ('serviceWorker' in navigator){
     }).catch(function(){ espaceProApptCache = []; renderApptSummary(); });
   }
   loadApptSummary();
+  // Compte "Logements" du tableau de bord : chargé en tâche de fond dès
+  // l'arrivée (sans attendre un clic sur l'onglet Logements), pour que le
+  // tableau de bord affiche un vrai nombre immédiatement.
+  proFetchProperties().then(function(rows){
+    proPropertiesCache = rows;
+    renderProDashboardSummary();
+  }).catch(function(){});
   // Rappelée après une nouvelle demande envoyée avec succès (voir le
   // gestionnaire de bkNext plus haut, même schéma que sudEspaceClientRefresh
   // déjà utilisé pour l'Espace Client) : la nouvelle réservation apparaît
@@ -9534,13 +10382,27 @@ if ('serviceWorker' in navigator){
   function admLoadCancelledMeta(ids, onDone){
     var missing = ids.filter(function(id){ return !(id in adminCancelledMetaCache); });
     if (!missing.length){ onDone(); return; }
-    sb.client.from('bookings').select('id, cancelled_by, cancelled_at').in('id', missing).then(function(res){
+    // admin_cancel_reason est une colonne facultative (migration
+    // 0022_admin_booking_refusal_reason.sql) : on essaie de la lire, et si
+    // elle n'existe pas encore, on retente sans elle plutôt que d'échouer
+    // sur cancelled_by/cancelled_at qui, eux, existent déjà depuis 0017.
+    sb.client.from('bookings').select('id, cancelled_by, cancelled_at, admin_cancel_reason').in('id', missing).then(function(res){
       if (!res.error){
         (res.data || []).forEach(function(r){ adminCancelledMetaCache[r.id] = r; });
-      } else {
-        missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
+        onDone();
+        return;
       }
-      onDone();
+      sb.client.from('bookings').select('id, cancelled_by, cancelled_at').in('id', missing).then(function(res2){
+        if (!res2.error){
+          (res2.data || []).forEach(function(r){ adminCancelledMetaCache[r.id] = r; });
+        } else {
+          missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
+        }
+        onDone();
+      }).catch(function(){
+        missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
+        onDone();
+      });
     }).catch(function(){
       missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
       onDone();
@@ -9796,6 +10658,29 @@ if ('serviceWorker' in navigator){
       admRenderDashboardStats();
       admRenderQuotesPage();
       admRenderRecentRequests();
+    });
+  }
+
+  // Refus d'une demande PENDING depuis la fiche détaillée (correction
+  // 2026-09-24) : même changement de statut que admUpdateBookingStatus (pas
+  // de second système), plus cancelled_by='admin' (colonne déjà existante,
+  // voir 0017_customer_reschedule_cancel.sql, jusqu'ici jamais renseignée
+  // depuis l'admin) et, si un motif a été saisi, une écriture BEST-EFFORT du
+  // motif dans admin_cancel_reason. Cette colonne est facultative : si la
+  // migration qui l'ajoute n'a pas encore été exécutée, cette deuxième
+  // écriture échoue silencieusement sans jamais empêcher le refus lui-même
+  // (déjà effectif via le statut CANCELLED ci-dessus).
+  function admRefuseBooking(id, reason, onDone){
+    admUpdateBookingStatus(id, 'CANCELLED', function(err){
+      if (err){ if (onDone) onDone(err); return; }
+      sb.client.from('bookings').update({ cancelled_by: 'admin' }).eq('id', id).then(function(){
+        if (reason){
+          sb.client.from('bookings').update({ admin_cancel_reason: reason }).eq('id', id).then(function(res){
+            if (res.error) console.warn('admRefuseBooking: motif non enregistré (colonne admin_cancel_reason absente ?)', res.error);
+          });
+        }
+        if (onDone) onDone(null);
+      });
     });
   }
 
@@ -10154,8 +11039,65 @@ if ('serviceWorker' in navigator){
       ? '<p class="admin-bk-modal-note">🙍 Annulé par le client' + (modalCancelMeta.cancelled_at ? ' le ' + admFmtDateTime(modalCancelMeta.cancelled_at) : '') + '</p>'
       : '';
 
+    // Correction 2026-09-24 : une demande PENDING n'a plus de menu déroulant
+    // de statut (qui changeait le statut sans confirmation) — uniquement
+    // deux boutons de décision, chacun avec sa propre confirmation. Le menu
+    // déroulant reste inchangé pour tout autre statut (Planning/Liste),
+    // usage non concerné par cette correction.
+    var actionsHtml;
+    if (b.status === 'PENDING'){
+      actionsHtml =
+        '<div class="admin-bk-modal-decision">' +
+          '<button type="button" class="admin-bk-decision-btn admin-bk-decision-accept" data-booking-id="' + b.id + '">✅ Accepter la demande</button>' +
+          '<button type="button" class="admin-bk-decision-btn admin-bk-decision-refuse" data-booking-id="' + b.id + '">❌ Refuser la demande</button>' +
+        '</div>' +
+        '<button type="button" class="admin-bk-modal-propose-toggle" data-booking-id="' + b.id + '">🕐 Proposer un autre créneau à la place</button>' +
+        '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
+          '<div class="admin-bk-propose-form-row">' +
+            '<label>Nouvelle date<input type="date" class="admin-bk-propose-date" required></label>' +
+            '<label>Nouvelle heure<input type="time" class="admin-bk-propose-time" required></label>' +
+          '</div>' +
+          '<label>Message (facultatif)<textarea class="admin-bk-propose-message" placeholder="Un mot pour votre client…"></textarea></label>' +
+          '<div class="admin-bk-propose-form-row">' +
+            '<button type="submit" class="admin-bk-propose-send">Envoyer la proposition</button>' +
+            '<button type="button" class="admin-bk-propose-cancel">Annuler</button>' +
+          '</div>' +
+          '<p class="admin-bk-propose-msg" hidden></p>' +
+        '</form>' +
+        '<div class="admin-bk-refuse-form" data-booking-id="' + b.id + '" hidden>' +
+          '<label>Motif du refus (facultatif, usage interne — jamais transmis au client)' +
+            '<textarea class="admin-bk-refuse-reason" placeholder="Ex. créneau non disponible, hors zone d\'intervention…"></textarea>' +
+          '</label>' +
+          '<div class="admin-bk-propose-form-row">' +
+            '<button type="button" class="admin-bk-refuse-confirm" data-booking-id="' + b.id + '">Confirmer le refus</button>' +
+            '<button type="button" class="admin-bk-refuse-cancel">Annuler</button>' +
+          '</div>' +
+        '</div>';
+    } else {
+      actionsHtml =
+        '<div class="admin-bk-modal-status-row">' +
+          '<label for="adminBkModalStatusSelect">Statut</label>' +
+          '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
+        '</div>';
+    }
+
+    // Suppression définitive — réservée aux demandes REFUSÉES PAR L'ADMIN
+    // (status CANCELLED et cancelled_by='admin', jamais une annulation
+    // client ni un rendez-vous confirmé/terminé) : portée explicitement
+    // validée avec l'utilisateur avant implémentation. modalCancelMeta peut
+    // être absent le temps du chargement (voir admLoadCancelledMeta
+    // ci-dessus) : le bouton apparaît dès que la métadonnée est disponible.
+    var deleteHtml = '';
+    if (b.status === 'CANCELLED' && modalCancelMeta && modalCancelMeta.cancelled_by === 'admin'){
+      deleteHtml =
+        '<div class="admin-bk-modal-delete-zone">' +
+          '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">🗑️ Supprimer définitivement cette demande</button>' +
+          '<p class="admin-bk-delete-hint">Irréversible — supprime complètement cet enregistrement, sans corbeille ni historique.</p>' +
+        '</div>';
+    }
+
     body.innerHTML =
-      '<h3 class="admin-bk-modal-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</h3>' +
+      '<h3 class="admin-bk-modal-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + ' ' + admReqStatusBadge(b) + '</h3>' +
       '<p class="admin-bk-modal-ref">Réf. ' + admEscape(b.reference) + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</p>' +
       '<div class="admin-bk-modal-rows">' +
         (contact.phone ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Téléphone</span><span>📞 ' + admEscape(contact.phone) + '</span></div>' : '') +
@@ -10167,12 +11109,49 @@ if ('serviceWorker' in navigator){
       '</div>' +
       modalCancelledByLine +
       (b.notes ? '<p class="admin-bk-modal-note">💬 ' + admEscape(b.notes) + '</p>' : '') +
-      '<div class="admin-bk-modal-status-row">' +
-        '<label for="adminBkModalStatusSelect">Statut</label>' +
-        '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
-      '</div>';
+      actionsHtml +
+      deleteHtml;
 
     overlay.hidden = false;
+  }
+
+  // Suppression définitive d'une demande refusée par l'admin — DELETE réel,
+  // RLS déjà en place ("bookings: owner or admin delete", 0001_init.sql,
+  // is_admin() y figure déjà), aucune nouvelle policy nécessaire. Retire
+  // aussi la ligne du cache local pour que toutes les vues admin (planning,
+  // liste, demandes, tableau de bord) cessent immédiatement de la montrer,
+  // sans recharger la page.
+  function admDeleteBooking(id, onDone){
+    sb.client.from('bookings').delete().eq('id', id).then(function(res){
+      if (res.error){ if (onDone) onDone(res.error); return; }
+      if (adminBookingsCache){
+        adminBookingsCache.rows = adminBookingsCache.rows.filter(function(b){ return b.id !== id; });
+      }
+      delete adminCancelledMetaCache[id];
+      admRenderBkArea();
+      admRenderDashboardStats();
+      admRenderQuotesPage();
+      admRenderRecentRequests();
+      if (typeof admRenderArchives === 'function') admRenderArchives();
+      if (onDone) onDone(null);
+    });
+  }
+  // Partagée entre la fiche détaillée (.admin-bk-delete-btn dans la modale)
+  // et l'onglet Archives (.admin-bk-delete-btn dans la liste) — même
+  // confirmation, même verrou anti-double-clic, une seule implémentation.
+  function admHandleDeleteClick(deleteBtn){
+    var delId = deleteBtn.getAttribute('data-booking-id');
+    if (admDecisionInFlight[delId]) return;
+    var row = adminBookingsCache && adminBookingsCache.rows.filter(function(b){ return b.id === delId; })[0];
+    var refText = row ? row.reference : '';
+    if (!window.confirm('Suppression définitive et irréversible de cette demande (Réf. ' + refText + '). Aucune corbeille, aucune récupération possible. Confirmer ?')) return;
+    admDecisionInFlight[delId] = true;
+    deleteBtn.disabled = true;
+    admDeleteBooking(delId, function(err){
+      admDecisionInFlight[delId] = false;
+      if (err){ deleteBtn.disabled = false; window.alert('Impossible de supprimer cette demande.'); return; }
+      admCloseBookingModal();
+    });
   }
   function admCloseBookingModal(){
     var overlay = document.getElementById('adminBkModalOverlay');
@@ -10186,10 +11165,132 @@ if ('serviceWorker' in navigator){
       admOpenBookingModal(ev.getAttribute('data-booking-id'));
     });
   }
+  // Empêche tout double traitement d'une même demande (double clic, clic
+  // pendant que la requête précédente est encore en vol) — clé = booking id.
+  var admDecisionInFlight = {};
+
   var adminBkModalOverlayEl = document.getElementById('adminBkModalOverlay');
   if (adminBkModalOverlayEl){
     adminBkModalOverlayEl.addEventListener('click', function(e){
-      if (e.target === adminBkModalOverlayEl) admCloseBookingModal();
+      if (e.target === adminBkModalOverlayEl){ admCloseBookingModal(); return; }
+
+      var acceptBtn = e.target.closest('.admin-bk-decision-accept');
+      if (acceptBtn){
+        var acceptId = acceptBtn.getAttribute('data-booking-id');
+        if (admDecisionInFlight[acceptId]) return;
+        if (!window.confirm('Confirmer ce rendez-vous ?')) return;
+        admDecisionInFlight[acceptId] = true;
+        acceptBtn.disabled = true;
+        var refuseSibling = adminBkModalOverlayEl.querySelector('.admin-bk-decision-refuse');
+        if (refuseSibling) refuseSibling.disabled = true;
+        admUpdateBookingStatus(acceptId, 'CONFIRMED', function(err){
+          admDecisionInFlight[acceptId] = false;
+          if (err){ acceptBtn.disabled = false; if (refuseSibling) refuseSibling.disabled = false; return; }
+          admCloseBookingModal();
+        });
+        return;
+      }
+
+      var refuseBtn = e.target.closest('.admin-bk-decision-refuse');
+      if (refuseBtn){
+        var decisionBlock = adminBkModalOverlayEl.querySelector('.admin-bk-modal-decision');
+        var proposeToggle = adminBkModalOverlayEl.querySelector('.admin-bk-modal-propose-toggle');
+        var refuseForm = adminBkModalOverlayEl.querySelector('.admin-bk-refuse-form');
+        if (decisionBlock) decisionBlock.hidden = true;
+        if (proposeToggle) proposeToggle.hidden = true;
+        if (refuseForm) refuseForm.hidden = false;
+        return;
+      }
+
+      var refuseCancelBtn = e.target.closest('.admin-bk-refuse-cancel');
+      if (refuseCancelBtn){
+        var refuseForm2 = refuseCancelBtn.closest('.admin-bk-refuse-form');
+        var decisionBlock2 = adminBkModalOverlayEl.querySelector('.admin-bk-modal-decision');
+        var proposeToggle2 = adminBkModalOverlayEl.querySelector('.admin-bk-modal-propose-toggle');
+        if (refuseForm2) refuseForm2.hidden = true;
+        if (decisionBlock2) decisionBlock2.hidden = false;
+        if (proposeToggle2) proposeToggle2.hidden = false;
+        return;
+      }
+
+      var refuseConfirmBtn = e.target.closest('.admin-bk-refuse-confirm');
+      if (refuseConfirmBtn){
+        var refuseId = refuseConfirmBtn.getAttribute('data-booking-id');
+        if (admDecisionInFlight[refuseId]) return;
+        admDecisionInFlight[refuseId] = true;
+        refuseConfirmBtn.disabled = true;
+        var reasonEl = refuseConfirmBtn.closest('.admin-bk-refuse-form').querySelector('.admin-bk-refuse-reason');
+        var reason = reasonEl ? reasonEl.value.trim() : '';
+        admRefuseBooking(refuseId, reason, function(err){
+          admDecisionInFlight[refuseId] = false;
+          if (err){ refuseConfirmBtn.disabled = false; return; }
+          admCloseBookingModal();
+        });
+        return;
+      }
+
+      var proposeToggleBtn = e.target.closest('.admin-bk-modal-propose-toggle');
+      if (proposeToggleBtn){
+        var pform = adminBkModalOverlayEl.querySelector('.admin-bk-propose-form');
+        if (pform) pform.hidden = !pform.hidden;
+        return;
+      }
+      var proposeCancelBtn = e.target.closest('.admin-bk-propose-cancel');
+      if (proposeCancelBtn){
+        var formToClose = proposeCancelBtn.closest('.admin-bk-propose-form');
+        if (formToClose) formToClose.hidden = true;
+        return;
+      }
+
+      var deleteBtn = e.target.closest('.admin-bk-delete-btn');
+      if (deleteBtn){
+        admHandleDeleteClick(deleteBtn);
+        return;
+      }
+    });
+    // Envoi de la proposition de créneau alternatif depuis la fiche détaillée
+    // — copie exacte du handler autrefois attaché à adminReqListEl (même
+    // Edge Function propose-alternative-slot), simplement déplacé ici avec
+    // le reste des actions "Demandes récentes".
+    adminBkModalOverlayEl.addEventListener('submit', function(e){
+      var form = e.target.closest('.admin-bk-propose-form');
+      if (!form) return;
+      e.preventDefault();
+      var id = form.getAttribute('data-booking-id');
+      var dateVal = form.querySelector('.admin-bk-propose-date').value;
+      var timeVal = form.querySelector('.admin-bk-propose-time').value;
+      var messageVal = form.querySelector('.admin-bk-propose-message').value.trim();
+      var msgEl = form.querySelector('.admin-bk-propose-msg');
+      var sendBtn = form.querySelector('.admin-bk-propose-send');
+      if (!dateVal || !timeVal) return;
+      msgEl.hidden = true;
+      msgEl.className = 'admin-bk-propose-msg';
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Envoi…';
+      sb.client.auth.getSession().then(function(res){
+        var token = res && res.data && res.data.session && res.data.session.access_token;
+        if (!token) throw new Error('no-session');
+        return fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/propose-alternative-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ booking_id: id, proposed_date: dateVal, proposed_time: timeVal, message: messageVal || null })
+        });
+      }).then(function(res){
+        if (!res.ok) throw new Error('http-' + res.status);
+        return res.json();
+      }).then(function(){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Envoyer la proposition';
+        msgEl.textContent = 'Proposition envoyée au client par e-mail.';
+        msgEl.className = 'admin-bk-propose-msg is-success';
+        msgEl.hidden = false;
+      }).catch(function(){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Envoyer la proposition';
+        msgEl.textContent = "Échec de l'envoi. Réessayez dans un instant.";
+        msgEl.className = 'admin-bk-propose-msg is-error';
+        msgEl.hidden = false;
+      });
     });
     adminBkModalOverlayEl.addEventListener('change', function(e){
       var sel = e.target.closest('#adminBkModalStatusSelect');
@@ -10244,6 +11345,16 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // Badge de statut d'une demande — NOUVEAU (non consultée) / CONFIRMÉ /
+  // REFUSÉ. Une demande PENDING déjà consultée n'affiche aucun badge (elle
+  // reste "en attente de décision", ni nouvelle ni tranchée).
+  function admReqStatusBadge(b){
+    if (b.status === 'CONFIRMED') return '<span class="adm-badge adm-badge-confirmed">CONFIRMÉ</span>';
+    if (b.status === 'CANCELLED') return '<span class="adm-badge adm-badge-cancelled">REFUSÉ</span>';
+    if (!b.admin_viewed_at) return '<span class="adm-badge admin-req-new-badge">NOUVEAU</span>';
+    return '';
+  }
+
   function admRenderRecentRequests(){
     var listEl = document.getElementById('adminReqList');
     if (!listEl || !adminBookingsCache) return;
@@ -10258,6 +11369,11 @@ if ('serviceWorker' in navigator){
         : '<div class="ec-empty"><strong>Aucune demande</strong>Aucune réservation enregistrée pour le moment.</div>';
       return;
     }
+    // IMPORTANT (correction 2026-09-24) : cette carte n'affiche plus aucun
+    // bouton Accepter/Refuser/Proposer directement dans la liste — un clic
+    // ouvre uniquement la fiche détaillée (admOpenBookingModal), qui porte
+    // désormais ces actions avec confirmation. Voir admOpenBookingModal
+    // pour la logique d'acceptation/refus.
     var html = '<div class="ec-list">';
     rows.forEach(function(b){
       var contact = admContactFor(b, adminBookingsCache.profiles);
@@ -10266,7 +11382,7 @@ if ('serviceWorker' in navigator){
       html += '<div class="ec-row admin-req-row' + (isNew ? ' admin-req-row-new' : '') + '" data-booking-id="' + b.id + '">' +
         '<div class="ec-row-info">' +
           '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) +
-            (isNew ? ' <span class="ec-badge admin-req-new-badge">Nouveau</span>' : '') + '</span>' +
+            ' ' + admReqStatusBadge(b) + '</span>' +
           '<span class="ec-row-meta">📥 Demande reçue le ' + admFmtDateTime(b.created_at) + '</span>' +
           '<span class="ec-row-meta">📅 Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
           (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
@@ -10275,29 +11391,68 @@ if ('serviceWorker' in navigator){
           '<span class="ec-row-meta">💶 Prix estimé : ' + admFmtEuros(b.total_cents) + '</span>' +
           '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         '</div>' +
-        (b.status === 'PENDING' ?
-          '<div class="admin-bk-row-actions">' +
-            '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">✅ Accepter</button>' +
-            '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">❌ Refuser</button>' +
-            '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">🕐 Proposer un autre créneau</button>' +
-            '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
-              '<div class="admin-bk-propose-form-row">' +
-                '<label>Nouvelle date<input type="date" class="admin-bk-propose-date" required></label>' +
-                '<label>Nouvelle heure<input type="time" class="admin-bk-propose-time" required></label>' +
-              '</div>' +
-              '<label>Message (facultatif)<textarea class="admin-bk-propose-message" placeholder="Un mot pour votre client…"></textarea></label>' +
-              '<div class="admin-bk-propose-form-row">' +
-                '<button type="submit" class="admin-bk-propose-send">Envoyer la proposition</button>' +
-                '<button type="button" class="admin-bk-propose-cancel">Annuler</button>' +
-              '</div>' +
-              '<p class="admin-bk-propose-msg" hidden></p>' +
-            '</form>' +
-          '</div>'
-          : '') +
+        '<span class="admin-req-open-hint">Voir le détail →</span>' +
         '</div>';
     });
     html += '</div>';
     listEl.innerHTML = html;
+  }
+
+  // ---------- Archives : toutes les demandes refusées/annulées ----------
+  // Aucune nouvelle requête de bookings : filtre adminBookingsCache.rows
+  // déjà chargé (même source que Planning/Liste/Demandes récentes). Seule
+  // requête additionnelle : admLoadCancelledMeta (cancelled_by/cancelled_at/
+  // admin_cancel_reason), déjà utilisée ailleurs, jamais dupliquée. La
+  // suppression définitive n'est proposée que pour cancelled_by='admin'
+  // (portée validée explicitement avec l'utilisateur) — une annulation
+  // faite par le client reste visible ici mais non supprimable depuis cet
+  // onglet.
+  function admRenderArchives(){
+    var listEl = document.getElementById('adminArchivesList');
+    if (!listEl || !adminBookingsCache) return;
+    var rows = adminBookingsCache.rows.filter(function(b){ return b.status === 'CANCELLED'; })
+      .slice().sort(function(a, b){
+        var da = a.date + 'T' + (a.start_time || '00:00');
+        var db = b.date + 'T' + (b.start_time || '00:00');
+        return da < db ? 1 : (da > db ? -1 : 0);
+      });
+    if (!rows.length){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucune archive</strong>Aucune demande refusée ou annulée pour le moment.</div>';
+      return;
+    }
+    listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    admLoadCancelledMeta(rows.map(function(b){ return b.id; }), function(){
+      var html = '<div class="ec-list">';
+      rows.forEach(function(b){
+        var contact = admContactFor(b, adminBookingsCache.profiles);
+        var svcName = (b.services && b.services.name) || 'Intervention';
+        var meta = adminCancelledMetaCache[b.id];
+        var who = (meta && meta.cancelled_by === 'admin') ? '<span class="adm-badge adm-badge-cancelled">Refusé par vous</span>'
+          : (meta && meta.cancelled_by === 'customer') ? '<span class="adm-badge adm-badge-pending">Annulé par le client</span>'
+          : '<span class="adm-badge adm-badge-completed">Annulé</span>';
+        var canDelete = meta && meta.cancelled_by === 'admin';
+        html += '<div class="ec-row">' +
+          '<div class="ec-row-info">' +
+            '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + ' ' + who + '</span>' +
+            '<span class="ec-row-meta">📅 Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+            (meta && meta.cancelled_at ? '<span class="ec-row-meta">🗓️ Le ' + admFmtDateTime(meta.cancelled_at) + '</span>' : '') +
+            (meta && meta.admin_cancel_reason ? '<span class="ec-row-meta">💬 Motif : ' + admEscape(meta.admin_cancel_reason) + '</span>' : '') +
+            '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
+          '</div>' +
+          (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">🗑️ Supprimer</button>' : '') +
+          '</div>';
+      });
+      html += '</div>';
+      listEl.innerHTML = html;
+    });
+  }
+  var adminArchivesListEl = document.getElementById('adminArchivesList');
+  if (adminArchivesListEl){
+    adminArchivesListEl.addEventListener('click', function(e){
+      var deleteBtn = e.target.closest('.admin-bk-delete-btn');
+      if (!deleteBtn) return;
+      admHandleDeleteClick(deleteBtn);
+    });
   }
 
   // État optimiste (badge/liste mis à jour avant la réponse serveur) : un
@@ -10318,89 +11473,18 @@ if ('serviceWorker' in navigator){
 
   var adminReqListEl = document.getElementById('adminReqList');
   if (adminReqListEl){
-    // Accepter/Refuser/Proposer un autre créneau : même bouton, même style,
-    // même fonction admUpdateBookingStatus() que dans Planning → Liste (voir
-    // adminListEl plus haut) — aucune logique dupliquée, juste rebranchée
-    // ici pour que ces actions soient aussi accessibles depuis "Demandes
-    // récentes", là où l'admin les cherche naturellement en premier. Ces
-    // boutons sont DANS la ligne .admin-req-row : on les traite en premier
-    // et on retourne, pour ne jamais aussi déclencher "marquer comme vue" en
-    // plus de l'action réellement cliquée.
+    // Correction 2026-09-24 : un clic sur une carte de "Demandes récentes"
+    // n'ouvre plus QUE la fiche détaillée (admOpenBookingModal) — il ne
+    // modifie plus jamais de statut lui-même. Accepter/Refuser/Proposer un
+    // autre créneau vivent désormais exclusivement dans cette fiche (voir
+    // admOpenBookingModal + le listener sur adminBkModalOverlayEl), chacun
+    // avec sa propre confirmation avant tout changement de statut.
     adminReqListEl.addEventListener('click', function(e){
-      var acceptBtn = e.target.closest('.admin-bk-accept-btn');
-      if (acceptBtn){
-        acceptBtn.disabled = true;
-        admUpdateBookingStatus(acceptBtn.getAttribute('data-booking-id'), 'CONFIRMED');
-        admMarkRequestViewed(acceptBtn.getAttribute('data-booking-id'));
-        return;
-      }
-      var refuseBtn = e.target.closest('.admin-bk-refuse-btn');
-      if (refuseBtn){
-        refuseBtn.disabled = true;
-        admUpdateBookingStatus(refuseBtn.getAttribute('data-booking-id'), 'CANCELLED');
-        admMarkRequestViewed(refuseBtn.getAttribute('data-booking-id'));
-        return;
-      }
-      var proposeBtn = e.target.closest('.admin-bk-propose-btn');
-      if (proposeBtn){
-        var row2 = e.target.closest('.admin-req-row');
-        var form = row2 && row2.querySelector('.admin-bk-propose-form');
-        if (form) form.hidden = !form.hidden;
-        return;
-      }
-      var cancelBtn = e.target.closest('.admin-bk-propose-cancel');
-      if (cancelBtn){
-        var formToClose = cancelBtn.closest('.admin-bk-propose-form');
-        if (formToClose) formToClose.hidden = true;
-        return;
-      }
       var row = e.target.closest('.admin-req-row');
       if (!row) return;
-      admMarkRequestViewed(row.getAttribute('data-booking-id'));
-    });
-    // Envoi de la proposition de créneau alternatif — copie exacte du
-    // handler déjà utilisé sur adminListEl (même Edge Function
-    // propose-alternative-slot, même authentification par jeton de session
-    // admin revérifié côté serveur).
-    adminReqListEl.addEventListener('submit', function(e){
-      var form = e.target.closest('.admin-bk-propose-form');
-      if (!form) return;
-      e.preventDefault();
-      var id = form.getAttribute('data-booking-id');
-      var dateVal = form.querySelector('.admin-bk-propose-date').value;
-      var timeVal = form.querySelector('.admin-bk-propose-time').value;
-      var messageVal = form.querySelector('.admin-bk-propose-message').value.trim();
-      var msgEl = form.querySelector('.admin-bk-propose-msg');
-      var sendBtn = form.querySelector('.admin-bk-propose-send');
-      if (!dateVal || !timeVal) return;
-      msgEl.hidden = true;
-      msgEl.className = 'admin-bk-propose-msg';
-      sendBtn.disabled = true;
-      sendBtn.textContent = 'Envoi…';
-      sb.client.auth.getSession().then(function(res){
-        var token = res && res.data && res.data.session && res.data.session.access_token;
-        if (!token) throw new Error('no-session');
-        return fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/propose-alternative-slot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ booking_id: id, proposed_date: dateVal, proposed_time: timeVal, message: messageVal || null })
-        });
-      }).then(function(res){
-        if (!res.ok) throw new Error('http-' + res.status);
-        return res.json();
-      }).then(function(){
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Envoyer la proposition';
-        msgEl.textContent = 'Proposition envoyée au client par e-mail.';
-        msgEl.className = 'admin-bk-propose-msg is-success';
-        msgEl.hidden = false;
-      }).catch(function(){
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Envoyer la proposition';
-        msgEl.textContent = "Échec de l'envoi. Réessayez dans un instant.";
-        msgEl.className = 'admin-bk-propose-msg is-error';
-        msgEl.hidden = false;
-      });
+      var id = row.getAttribute('data-booking-id');
+      admMarkRequestViewed(id);
+      admOpenBookingModal(id);
     });
   }
   var adminReqFiltersEl = document.getElementById('adminReqFilters');
@@ -10625,6 +11709,8 @@ if ('serviceWorker' in navigator){
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
+    if (key === 'pricing' && typeof qcInit === 'function') qcInit();
+    if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
   }
 
   // ============================================================
@@ -10666,11 +11752,55 @@ if ('serviceWorker' in navigator){
     if (!sb || !sb.configured || !el) return;
     var since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     sb.client.from('analytics_events').select('session_id').gte('created_at', since).then(function(res){
-      if (res.error){ el.textContent = '—'; return; }
+      if (res.error){ console.error('admStatsCountOnline: échec de la requête', res.error); el.textContent = '—'; return; }
       var uniq = {};
       (res.data || []).forEach(function(r){ uniq[r.session_id] = true; });
       el.textContent = String(Object.keys(uniq).length);
+    }).catch(function(err){
+      console.error('admStatsCountOnline: erreur réseau/inattendue', err);
     });
+  }
+
+  // Recalcul léger toutes les ADM_STATS_ONLINE_POLL_MS : c'est ce qui fait
+  // redescendre le compteur quand une session expire (aucun événement
+  // Realtime n'est émis "au moment où" un visiteur devient inactif — voir
+  // commentaire dans admLoadStats()).
+  var ADM_STATS_ONLINE_POLL_MS = 15000;
+
+  // Abonnement Realtime "en ligne maintenant" — CORRECTIF : l'ancienne
+  // version appelait juste .subscribe() sans callback de statut. Si la
+  // connexion WebSocket échouait (hoquet réseau, timing juste après le
+  // chargement de la page...), admStatsRealtimeChannel restait quand même
+  // non-nul (le channel est retourné synchronement, avant même que la
+  // connexion aboutisse), donc le garde-fou "if (!admStatsRealtimeChannel)"
+  // bloquait ensuite TOUTE reconnexion pour le reste de la session admin —
+  // le compteur ne pouvait plus alors compter que sur le minuteur
+  // périodique. Corrigé ici : le statut réel de la connexion est
+  // maintenant vérifié, toute erreur est journalisée, et une nouvelle
+  // tentative est programmée automatiquement en cas d'échec — jamais besoin
+  // de recharger la page pour "réarmer" l'abonnement.
+  var admStatsRealtimeSubscribing = false;
+  function admStatsSubscribeOnlineRealtime(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.client || admStatsRealtimeChannel || admStatsRealtimeSubscribing) return;
+    admStatsRealtimeSubscribing = true;
+    var channel = sb.client.channel('admin-stats-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'analytics_events' }, admStatsCountOnline)
+      .subscribe(function(status, err){
+        if (status === 'SUBSCRIBED'){
+          admStatsRealtimeSubscribing = false;
+          admStatsRealtimeChannel = channel;
+          admStatsCountOnline();
+          return;
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+          admStatsRealtimeSubscribing = false;
+          console.error('admStatsSubscribeOnlineRealtime: connexion Realtime en échec (' + status + ') — nouvelle tentative dans 4s', err || '');
+          try { sb.client.removeChannel(channel); } catch(e){}
+          if (admStatsRealtimeChannel === channel) admStatsRealtimeChannel = null;
+          setTimeout(admStatsSubscribeOnlineRealtime, 4000);
+        }
+      });
   }
 
   function admStatsPeriodLabel(period){
@@ -10766,7 +11896,15 @@ if ('serviceWorker' in navigator){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
     admStatsCountOnline();
-    if (!admStatsOnlineTimer) admStatsOnlineTimer = setInterval(admStatsCountOnline, 30000);
+    // Un seul minuteur pour toute la session admin (déjà gardé avant, gardé
+    // à l'identique) — c'est le filet qui fait redescendre "En ligne
+    // maintenant" quand une session expire sans qu'aucun nouvel événement
+    // ne soit jamais émis pour le signaler.
+    if (!admStatsOnlineTimer) admStatsOnlineTimer = setInterval(admStatsCountOnline, ADM_STATS_ONLINE_POLL_MS);
+    // Un seul abonnement Realtime pour toute la session admin — changer de
+    // filtre Aujourd'hui/7j/30j (plus bas) ne rappelle jamais admLoadStats()
+    // ni cette fonction, donc jamais de deuxième abonnement créé.
+    admStatsSubscribeOnlineRealtime();
     var since = admStatsPeriodStart('30d').toISOString();
     sb.client.from('analytics_events').select('event_type, session_id, page, created_at')
       .gte('created_at', since)
@@ -10782,12 +11920,8 @@ if ('serviceWorker' in navigator){
         admRenderStatsChart(admStatsRowsCache);
         admRenderStatsFunnel(admStatsRowsCache);
         admRenderStatsPages(admStatsRowsCache);
-      });
-    if (!admStatsRealtimeChannel && sb.client){
-      admStatsRealtimeChannel = sb.client.channel('admin-stats-changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'analytics_events' }, admStatsCountOnline)
-        .subscribe();
-    }
+      })
+      .catch(function(err){ console.error('admLoadStats: erreur réseau/inattendue', err); });
   }
   var admStatsPeriodFiltersEl = document.getElementById('admStatsPeriodFilters');
   if (admStatsPeriodFiltersEl){
@@ -10934,6 +12068,7 @@ if ('serviceWorker' in navigator){
   function admTeardownStatsRealtime(){
     if (admStatsOnlineTimer){ clearInterval(admStatsOnlineTimer); admStatsOnlineTimer = null; }
     if (admStatsRealtimeChannel){ sb.client.removeChannel(admStatsRealtimeChannel); admStatsRealtimeChannel = null; }
+    admStatsRealtimeSubscribing = false;
   }
 
   function initAdminPanel(role){
@@ -10947,11 +12082,371 @@ if ('serviceWorker' in navigator){
       admLoadTravelSettings();
       admRefreshPushUI();
       admSetupBkRealtime();
+      if (typeof admLoadAiSettings === 'function') admLoadAiSettings();
     } else {
       panel.hidden = true;
       admTeardownBkRealtime();
       admTeardownStatsRealtime();
     }
+  }
+
+  // ============================================================
+  // Chiffrage / Devis — outil interne admin uniquement (voir
+  // 0021_admin_quote_calculator.sql). Trois tables entièrement séparées du
+  // catalogue public (services/service_packs) et du barème de déplacement
+  // public (travel_settings) : aucune écriture ici ne modifie un prix
+  // affiché sur le site. RLS is_admin() sur les trois tables — même
+  // garantie déjà testée en direct cette session (élévation de privilège
+  // bloquée) pour is_admin() ailleurs dans ce projet.
+  // ============================================================
+  var qcSettings = null;
+  var qcCatalog = [];
+  var qcHistoryCache = [];
+  var qcLastComputed = null;
+  var qcState = { customerType: 'particulier', domain: 'plomberie' };
+  var qcInitDone = false;
+
+  function qcFetchSettings(){
+    return sb.client.from('quote_calc_settings').select('*').eq('id', true).maybeSingle().then(function(res){
+      if (res.error || !res.data) throw res.error || new Error('Réglages introuvables.');
+      qcSettings = res.data;
+      return qcSettings;
+    });
+  }
+  function qcFetchCatalog(){
+    return sb.client.from('quote_calc_catalog').select('*').eq('is_active', true)
+      .order('domain').order('name').then(function(res){
+        qcCatalog = res.error ? [] : (res.data || []);
+        return qcCatalog;
+      });
+  }
+
+  function qcRenderSettingsForm(){
+    var form = document.getElementById('qcSettingsForm');
+    if (!form || !qcSettings) return;
+    var s = qcSettings;
+    form.innerHTML =
+      '<div class="ec-form">' +
+      '<label>Taux horaire particulier (€ HT)<input type="number" id="qcSetHourlyPart" min="0" step="0.01" value="' + (s.hourly_rate_particulier_cents/100).toFixed(2) + '"></label>' +
+      '<label>Taux horaire professionnel (€ HT)<input type="number" id="qcSetHourlyPro" min="0" step="0.01" value="' + (s.hourly_rate_professionnel_cents/100).toFixed(2) + '"></label>' +
+      '<label>Déplacement particulier (€/km)<input type="number" id="qcSetTravelPart" min="0" step="0.01" value="' + (s.travel_rate_particulier_cents/100).toFixed(2) + '"></label>' +
+      '<label>Déplacement professionnel (€/km)<input type="number" id="qcSetTravelPro" min="0" step="0.01" value="' + (s.travel_rate_professionnel_cents/100).toFixed(2) + '"></label>' +
+      '<label>Minimum d\'intervention (€ HT)<input type="number" id="qcSetMinimum" min="0" step="0.01" value="' + (s.minimum_intervention_cents/100).toFixed(2) + '"></label>' +
+      '<label>Coefficient fournitures par défaut (%)<input type="number" id="qcSetMarkup" min="0" step="1" value="' + s.default_supply_markup_percent + '"></label>' +
+      '<label class="ec-form-full" style="flex-direction:row; align-items:center; gap:8px;"><input type="checkbox" id="qcSetVatApplicable" style="width:auto;" ' + (s.vat_applicable ? 'checked' : '') + '> HAYEVA est assujettie à la TVA</label>' +
+      '<label>Taux de TVA (%)<input type="number" id="qcSetVatRate" min="0" step="0.1" value="' + s.vat_rate_percent + '"></label>' +
+      '<button type="submit" class="btn-primary ec-form-full" id="qcSettingsSave">Enregistrer les réglages</button>' +
+      '<p class="qc-disclaimer ec-form-full" id="qcSettingsMsg" hidden></p>' +
+      '</div>';
+    if (!form.dataset.qcBound){
+      form.dataset.qcBound = '1';
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        var saveBtn = document.getElementById('qcSettingsSave');
+        var msgEl = document.getElementById('qcSettingsMsg');
+        saveBtn.disabled = true;
+        sb.client.from('quote_calc_settings').update({
+          hourly_rate_particulier_cents: Math.round(parseFloat(document.getElementById('qcSetHourlyPart').value || 0) * 100),
+          hourly_rate_professionnel_cents: Math.round(parseFloat(document.getElementById('qcSetHourlyPro').value || 0) * 100),
+          travel_rate_particulier_cents: Math.round(parseFloat(document.getElementById('qcSetTravelPart').value || 0) * 100),
+          travel_rate_professionnel_cents: Math.round(parseFloat(document.getElementById('qcSetTravelPro').value || 0) * 100),
+          minimum_intervention_cents: Math.round(parseFloat(document.getElementById('qcSetMinimum').value || 0) * 100),
+          default_supply_markup_percent: parseFloat(document.getElementById('qcSetMarkup').value || 0),
+          vat_applicable: document.getElementById('qcSetVatApplicable').checked,
+          vat_rate_percent: parseFloat(document.getElementById('qcSetVatRate').value || 0),
+          updated_at: new Date().toISOString()
+        }).eq('id', true).then(function(res){
+          saveBtn.disabled = false;
+          msgEl.hidden = false;
+          msgEl.textContent = res.error ? 'Échec de l\'enregistrement.' : 'Réglages enregistrés.';
+          if (!res.error) qcFetchSettings().then(qcApplyDefaultsToForm);
+        });
+      });
+    }
+  }
+
+  function qcApplyDefaultsToForm(){
+    if (!qcSettings) return;
+    var hourlyEl = document.getElementById('qcHourlyRate');
+    var travelEl = document.getElementById('qcTravelRate');
+    if (hourlyEl) hourlyEl.value = ((qcState.customerType === 'professionnel' ? qcSettings.hourly_rate_professionnel_cents : qcSettings.hourly_rate_particulier_cents) / 100).toFixed(2);
+    if (travelEl) travelEl.value = ((qcState.customerType === 'professionnel' ? qcSettings.travel_rate_professionnel_cents : qcSettings.travel_rate_particulier_cents) / 100).toFixed(2);
+    qcRecalc();
+  }
+
+  function qcRenderCatalogSuggestions(){
+    var datalist = document.getElementById('qcCatalogSuggestions');
+    if (!datalist) return;
+    var matches = qcCatalog.filter(function(c){ return c.domain === qcState.domain && c.customer_type === qcState.customerType; });
+    datalist.innerHTML = matches.map(function(c){ return '<option value="' + admEscape(c.name) + '">'; }).join('');
+  }
+  function qcUpdateCatalogHint(){
+    var hintEl = document.getElementById('qcCatalogHint');
+    var nameEl = document.getElementById('qcInterventionName');
+    if (!hintEl || !nameEl) return;
+    var name = nameEl.value.trim().toLowerCase();
+    var match = qcCatalog.filter(function(c){
+      return c.domain === qcState.domain && c.customer_type === qcState.customerType && c.name.trim().toLowerCase() === name;
+    })[0];
+    if (!name || !match){ hintEl.innerHTML = ''; return; }
+    var range = [match.price_low_cents, match.price_typical_cents, match.price_high_cents]
+      .filter(function(v){ return v != null; }).map(admFmtEuros).join(' — ');
+    hintEl.innerHTML = '<div class="qc-catalog-hint"><strong>📚 Aide au prix — ' + admEscape(match.name) + '</strong>' +
+      (range ? 'Fourchette enregistrée : ' + range + '<br>' : '') +
+      (match.typical_duration_minutes ? 'Durée habituelle : ' + match.typical_duration_minutes + ' min<br>' : '') +
+      (match.typical_supplies ? 'Fournitures généralement nécessaires : ' + admEscape(match.typical_supplies) + '<br>' : '') +
+      (match.notes ? 'Notes : ' + admEscape(match.notes) : '') +
+      '</div>';
+  }
+
+  var qcSupplyRowSeq = 0;
+  function qcSupplyRows(){
+    return Array.prototype.map.call(document.querySelectorAll('#qcSuppliesList .qc-supply-row'), function(row){
+      var qty = parseFloat(row.querySelector('[data-qc-supply-qty]').value) || 0;
+      var unitPrice = parseFloat(row.querySelector('[data-qc-supply-price]').value) || 0;
+      var markup = parseFloat(row.querySelector('[data-qc-supply-markup]').value);
+      if (isNaN(markup)) markup = qcSettings ? qcSettings.default_supply_markup_percent : 0;
+      return { cents: Math.round(qty * unitPrice * (1 + markup/100) * 100) };
+    });
+  }
+  function qcAddSupplyRow(prefill){
+    prefill = prefill || {};
+    var wrap = document.createElement('div');
+    wrap.className = 'qc-supply-row';
+    wrap.setAttribute('data-qc-supply-id', String(qcSupplyRowSeq++));
+    var defaultMarkup = qcSettings ? qcSettings.default_supply_markup_percent : 20;
+    wrap.innerHTML =
+      '<label>Désignation<input type="text" data-qc-supply-name placeholder="Ex. Circulateur" value="' + admEscape(prefill.name || '') + '"></label>' +
+      '<label>Qté<input type="number" data-qc-supply-qty min="0" step="1" value="' + (prefill.qty != null ? prefill.qty : 1) + '"></label>' +
+      '<label>Prix d\'achat unitaire (€)<input type="number" data-qc-supply-price min="0" step="0.01" value="0"></label>' +
+      '<label>Marge (%)<input type="number" data-qc-supply-markup min="0" step="1" value="' + defaultMarkup + '"></label>' +
+      '<button type="button" class="qc-supply-del" data-qc-supply-del>✕</button>';
+    document.getElementById('qcSuppliesList').appendChild(wrap);
+    wrap.addEventListener('input', qcRecalc);
+    wrap.querySelector('[data-qc-supply-del]').addEventListener('click', function(){
+      wrap.remove();
+      qcRecalc();
+    });
+  }
+
+  function qcRecalc(){
+    var minutes = parseFloat(document.getElementById('qcLaborMinutes').value) || 0;
+    var techCount = parseFloat(document.getElementById('qcTechCount').value) || 1;
+    var hourlyRateEuros = parseFloat(document.getElementById('qcHourlyRate').value) || 0;
+    var travelKm = parseFloat(document.getElementById('qcTravelKm').value) || 0;
+    var travelRateEuros = parseFloat(document.getElementById('qcTravelRate').value) || 0;
+    var otherFeesEuros = parseFloat(document.getElementById('qcOtherFees').value) || 0;
+    var discountEuros = parseFloat(document.getElementById('qcDiscount').value) || 0;
+
+    var laborCents = Math.round((minutes/60) * techCount * hourlyRateEuros * 100);
+    var travelCents = Math.round(travelKm * 2 * travelRateEuros * 100);
+    var suppliesCents = qcSupplyRows().reduce(function(sum, r){ return sum + r.cents; }, 0);
+    var otherFeesCents = Math.round(otherFeesEuros * 100);
+    var discountCents = Math.round(discountEuros * 100);
+    var netOtherFeesCents = otherFeesCents - discountCents;
+
+    var totalHtCents = Math.max(0, laborCents + suppliesCents + travelCents + netOtherFeesCents);
+    var vatApplicable = !!(qcSettings && qcSettings.vat_applicable);
+    var vatRate = qcSettings ? qcSettings.vat_rate_percent : 0;
+    var totalTtcCents = vatApplicable ? Math.round(totalHtCents * (1 + vatRate/100)) : totalHtCents;
+    var minimumCents = qcSettings ? qcSettings.minimum_intervention_cents : 0;
+    var belowMinimum = minimumCents > 0 && totalTtcCents < minimumCents;
+
+    var breakdown = document.getElementById('qcBreakdown');
+    if (breakdown){
+      breakdown.innerHTML =
+        '<div class="qc-breakdown-row"><span>MAIN-D\'ŒUVRE</span><span>' + admFmtEuros(laborCents) + '</span></div>' +
+        '<div class="qc-breakdown-row"><span>FOURNITURES</span><span>' + admFmtEuros(suppliesCents) + '</span></div>' +
+        '<div class="qc-breakdown-row"><span>DÉPLACEMENT</span><span>' + admFmtEuros(travelCents) + '</span></div>' +
+        '<div class="qc-breakdown-row"><span>AUTRES FRAIS' + (discountCents ? ' (remise déduite)' : '') + '</span><span>' + admFmtEuros(netOtherFeesCents) + '</span></div>' +
+        (vatApplicable ? '<div class="qc-breakdown-row qc-ht"><span>Total HT</span><span>' + admFmtEuros(totalHtCents) + '</span></div>' +
+          '<div class="qc-breakdown-row qc-ht"><span>TVA (' + vatRate + '%)</span><span>' + admFmtEuros(totalTtcCents - totalHtCents) + '</span></div>' : '') +
+        '<div class="qc-breakdown-row qc-total"><span>TOTAL ' + (vatApplicable ? 'TTC' : '(non assujetti à la TVA)') + '</span><span>' + admFmtEuros(totalTtcCents) + '</span></div>' +
+        (belowMinimum ? '<p class="qc-why" style="color:var(--adm-amber);">⚠️ En dessous du minimum d\'intervention configuré (' + admFmtEuros(minimumCents) + ').</p>' : '') +
+        '<p class="qc-why">Pourquoi ce prix ? ' + techCount + ' technicien(s) × ' + (minutes/60).toFixed(2) + ' h × ' + hourlyRateEuros.toFixed(2) + ' €/h de main-d\'œuvre, + ' + (travelKm*2).toFixed(1) + ' km de déplacement (aller-retour), + fournitures avec marge' + (discountCents ? ', − remise' : '') + ', ' + (vatApplicable ? 'TVA à ' + vatRate + '% appliquée.' : 'aucune TVA appliquée (régime non assujetti).') + ' Cette estimation n\'est ni un prix légal ni un prix obligatoire.</p>';
+    }
+    qcLastComputed = {
+      laborCents: laborCents, suppliesCents: suppliesCents, travelCents: travelCents,
+      otherFeesCents: netOtherFeesCents, discountCents: discountCents,
+      totalHtCents: totalHtCents, totalTtcCents: totalTtcCents,
+      vatApplicable: vatApplicable, vatRate: vatRate,
+      laborMinutes: minutes, techCount: techCount, hourlyRateCents: Math.round(hourlyRateEuros*100),
+      travelKm: travelKm
+    };
+    var preparedBox = document.getElementById('qcPreparedBox');
+    if (preparedBox) preparedBox.hidden = true;
+  }
+
+  function qcPrepareText(){
+    if (!qcLastComputed) return '';
+    var name = document.getElementById('qcInterventionName').value.trim() || 'Intervention';
+    var client = document.getElementById('qcClientName').value.trim();
+    var c = qcLastComputed;
+    return [
+      (client ? client + ' — ' : '') + name,
+      (qcState.customerType === 'professionnel' ? 'Professionnel' : 'Particulier') + ' — ' + qcState.domain,
+      '',
+      'Main-d\'œuvre : ' + admFmtEuros(c.laborCents),
+      'Fournitures : ' + admFmtEuros(c.suppliesCents),
+      'Déplacement : ' + admFmtEuros(c.travelCents),
+      'Autres frais : ' + admFmtEuros(c.otherFeesCents),
+      '----------------',
+      'TOTAL ' + (c.vatApplicable ? 'TTC' : '') + ' : ' + admFmtEuros(c.totalTtcCents),
+      '',
+      'Estimation interne HAYEVA, à confirmer avec le client.'
+    ].join('\n');
+  }
+
+  function qcSaveHistory(){
+    if (!qcLastComputed) return;
+    var name = document.getElementById('qcInterventionName').value.trim();
+    if (!name){ window.alert('Merci de renseigner le nom de l\'intervention.'); return; }
+    var btn = document.getElementById('qcSaveHistoryBtn');
+    var c = qcLastComputed;
+    btn.disabled = true;
+    sb.client.from('quote_calc_history').insert({
+      customer_type: qcState.customerType,
+      domain: qcState.domain,
+      intervention_label: name,
+      client_name: document.getElementById('qcClientName').value.trim() || null,
+      labor_minutes: c.laborMinutes,
+      technician_count: c.techCount,
+      hourly_rate_cents: c.hourlyRateCents,
+      labor_cents: c.laborCents,
+      travel_km: c.travelKm,
+      travel_cents: c.travelCents,
+      supplies_cents: c.suppliesCents,
+      other_fees_cents: c.otherFeesCents,
+      discount_cents: c.discountCents,
+      vat_applicable: c.vatApplicable,
+      vat_rate_percent: c.vatRate,
+      total_ht_cents: c.totalHtCents,
+      total_ttc_cents: c.totalTtcCents,
+      price_proposed_cents: c.totalTtcCents
+    }).then(function(res){
+      btn.disabled = false;
+      if (res.error){ console.error('qcSaveHistory: échec', res.error); window.alert('Échec de l\'enregistrement.'); return; }
+      qcLoadHistory();
+    });
+  }
+
+  function qcLoadHistory(){
+    var el = document.getElementById('qcHistoryList');
+    if (!el) return;
+    el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    sb.client.from('quote_calc_history').select('*').order('created_at', { ascending:false }).limit(200).then(function(res){
+      qcHistoryCache = res.error ? [] : (res.data || []);
+      qcRenderHistory();
+    });
+  }
+  function qcRenderHistory(){
+    var el = document.getElementById('qcHistoryList');
+    var searchEl = document.getElementById('qcHistorySearch');
+    if (!el) return;
+    var q = (searchEl && searchEl.value || '').trim().toLowerCase();
+    var rows = qcHistoryCache.filter(function(h){
+      if (!q) return true;
+      return (h.intervention_label||'').toLowerCase().indexOf(q) !== -1 || (h.client_name||'').toLowerCase().indexOf(q) !== -1;
+    });
+    if (!rows.length){ el.innerHTML = '<div class="ec-empty"><strong>Aucun chiffrage enregistré</strong>Sauvegardez un chiffrage ci-dessus pour le retrouver ici.</div>'; return; }
+    el.innerHTML = '<div class="ec-list">' + rows.map(function(h){
+      return '<div class="ec-row"><div class="ec-row-info">' +
+        '<span class="ec-row-title">' + admEscape(h.intervention_label) + (h.client_name ? ' — ' + admEscape(h.client_name) : '') + '</span>' +
+        '<span class="ec-row-meta">' + admFmtDate(h.created_at) + ' · ' + (h.customer_type === 'professionnel' ? 'Professionnel' : 'Particulier') + ' · ' + admFmtEuros(h.price_proposed_cents || h.total_ttc_cents) + '</span>' +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function qcBindToggle(containerId, dataAttr, stateKey){
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.addEventListener('click', function(e){
+      var btn = e.target.closest('.gallery-filter-btn');
+      if (!btn) return;
+      Array.prototype.forEach.call(el.querySelectorAll('.gallery-filter-btn'), function(b){ b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      qcState[stateKey] = btn.getAttribute(dataAttr);
+      qcApplyDefaultsToForm();
+      qcRenderCatalogSuggestions();
+      qcUpdateCatalogHint();
+    });
+  }
+
+  function qcBindOnce(){
+    if (qcInitDone) return;
+    qcInitDone = true;
+    qcBindToggle('qcTypeToggle', 'data-qc-type', 'customerType');
+    qcBindToggle('qcDomainToggle', 'data-qc-domain', 'domain');
+    document.getElementById('qcAddSupplyBtn').addEventListener('click', function(){ qcAddSupplyRow(); qcRecalc(); });
+    Array.prototype.forEach.call(document.querySelectorAll('#qcForm input'), function(input){
+      input.addEventListener('input', qcRecalc);
+    });
+    document.getElementById('qcInterventionName').addEventListener('input', qcUpdateCatalogHint);
+    document.getElementById('qcPrepareBtn').addEventListener('click', function(){
+      var box = document.getElementById('qcPreparedBox');
+      box.textContent = qcPrepareText();
+      box.hidden = false;
+    });
+    document.getElementById('qcSaveHistoryBtn').addEventListener('click', qcSaveHistory);
+    document.getElementById('qcHistorySearch').addEventListener('input', qcRenderHistory);
+    qcAddSupplyRow();
+
+    // Assistant Hayeva Pro — pré-remplit uniquement, n'enregistre jamais
+    // automatiquement (voir 0023_ai_assistant.sql). L'admin garde la main :
+    // il vérifie/corrige les champs puis utilise les boutons déjà existants
+    // "Préparer le devis"/"Enregistrer dans l'historique".
+    var aiPrefillBtn = document.getElementById('qcAiPrefillBtn');
+    if (aiPrefillBtn) aiPrefillBtn.addEventListener('click', function(){
+      var msgEl = document.getElementById('qcAiPrefillMsg');
+      var description = document.getElementById('qcAiDescription').value.trim();
+      if (!description){
+        msgEl.hidden = false;
+        msgEl.textContent = "Décrivez d'abord l'intervention ci-dessus.";
+        return;
+      }
+      aiPrefillBtn.disabled = true;
+      msgEl.hidden = false;
+      msgEl.textContent = 'Génération en cours…';
+      sb.client.functions.invoke('ai-assistant-pro', { body: { description: description } }).then(function(res){
+        aiPrefillBtn.disabled = false;
+        var data = res.data;
+        if (res.error || !data || data.status !== 'ok' || !data.suggestion){
+          msgEl.textContent = 'Assistant indisponible pour le moment — remplissez manuellement.';
+          return;
+        }
+        var s = data.suggestion;
+        if (s.intervention_label) document.getElementById('qcInterventionName').value = s.intervention_label;
+        if (s.domain && ['plomberie','chauffage','climatisation','autre'].indexOf(s.domain) !== -1){
+          var domainBtn = document.querySelector('#qcDomainToggle [data-qc-domain="' + s.domain + '"]');
+          if (domainBtn) domainBtn.click();
+        }
+        if (s.labor_minutes) document.getElementById('qcLaborMinutes').value = s.labor_minutes;
+        if (s.technician_count) document.getElementById('qcTechCount').value = s.technician_count;
+        if (Array.isArray(s.supplies) && s.supplies.length){
+          document.getElementById('qcSuppliesList').innerHTML = '';
+          s.supplies.forEach(function(sup){ qcAddSupplyRow({ name: sup.name, qty: sup.qty }); });
+        }
+        qcUpdateCatalogHint();
+        qcRecalc();
+        msgEl.textContent = 'Champs pré-remplis — vérifiez avant d\'enregistrer, rien n\'est encore sauvegardé.';
+      }).catch(function(){
+        aiPrefillBtn.disabled = false;
+        msgEl.textContent = 'Erreur réseau — réessayez.';
+      });
+    });
+  }
+
+  function qcInit(){
+    qcBindOnce();
+    qcFetchSettings().then(function(){
+      qcRenderSettingsForm();
+      qcApplyDefaultsToForm();
+    }).catch(function(err){ console.error('qcInit: réglages introuvables', err); });
+    qcFetchCatalog().then(function(){
+      qcRenderCatalogSuggestions();
+      qcUpdateCatalogHint();
+    });
+    qcLoadHistory();
   }
 
   // ---------- Paramètres des déplacements (rayon inclus / tarif au km) ----------
@@ -10997,6 +12492,96 @@ if ('serviceWorker' in navigator){
           msgEl.className = 'admin-travel-settings-msg is-success';
           msgEl.textContent = 'Barème mis à jour.';
         }
+      });
+    });
+  }
+
+  // ---------- Assistant IA — statut, quotas, consommation ----------
+  // Coupe-circuit immédiat : ai_settings.enabled est revérifié côté serveur
+  // par les deux Edge Functions (ai-assistant/ai-assistant-pro) à CHAQUE
+  // appel, donc le désactiver ici bloque réellement tout nouvel échange,
+  // pas seulement l'affichage du bouton flottant.
+  function admEstimateAiCostEuros(inputTokens, outputTokens){
+    // Estimation grossière (ordre de grandeur, jamais une facture réelle) —
+    // tarifs indicatifs Claude Haiku, à ajuster si le tarif du fournisseur change.
+    var usd = (inputTokens / 1000000) * 1 + (outputTokens / 1000000) * 5;
+    var eur = usd * 0.92;
+    return eur < 0.01 ? '< 0,01 €' : eur.toFixed(2).replace('.', ',') + ' €';
+  }
+
+  function admRenderAiSettingsForm(settings, stats){
+    var panel = document.getElementById('aiSettingsPanel');
+    if (!panel) return;
+    var statusLabel = settings.enabled ? 'ACTIF' : 'DÉSACTIVÉ';
+    var statusClass = settings.enabled ? 'adm-badge-confirmed' : 'adm-badge-cancelled';
+    panel.innerHTML =
+      '<div class="admin-push-panel">' +
+        '<p class="admin-push-row">Statut : <span class="adm-badge ' + statusClass + '">' + statusLabel + '</span></p>' +
+        '<button type="button" class="admin-push-toggle-btn" id="aiToggleBtn">' + (settings.enabled ? '⏻ Désactiver immédiatement' : "✨ Activer l'assistant") + '</button>' +
+      '</div>' +
+      '<div class="adm-stats-grid" style="margin-top:16px;">' +
+        '<div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-icon" aria-hidden="true">💬</span><span class="adm-stat-value">' + stats.conversationsToday + '</span><span class="adm-stat-label">Conversations aujourd\'hui</span></div>' +
+        '<div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-icon" aria-hidden="true">📨</span><span class="adm-stat-value">' + stats.requestCount + '</span><span class="adm-stat-label">Requêtes IA aujourd\'hui</span></div>' +
+        '<div class="adm-stat-card adm-stat-sand"><span class="adm-stat-icon" aria-hidden="true">💰</span><span class="adm-stat-value">' + admEstimateAiCostEuros(stats.inputTokens, stats.outputTokens) + '</span><span class="adm-stat-label">Coût estimé aujourd\'hui</span></div>' +
+      '</div>' +
+      '<form class="ec-form" id="aiQuotaForm" style="margin-top:18px;">' +
+        '<label>Plafond de requêtes / jour<input type="number" id="aiSetDailyCap" min="1" value="' + settings.daily_request_cap + '"></label>' +
+        '<label>Messages max par conversation<input type="number" id="aiSetMaxMsgs" min="1" value="' + settings.max_messages_per_session + '"></label>' +
+        '<label>Longueur max d\'un message (caractères)<input type="number" id="aiSetMaxLen" min="50" value="' + settings.max_message_length + '"></label>' +
+        '<button type="submit" class="btn-primary ec-form-full" id="aiQuotaSave">Enregistrer les quotas</button>' +
+        '<p class="qc-disclaimer ec-form-full" id="aiQuotaMsg" hidden></p>' +
+      '</form>';
+
+    document.getElementById('aiToggleBtn').addEventListener('click', function(){
+      var btn = document.getElementById('aiToggleBtn');
+      if (settings.enabled && !window.confirm("Désactiver immédiatement l'assistant IA (client et admin) ?")) return;
+      btn.disabled = true;
+      sb.client.from('ai_settings').update({
+        enabled: !settings.enabled, updated_at: new Date().toISOString()
+      }).eq('id', true).then(function(res){
+        btn.disabled = false;
+        if (!res.error) admLoadAiSettings();
+      });
+    });
+
+    document.getElementById('aiQuotaForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var saveBtn = document.getElementById('aiQuotaSave');
+      var msgEl = document.getElementById('aiQuotaMsg');
+      saveBtn.disabled = true;
+      sb.client.from('ai_settings').update({
+        daily_request_cap: parseInt(document.getElementById('aiSetDailyCap').value, 10) || settings.daily_request_cap,
+        max_messages_per_session: parseInt(document.getElementById('aiSetMaxMsgs').value, 10) || settings.max_messages_per_session,
+        max_message_length: parseInt(document.getElementById('aiSetMaxLen').value, 10) || settings.max_message_length,
+        updated_at: new Date().toISOString()
+      }).eq('id', true).then(function(res){
+        saveBtn.disabled = false;
+        msgEl.hidden = false;
+        msgEl.textContent = res.error ? "Échec de l'enregistrement." : 'Quotas enregistrés.';
+      });
+    });
+  }
+
+  function admLoadAiSettings(){
+    var panel = document.getElementById('aiSettingsPanel');
+    if (!panel) return;
+    var today = new Date().toISOString().slice(0, 10);
+    Promise.all([
+      sb.client.from('ai_settings').select('*').eq('id', true).maybeSingle(),
+      sb.client.from('ai_usage_daily').select('*').eq('usage_date', today).maybeSingle(),
+      sb.client.from('ai_conversations').select('id', { count:'exact', head:true }).gte('started_at', today + 'T00:00:00')
+    ]).then(function(results){
+      var settingsRes = results[0], usageRes = results[1], convRes = results[2];
+      if (settingsRes.error || !settingsRes.data){
+        panel.innerHTML = '<div class="ec-empty"><strong>Indisponible</strong>La table ai_settings existe-t-elle ? (migration 0023_ai_assistant.sql)</div>';
+        return;
+      }
+      var usage = usageRes.data || { request_count:0, estimated_input_tokens:0, estimated_output_tokens:0 };
+      admRenderAiSettingsForm(settingsRes.data, {
+        conversationsToday: convRes.count || 0,
+        requestCount: usage.request_count,
+        inputTokens: usage.estimated_input_tokens,
+        outputTokens: usage.estimated_output_tokens
       });
     });
   }
@@ -13044,6 +14629,219 @@ if ('serviceWorker' in navigator){
   }
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape' && lightbox && !lightbox.hidden) closeLightbox();
+  });
+})();
+</script>
+
+<script>
+// ============================================================
+// Assistant Hayeva — widget flottant public (voir 0023_ai_assistant.sql).
+// N'appelle jamais l'API IA directement : uniquement l'Edge Function
+// ai-assistant via sb.client.functions.invoke(). Le prix n'est JAMAIS
+// affiché par le modèle : après chaque réponse, on interroge
+// window.sudBooking.search()/isClimRepairQuery() — la même logique déjà
+// utilisée par la recherche "De quoi avez-vous besoin ?" — pour savoir si
+// une vraie prestation correspond, et c'est cette donnée-là (jamais le
+// texte du modèle) qui détermine le prix affiché et le bouton de
+// réservation.
+// ============================================================
+(function(){
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  var toggleBtn = document.getElementById('aiWidgetToggle');
+  var panel = document.getElementById('aiWidgetPanel');
+  var closeBtn = document.getElementById('aiWidgetClose');
+  var messagesEl = document.getElementById('aiWidgetMessages');
+  var typingEl = document.getElementById('aiWidgetTyping');
+  var form = document.getElementById('aiWidgetForm');
+  var input = document.getElementById('aiWidgetInput');
+  var sendBtn = document.getElementById('aiWidgetSend');
+  if (!toggleBtn || !panel || !form) return;
+
+  // Personnage Hayeva — état visuel uniquement (classes CSS), jamais de
+  // logique métier ici. Les deux exemplaires (bouton flottant fermé +
+  // avatar dans l'en-tête du panneau ouvert) restent toujours synchronisés,
+  // seul celui visible compte. prefers-reduced-motion est géré entièrement
+  // en CSS (@media, voir .hayeva-char) : cette fonction n'a pas besoin de
+  // le vérifier elle-même.
+  var CHAR_STATES = ['is-greeting', 'is-thinking', 'is-talking', 'is-success'];
+  var charEls = Array.prototype.slice.call(document.querySelectorAll('.hayeva-char'));
+  var charStateTimer = null;
+  function setCharacterState(state, revertAfterMs){
+    if (charStateTimer){ clearTimeout(charStateTimer); charStateTimer = null; }
+    charEls.forEach(function(el){
+      CHAR_STATES.forEach(function(c){ el.classList.remove(c); });
+      if (state) el.classList.add(state);
+    });
+    if (state && revertAfterMs){
+      charStateTimer = setTimeout(function(){ setCharacterState(null); }, revertAfterMs);
+    }
+  }
+
+  var conversationId = null;
+  var welcomed = false;
+  var requestInFlight = false;
+
+  function checkEnabled(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    sb.client.from('ai_settings_public').select('enabled').maybeSingle().then(function(res){
+      if (!res.error && res.data && res.data.enabled) toggleBtn.hidden = false;
+    }).catch(function(){});
+  }
+  checkEnabled();
+
+  function scrollToBottom(){ messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+  function addMessage(role, text, opts){
+    opts = opts || {};
+    var div = document.createElement('div');
+    div.className = 'ai-widget-msg ai-widget-msg-' + role + (opts.safety ? ' ai-widget-msg-safety' : '');
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    scrollToBottom();
+    return div;
+  }
+
+  function bookingCtaButton(label, serviceId, extraClass){
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-widget-cta-btn' + (extraClass ? ' ' + extraClass : '');
+    btn.textContent = label;
+    btn.addEventListener('click', function(){
+      if (window.sudBooking) window.sudBooking.selectService(serviceId);
+      var el = document.getElementById('rdv');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+      closePanel();
+    });
+    return btn;
+  }
+
+  // "Prendre rendez-vous" (par prestation trouvée) + "Demander un devis"
+  // toujours proposé à côté, même mécanisme sudBooking.selectService('devis')
+  // déjà utilisé ailleurs sur le site (lien "Demandez un devis personnalisé"
+  // de la recherche "De quoi avez-vous besoin ?") — jamais un second circuit.
+  function addBookingCta(matches){
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-widget-cta';
+    var hasDevis = false;
+    matches.slice(0, 2).forEach(function(s){
+      if (s.id === 'devis') hasDevis = true;
+      wrap.appendChild(bookingCtaButton('📅 ' + s.title + ' — ' + s.price, s.id));
+    });
+    if (!hasDevis){
+      wrap.appendChild(bookingCtaButton('📋 Demander un devis personnalisé', 'devis', 'ai-widget-cta-btn-secondary'));
+    }
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  // Grounding : jamais le texte du modèle, toujours la même recherche
+  // déterministe déjà utilisée ailleurs sur le site (voir topSearch,
+  // sudmaintenance.html ~4895). Une correspondance climatisation/réparation
+  // interdite (fluide, recharge, fuite circuit) n'affiche jamais de bouton
+  // de réservation, exactement comme la recherche existante — pas même le
+  // bouton devis, pour ne jamais laisser entendre que cette prestation
+  // pourrait être réalisée.
+  function tryShowBookingCta(userText){
+    if (!window.sudBooking) return false;
+    if (window.sudBooking.isClimRepairQuery && window.sudBooking.isClimRepairQuery(userText)) return false;
+    var matches = window.sudBooking.search(userText) || [];
+    addBookingCta(matches);
+    return true;
+  }
+
+  function openPanel(){
+    panel.hidden = false;
+    toggleBtn.hidden = true;
+    setCharacterState('is-greeting', 700);
+    if (!welcomed){
+      welcomed = true;
+      addMessage('assistant', "Bonjour 👋\nJe suis l'assistant Hayeva.\nExpliquez-moi votre problème et je vais vous aider à identifier l'intervention adaptée.");
+    }
+    input.focus();
+  }
+  function closePanel(){
+    panel.hidden = true;
+    toggleBtn.hidden = false;
+    setCharacterState(null);
+  }
+  toggleBtn.addEventListener('click', openPanel);
+  closeBtn.addEventListener('click', closePanel);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && !panel.hidden) closePanel();
+  });
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var sb = window.sudSupabase;
+    var text = input.value.trim();
+    if (!text || requestInFlight || !sb || !sb.configured) return;
+    var sessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    if (!sessionId) return;
+
+    addMessage('user', text);
+    input.value = '';
+    requestInFlight = true;
+    sendBtn.disabled = true;
+    typingEl.hidden = false;
+    setCharacterState('is-thinking');
+
+    sb.client.functions.invoke('ai-assistant', {
+      body: { session_id: sessionId, message: text, conversation_id: conversationId, customer_type: 'particulier' }
+    }).then(function(res){
+      typingEl.hidden = true;
+      requestInFlight = false;
+      sendBtn.disabled = false;
+      var data = res.data;
+      if (res.error || !data || data.status === 'unavailable'){
+        setCharacterState(null);
+        addMessage('assistant', "Désolé, l'assistant est momentanément indisponible. N'hésitez pas à nous appeler ou à prendre rendez-vous directement.", { safety:false });
+        return;
+      }
+      if (data.status === 'daily_cap_reached' || data.status === 'session_cap_reached'){
+        setCharacterState(null);
+        addMessage('assistant', "L'assistant a atteint sa limite d'échanges pour le moment. Vous pouvez nous contacter directement ou prendre rendez-vous ci-dessous.", { safety:false });
+        return;
+      }
+      if (data.status === 'rate_limited'){
+        setCharacterState(null);
+        addMessage('assistant', "L'assistant est très sollicité à l'instant — réessayez dans une minute, ou contactez-nous directement.", { safety:false });
+        return;
+      }
+      if (data.status === 'message_too_long'){
+        setCharacterState(null);
+        addMessage('assistant', 'Votre message est un peu long — pourriez-vous le reformuler plus brièvement ?', { safety:false });
+        return;
+      }
+      if (data.status === 'ok' && data.reply){
+        conversationId = data.conversation_id || conversationId;
+        addMessage('assistant', data.reply, { safety: !!data.is_safety_reply });
+        var ctaShown = !data.is_safety_reply && tryShowBookingCta(text);
+        // "Parole" pendant l'apparition de la réponse, puis "succès" bref si
+        // une prestation/un devis a pu être proposé, sinon retour direct au
+        // repos — jamais de glow permanent. Un seul minuteur explicite,
+        // plutôt que deux minuteurs à échéance identique, pour ne jamais
+        // dépendre de leur ordre d'exécution.
+        setCharacterState('is-talking');
+        setTimeout(function(){
+          if (ctaShown) setCharacterState('is-success', 700);
+          else setCharacterState(null);
+        }, 1400);
+      } else {
+        setCharacterState(null);
+      }
+    }).catch(function(){
+      typingEl.hidden = true;
+      requestInFlight = false;
+      sendBtn.disabled = false;
+      setCharacterState(null);
+      addMessage('assistant', "Désolé, une erreur est survenue. Réessayez dans un instant.", { safety:false });
+    });
   });
 })();
 </script>
