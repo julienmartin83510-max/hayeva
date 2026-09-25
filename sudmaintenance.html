@@ -7262,6 +7262,42 @@ if ('serviceWorker' in navigator){
       .catch(function(){ onResolved({ status:'unavailable', distanceKm:null, quote:null }); });
   }
 
+  // ---------- Calcul de frais de déplacement pour l'Assistant Hayeva ----------
+  // Complètement indépendant de travelState/buildSummary (n'affecte jamais
+  // le formulaire de réservation) : géocode un nom de lieu mentionné en
+  // conversation (Mapbox, niveau "ville"), puis appelle exactement le même
+  // calcul réel que la réservation (calculate-travel-distance +
+  // travel_settings_public via FREE_TRAVEL_KM/EXTRA_KM_PRICE déjà chargés
+  // ci-dessus) — jamais un montant inventé ni recalculé séparément. Voir
+  // widget Assistant Hayeva plus bas, "Calculer mes frais de déplacement".
+  function geocodePlaceText(text){
+    if (!mapboxPublicToken || !text) return Promise.resolve(null);
+    var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(text) + '.json' +
+      '?access_token=' + encodeURIComponent(mapboxPublicToken) + '&country=fr&language=fr&types=place&limit=1';
+    return fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      var feat = data && data.features && data.features[0];
+      if (!feat || !feat.center) return null;
+      return { lat: feat.center[1], lng: feat.center[0], label: feat.text || feat.place_name || text };
+    }).catch(function(){ return null; });
+  }
+  function calculateTravelFeeForPlace(text){
+    return geocodePlaceText(text).then(function(place){
+      if (!place) return { status:'no_place' };
+      var sb = window.sudSupabase;
+      if (!sb || !sb.configured) return { status:'unavailable', place:place };
+      return sb.client.functions.invoke('calculate-travel-distance', { body:{ lat:place.lat, lng:place.lng } })
+        .then(function(res){
+          var data = res && res.data;
+          if (res.error || !data || data.status !== 'ok') return { status:'unavailable', place:place };
+          var travel = computeTravelFee(data.distanceKm);
+          return {
+            status:'ok', place:place, distanceKm:data.distanceKm,
+            extraKm:travel.extraKm, fee:travel.fee, includedKm:FREE_TRAVEL_KM, originLabel:TRAVEL_ORIGIN.label
+          };
+        }).catch(function(){ return { status:'unavailable', place:place }; });
+    });
+  }
+
   // Extrait adresse/code postal/ville/coordonnées d'un résultat Mapbox
   // Geocoding (context[] contient les niveaux administratifs : postcode,
   // place = ville, etc.).
@@ -8384,6 +8420,13 @@ if ('serviceWorker' in navigator){
       return SERVICES.map(function(s){ return { service:s, score:scoreService(s, q) }; })
         .filter(function(x){ return x.score > 0; })
         .sort(function(a, b){ return b.score - a.score; });
+    },
+    // Ajout pour l'Assistant Hayeva (widget IA) : calcul RÉEL des frais de
+    // déplacement pour un lieu mentionné en conversation — jamais un
+    // montant deviné par le modèle. Retourne une Promise, voir
+    // calculateTravelFeeForPlace() ci-dessus pour le détail des statuts.
+    calculateTravelFeeForPlace: function(text){
+      return calculateTravelFeeForPlace(text);
     },
     categoryMeta: function(id){
       return categoryMeta(id);
@@ -14784,6 +14827,59 @@ if ('serviceWorker' in navigator){
     return true;
   }
 
+  // "Calculer mes frais de déplacement" : n'apparaît QUE lorsque la réponse
+  // du modèle mentionne elle-même la zone de déplacement gratuit (voir la
+  // consigne système d'ai-assistant/index.ts) — jamais une détection de
+  // ville dans le message de l'utilisateur, trop peu fiable pour décider
+  // d'afficher ou non le bouton. Le calcul réel, lui, se fait au clic, sur
+  // le texte réellement tapé par le client (window.sudBooking.
+  // calculateTravelFeeForPlace) — jamais un montant deviné par le modèle,
+  // qui l'annonce dans sa réponse mais ne le connaît jamais lui-même
+  // (voir RÈGLE ABSOLUE du prompt système).
+  var TRAVEL_ZONE_HINT_RE = /zone de d[ée]placement gratuit|frais de d[ée]placement/i;
+  function addTravelFeeCta(placeGuessText){
+    if (!window.sudBooking || !window.sudBooking.calculateTravelFeeForPlace) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-widget-cta';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-widget-cta-btn ai-widget-cta-btn-secondary';
+    btn.textContent = '📍 Calculer mes frais de déplacement';
+    btn.addEventListener('click', function(){
+      btn.disabled = true;
+      btn.textContent = 'Calcul en cours…';
+      window.sudBooking.calculateTravelFeeForPlace(placeGuessText).then(function(res){
+        wrap.remove();
+        var fmt = window.sudBooking.fmtEuros;
+        if (res.status === 'ok'){
+          var msg;
+          if (res.fee > 0){
+            msg = '🚐 Depuis ' + res.originLabel + ' jusqu\'à ' + res.place.label + ' : ' + res.distanceKm + ' km au total. ' +
+              'Les ' + res.includedKm + ' premiers km sont inclus ; au-delà, les frais de déplacement s\'élèvent à ' + fmt(res.fee) + '. ' +
+              'Ce montant vous sera confirmé avant la validation de votre rendez-vous.';
+          } else {
+            msg = '🚐 Bonne nouvelle : ' + res.place.label + ' se situe dans notre zone de déplacement gratuit (' + res.includedKm + ' km inclus depuis ' + res.originLabel + '). Le déplacement est donc offert.';
+          }
+          addMessage('assistant', msg);
+        } else {
+          addMessage('assistant', "Le calcul automatique n'est pas disponible pour le moment. Indiquez votre adresse lors de la réservation : nous vous confirmerons le tarif du déplacement avant de valider votre rendez-vous.");
+          var askWrap = document.createElement('div');
+          askWrap.className = 'ai-widget-cta';
+          askWrap.appendChild(bookingCtaButton('📋 Demander le tarif du déplacement', 'devis', 'ai-widget-cta-btn-secondary'));
+          messagesEl.appendChild(askWrap);
+          scrollToBottom();
+        }
+      });
+    });
+    wrap.appendChild(btn);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+  }
+  function tryShowTravelFeeCta(assistantReply, userText){
+    if (!TRAVEL_ZONE_HINT_RE.test(assistantReply || '')) return;
+    addTravelFeeCta(userText);
+  }
+
   function openPanel(){
     panel.hidden = false;
     toggleBtn.hidden = true;
@@ -14851,6 +14947,7 @@ if ('serviceWorker' in navigator){
         conversationId = data.conversation_id || conversationId;
         addMessage('assistant', data.reply, { safety: !!data.is_safety_reply });
         var ctaShown = !data.is_safety_reply && tryShowBookingCta(text);
+        if (!data.is_safety_reply) tryShowTravelFeeCta(data.reply, text);
         // "Parole" pendant l'apparition de la réponse, puis "succès" bref si
         // une prestation/un devis a pu être proposé, sinon retour direct au
         // repos — jamais de glow permanent. Un seul minuteur explicite,
