@@ -3871,8 +3871,14 @@ if ('serviceWorker' in navigator){
   /* ---------- Portail d'entrée ---------- */
   #sitePortal{
     position:fixed; inset:0; z-index:9999;
+    /* height explicite en plus de inset:0 : 100dvh (hauteur RÉELLEMENT
+       visible, barre(s) Safari iPhone déduites) avec repli 100vh pour les
+       navigateurs sans support de dvh — évite le débordement qui forçait un
+       défilement vertical sur mobile (voir aussi .portal-scroll ci-dessous,
+       conservé comme filet de sécurité, jamais comme comportement attendu). */
+    height:100vh; height:100dvh;
     display:flex; align-items:center; justify-content:center;
-    padding:48px 20px; overflow:hidden;
+    padding:40px 20px; overflow:hidden;
     background:var(--terracotta-deep);
     opacity:1; transition:opacity .35s ease, transform .4s ease;
     /* Le portail est un écran immersif toujours sombre (photo + overlay
@@ -3998,7 +4004,7 @@ if ('serviceWorker' in navigator){
        home indicator) pour que "Continuer sans se connecter" ne soit jamais
        caché derrière. */
     margin-block:auto;
-    padding-block:12px calc(28px + env(safe-area-inset-bottom, 0px));
+    padding-block:8px calc(20px + env(safe-area-inset-bottom, 0px));
   }
   .portal-eyebrow{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase;
@@ -4011,7 +4017,7 @@ if ('serviceWorker' in navigator){
     display:block; width:clamp(200px, 24vw, 300px); height:auto;
     filter:drop-shadow(0 6px 22px rgba(0,0,0,0.4));
   }
-  .portal-subtitle{ font-size:1rem; color:var(--portal-fg-soft); margin-bottom:44px; }
+  .portal-subtitle{ font-size:1rem; color:var(--portal-fg-soft); margin-bottom:32px; }
   /* Entrée en scène au premier affichage : le fond (photo) démarre en
      premier (voir portalBgFade ci-dessus, sans délai), puis logo/titre,
      puis les cartes, avec un décalage croissant pour un vrai effet
@@ -4029,33 +4035,63 @@ if ('serviceWorker' in navigator){
   }
   @keyframes portalRise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
   .portal-cards{
-    display:grid; grid-template-columns:1fr; gap:20px; margin-bottom:28px; text-align:left;
+    display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:18px; text-align:left;
   }
-  @media (min-width:860px){ .portal-cards{ grid-template-columns:1fr 1fr; } }
+  /* Tablette portrait et plus : grille 2 colonnes (voir aussi le mode
+     compact ci-dessous, qui repasse à 1 colonne uniquement quand la hauteur
+     manque, ex. téléphone en portrait). */
+  @media (min-width:640px){ .portal-cards{ grid-template-columns:1fr 1fr; } }
+  /* ---------- Carte d'espace = bouton entier cliquable ----------
+     Remplace les anciennes grandes cartes (icône + titre + description +
+     gros bouton "Espace X" séparé) par une seule ligne compacte, ENTIÈREMENT
+     cliquable (l'élément est directement un <button>, id inchangé — voir le
+     commentaire HTML plus haut) : icône, titre + description, chevron. Le
+     style premium (glassmorphism, halo de couleur au survol, transition) est
+     conservé à l'identique, seule la mise en page devient compacte pour
+     tenir sans scroll sur toutes les tailles d'écran (voir le mode compact
+     plus bas pour les ajustements mobile/petite hauteur). */
   .portal-card{
-    position:relative; overflow:hidden;
-    background:var(--portal-card-bg); border:1px solid var(--portal-line); border-radius:18px;
+    position:relative; overflow:hidden; cursor:pointer;
+    display:flex; flex-direction:row; align-items:center; gap:14px;
+    width:100%; text-align:left; font:inherit; -webkit-appearance:none; appearance:none;
+    background:var(--portal-card-bg); border:1px solid var(--portal-line); border-radius:16px;
     backdrop-filter:blur(18px) saturate(1.15); -webkit-backdrop-filter:blur(18px) saturate(1.15);
-    padding:34px 30px; display:flex; flex-direction:column; align-items:flex-start; gap:14px;
-    box-shadow:0 22px 48px -24px rgba(4,8,12,0.6);
+    padding:16px 18px;
+    box-shadow:0 18px 40px -22px rgba(4,8,12,0.6);
     transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease, background .25s ease;
   }
-  .portal-card:hover{
-    transform:translateY(-5px);
+  .portal-card:hover, .portal-card:focus-visible{
+    transform:translateY(-3px) scale(1.01);
     background:color-mix(in srgb, var(--portal-card-bg) 82%, rgba(255,255,255,0.06));
-    box-shadow:0 26px 54px -22px var(--portal-card-accent, rgba(0,0,0,0.5));
+    box-shadow:0 24px 50px -20px var(--portal-card-accent, rgba(0,0,0,0.5));
     border-color:color-mix(in srgb, var(--portal-card-accent, var(--portal-fg)) 55%, var(--portal-line));
   }
+  /* Léger effet de "profondeur" au clic (relâché avant que la transition
+     d'écran ne prenne le relais dans le script du portail) — la demande
+     explicite d'un "effet de scale" au clic, en plus du survol desktop. */
+  .portal-card:active{ transform:scale(0.98); }
+  @media (prefers-reduced-motion: reduce){
+    .portal-card, .portal-card-icon, .portal-card-arrow{ transition:none; }
+  }
   .portal-card-icon{
-    width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    width:46px; height:46px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
     background:var(--portal-card-accent-soft, rgba(255,255,255,0.12)); color:var(--portal-card-accent, var(--portal-fg));
     border:1px solid var(--portal-line); transition:transform .3s ease;
   }
-  .portal-card-icon svg{ width:24px; height:24px; }
+  .portal-card-icon svg{ width:22px; height:22px; }
   .portal-card:hover .portal-card-icon{ transform:scale(1.1) rotate(-4deg); }
-  .portal-card h2{ font-family:"Poppins",sans-serif; font-weight:700; font-size:1.15rem; color:var(--portal-fg); }
-  .portal-card p{ font-size:0.9rem; color:var(--portal-fg-soft); line-height:1.5; margin-top:-6px; }
-  .portal-card .btn-primary{ margin-top:6px; align-self:stretch; text-align:center; }
+  .portal-card-text{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .portal-card-title{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1rem; letter-spacing:0.01em;
+    text-transform:uppercase; color:var(--portal-fg);
+  }
+  .portal-card-desc{ font-size:0.83rem; color:var(--portal-fg-soft); line-height:1.3; }
+  .portal-card-arrow{
+    flex:none; font-size:1.15rem; line-height:1; color:var(--portal-card-accent, var(--portal-fg));
+    transition:transform .25s ease;
+  }
+  .portal-card:hover .portal-card-arrow{ transform:translateX(4px); }
   .portal-guest{ margin-top:4px; }
   .portal-guest-question{
     font-size:0.86rem; color:var(--portal-fg-soft); margin-bottom:4px;
@@ -4072,9 +4108,35 @@ if ('serviceWorker' in navigator){
     transition:color .2s ease;
   }
   .portal-back-link:hover{ color:var(--terracotta); }
-  @media (max-width:480px){
-    #sitePortal{ padding:32px 16px; }
-    .portal-card{ padding:26px 22px; }
+
+  /* ---------- Portail compact : mobile/tablette portrait ET tout écran
+     "court" (petite fenêtre desktop), pour tenir sur UNE SEULE page sans
+     scroll vertical (iPhone Safari inclus, barre du bas prise en compte via
+     100dvh ci-dessus + env(safe-area-inset-bottom)). Déclenché par largeur
+     OU hauteur réduite : une fenêtre desktop peu haute doit tenir aussi bien
+     qu'un téléphone large. Repasse la grille à 1 colonne (plus lisible en
+     ligne compacte qu'en 2 colonnes trop étroites) et resserre encore un peu
+     icône/police/paddings — la structure (icône + titre + description +
+     chevron, carte entièrement cliquable) reste la même qu'en grille large,
+     rien n'est masqué ici. .portal-scroll garde overflow-y:auto comme filet
+     de sécurité uniquement (un très petit écran resterait défilable plutôt
+     que coupé), jamais comme comportement attendu ici. */
+  @media (max-width:639px), (max-height:760px){
+    #sitePortal{ padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+    .portal-inner{ padding-block:0; max-width:420px; }
+    .portal-eyebrow{ margin-bottom:6px; font-size:0.7rem; }
+    .portal-title{ margin-bottom:6px; }
+    .portal-logo-img{ width:clamp(120px, 34vw, 170px); }
+    .portal-subtitle{ margin-bottom:16px; font-size:0.85rem; }
+    .portal-cards{ grid-template-columns:1fr; gap:10px; margin-bottom:14px; }
+    .portal-card{ gap:12px; padding:12px 14px; border-radius:14px; }
+    .portal-card-icon{ width:38px; height:38px; }
+    .portal-card-icon svg{ width:18px; height:18px; }
+    .portal-card-title{ font-size:0.92rem; }
+    .portal-card-desc{ font-size:0.78rem; }
+    .portal-guest{ margin-top:0; }
+    .portal-guest-question{ display:none; }
+    .portal-guest-link{ padding:4px; font-size:0.8rem; }
   }
 
   /* ---------- Espace Client / Pro : plein écran superposé ----------
@@ -4492,22 +4554,35 @@ if ('serviceWorker' in navigator){
     <p class="portal-subtitle" id="portalSubtitle"></p>
 
     <div class="portal-cards">
-      <div class="portal-card" style="--portal-card-accent:var(--sky-accent); --portal-card-accent-soft:var(--sky-accent-soft);">
+      <!-- Carte ENTIÈREMENT cliquable (élément <button>, pas juste un bouton à
+           l'intérieur) : même id (portalCustomerBtn) qu'avant, donc le
+           gestionnaire de clic existant (window.sudSetMode + openEspace +
+           transition sudFlashVeil/sudFadeInEl) s'applique automatiquement,
+           sans aucun changement JS. #portalCustomerBtnLabel vit maintenant sur
+           la ligne de description : c'est elle qui passe à "Accéder à mon
+           Espace Client" une fois connecté (voir plus bas dans le script),
+           exactement la même logique qu'avant, juste un autre emplacement
+           visuel. -->
+      <button type="button" class="portal-card" id="portalCustomerBtn" style="--portal-card-accent:var(--sky-accent); --portal-card-accent-soft:var(--sky-accent-soft);">
         <span class="portal-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9.5a1 1 0 0 0 1 1h3.5v-5.5h3v5.5H17a1 1 0 0 0 1-1V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
-        <h2>Particulier</h2>
-        <p>Gérez vos rendez-vous et vos interventions</p>
-        <button type="button" class="btn-primary" id="portalCustomerBtn"><span id="portalCustomerBtnLabel">Espace Particulier</span></button>
-      </div>
-      <div class="portal-card" style="--portal-card-accent:var(--amber); --portal-card-accent-soft:var(--amber-soft);">
+        <span class="portal-card-text">
+          <span class="portal-card-title">Particulier</span>
+          <span class="portal-card-desc" id="portalCustomerBtnLabel">Rendez-vous &amp; interventions</span>
+        </span>
+        <span class="portal-card-arrow" aria-hidden="true">→</span>
+      </button>
+      <button type="button" class="portal-card" id="portalProBtn" style="--portal-card-accent:var(--amber); --portal-card-accent-soft:var(--amber-soft);">
         <span class="portal-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3.5" width="10" height="17" rx="1" stroke="currentColor" stroke-width="1.8"/><path d="M15 9.5h4.2a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1H15" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="8" y1="7.5" x2="8" y2="7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="12" y1="7.5" x2="12" y2="7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="8" y1="11" x2="8" y2="11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="12" y1="11" x2="12" y2="11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="8" y1="14.5" x2="8" y2="14.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="12" y1="14.5" x2="12" y2="14.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </span>
-        <h2>Professionnel</h2>
-        <p>Gérez vos logements et vos interventions professionnelles</p>
-        <button type="button" class="btn-primary" id="portalProBtn"><span id="portalProBtnLabel">Espace Professionnel</span></button>
-      </div>
+        <span class="portal-card-text">
+          <span class="portal-card-title">Professionnel</span>
+          <span class="portal-card-desc" id="portalProBtnLabel">Gestion de vos logements</span>
+        </span>
+        <span class="portal-card-arrow" aria-hidden="true">→</span>
+      </button>
     </div>
 
     <div class="portal-guest">
@@ -7666,6 +7741,42 @@ if ('serviceWorker' in navigator){
       .catch(function(){ onResolved({ status:'unavailable', distanceKm:null, quote:null }); });
   }
 
+  // ---------- Calcul de frais de déplacement pour l'Assistant Hayeva ----------
+  // Complètement indépendant de travelState/buildSummary (n'affecte jamais
+  // le formulaire de réservation) : géocode un nom de lieu mentionné en
+  // conversation (Mapbox, niveau "ville"), puis appelle exactement le même
+  // calcul réel que la réservation (calculate-travel-distance +
+  // travel_settings_public via FREE_TRAVEL_KM/EXTRA_KM_PRICE déjà chargés
+  // ci-dessus) — jamais un montant inventé ni recalculé séparément. Voir
+  // widget Assistant Hayeva plus bas, "Calculer mes frais de déplacement".
+  function geocodePlaceText(text){
+    if (!mapboxPublicToken || !text) return Promise.resolve(null);
+    var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(text) + '.json' +
+      '?access_token=' + encodeURIComponent(mapboxPublicToken) + '&country=fr&language=fr&types=place&limit=1';
+    return fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      var feat = data && data.features && data.features[0];
+      if (!feat || !feat.center) return null;
+      return { lat: feat.center[1], lng: feat.center[0], label: feat.text || feat.place_name || text };
+    }).catch(function(){ return null; });
+  }
+  function calculateTravelFeeForPlace(text){
+    return geocodePlaceText(text).then(function(place){
+      if (!place) return { status:'no_place' };
+      var sb = window.sudSupabase;
+      if (!sb || !sb.configured) return { status:'unavailable', place:place };
+      return sb.client.functions.invoke('calculate-travel-distance', { body:{ lat:place.lat, lng:place.lng } })
+        .then(function(res){
+          var data = res && res.data;
+          if (res.error || !data || data.status !== 'ok') return { status:'unavailable', place:place };
+          var travel = computeTravelFee(data.distanceKm);
+          return {
+            status:'ok', place:place, distanceKm:data.distanceKm,
+            extraKm:travel.extraKm, fee:travel.fee, includedKm:FREE_TRAVEL_KM, originLabel:TRAVEL_ORIGIN.label
+          };
+        }).catch(function(){ return { status:'unavailable', place:place }; });
+    });
+  }
+
   // Extrait adresse/code postal/ville/coordonnées d'un résultat Mapbox
   // Geocoding (context[] contient les niveaux administratifs : postcode,
   // place = ville, etc.).
@@ -8873,6 +8984,13 @@ if ('serviceWorker' in navigator){
       return SERVICES.map(function(s){ return { service:s, score:scoreService(s, q) }; })
         .filter(function(x){ return x.score > 0; })
         .sort(function(a, b){ return b.score - a.score; });
+    },
+    // Ajout pour l'Assistant Hayeva (widget IA) : calcul RÉEL des frais de
+    // déplacement pour un lieu mentionné en conversation — jamais un
+    // montant deviné par le modèle. Retourne une Promise, voir
+    // calculateTravelFeeForPlace() ci-dessus pour le détail des statuts.
+    calculateTravelFeeForPlace: function(text){
+      return calculateTravelFeeForPlace(text);
     },
     categoryMeta: function(id){
       return categoryMeta(id);
@@ -16424,6 +16542,59 @@ if ('serviceWorker' in navigator){
     return top ? top.service.id : null;
   }
 
+  // "Calculer mes frais de déplacement" : n'apparaît QUE lorsque la réponse
+  // du modèle mentionne elle-même la zone de déplacement gratuit (voir la
+  // consigne système d'ai-assistant/index.ts) — jamais une détection de
+  // ville dans le message de l'utilisateur, trop peu fiable pour décider
+  // d'afficher ou non le bouton. Le calcul réel, lui, se fait au clic, sur
+  // le texte réellement tapé par le client (window.sudBooking.
+  // calculateTravelFeeForPlace) — jamais un montant deviné par le modèle,
+  // qui l'annonce dans sa réponse mais ne le connaît jamais lui-même
+  // (voir RÈGLE ABSOLUE du prompt système).
+  var TRAVEL_ZONE_HINT_RE = /zone de d[ée]placement gratuit|frais de d[ée]placement/i;
+  function addTravelFeeCta(placeGuessText){
+    if (!window.sudBooking || !window.sudBooking.calculateTravelFeeForPlace) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-widget-cta';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-widget-cta-btn ai-widget-cta-btn-secondary';
+    btn.textContent = '📍 Calculer mes frais de déplacement';
+    btn.addEventListener('click', function(){
+      btn.disabled = true;
+      btn.textContent = 'Calcul en cours…';
+      window.sudBooking.calculateTravelFeeForPlace(placeGuessText).then(function(res){
+        wrap.remove();
+        var fmt = window.sudBooking.fmtEuros;
+        if (res.status === 'ok'){
+          var msg;
+          if (res.fee > 0){
+            msg = '🚐 Depuis ' + res.originLabel + ' jusqu\'à ' + res.place.label + ' : ' + res.distanceKm + ' km au total. ' +
+              'Les ' + res.includedKm + ' premiers km sont inclus ; au-delà, les frais de déplacement s\'élèvent à ' + fmt(res.fee) + '. ' +
+              'Ce montant vous sera confirmé avant la validation de votre rendez-vous.';
+          } else {
+            msg = '🚐 Bonne nouvelle : ' + res.place.label + ' se situe dans notre zone de déplacement gratuit (' + res.includedKm + ' km inclus depuis ' + res.originLabel + '). Le déplacement est donc offert.';
+          }
+          addMessage('assistant', msg);
+        } else {
+          addMessage('assistant', "Le calcul automatique n'est pas disponible pour le moment. Indiquez votre adresse lors de la réservation : nous vous confirmerons le tarif du déplacement avant de valider votre rendez-vous.");
+          var askWrap = document.createElement('div');
+          askWrap.className = 'ai-widget-cta';
+          askWrap.appendChild(bookingCtaButton('📋 Demander le tarif du déplacement', 'devis', 'ai-widget-cta-btn-secondary'));
+          messagesEl.appendChild(askWrap);
+          scrollToBottom();
+        }
+      });
+    });
+    wrap.appendChild(btn);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+  }
+  function tryShowTravelFeeCta(assistantReply, userText){
+    if (!TRAVEL_ZONE_HINT_RE.test(assistantReply || '')) return;
+    addTravelFeeCta(userText);
+  }
+
   function openPanel(){
     panel.hidden = false;
     toggleBtn.hidden = true;
@@ -16500,6 +16671,7 @@ if ('serviceWorker' in navigator){
         conversationId = data.conversation_id || conversationId;
         addMessage('assistant', data.reply, { safety: !!data.is_safety_reply });
         var ctaShown = !data.is_safety_reply && tryShowBookingCta(text);
+        if (!data.is_safety_reply) tryShowTravelFeeCta(data.reply, text);
         // "Parole" pendant l'apparition de la réponse, puis "succès" bref si
         // une prestation/un devis a pu être proposé, sinon retour direct au
         // repos — jamais de glow permanent. Un seul minuteur explicite,
