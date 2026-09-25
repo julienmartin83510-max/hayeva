@@ -1366,6 +1366,18 @@ if ('serviceWorker' in navigator){
     min-height:1.2em;
   }
   .travel-note.is-muted{ font-weight:500; color:var(--ink-soft); }
+  /* Message + action quand l'adresse est hors de la zone de déplacement
+     gratuit (ou pas encore calculable) : jamais présenté comme un refus
+     d'intervention, voir updateTravelEstimateNote(). */
+  .travel-note-msg{ display:block; font-weight:500; color:var(--ink); margin-bottom:8px; }
+  .travel-note-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem;
+    color:#fff; background:var(--sky-deep); border:none; border-radius:999px;
+    padding:8px 16px; cursor:pointer; transition:background .15s ease, transform .15s ease;
+  }
+  .travel-note-btn:hover{ background:var(--terracotta-deep); transform:translateY(-1px); }
+  .travel-note-btn:disabled{ opacity:0.65; cursor:default; transform:none; }
   .address-suggestions{
     position:absolute; top:100%; left:0; right:0; z-index:40;
     background:var(--cream); border:1px solid var(--line); border-radius:10px;
@@ -7219,27 +7231,109 @@ if ('serviceWorker' in navigator){
     showStep(1);
   });
   var travelEstimateNote = document.getElementById('travelEstimateNote');
+  // Être hors du rayon de déplacement gratuit ne veut JAMAIS dire que
+  // HAYEVA refuse l'intervention — uniquement que des frais de déplacement
+  // peuvent s'ajouter, calculés avant confirmation. Deux cas bien
+  // distincts sous "hors zone gratuite" (voir travelState.status, plus
+  // précis que le travel.status déjà agrégé de travelSummaryLines) :
+  //   - 'empty'       : jamais tenté (adresse tapée sans être sélectionnée
+  //                     dans les suggestions, donc sans coordonnées) ->
+  //                     propose de calculer maintenant.
+  //   - 'unavailable' : une tentative réelle a déjà échoué (Mapbox
+  //                     indisponible, adresse non géocodable...) -> jamais
+  //                     de prix inventé, la demande est transmise telle
+  //                     quelle à HAYEVA qui confirmera le tarif avant la
+  //                     validation du rendez-vous (voir requestManualTravelNote
+  //                     ci-dessous : ajoute une mention explicite aux notes,
+  //                     déjà lues par l'admin et incluses dans l'e-mail
+  //                     admin — aucun nouveau canal nécessaire).
   function updateTravelEstimateNote(){
     if (!travelEstimateNote) return;
     var svc = currentService();
     var travel = svc ? travelSummaryLines(svc, bkAddress.value) : { status:'empty' };
+    travelEstimateNote.classList.remove('is-muted');
     if (travel.status === 'empty'){
-      travelEstimateNote.textContent = '';
-      travelEstimateNote.classList.remove('is-muted');
+      travelEstimateNote.innerHTML = '';
       return;
     }
     if (travel.status === 'computing'){
-      travelEstimateNote.textContent = '🚐 Calcul de la distance routière en cours…';
       travelEstimateNote.classList.add('is-muted');
+      travelEstimateNote.innerHTML = '🚐 Calcul de la distance routière en cours…';
       return;
     }
     if (travel.status === 'unavailable'){
-      travelEstimateNote.textContent = '⚠️ Frais de déplacement à vérifier — nous confirmerons le montant avant votre rendez-vous.';
       travelEstimateNote.classList.add('is-muted');
+      if (travelState.status === 'empty'){
+        travelEstimateNote.innerHTML =
+          '<span class="travel-note-msg">Une intervention reste possible même hors de notre zone de déplacement gratuit. Des frais de déplacement supplémentaires peuvent s\'appliquer selon la distance — ils seront calculés et indiqués avant la validation de votre rendez-vous.</span>' +
+          '<button type="button" class="travel-note-btn" id="travelCalcBtn">Calculer mes frais de déplacement</button>';
+      } else {
+        travelEstimateNote.innerHTML =
+          '<span class="travel-note-msg">Votre adresse se situe en dehors de notre zone de déplacement gratuit. Le montant du déplacement sera calculé en fonction de la distance et vous sera indiqué avant confirmation de l\'intervention.</span>' +
+          '<button type="button" class="travel-note-btn" id="travelAskBtn">Demander le tarif du déplacement</button>';
+      }
       return;
     }
-    travelEstimateNote.classList.remove('is-muted');
-    travelEstimateNote.textContent = '🚐 ' + travel.distanceLabel + ' · ' + travel.travelLabel;
+    // travel.status === 'ok' : hors zone gratuite mais distance déjà connue
+    // (calcul routier réel) -> jamais présenté comme un problème, juste le
+    // montant réel, déjà transparent (voir travel.travelLabel).
+    if (travel.extraKm > 0){
+      travelEstimateNote.innerHTML =
+        '<span class="travel-note-msg">Oui, une intervention peut être envisagée. Votre adresse se situe simplement en dehors de notre zone de déplacement gratuit.</span>' +
+        '🚐 ' + travel.distanceLabel + ' · ' + travel.travelLabel;
+    } else {
+      travelEstimateNote.innerHTML = '🚐 ' + travel.distanceLabel + ' · ' + travel.travelLabel;
+    }
+  }
+
+  // "Calculer mes frais de déplacement" : tente un géocodage de l'adresse
+  // telle que tapée (le client n'a pas sélectionné de suggestion, donc
+  // aucune coordonnée n'a encore été capturée), puis le calcul de distance
+  // réel habituel (requestTravelQuote). Échec de géocodage -> mêmes
+  // coordonnées invalides que si aucune suggestion n'existait : bascule
+  // proprement vers l'état "tentative réelle échouée" (voir ci-dessus),
+  // jamais un prix inventé.
+  function requestManualTravelCalc(){
+    var q = (bkAddress.value || '').trim();
+    if (!q) return;
+    if (!mapboxPublicToken){
+      travelState = { status:'unavailable', distanceKm:null, quote:null };
+      updateTravelEstimateNote();
+      if (step === 3) buildSummary();
+      return;
+    }
+    travelState = { status:'computing', distanceKm:null, quote:null };
+    updateTravelEstimateNote();
+    if (step === 3) buildSummary();
+    var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(q) + '.json' +
+      '?access_token=' + encodeURIComponent(mapboxPublicToken) + '&country=fr&language=fr&types=address&limit=1';
+    fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      var feat = data && data.features && data.features[0];
+      requestTravelQuote(feat && feat.center ? feat.center[1] : NaN, feat && feat.center ? feat.center[0] : NaN);
+    }).catch(function(){ requestTravelQuote(NaN, NaN); });
+  }
+
+  // "Demander le tarif du déplacement" : n'invente jamais de montant — se
+  // contente de rendre la demande du client explicite dans les notes de sa
+  // réservation, déjà lues par l'admin (panneau Administration) et déjà
+  // incluses dans l'e-mail de notification admin (voir booking.notes dans
+  // notify-admin-booking). La demande est donc bien transmise à HAYEVA,
+  // jamais refusée automatiquement — HAYEVA confirmera le tarif avant de
+  // valider le rendez-vous, exactement comme pour toute réservation dont le
+  // statut de calcul reste "à vérifier" (voir 0007_travel_and_emails.sql).
+  function requestManualTravelNote(btn){
+    var note = 'Merci de me confirmer le tarif du déplacement avant validation du rendez-vous.';
+    if (bkComment && bkComment.value.indexOf(note) === -1){
+      bkComment.value = (bkComment.value.trim() ? bkComment.value.trim() + ' ' : '') + note;
+      if (step === 3) buildSummary();
+    }
+    if (btn){ btn.disabled = true; btn.textContent = '✓ Demande notée'; }
+  }
+  if (travelEstimateNote){
+    travelEstimateNote.addEventListener('click', function(e){
+      if (e.target.closest('#travelCalcBtn')) requestManualTravelCalc();
+      else if (e.target.closest('#travelAskBtn')) requestManualTravelNote(e.target.closest('#travelAskBtn'));
+    });
   }
 
   [bkName, bkPhone, bkEmail, bkAddress].forEach(function(input){
