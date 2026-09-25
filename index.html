@@ -564,6 +564,11 @@ if ('serviceWorker' in navigator){
     overflow-y:hidden;
     scrollbar-width:none;
     -ms-overflow-style:none;
+    /* Centré dans l'espace disponible plutôt que collé à gauche — "safe"
+       retombe automatiquement sur un alignement au début (logo visible en
+       premier) si le contenu déborde et doit défiler, au lieu de couper le
+       logo hors champ des deux côtés comme le ferait un center non-safe. */
+    justify-content:safe center;
   }
   .headerbar-scroll::-webkit-scrollbar{ display:none; }
   .brand{
@@ -2237,13 +2242,29 @@ if ('serviceWorker' in navigator){
   @media (max-width:480px){ .espace-pro-grid{grid-template-columns:1fr;} }
   .espace-pro-card{
     background:var(--cream);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:20px;
+    border:1.5px solid var(--line);
+    border-radius:18px;
+    padding:22px 20px;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
   }
-  .espace-pro-card h3{ font-size:0.98rem; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
-  .espace-pro-card p{ font-size:0.85rem; }
+  .espace-pro-card h3{ font-size:1.02rem; margin-bottom:8px; display:flex; align-items:center; gap:10px; }
+  .espace-pro-card p{ font-size:0.9rem; color:var(--ink-soft); }
   .espace-pro-card.is-soon{ opacity:0.72; }
+  /* Cartes cliquables (accueil Espace Client) uniquement — data-ec-goto pose
+     la couleur d'accent ET rend la carte interactive ; les autres usages
+     éventuels de .espace-pro-card (statiques) ne reçoivent ni couleur ni
+     curseur pointeur, donc rien ne change pour eux. */
+  .espace-pro-card:nth-of-type(1){ --ec-card-c:var(--sky-accent); --ec-card-c-soft:var(--sky-accent-soft); }
+  .espace-pro-card:nth-of-type(2){ --ec-card-c:var(--turquoise); --ec-card-c-soft:var(--turquoise-soft); }
+  .espace-pro-card:nth-of-type(3){ --ec-card-c:var(--amber); --ec-card-c-soft:var(--amber-soft); }
+  .espace-pro-card[data-ec-goto]{ cursor:pointer; }
+  .espace-pro-card[data-ec-goto]:hover{ transform:translateY(-4px); box-shadow:0 16px 30px -16px rgba(20,33,44,0.28); border-color:var(--ec-card-c, var(--turquoise)); }
+  .espace-pro-card[data-ec-goto]:active{ transform:translateY(-1px) scale(0.98); }
+  .ec-card-icon{
+    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+    width:42px; height:42px; border-radius:13px; font-size:1.25rem;
+    background:var(--ec-card-c-soft, var(--turquoise-soft));
+  }
   .espace-pro-soon-badge{
     display:inline-block; font-size:0.68rem; font-weight:700; letter-spacing:0.03em; text-transform:uppercase;
     color:var(--ink-soft); background:var(--sand-deep); border:1px solid var(--line); border-radius:999px; padding:3px 9px; margin-top:8px;
@@ -2371,12 +2392,33 @@ if ('serviceWorker' in navigator){
     display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;
     padding-bottom:8px; margin-bottom:26px;
   }
+  /* Une couleur d'accent différente par onglet — jamais pour décorer, mais
+     pour que quelqu'un qui n'a pas envie de lire tous les libellés (public
+     senior explicitement visé) puisse reconnaître une rubrique déjà visitée
+     par sa couleur, comme les onglets d'un classeur papier. Variables
+     posées sur chaque bouton via :nth-of-type, jamais sur :root (portée
+     strictement limitée à ce composant). */
+  .ec-tab:nth-of-type(1){ --ec-tab-c:var(--turquoise); --ec-tab-c-soft:var(--turquoise-soft); }
+  .ec-tab:nth-of-type(2){ --ec-tab-c:var(--sky-accent); --ec-tab-c-soft:var(--sky-accent-soft); }
+  .ec-tab:nth-of-type(3){ --ec-tab-c:var(--cat-chauffage); --ec-tab-c-soft:rgba(226,115,92,0.16); }
+  .ec-tab:nth-of-type(4){ --ec-tab-c:var(--amber); --ec-tab-c-soft:var(--amber-soft); }
+  .ec-tab:nth-of-type(5){ --ec-tab-c:var(--cat-plomberie); --ec-tab-c-soft:rgba(62,134,184,0.16); }
+  .ec-tab:nth-of-type(6){ --ec-tab-c:var(--turquoise); --ec-tab-c-soft:var(--turquoise-soft); }
+  .ec-tab:nth-of-type(7){ --ec-tab-c:var(--amber); --ec-tab-c-soft:var(--amber-soft); }
+  .ec-tab:nth-of-type(8){ --ec-tab-c:var(--sky-accent); --ec-tab-c-soft:var(--sky-accent-soft); }
+  .ec-tab:nth-of-type(9){ --ec-tab-c:var(--cat-chauffage); --ec-tab-c-soft:rgba(226,115,92,0.16); }
   .ec-tab{
-    flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.8rem;
-    padding:9px 15px; border-radius:999px; border:1.5px solid var(--line); background:var(--cream); color:var(--ink-soft);
-    cursor:pointer; transition:background .2s, color .2s, border-color .2s; white-space:nowrap;
+    flex:0 0 auto; display:inline-flex; align-items:center; gap:10px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem;
+    padding:12px 18px; border-radius:14px; border:1.5px solid var(--line); background:var(--cream); color:var(--ink-soft);
+    cursor:pointer; transition:transform .15s ease, background .2s, color .2s, border-color .2s, box-shadow .2s; white-space:nowrap;
   }
-  .ec-tab.is-active{ background:var(--terracotta); border-color:var(--terracotta); color:var(--white); }
+  .ec-tab:hover{ border-color:var(--ec-tab-c, var(--turquoise)); background:var(--ec-tab-c-soft, var(--turquoise-soft)); color:var(--ink); transform:translateY(-1px); }
+  .ec-tab:active{ transform:scale(0.96); }
+  .ec-tab.is-active{
+    background:linear-gradient(135deg, var(--ec-tab-c, var(--turquoise)) 0%, var(--navy-fixed) 165%);
+    border-color:transparent; color:#fff; box-shadow:0 10px 20px -12px rgba(16,27,36,0.55);
+  }
+  .ec-tab.is-active:hover{ transform:translateY(-1px); }
   /* Desktop : bandeau horizontal -> navigation latérale */
   @media (min-width:900px){
     .ec-dash-body{ flex-direction:row; align-items:flex-start; gap:28px; }
@@ -2421,8 +2463,9 @@ if ('serviceWorker' in navigator){
   .ec-badge-professionnel{ background:var(--amber-soft); color:var(--amber); }
 
   /* ---------- Détail d'un devis (options, photos, sélection) ---------- */
-  .ec-quote-list-row{ cursor:pointer; }
-  .ec-quote-list-row:hover{ border-color:var(--sky-accent); }
+  .ec-quote-list-row{ cursor:pointer; transition:transform .15s ease, border-color .18s, box-shadow .18s; }
+  .ec-quote-list-row:hover{ border-color:var(--sky-accent); transform:translateY(-2px); box-shadow:0 12px 22px -16px rgba(20,33,44,0.3); }
+  .ec-quote-list-row:active{ transform:scale(0.98); }
   .ec-quote-option{
     background:var(--cream); border:1.5px solid var(--line); border-radius:14px; padding:18px;
     margin-bottom:16px;
@@ -3415,17 +3458,36 @@ if ('serviceWorker' in navigator){
   .pro-sidebar-brand{ display:flex; justify-content:center; }
   .pro-sidebar-logo{ height:34px; width:auto; filter:brightness(0) invert(1); opacity:0.95; }
   .pro-sidebar-nav{ display:flex; flex-direction:column; gap:4px; flex:1 1 auto; }
+  /* Une couleur d'accent par rubrique (même logique de repérage visuel que
+     l'Espace Particulier ci-dessus) : posée sur le badge de l'icône
+     uniquement, jamais en aplat derrière tout le bouton — le fond du bouton
+     actif reste l'effet existant (léger voile blanc + liseré), la couleur
+     ne sert qu'à distinguer les icônes entre elles au premier coup d'œil.
+     Opacité nettement plus forte que --pro-*-soft (pensé pour un fond
+     blanc) : sur le dégradé sombre de la sidebar, un badge à 12-14%
+     d'opacité devient quasi invisible — 32% reste doux mais se voit. */
+  .pro-nav-btn:nth-of-type(1) .pro-nav-icon{ background:rgba(44,111,179,0.32); }
+  .pro-nav-btn:nth-of-type(2) .pro-nav-icon{ background:rgba(63,169,160,0.32); }
+  .pro-nav-btn:nth-of-type(3) .pro-nav-icon{ background:rgba(232,114,76,0.32); }
+  .pro-nav-btn:nth-of-type(4) .pro-nav-icon{ background:rgba(44,111,179,0.32); }
+  .pro-nav-btn:nth-of-type(5) .pro-nav-icon{ background:rgba(63,169,160,0.32); }
+  .pro-nav-btn:nth-of-type(6) .pro-nav-icon{ background:rgba(232,114,76,0.32); }
+  .pro-nav-btn:nth-of-type(7) .pro-nav-icon{ background:rgba(44,111,179,0.32); }
   .pro-nav-btn{
     display:flex; align-items:center; gap:12px; width:100%; text-align:left; font-family:"Poppins",sans-serif;
     font-weight:600; font-size:0.87rem; color:rgba(255,255,255,0.7); background:transparent; border:none;
-    border-radius:12px; padding:11px 14px; cursor:pointer; transition:background .18s, color .18s; position:relative;
+    border-radius:12px; padding:11px 14px; cursor:pointer; transition:transform .15s ease, background .18s, color .18s; position:relative;
   }
   .pro-nav-btn:hover{ background:rgba(255,255,255,0.07); color:#fff; }
+  .pro-nav-btn:active{ transform:scale(0.97); }
   .pro-nav-btn.is-active{ background:rgba(255,255,255,0.13); color:#fff; }
   .pro-nav-btn.is-active::before{
     content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--pro-coral);
   }
-  .pro-nav-icon{ font-size:1.05rem; flex:0 0 auto; line-height:1; }
+  .pro-nav-icon{
+    font-size:1.05rem; flex:0 0 auto; line-height:1; display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:30px; border-radius:9px; transition:background .18s;
+  }
   .pro-nav-label{ flex:1 1 auto; }
   .pro-sidebar-logout-btn{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:rgba(255,255,255,0.82);
@@ -3472,7 +3534,9 @@ if ('serviceWorker' in navigator){
   .pro-stat-card{
     background:var(--pro-card-bg); border:1px solid var(--pro-line); border-radius:16px; padding:16px 16px 14px;
     display:flex; flex-direction:column; gap:6px; box-shadow:var(--pro-shadow-sm); position:relative; overflow:hidden;
+    transition:transform .18s ease, box-shadow .18s ease;
   }
+  .pro-stat-card:hover{ transform:translateY(-3px); box-shadow:var(--pro-shadow); }
   .pro-stat-card::after{
     content:''; position:absolute; right:-18px; top:-18px; width:72px; height:72px; border-radius:50%;
   }
@@ -3489,6 +3553,7 @@ if ('serviceWorker' in navigator){
     border:none; border-radius:999px; padding:11px 20px; cursor:pointer; transition:filter .15s, transform .15s;
   }
   .pro-quicklink-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .pro-quicklink-btn:active{ transform:scale(0.96); }
   .pro-empty-state{
     background:var(--pro-card-bg); border:1.5px dashed var(--pro-line); border-radius:14px; padding:28px 20px;
     text-align:center; color:var(--pro-ink-soft); font-size:0.9rem;
@@ -3512,7 +3577,9 @@ if ('serviceWorker' in navigator){
      ESPACE ADMINISTRATION ci-dessus), pas des classes propres à l'admin. */
 
   .ec-next-appt{
-    background:var(--navy-fixed); color:#fff; border-radius:16px; padding:24px 26px; margin-bottom:26px;
+    background:linear-gradient(135deg, var(--sky-deep) 0%, var(--navy-fixed) 100%);
+    color:#fff; border-radius:18px; padding:24px 26px; margin-bottom:26px;
+    box-shadow:0 18px 34px -20px rgba(16,27,36,0.6);
   }
   .ec-next-appt .ec-eyebrow{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; opacity:0.75; margin-bottom:8px; }
   .ec-next-appt h3{ font-size:1.15rem; margin-bottom:10px; color:#fff; }
@@ -14593,11 +14660,21 @@ if ('serviceWorker' in navigator){
           html += '<div class="ec-empty"><strong>Aucun rendez-vous à venir</strong>Réservez votre prochaine intervention en quelques clics.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
         }
         html += '<div class="ec-home-grid">' +
-          '<div class="espace-pro-card"><h3>📅 Rendez-vous</h3><p>Consultez l’historique complet de vos rendez-vous.</p></div>' +
-          '<div class="espace-pro-card"><h3>📋 Devis &amp; factures</h3><p>Retrouvez vos documents commerciaux.</p></div>' +
-          '<div class="espace-pro-card"><h3>📞 Une question ?</h3><p>Contactez-nous au <a href="tel:+33671262302">06 71 26 23 02</a>.</p></div>' +
+          '<div class="espace-pro-card" data-ec-goto="appointments" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true">📅</span>Rendez-vous</h3><p>Consultez l’historique complet de vos rendez-vous.</p></div>' +
+          '<div class="espace-pro-card" data-ec-goto="quotes" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true">📋</span>Devis &amp; factures</h3><p>Retrouvez vos documents commerciaux.</p></div>' +
+          '<div class="espace-pro-card"><h3><span class="ec-card-icon" aria-hidden="true">📞</span>Une question ?</h3><p>Contactez-nous au <a href="tel:+33671262302">06 71 26 23 02</a>.</p></div>' +
         '</div>';
         panel.innerHTML = html;
+        // Cartes cliquables : ramènent vers l'onglet correspondant, avec le
+        // même petit flash visuel que le clic sur un onglet natif — jamais
+        // sur le lien tél. imbriqué (stopPropagation ci-dessus), sinon le
+        // clic "Appeler" déclencherait aussi une navigation d'onglet.
+        Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(card){
+          card.addEventListener('click', function(){ ecShowTab(card.getAttribute('data-ec-goto')); });
+          card.addEventListener('keydown', function(e){
+            if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); ecShowTab(card.getAttribute('data-ec-goto')); }
+          });
+        });
       })
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
