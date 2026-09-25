@@ -130,6 +130,13 @@ Deno.serve(async (req: Request) => {
     const totalLine = booking.distance_calculation_status !== 'ok'
       ? fmtEuros(booking.service_price_cents || 0) + ' + déplacement à vérifier'
       : fmtEuros(booking.total_cents || 0);
+    // discount_cents / promo_code : déjà déduits de total_cents côté SQL
+    // (create_booking()/create_guest_or_quote_booking(), voir
+    // supabase/migrations/0016_promo_codes.sql) — cette ligne n'est
+    // qu'informative, jamais recalculée ici.
+    const promoRow = (booking.discount_cents || 0) > 0
+      ? `<tr><td style="padding:6px 0;color:#5B6B78;">Code promo${booking.promo_code ? ' ' + escapeHtml(booking.promo_code) : ''}</td><td style="padding:6px 0;color:#1a8a6e;">-${fmtEuros(booking.discount_cents)}</td></tr>`
+      : '';
 
     const subject = 'Votre demande de rendez-vous HAYEVA a bien été reçue';
     const html = `
@@ -144,6 +151,7 @@ Deno.serve(async (req: Request) => {
           <tr><td style="padding:6px 0;color:#5B6B78;">Adresse</td><td style="padding:6px 0;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
           <tr><td style="padding:6px 0;color:#5B6B78;">Prix prestation</td><td style="padding:6px 0;">${priceLine}</td></tr>
           <tr><td style="padding:6px 0;color:#5B6B78;">Frais de déplacement</td><td style="padding:6px 0;">${travelLine}</td></tr>
+          ${promoRow}
           <tr><td style="padding:8px 0;color:#101B24;font-weight:700;border-top:1px solid #e5e0d5;">Total estimé</td><td style="padding:8px 0;font-weight:700;border-top:1px solid #e5e0d5;">${totalLine}</td></tr>
         </table>
         <p style="margin-top:22px;">Votre rendez-vous n'est <strong>pas encore confirmé</strong>. Nous allons vérifier votre demande et vous recevrez un nouvel e-mail dès sa confirmation.</p>

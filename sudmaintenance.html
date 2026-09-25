@@ -1416,6 +1416,86 @@ if ('serviceWorker' in navigator){
   .summary-card .s-row-warning .s-value{
     color:#B5762A;
   }
+  .summary-card .s-row-promo .s-label,
+  .summary-card .s-row-promo .s-value{
+    color:var(--turquoise);
+  }
+  .summary-card .promo-savings-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    margin-top:2px; padding:5px 12px;
+    background:var(--turquoise-soft); color:#146357;
+    border-radius:999px; font-size:0.8rem; font-weight:700;
+    font-family:"Poppins",sans-serif; width:fit-content;
+  }
+
+  /* ---------- Code promo (étape "Vos coordonnées") ----------
+     Même carte visuelle que .summary-card, placée juste au-dessus du
+     récapitulatif comme demandé. */
+  .promo-box{
+    background:var(--sand); border:1px solid var(--line); border-radius:16px;
+    padding:18px 20px; margin-bottom:14px;
+  }
+  .promo-label{
+    display:block; font-family:"Poppins",sans-serif; font-weight:700;
+    font-size:0.92rem; color:var(--ink); margin-bottom:10px;
+  }
+  .promo-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .promo-input{
+    flex:1 1 160px; min-width:0;
+    font-family:inherit; font-size:0.96rem; padding:12px 14px;
+    border-radius:10px; border:1.5px solid var(--line);
+    background:var(--white); color:var(--ink);
+    text-transform:uppercase;
+  }
+  .promo-input::placeholder{ text-transform:none; }
+  .promo-input:focus{ outline:2px solid var(--sky-deep); outline-offset:1px; }
+  .promo-apply-btn{ flex:0 0 auto; padding:12px 20px; }
+  .promo-msg{
+    margin-top:10px; font-size:0.86rem; font-weight:600; color:#B5762A;
+  }
+  .promo-msg.is-success{ color:#146357; }
+  .promo-applied{
+    display:flex; align-items:center; gap:10px; margin-top:12px;
+    padding:12px 14px; background:var(--turquoise-soft); border-radius:10px;
+  }
+  .promo-applied-check{
+    flex:none; width:22px; height:22px; border-radius:50%;
+    background:var(--turquoise); color:#fff; font-weight:800;
+    display:flex; align-items:center; justify-content:center; font-size:0.8rem;
+  }
+  .promo-applied-text{ flex:1; font-size:0.9rem; font-weight:600; color:#146357; }
+  .promo-remove-btn{
+    flex:none; width:26px; height:26px; border-radius:50%; border:none;
+    background:transparent; color:#146357; font-size:0.95rem; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease;
+  }
+  .promo-remove-btn:hover{ background:rgba(20,99,87,0.12); }
+
+  /* ---------- Bandeau d'éligibilité (assistant HAYEVA) ----------
+     Purement informatif : suggère un code déjà existant, ne l'applique
+     jamais automatiquement (un clic explicite reste nécessaire). */
+  .promo-eligibility-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    flex-wrap:wrap;
+    background:linear-gradient(135deg, var(--amber-soft) 0%, #fff 120%);
+    border:1px solid rgba(232,162,60,0.4); border-radius:14px;
+    padding:14px 18px; margin-bottom:16px;
+  }
+  .promo-eligibility-banner p{
+    margin:0; font-size:0.9rem; color:var(--ink); flex:1 1 240px;
+  }
+  .promo-eligibility-banner p strong{ color:var(--terracotta); }
+  .promo-eligibility-btn{
+    flex:none; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.84rem;
+    color:#fff; background:var(--amber); border:none; border-radius:999px;
+    padding:9px 18px; cursor:pointer; transition:transform .15s ease, background .15s ease;
+  }
+  .promo-eligibility-btn:hover{ background:#cf8b28; transform:translateY(-1px); }
+  @media (max-width:480px){
+    .promo-row{ flex-direction:column; }
+    .promo-apply-btn{ width:100%; }
+  }
   .booking-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:16px;}
   .booking-nav{
     display:flex;
@@ -2486,6 +2566,50 @@ if ('serviceWorker' in navigator){
   #adminTravelSettingsSave:disabled{ opacity:0.6; cursor:not-allowed; }
   .admin-travel-settings-msg.is-success{ color:var(--adm-green); font-weight:600; }
   .admin-travel-settings-msg.is-error{ color:var(--adm-red); font-weight:600; }
+
+  /* ---------- Codes promo : volontairement compact (liste + un seul
+     formulaire réutilisé pour créer ET modifier), même vocabulaire visuel
+     que le reste de l'Administration (.ec-row/.ec-badge, .admin-travel-
+     settings-form) plutôt que d'inventer un nouveau style. ---------- */
+  .admin-promo-toolbar{ margin-bottom:16px; }
+  .admin-promo-new-btn{
+    background:var(--adm-ocean); color:#fff; border:none; border-radius:999px;
+    padding:10px 20px; font-weight:700; font-size:0.86rem; cursor:pointer;
+  }
+  .admin-promo-form{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px;
+    padding:20px; margin-bottom:20px; box-shadow:var(--adm-shadow-sm);
+  }
+  .admin-promo-form-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px;
+  }
+  .admin-promo-form-grid label{
+    display:flex; flex-direction:column; gap:6px; font-size:0.85rem; font-weight:600; color:var(--adm-ink-soft);
+  }
+  .admin-promo-form-grid input, .admin-promo-form-grid select{
+    font:inherit; padding:9px 12px; border:1px solid var(--adm-line); border-radius:8px;
+    background:var(--adm-sand); color:var(--adm-ink);
+  }
+  .admin-promo-active-toggle{
+    flex-direction:row !important; align-items:center; gap:8px !important; justify-content:flex-start;
+  }
+  #adminPromoSaveBtn{
+    background:var(--adm-ocean); color:#fff; border:none; border-radius:999px; padding:10px 20px;
+    font-weight:700; cursor:pointer;
+  }
+  #adminPromoCancelBtn{
+    background:transparent; color:var(--adm-ink-soft); border:1px solid var(--adm-line); border-radius:999px;
+    padding:10px 18px; font-weight:600; cursor:pointer;
+  }
+  .admin-promo-code-tag{
+    font-family:"Poppins",sans-serif; font-weight:800; letter-spacing:0.02em;
+  }
+  .admin-promo-row-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .admin-promo-toggle-btn, .admin-promo-edit-btn{
+    background:transparent; border:1px solid var(--adm-line); border-radius:8px;
+    color:var(--adm-ink-soft); font-size:0.78rem; font-weight:600; padding:7px 12px; cursor:pointer;
+  }
+  .admin-promo-toggle-btn:hover, .admin-promo-edit-btn:hover{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
 
   /* ---------- Planning hebdomadaire : apparence uniquement, structure et
      logique JS totalement inchangées (voir admRenderPlanning — non modifié
@@ -4530,6 +4654,29 @@ if ('serviceWorker' in navigator){
               <textarea id="bkComment" rows="2" placeholder="Décrivez rapidement le problème ou l'intervention souhaitée…"></textarea>
             </label>
           </div>
+          <!-- Bandeau d'éligibilité au code promo (informationnel uniquement :
+               la validité/l'éligibilité réelles sont revérifiées côté
+               serveur au moment d'appliquer ou de réserver, jamais décidées
+               ici) — voir refreshPromoEligibilityBanner(). -->
+          <div class="promo-eligibility-banner" id="promoEligibilityBanner" hidden>
+            <p id="promoEligibilityText"></p>
+            <button type="button" class="promo-eligibility-btn" id="promoEligibilityUseBtn">Utiliser ce code</button>
+          </div>
+
+          <div class="promo-box">
+            <label class="promo-label" for="bkPromoInput">Vous avez un code promo ?</label>
+            <div class="promo-row">
+              <input type="text" id="bkPromoInput" class="promo-input" placeholder="Code promo" autocomplete="off" autocapitalize="characters" spellcheck="false">
+              <button type="button" class="btn-secondary promo-apply-btn" id="bkPromoApplyBtn">Appliquer</button>
+            </div>
+            <p class="promo-msg" id="bkPromoMsg" hidden></p>
+            <div class="promo-applied" id="bkPromoApplied" hidden>
+              <span class="promo-applied-check" aria-hidden="true">✓</span>
+              <span class="promo-applied-text" id="bkPromoAppliedText"></span>
+              <button type="button" class="promo-remove-btn" id="bkPromoRemoveBtn" aria-label="Retirer le code promo">✕</button>
+            </div>
+          </div>
+
           <h3 style="margin-top:24px;">Récapitulatif</h3>
           <div class="summary-card" id="bookingSummary"></div>
           <p class="hint" id="bkPendingHint">Ce créneau n'est pas définitivement confirmé : nous validons sa disponibilité rapidement par téléphone ou SMS après réception de votre demande.</p>
@@ -5056,6 +5203,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="quotes" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">📄</span><span class="adm-nav-label">Devis</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="promo" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">🎁</span><span class="adm-nav-label">Codes promo</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">⚙️</span><span class="adm-nav-label">Paramètres</span>
                 </button>
@@ -5164,6 +5314,56 @@ if ('serviceWorker' in navigator){
                   <p class="adm-page-sub">Demandes de devis gratuit, les plus récentes en premier — cliquez pour ouvrir la fiche complète.</p>
                 </div>
                 <div id="adminQuotesList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPagePromo" data-adm-page="promo" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">🎁 Codes promo</h2>
+                  <p class="adm-page-sub">Chaque code cible un seul élément du prix (déplacement, prestation ou total) — jamais appliqué ailleurs, même par erreur.</p>
+                </div>
+                <div class="admin-promo-toolbar">
+                  <button type="button" class="admin-promo-new-btn" id="adminPromoNewBtn">+ Nouveau code</button>
+                </div>
+                <form class="admin-promo-form" id="adminPromoForm" hidden>
+                  <input type="hidden" id="adminPromoFormId">
+                  <div class="admin-promo-form-grid">
+                    <label>Code<input type="text" id="adminPromoCode" placeholder="HAYEVA100" required></label>
+                    <label>Nom de la promotion<input type="text" id="adminPromoName" placeholder="Déplacement offert" required></label>
+                    <label>Type de réduction
+                      <select id="adminPromoDiscountType">
+                        <option value="PERCENT">Pourcentage (%)</option>
+                        <option value="FIXED_CENTS">Montant fixe (€)</option>
+                      </select>
+                    </label>
+                    <label>Valeur<input type="number" id="adminPromoDiscountValue" min="0.01" step="0.01" required></label>
+                    <label>Élément concerné
+                      <select id="adminPromoAppliesTo">
+                        <option value="TRAVEL_FEE">Déplacement uniquement</option>
+                        <option value="SERVICE_PRICE">Prestation uniquement</option>
+                        <option value="TOTAL">Total (prestation + déplacement)</option>
+                      </select>
+                    </label>
+                    <label>Condition d'éligibilité
+                      <select id="adminPromoEligibility">
+                        <option value="NONE">Aucune (coupon ouvert)</option>
+                        <option value="NEW_CUSTOMER">Nouveau client uniquement</option>
+                        <option value="OUTSIDE_FREE_RADIUS">Hors zone incluse uniquement</option>
+                      </select>
+                    </label>
+                    <label>Début (facultatif)<input type="date" id="adminPromoStartsAt"></label>
+                    <label>Fin (facultatif)<input type="date" id="adminPromoEndsAt"></label>
+                    <label>Nb max. d'utilisations<input type="number" id="adminPromoMaxUses" min="1" placeholder="Illimité"></label>
+                    <label>Nb max. par client<input type="number" id="adminPromoMaxUsesPerCustomer" min="1" placeholder="Illimité"></label>
+                    <label class="admin-promo-active-toggle"><input type="checkbox" id="adminPromoIsActive" checked> Actif</label>
+                  </div>
+                  <div class="admin-bk-propose-form-row">
+                    <button type="submit" id="adminPromoSaveBtn">Enregistrer</button>
+                    <button type="button" id="adminPromoCancelBtn">Annuler</button>
+                    <p class="admin-travel-settings-msg" id="adminPromoFormMsg" hidden></p>
+                  </div>
+                </form>
+                <div id="adminPromoList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
@@ -6332,9 +6532,33 @@ if ('serviceWorker' in navigator){
       ? '<div class="s-row"><span class="s-label">Devis</span><span class="s-value">0,00 €</span></div>'
       : '';
 
+    // ---------- Code promo (aperçu d'affichage uniquement) ----------
+    // Le montant réellement retenu est TOUJOURS recalculé et revérifié côté
+    // serveur (validate_promo_code(), appelée par create_booking()/
+    // create_guest_or_quote_booking()) au moment de la réservation elle-même
+    // — cet aperçu ne sert qu'à afficher la même chose par avance. Comme le
+    // total ci-dessus (déjà une estimation arrondie côté client, voir
+    // roundCommercialPrice), il ne s'applique que lorsque le trajet est
+    // connu (travel.status === 'ok') : pas de montant inventé tant que le
+    // déplacement reste "à vérifier".
+    var promo = getAppliedPromo();
+    var promoDiscountEuros = 0;
+    var promoRow = '';
+    var promoBadge = '';
+    if (promo && travel.status === 'ok'){
+      var serviceEurosForPromo = isQuoteOnly ? 0 : (travel.base || 0);
+      promoDiscountEuros = computePromoDiscountEuros(promo, serviceEurosForPromo, travel.travelFee || 0);
+      if (promoDiscountEuros > 0){
+        promoRow = '<div class="s-row s-row-promo"><span class="s-label">Code promo '+promo.code+'</span><span class="s-value">-'+fmtEuros(promoDiscountEuros)+'</span></div>';
+        if (promo.applies_to === 'TRAVEL_FEE' && promoDiscountEuros >= (travel.travelFee || 0) - 0.001){
+          promoBadge = '<div class="s-row"><span class="promo-savings-badge">🎁 Déplacement offert</span></div>';
+        }
+      }
+    }
+
     var totalRow = '';
     if (multi && !multi.est.quoteOnly){
-      var multiTotal = roundCommercialPrice(multi.est.total + (travel.status === 'ok' ? travel.travelFee : 0));
+      var multiTotal = roundCommercialPrice(multi.est.total + (travel.status === 'ok' ? travel.travelFee : 0) - promoDiscountEuros);
       totalRow = travel.status === 'unavailable'
         ? '<div class="s-row s-row-total"><span class="s-label">TOTAL</span><span class="s-value">'+fmtEuros(multi.est.total)+' + déplacement à vérifier</span></div>'
         : '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(multiTotal)+'</span></div>';
@@ -6345,6 +6569,7 @@ if ('serviceWorker' in navigator){
       } else if (travel.status === 'ok'){
         var totalAmount = isQuoteOnly ? travel.travelFee : (travel.total !== null ? travel.total : null);
         if (totalAmount !== null){
+          totalAmount = Math.max(0, totalAmount - promoDiscountEuros);
           totalRow = '<div class="s-row s-row-total"><span class="s-label">TOTAL TTC</span><span class="s-value">'+fmtEuros(totalAmount)+'</span></div>';
         }
       }
@@ -6359,13 +6584,185 @@ if ('serviceWorker' in navigator){
       '<div class="s-row"><span class="s-label">Horaire</span><span class="s-value">'+fmtTime(state.time)+' – '+endTime+'</span></div>'+
       travelRows +
       multiRows +
+      promoRow +
+      promoBadge +
       totalRow +
       '<div class="s-row"><span class="s-label">Nom</span><span class="s-value">'+(bkName.value || '—')+'</span></div>'+
       '<div class="s-row"><span class="s-label">Téléphone</span><span class="s-value">'+(bkPhone.value || '—')+'</span></div>' +
       '<div class="s-row"><span class="s-label">E-mail</span><span class="s-value">'+(bkEmail.value || '—')+'</span></div>' +
       (isRaffleEntry ? '<div class="s-row"><span class="s-label">🎁 N° de participation</span><span class="s-value">'+getRaffleTicket()+'</span></div>' : '');
 
+    refreshPromoEligibilityBanner(travel);
     return isRaffleEntry;
+  }
+
+  // ---------- Code promo ----------
+  // Vrai système Supabase (supabase/migrations/0016_promo_codes.sql) :
+  // "Appliquer" n'est qu'un APERÇU (preview_promo_code, lecture seule,
+  // jamais de consommation d'utilisation) — la validité et l'éligibilité
+  // sont entièrement revérifiées côté serveur au moment réel de la
+  // réservation (create_booking()/create_guest_or_quote_booking()), qui
+  // recalcule le montant lui-même plutôt que de faire confiance à cet
+  // aperçu. Un code jamais validé par "Appliquer" n'est jamais envoyé au
+  // serveur (voir p_promo_code dans attemptRealBooking/
+  // attemptDirectInsertBooking, plus bas).
+  var bkPromoInput = document.getElementById('bkPromoInput');
+  var bkPromoApplyBtn = document.getElementById('bkPromoApplyBtn');
+  var bkPromoMsg = document.getElementById('bkPromoMsg');
+  var bkPromoApplied = document.getElementById('bkPromoApplied');
+  var bkPromoAppliedText = document.getElementById('bkPromoAppliedText');
+  var bkPromoRemoveBtn = document.getElementById('bkPromoRemoveBtn');
+  var promoEligibilityBanner = document.getElementById('promoEligibilityBanner');
+  var promoEligibilityText = document.getElementById('promoEligibilityText');
+  var promoEligibilityUseBtn = document.getElementById('promoEligibilityUseBtn');
+
+  var promoState = { status:'idle', code:null, name:null, discount_type:null, discount_value:null, applies_to:null };
+  function getAppliedPromo(){ return promoState.status === 'applied' ? promoState : null; }
+
+  // Même formule que compute_promo_discount() côté SQL (0016_promo_codes.sql) :
+  // toujours plafonnée à l'élément ciblé (jamais à la prestation pour un
+  // code "déplacement"). Un simple aperçu d'affichage — le serveur refait
+  // exactement ce calcul, avec les vrais montants, à la réservation.
+  function computePromoDiscountEuros(promo, serviceEuros, travelEuros){
+    if (!promo) return 0;
+    var base = promo.applies_to === 'TRAVEL_FEE' ? travelEuros
+      : promo.applies_to === 'SERVICE_PRICE' ? serviceEuros
+      : (serviceEuros + travelEuros);
+    base = Math.max(0, base || 0);
+    var raw = promo.discount_type === 'PERCENT' ? (base * promo.discount_value / 100) : (promo.discount_value / 100);
+    raw = Math.max(0, Math.round(raw * 100) / 100);
+    return Math.min(base, raw);
+  }
+
+  function showPromoMsg(msg, isSuccess){
+    if (!bkPromoMsg) return;
+    bkPromoMsg.textContent = msg || '';
+    bkPromoMsg.hidden = !msg;
+    bkPromoMsg.className = 'promo-msg' + (isSuccess ? ' is-success' : '');
+  }
+
+  function resetPromoState(){
+    promoState = { status:'idle', code:null, name:null, discount_type:null, discount_value:null, applies_to:null };
+    if (bkPromoInput){ bkPromoInput.value = ''; bkPromoInput.disabled = false; }
+    if (bkPromoApplyBtn) bkPromoApplyBtn.disabled = false;
+    if (bkPromoApplied) bkPromoApplied.hidden = true;
+    showPromoMsg('', false);
+  }
+
+  function renderPromoAppliedUI(){
+    if (!bkPromoApplied) return;
+    if (promoState.status === 'applied'){
+      bkPromoApplied.hidden = false;
+      bkPromoAppliedText.textContent = 'Code ' + promoState.code + ' appliqué — ' + (promoState.name || 'Réduction appliquée');
+      if (bkPromoInput){ bkPromoInput.value = ''; bkPromoInput.disabled = true; }
+      if (bkPromoApplyBtn) bkPromoApplyBtn.disabled = true;
+    } else {
+      bkPromoApplied.hidden = true;
+      if (bkPromoInput) bkPromoInput.disabled = false;
+      if (bkPromoApplyBtn) bkPromoApplyBtn.disabled = false;
+    }
+  }
+
+  if (bkPromoApplyBtn){
+    bkPromoApplyBtn.addEventListener('click', function(){
+      var sb = window.sudSupabase;
+      var code = (bkPromoInput.value || '').trim();
+      if (!code){ showPromoMsg('Merci de saisir un code.', false); return; }
+      if (!sb || !sb.configured){ showPromoMsg('Indisponible pour le moment, réessayez plus tard.', false); return; }
+      var svc = currentService();
+      if (!svc){ showPromoMsg('Choisissez d\'abord une prestation.', false); return; }
+      var isQuoteOnly = bkAuthContext.resolvedParams && bkAuthContext.resolvedParams.quoteOnly;
+      var travel = travelSummaryLines(svc, currentInterventionAddressText());
+      var serviceEuros = isQuoteOnly ? 0 : (currentServiceBaseEuros(svc) || 0);
+      var travelEuros = travel.status === 'ok' ? (travel.travelFee || 0) : 0;
+      bkPromoApplyBtn.disabled = true;
+      bkPromoApplyBtn.textContent = 'Vérification…';
+      showPromoMsg('', false);
+      sb.client.rpc('preview_promo_code', {
+        p_code: code,
+        p_service_price_cents: Math.round(serviceEuros * 100),
+        p_travel_fee_cents: Math.round(travelEuros * 100),
+        p_guest_email: (bkEmail.value || '').trim() || null
+      }).then(function(res){
+        bkPromoApplyBtn.textContent = 'Appliquer';
+        var row = res.data && res.data[0];
+        if (res.error || !row || !row.valid){
+          bkPromoApplyBtn.disabled = false;
+          var reason = row ? row.reason : null;
+          var msg = 'Ce code promo est invalide ou expiré.';
+          if (reason === 'exhausted') msg = 'Ce code promo a atteint son nombre maximal d\'utilisations.';
+          else if (reason === 'already_used') msg = 'Vous avez déjà utilisé ce code promo.';
+          else if (reason === 'not_eligible') msg = 'Ce code promo ne s\'applique pas à cette réservation.';
+          showPromoMsg(msg, false);
+          return;
+        }
+        promoState = {
+          status: 'applied', code: row.promo_code_out, name: row.promo_name,
+          discount_type: row.discount_type, discount_value: row.discount_value, applies_to: row.applies_to
+        };
+        renderPromoAppliedUI();
+        if (promoEligibilityBanner) promoEligibilityBanner.hidden = true;
+        buildSummary();
+      }).catch(function(){
+        bkPromoApplyBtn.disabled = false;
+        bkPromoApplyBtn.textContent = 'Appliquer';
+        showPromoMsg('Vérification impossible pour le moment. Réessayez.', false);
+      });
+    });
+  }
+  if (bkPromoRemoveBtn){
+    bkPromoRemoveBtn.addEventListener('click', function(){
+      resetPromoState();
+      buildSummary();
+    });
+  }
+
+  // ---------- Bandeau d'éligibilité (« assistant » HAYEVA) ----------
+  // Purement informatif — ne modifie jamais la réservation lui-même, se
+  // contente de suggérer un code déjà actif (best_active_promo) quand l'une
+  // des deux conditions ci-dessous est remplie. Le bouton "Utiliser ce
+  // code" ne fait que préremplir le champ et déclencher le même "Appliquer"
+  // que si le client l'avait tapé lui-même : aucun chemin caché qui
+  // appliquerait un code sans validation serveur.
+  var promoEligibilityCache = null; // null=jamais chargé, 'pending', false=aucun code actif, ou {promo_code_out,...}
+  function refreshPromoEligibilityBanner(travel){
+    if (!promoEligibilityBanner) return;
+    if (promoState.status === 'applied'){ promoEligibilityBanner.hidden = true; return; }
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured){ promoEligibilityBanner.hidden = true; return; }
+    var outsideRadius = !!(travel && travel.status === 'ok' && (travel.travelFee || 0) > 0);
+    var newCustomer = !!(bkAuthContext.isRealCustomer && bkAuthContext.priorBookingsCount === 0);
+    if (!outsideRadius && !newCustomer){ promoEligibilityBanner.hidden = true; return; }
+    if (promoEligibilityCache === null){
+      promoEligibilityCache = 'pending';
+      sb.client.rpc('best_active_promo', { p_applies_to: 'TRAVEL_FEE' }).then(function(res){
+        promoEligibilityCache = (res.data && res.data[0]) || false;
+        renderPromoEligibilityBanner(outsideRadius, newCustomer);
+      }).catch(function(){ promoEligibilityCache = false; });
+      return;
+    }
+    if (promoEligibilityCache === 'pending') return;
+    renderPromoEligibilityBanner(outsideRadius, newCustomer);
+  }
+  function renderPromoEligibilityBanner(outsideRadius, newCustomer){
+    if (!promoEligibilityBanner || promoState.status === 'applied' || !promoEligibilityCache){
+      if (promoEligibilityBanner) promoEligibilityBanner.hidden = true;
+      return;
+    }
+    var promo = promoEligibilityCache;
+    var intro = outsideRadius
+      ? 'Bonne nouvelle ! Vous pouvez bénéficier du déplacement offert pour cette intervention.'
+      : 'Bonne nouvelle ! Pour votre première réservation, vous pouvez bénéficier du déplacement offert.';
+    promoEligibilityText.innerHTML = intro + ' Utilisez le code <strong>' + promo.promo_code_out +
+      '</strong> lors de votre réservation — il offre uniquement les frais de déplacement, jamais le prix de la prestation.';
+    promoEligibilityBanner.setAttribute('data-code', promo.promo_code_out);
+    promoEligibilityBanner.hidden = false;
+  }
+  if (promoEligibilityUseBtn){
+    promoEligibilityUseBtn.addEventListener('click', function(){
+      var code = promoEligibilityBanner.getAttribute('data-code');
+      if (code && bkPromoInput){ bkPromoInput.value = code; bkPromoApplyBtn.click(); }
+    });
   }
 
   // sendBookingRequest() (ouverture de mailto:) a été entièrement retirée du
@@ -6381,11 +6778,11 @@ if ('serviceWorker' in navigator){
   // ---------- Contexte réel (customer connecté + ses adresses) à l'étape 3 ----------
   // Recalculé à chaque entrée dans l'étape 3 : jamais mis en cache d'une
   // visite à l'autre, pour refléter une déconnexion/reconnexion entre-temps.
-  var bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null, contact:null };
+  var bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null, contact:null, priorBookingsCount:null };
 
   function refreshBkAuthContext(){
     var sb = window.sudSupabase;
-    bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null, contact:null };
+    bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null, contact:null, priorBookingsCount:null };
     if (!sb || !sb.configured) return Promise.resolve(bkAuthContext);
     return sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
@@ -6397,14 +6794,22 @@ if ('serviceWorker' in navigator){
           fetchBookingCatalog(),
           sb.client.from('customer_addresses').select('*').eq('customer_user_id', session.user.id)
             .order('is_default', { ascending:false }).order('created_at', { ascending:false }),
-          sb.client.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', session.user.id).maybeSingle()
+          sb.client.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', session.user.id).maybeSingle(),
+          // Nombre de réservations déjà passées par ce client — sert
+          // uniquement au bandeau d'éligibilité du code promo ("nouveau
+          // client", voir refreshPromoEligibilityBanner), jamais une
+          // condition vérifiée ici pour de vrai (validate_promo_code() la
+          // revérifie côté serveur, indépendamment de ce compteur).
+          sb.client.from('bookings').select('id', { count:'exact', head:true }).eq('customer_user_id', session.user.id)
         ]).then(function(results){
           var catalog = results[0];
           var addrRes = results[1];
           var profRes = results[2];
+          var countRes = results[3];
           bkAuthContext.isRealCustomer = true;
           bkAuthContext.addresses = (addrRes && addrRes.data) || [];
           bkAuthContext.resolvedParams = svc ? resolveBookingParams(svc.id, catalog) : null;
+          bkAuthContext.priorBookingsCount = (countRes && typeof countRes.count === 'number') ? countRes.count : null;
           var cp = profRes && profRes.data;
           bkAuthContext.contact = {
             name: cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : '',
@@ -6657,7 +7062,11 @@ if ('serviceWorker' in navigator){
         p_guest_email: isCustomer ? null : guestEmail,
         p_guest_phone: isCustomer ? null : (bkPhone.value || '').trim(),
         p_guest_address: isCustomer ? null : (addressText || null),
-        p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null
+        p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null,
+        // Uniquement un code déjà validé par "Appliquer" (jamais le texte
+        // brut du champ, au cas où le client aurait tapé sans cliquer) —
+        // revalidé intégralement côté serveur de toute façon.
+        p_promo_code: promoState.status === 'applied' ? promoState.code : null
       };
       return sb.client.rpc('create_guest_or_quote_booking', params).then(function(rpcRes){
         if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
@@ -6689,7 +7098,8 @@ if ('serviceWorker' in navigator){
               p_start_time: fmtTime(state.time) + ':00',
               p_customer_address_id: addrOutcome.addressId,
               p_notes: (bkComment.value || '').trim() || null,
-              p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null
+              p_distance_quote: travelForSubmit.status === 'ok' ? travelForSubmit.quote : null,
+              p_promo_code: promoState.status === 'applied' ? promoState.code : null
             }).then(function(rpcRes){
               if (rpcRes.error) return { kind:'rpc-error', error: rpcRes.error };
               return { kind:'success', row: (rpcRes.data && rpcRes.data[0]) || {}, isCustomer: true };
@@ -6736,6 +7146,14 @@ if ('serviceWorker' in navigator){
           var rmsg = (outcome.error && outcome.error.message) || '';
           if (/authentification requise/i.test(rmsg)){
             msg = 'Votre session a expiré. Merci de vous reconnecter à votre Espace Client avant de confirmer, puis recommencez votre demande.';
+          } else if (/code promo/i.test(rmsg)){
+            // Rare (le code était valide à "Appliquer" mais ne l'est plus au
+            // moment de la réservation — épuisé entre-temps, désactivé…) :
+            // on retire le code invalidé plutôt que de laisser le client
+            // buter indéfiniment sur la même erreur.
+            resetPromoState();
+            buildSummary();
+            msg = 'Le code promo appliqué n\'est plus valide et a été retiré. Vérifiez le récapitulatif puis confirmez à nouveau.';
           } else if (/créneau/i.test(rmsg) || /adresse/i.test(rmsg) || /1er novembre/i.test(rmsg)){
             msg = rmsg;
           }
@@ -6789,6 +7207,9 @@ if ('serviceWorker' in navigator){
     bkNewAddrAddress._geocodedLat = null; bkNewAddrAddress._geocodedLng = null;
     invalidateTravelQuote();
     bkAuthContext = { isRealCustomer:false, addresses:[], resolvedParams:null };
+    resetPromoState();
+    promoEligibilityCache = null;
+    if (promoEligibilityBanner) promoEligibilityBanner.hidden = true;
     if (bkCompany) bkCompany.value = '';
     if (bkPropCount) bkPropCount.value = '1';
     installTypeGroup.querySelector('input[value="mono"]').checked = true;
@@ -8639,6 +9060,7 @@ if ('serviceWorker' in navigator){
         : '<span class="ec-row-meta">🚐 ' + (b.one_way_distance_km != null ? b.one_way_distance_km + ' km aller · ' : '') +
           'prestation ' + admFmtEuros(b.service_price_cents) +
           (b.travel_fee_cents > 0 ? ' + déplacement ' + admFmtEuros(b.travel_fee_cents) + ' (' + admFmtEuros(b.travel_rate_per_km_cents) + '/km)' : ' + déplacement inclus') +
+          (b.discount_cents > 0 ? ' − ' + admFmtEuros(b.discount_cents) + ' (code ' + admEscape(b.promo_code || '') + ')' : '') +
           ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span>';
       html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
         '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
@@ -8681,7 +9103,7 @@ if ('serviceWorker' in navigator){
     var listEl = document.getElementById('adminBkList');
     if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
     sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, discount_cents, promo_code, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
       .order('date', { ascending:true })
       .order('start_time', { ascending:true })
       .limit(500)
@@ -9138,7 +9560,9 @@ if ('serviceWorker' in navigator){
         (contact.address ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Adresse</span><span>📍 ' + admEscape(contact.address) + '</span></div>' : '') +
         '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prestation</span><span>' + admEscape(svcName) + '</span></div>' +
         '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prix</span><span>' + admFmtEuros(b.service_price_cents) +
-          (b.travel_fee_cents > 0 ? ' + ' + admFmtEuros(b.travel_fee_cents) + ' déplacement' : '') + ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span></div>' +
+          (b.travel_fee_cents > 0 ? ' + ' + admFmtEuros(b.travel_fee_cents) + ' déplacement' : '') +
+          (b.discount_cents > 0 ? ' − ' + admFmtEuros(b.discount_cents) + ' code ' + admEscape(b.promo_code || '') : '') +
+          ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span></div>' +
       '</div>' +
       (b.notes ? '<p class="admin-bk-modal-note">💬 ' + admEscape(b.notes) + '</p>' : '') +
       '<div class="admin-bk-modal-status-row">' +
@@ -9584,6 +10008,7 @@ if ('serviceWorker' in navigator){
       admLoadAccounts();
       admLoadBookings();
       admLoadTravelSettings();
+      admLoadPromoCodes();
       admRefreshPushUI();
     } else {
       panel.hidden = true;
@@ -9633,6 +10058,198 @@ if ('serviceWorker' in navigator){
           msgEl.className = 'admin-travel-settings-msg is-success';
           msgEl.textContent = 'Barème mis à jour.';
         }
+      });
+    });
+  }
+
+  // ---------- Codes promo ----------
+  // Lit/écrit directement promo_codes / promo_codes_admin (RLS : réservées à
+  // is_admin(), voir 0016_promo_codes.sql) — même principe que les
+  // Paramètres de déplacement ci-dessus. Le formulaire est UNIQUE, réutilisé
+  // pour créer ET modifier (adminPromoFormId vide = création) : volontai-
+  // rement compact, pas de double formulaire à maintenir. La validité et
+  // l'éligibilité réelles d'un code restent entièrement recalculées côté
+  // serveur à chaque réservation (validate_promo_code()) : ce panneau ne
+  // fait qu'éditer les lignes de configuration, jamais la logique de calcul
+  // elle-même.
+  var adminPromoCache = null;
+  var ADMIN_PROMO_APPLIES_LABEL = { TRAVEL_FEE:'Déplacement', SERVICE_PRICE:'Prestation', TOTAL:'Total' };
+  var ADMIN_PROMO_ELIGIBILITY_LABEL = { NONE:'', NEW_CUSTOMER:'Nouveaux clients uniquement', OUTSIDE_FREE_RADIUS:'Hors zone incluse uniquement' };
+
+  function admPromoFmtDiscount(row){
+    return (row.discount_type === 'PERCENT' ? row.discount_value + ' %' : admFmtEuros(row.discount_value))
+      + ' — ' + (ADMIN_PROMO_APPLIES_LABEL[row.applies_to] || row.applies_to);
+  }
+  function admPromoFmtPeriod(row){
+    if (!row.starts_at && !row.ends_at) return '';
+    var from = row.starts_at ? admFmtDate(row.starts_at) : '…';
+    var to = row.ends_at ? admFmtDate(row.ends_at) : '…';
+    return 'du ' + from + ' au ' + to;
+  }
+
+  function admRenderPromoList(){
+    var listEl = document.getElementById('adminPromoList');
+    if (!listEl || !adminPromoCache) return;
+    if (!adminPromoCache.length){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucun code promo</strong>Créez votre premier code avec le bouton ci-dessus.</div>';
+      return;
+    }
+    var html = '<div class="ec-list">';
+    adminPromoCache.forEach(function(row){
+      var usageLine = 'Utilisé ' + row.used_count + ' fois' + (row.max_uses ? ' / ' + row.max_uses : '');
+      if (row.max_uses_per_customer) usageLine += ' · max ' + row.max_uses_per_customer + '/client';
+      var metaParts = [admPromoFmtDiscount(row), usageLine];
+      var period = admPromoFmtPeriod(row);
+      if (period) metaParts.push(period);
+      if (ADMIN_PROMO_ELIGIBILITY_LABEL[row.eligibility_rule]) metaParts.push('⚡ ' + ADMIN_PROMO_ELIGIBILITY_LABEL[row.eligibility_rule]);
+      html += '<div class="ec-row" data-promo-id="' + row.id + '"><div class="ec-row-info">' +
+        '<span class="ec-row-title"><span class="admin-promo-code-tag">' + admEscape(row.code) + '</span> — ' + admEscape(row.name) +
+        ' <span class="ec-badge ' + (row.is_active ? 'ec-badge-confirmed' : 'ec-badge-cancelled') + '">' + (row.is_active ? 'Actif' : 'Inactif') + '</span></span>' +
+        '<span class="ec-row-meta">' + metaParts.map(admEscape).join(' · ') + '</span>' +
+        '</div><div class="admin-promo-row-actions">' +
+        '<button type="button" class="admin-promo-toggle-btn" data-promo-id="' + row.id + '" data-promo-active="' + row.is_active + '">' + (row.is_active ? 'Désactiver' : 'Activer') + '</button>' +
+        '<button type="button" class="admin-promo-edit-btn" data-promo-id="' + row.id + '">Modifier</button>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  function admLoadPromoCodes(){
+    var listEl = document.getElementById('adminPromoList');
+    if (listEl) listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    sb.client.from('promo_codes_admin').select('*').then(function(res){
+      if (res.error){
+        if (listEl) listEl.innerHTML = '<div class="ec-empty"><strong>Chargement impossible</strong>Réessayez dans un instant.</div>';
+        return;
+      }
+      adminPromoCache = res.data || [];
+      admRenderPromoList();
+    });
+  }
+
+  var adminPromoForm = document.getElementById('adminPromoForm');
+  var adminPromoNewBtn = document.getElementById('adminPromoNewBtn');
+  var adminPromoCancelBtn = document.getElementById('adminPromoCancelBtn');
+  var adminPromoListEl = document.getElementById('adminPromoList');
+
+  function admOpenPromoForm(row){
+    if (!adminPromoForm) return;
+    document.getElementById('adminPromoFormId').value = row ? row.id : '';
+    document.getElementById('adminPromoCode').value = row ? row.code : '';
+    document.getElementById('adminPromoName').value = row ? row.name : '';
+    document.getElementById('adminPromoDiscountType').value = row ? row.discount_type : 'PERCENT';
+    document.getElementById('adminPromoDiscountValue').value = row ? row.discount_value : '';
+    document.getElementById('adminPromoAppliesTo').value = row ? row.applies_to : 'TRAVEL_FEE';
+    document.getElementById('adminPromoEligibility').value = row ? row.eligibility_rule : 'NONE';
+    document.getElementById('adminPromoStartsAt').value = row && row.starts_at ? row.starts_at.slice(0, 10) : '';
+    document.getElementById('adminPromoEndsAt').value = row && row.ends_at ? row.ends_at.slice(0, 10) : '';
+    document.getElementById('adminPromoMaxUses').value = row && row.max_uses != null ? row.max_uses : '';
+    document.getElementById('adminPromoMaxUsesPerCustomer').value = row && row.max_uses_per_customer != null ? row.max_uses_per_customer : '';
+    document.getElementById('adminPromoIsActive').checked = row ? row.is_active : true;
+    var msgEl = document.getElementById('adminPromoFormMsg');
+    msgEl.hidden = true;
+    adminPromoForm.hidden = false;
+    adminPromoForm.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+  function admClosePromoForm(){
+    if (adminPromoForm) adminPromoForm.hidden = true;
+  }
+
+  if (adminPromoNewBtn){
+    adminPromoNewBtn.addEventListener('click', function(){ admOpenPromoForm(null); });
+  }
+  if (adminPromoCancelBtn){
+    adminPromoCancelBtn.addEventListener('click', admClosePromoForm);
+  }
+  if (adminPromoListEl){
+    adminPromoListEl.addEventListener('click', function(e){
+      var editBtn = e.target.closest('.admin-promo-edit-btn');
+      if (editBtn && adminPromoCache){
+        var row = adminPromoCache.filter(function(r){ return r.id === editBtn.getAttribute('data-promo-id'); })[0];
+        if (row) admOpenPromoForm(row);
+        return;
+      }
+      var toggleBtn = e.target.closest('.admin-promo-toggle-btn');
+      if (toggleBtn){
+        var isActive = toggleBtn.getAttribute('data-promo-active') === 'true';
+        toggleBtn.disabled = true;
+        sb.client.from('promo_codes').update({ is_active: !isActive, updated_at: new Date().toISOString() })
+          .eq('id', toggleBtn.getAttribute('data-promo-id')).then(function(res){
+            toggleBtn.disabled = false;
+            if (!res.error) admLoadPromoCodes();
+          });
+        return;
+      }
+    });
+  }
+
+  if (adminPromoForm){
+    adminPromoForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      var msgEl = document.getElementById('adminPromoFormMsg');
+      var saveBtn = document.getElementById('adminPromoSaveBtn');
+      var id = document.getElementById('adminPromoFormId').value || null;
+      var code = document.getElementById('adminPromoCode').value.trim().toUpperCase();
+      var name = document.getElementById('adminPromoName').value.trim();
+      var discountType = document.getElementById('adminPromoDiscountType').value;
+      var discountValue = parseFloat(document.getElementById('adminPromoDiscountValue').value);
+      var appliesTo = document.getElementById('adminPromoAppliesTo').value;
+      var eligibility = document.getElementById('adminPromoEligibility').value;
+      var startsAt = document.getElementById('adminPromoStartsAt').value || null;
+      var endsAt = document.getElementById('adminPromoEndsAt').value || null;
+      var maxUsesRaw = document.getElementById('adminPromoMaxUses').value;
+      var maxUsesPerCustomerRaw = document.getElementById('adminPromoMaxUsesPerCustomer').value;
+      var isActive = document.getElementById('adminPromoIsActive').checked;
+
+      msgEl.hidden = true;
+      if (!code || !name || !(discountValue > 0)){
+        msgEl.className = 'admin-travel-settings-msg is-error';
+        msgEl.textContent = 'Merci de compléter le code, le nom et une valeur de réduction supérieure à 0.';
+        msgEl.hidden = false;
+        return;
+      }
+      if (discountType === 'PERCENT' && discountValue > 100){
+        msgEl.className = 'admin-travel-settings-msg is-error';
+        msgEl.textContent = 'Un pourcentage ne peut pas dépasser 100.';
+        msgEl.hidden = false;
+        return;
+      }
+
+      var payload = {
+        code: code,
+        name: name,
+        discount_type: discountType,
+        // FIXED_CENTS est stocké en centimes en base ; le formulaire saisit
+        // toujours en euros, comme le reste du panneau Administration
+        // (voir adminTravelRate ci-dessus, même convention).
+        discount_value: discountType === 'FIXED_CENTS' ? Math.round(discountValue * 100) : discountValue,
+        applies_to: appliesTo,
+        eligibility_rule: eligibility,
+        starts_at: startsAt ? new Date(startsAt + 'T00:00:00').toISOString() : null,
+        ends_at: endsAt ? new Date(endsAt + 'T23:59:59').toISOString() : null,
+        max_uses: maxUsesRaw ? parseInt(maxUsesRaw, 10) : null,
+        max_uses_per_customer: maxUsesPerCustomerRaw ? parseInt(maxUsesPerCustomerRaw, 10) : null,
+        is_active: isActive,
+        updated_at: new Date().toISOString()
+      };
+
+      saveBtn.disabled = true;
+      var query = id
+        ? sb.client.from('promo_codes').update(payload).eq('id', id)
+        : sb.client.from('promo_codes').insert(payload);
+      query.then(function(res){
+        saveBtn.disabled = false;
+        if (res.error){
+          msgEl.className = 'admin-travel-settings-msg is-error';
+          msgEl.textContent = /duplicate|unique/i.test(res.error.message || '')
+            ? 'Ce code existe déjà.'
+            : "Échec de l'enregistrement. Réessayez.";
+          msgEl.hidden = false;
+          return;
+        }
+        admClosePromoForm();
+        admLoadPromoCodes();
       });
     });
   }

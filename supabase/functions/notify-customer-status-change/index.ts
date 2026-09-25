@@ -105,6 +105,9 @@ Deno.serve(async (req: Request) => {
     const totalLine = booking.distance_calculation_status !== 'ok'
       ? fmtEuros(booking.service_price_cents || 0) + ' + déplacement à vérifier'
       : fmtEuros(booking.total_cents || 0);
+    const promoRow = (booking.discount_cents || 0) > 0
+      ? `<tr><td style="padding:6px 0;color:#5B6B78;">Code promo${booking.promo_code ? ' ' + escapeHtml(booking.promo_code) : ''}</td><td style="padding:6px 0;color:#1a8a6e;">-${fmtEuros(booking.discount_cents)}</td></tr>`
+      : '';
 
     let subject: string;
     let introHtml: string;
@@ -128,6 +131,7 @@ Deno.serve(async (req: Request) => {
           ${emailType === 'confirmed' ? `
           <tr><td style="padding:6px 0;color:#5B6B78;">Prix prestation</td><td style="padding:6px 0;">${priceLine}</td></tr>
           <tr><td style="padding:6px 0;color:#5B6B78;">Frais de déplacement</td><td style="padding:6px 0;">${travelLine}</td></tr>
+          ${promoRow}
           <tr><td style="padding:8px 0;color:#101B24;font-weight:700;border-top:1px solid #e5e0d5;">Total</td><td style="padding:8px 0;font-weight:700;border-top:1px solid #e5e0d5;">${totalLine}</td></tr>
           ` : ''}
         </table>
