@@ -205,6 +205,67 @@
   });
 })();
 
+// ============================================================
+// Bandeau de consentement cookies — PRÉPARÉ mais INACTIF sur le fond : le
+// site ne charge aujourd'hui aucun traceur soumis à consentement (voir page
+// légale "Cookies"). Ce module enregistre le choix de l'utilisateur et
+// expose window.sudCookieConsent pour qu'un futur script tiers puisse s'y
+// brancher avant de s'activer — mais rien, à ce jour, ne consulte cette API.
+// ============================================================
+(function(){
+  var STORAGE_KEY = 'hayeva_cookie_consent';
+  var RENEW_AFTER_DAYS = 180; // ré-affiche le bandeau après ~6 mois, pratique usuelle
+
+  function readConsent(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || (parsed.choice !== 'accepted' && parsed.choice !== 'refused') || !parsed.ts) return null;
+      var ageDays = (Date.now() - parsed.ts) / 86400000;
+      if (ageDays > RENEW_AFTER_DAYS) return null;
+      return parsed;
+    } catch(e){ return null; }
+  }
+  function writeConsent(choice){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ choice: choice, ts: Date.now() })); } catch(e){}
+  }
+
+  window.sudCookieConsent = {
+    hasChoice: function(){ return !!readConsent(); },
+    hasAccepted: function(){ var c = readConsent(); return !!c && c.choice === 'accepted'; }
+  };
+
+  // Le bandeau (#cookieBanner) est plus loin dans le document que ce
+  // script : attendre DOMContentLoaded plutôt que de le chercher
+  // immédiatement, sinon getElementById revient null et rien ne s'affiche.
+  document.addEventListener('DOMContentLoaded', function(){
+    var banner = document.getElementById('cookieBanner');
+    if (!banner) return;
+    var acceptBtn = document.getElementById('cookieBannerAccept');
+    var refuseBtn = document.getElementById('cookieBannerRefuse');
+
+    function choose(choice){
+      writeConsent(choice);
+      banner.classList.remove('is-visible');
+      setTimeout(function(){ banner.hidden = true; }, 350);
+    }
+    if (acceptBtn) acceptBtn.addEventListener('click', function(){ choose('accepted'); });
+    if (refuseBtn) refuseBtn.addEventListener('click', function(){ choose('refused'); });
+
+    if (!readConsent()){
+      banner.hidden = false;
+      // requestAnimationFrame : laisse le navigateur peindre l'état "hidden
+      // retiré, is-visible absent" avant de l'ajouter, sinon la transition
+      // CSS ne se joue pas (les deux changements seraient fusionnés en une
+      // seule frame).
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){ banner.classList.add('is-visible'); });
+      });
+    }
+  });
+})();
+
 // Enregistrement du Service Worker (sw.js) : nécessaire pour recevoir de
 // vraies Web Push Notifications même site fermé (Espace Administration).
 // N'active/ne demande rien lui-même — juste l'enregistrement du fichier ;
@@ -2517,6 +2578,46 @@ if ('serviceWorker' in navigator){
   }
   .ec-appt-cancel-btn:hover{ background:#8A2E2E; border-color:#8A2E2E; color:#fff; }
 
+  /* ---------- Bandeau de consentement cookies ----------
+     PRÉPARÉ mais INACTIF sur le fond : le site ne charge aujourd'hui aucun
+     traceur soumis à consentement (voir page légale "Cookies" — aucun
+     Analytics tiers, aucun pixel pub). Ce bandeau existe pour être prêt le
+     jour où un tel outil serait ajouté ; en attendant, le choix de
+     l'utilisateur est enregistré mais ne déclenche concrètement rien
+     (window.sudCookieConsent expose l'API que chargerait alors un futur
+     script tiers avant de s'activer). z-index supérieur à celui du portail
+     "Bienvenue" (9999) : le bandeau doit rester visible même sur ce tout
+     premier écran, pas seulement une fois entré sur le site. */
+  .cookie-banner{
+    position:fixed; left:0; right:0; bottom:0; z-index:10000;
+    display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap;
+    background:var(--navy-fixed); color:#fff; padding:18px 24px;
+    box-shadow:0 -12px 32px -14px rgba(0,0,0,0.4);
+    transform:translateY(100%); transition:transform .35s ease;
+  }
+  .cookie-banner.is-visible{ transform:translateY(0); }
+  .cookie-banner[hidden]{ display:none; }
+  .cookie-banner-text{ font-size:0.85rem; line-height:1.5; max-width:640px; margin:0; opacity:0.92; }
+  .cookie-banner-text a{ color:#fff; text-decoration:underline; }
+  .cookie-banner-actions{ display:flex; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
+  /* Les deux choix ont la même taille et le même poids visuel : le refus
+     doit être aussi facile d'accès que l'acceptation (déjà le principe
+     annoncé sur la page légale "Cookies"). */
+  .cookie-banner-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem;
+    border-radius:999px; padding:11px 22px; cursor:pointer; white-space:nowrap;
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .cookie-banner-btn:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+  .cookie-banner-btn:active{ transform:scale(0.96); }
+  .cookie-banner-refuse{ background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,0.5); }
+  .cookie-banner-accept{ background:var(--turquoise); color:#fff; border:1.5px solid var(--turquoise); }
+  @media (max-width:600px){
+    .cookie-banner{ justify-content:flex-start; padding:16px 18px; }
+    .cookie-banner-actions{ width:100%; }
+    .cookie-banner-btn{ flex:1 1 0; text-align:center; }
+  }
+
   /* ---------- Assistant Hayeva (widget flottant, espace public) ----------
      Jetons globaux uniquement (--terracotta/--sky/--turquoise/--sand/
      --ink/--line, déjà définis dans :root) : ce widget vit sur le site
@@ -4657,6 +4758,14 @@ if ('serviceWorker' in navigator){
       <a href="#" class="portal-guest-link" id="portalGuestLink">Continuer sans se connecter →</a>
     </div>
   </div>
+  </div>
+</div>
+
+<div class="cookie-banner" id="cookieBanner" hidden role="dialog" aria-label="Préférences cookies">
+  <p class="cookie-banner-text">🍪 Ce site n'utilise aucun cookie ni traceur nécessitant votre consentement (pas d'outil de mesure d'audience tiers, pas de publicité). Seuls des éléments strictement nécessaires au fonctionnement du site sont utilisés. <a href="#legal/cookies" data-legal-link="cookies">En savoir plus</a></p>
+  <div class="cookie-banner-actions">
+    <button type="button" class="cookie-banner-btn cookie-banner-refuse" id="cookieBannerRefuse">Tout refuser</button>
+    <button type="button" class="cookie-banner-btn cookie-banner-accept" id="cookieBannerAccept">Tout accepter</button>
   </div>
 </div>
 
@@ -7194,8 +7303,9 @@ if ('serviceWorker' in navigator){
       <!-- ========== COOKIES ========== -->
       <article class="legal-page" data-legal-page="cookies" hidden>
         <h2>Cookies et traceurs</h2>
-        <p class="legal-updated">Dernière mise à jour : 24/09/2026 — d'après un audit réel du site, pas une mention générique.</p>
-        <p>Le site HAYEVA n'utilise <strong>aucun cookie ni traceur publicitaire</strong>, <strong>aucun outil de mesure d'audience tiers</strong> (type Google Analytics) et <strong>aucun pixel de réseau social</strong>. Aucun bandeau de consentement « Tout accepter / Tout refuser / Personnaliser » n'est donc affiché, car il serait inutile : le site ne dépose aucun traceur soumis à consentement au sens de l'article 82 de la loi Informatique et Libertés.</p>
+        <p class="legal-updated">Dernière mise à jour : 25/09/2026 — d'après un audit réel du site, pas une mention générique.</p>
+        <p>Le site HAYEVA n'utilise <strong>aucun cookie ni traceur publicitaire</strong>, <strong>aucun outil de mesure d'audience tiers</strong> (type Google Analytics) et <strong>aucun pixel de réseau social</strong>. Aucun de ces éléments ne dépose de traceur soumis à consentement au sens de l'article 82 de la loi Informatique et Libertés.</p>
+        <p>Un bandeau de consentement (« Tout accepter » / « Tout refuser », les deux choix également accessibles) est néanmoins présent dès votre arrivée sur le site, préparé par anticipation d'un futur outil qui en nécessiterait un. <strong>Votre choix est enregistré mais ne déclenche aujourd'hui aucun effet concret</strong>, puisqu'aucun traceur soumis à consentement n'est actuellement chargé. Si HAYEVA active un jour un tel outil, ce bandeau conditionnera réellement son chargement et cette page sera mise à jour en conséquence. Vous pouvez revenir sur votre choix à tout moment en effaçant les données de navigation de ce site dans votre navigateur.</p>
 
         <h3>Ce que le site utilise réellement</h3>
         <table>
@@ -7216,7 +7326,7 @@ if ('serviceWorker' in navigator){
           <li>aucune tentative d'identification individuelle : l'objectif est uniquement de compter, de façon agrégée, le nombre de visites et les pages consultées.</li>
         </ul>
         <p>Cet outil, strictement interne et non intrusif, entre dans le cadre de l'exemption de consentement prévue pour les solutions de mesure d'audience répondant à des critères stricts (finalité strictement statistique, données non recoupées, absence de transfert à des tiers). Les données collectées sont conservées 13 mois maximum, puis supprimées.</p>
-        <p style="font-size:0.82rem; color:var(--ink-soft);">Si HAYEVA venait à ajouter, plus tard, un outil de mesure d'audience tiers ou un traceur publicitaire nécessitant le consentement, un véritable gestionnaire de consentement (Tout accepter / Tout refuser / Personnaliser, modifiable à tout moment, refus aussi accessible que l'acceptation) serait alors mis en place avant toute activation, et cette page serait mise à jour en conséquence.</p>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">Le bandeau de consentement présent sur le site (voir ci-dessus) est prêt à conditionner le chargement d'un futur outil de mesure d'audience tiers ou traceur publicitaire, si HAYEVA en ajoutait un un jour — cette page serait alors mise à jour en conséquence.</p>
       </article>
 
       <!-- ========== MÉDIATION ========== -->
