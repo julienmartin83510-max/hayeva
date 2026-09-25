@@ -245,9 +245,17 @@
     var acceptBtn = document.getElementById('cookieBannerAccept');
     var refuseBtn = document.getElementById('cookieBannerRefuse');
 
+    // Modale bloquante (demande explicite) : bloque aussi le défilement de
+    // la page en dessous tant qu'aucun choix n'est fait — le fond plein
+    // écran bloque déjà les clics, ceci empêche en plus de faire défiler le
+    // contenu derrière lui pendant que la modale est ouverte.
+    function lockScroll(lock){
+      document.documentElement.style.overflow = lock ? 'hidden' : '';
+    }
     function choose(choice){
       writeConsent(choice);
       banner.classList.remove('is-visible');
+      lockScroll(false);
       setTimeout(function(){ banner.hidden = true; }, 350);
     }
     if (acceptBtn) acceptBtn.addEventListener('click', function(){ choose('accepted'); });
@@ -255,6 +263,7 @@
 
     if (!readConsent()){
       banner.hidden = false;
+      lockScroll(true);
       // requestAnimationFrame : laisse le navigateur peindre l'état "hidden
       // retiré, is-visible absent" avant de l'ajouter, sinon la transition
       // CSS ne se joue pas (les deux changements seraient fusionnés en une
@@ -320,12 +329,36 @@ if ('serviceWorker' in navigator){
     font-size:1.05rem;
     letter-spacing:0.08em;
   }
+  /* Émojis retirés du site entier (demande explicite) : les badges/icônes
+     qui n'existaient QUE pour héberger un émoji décoratif (toujours
+     accompagnés d'un vrai libellé texte juste à côté — jamais l'unique
+     indicateur, sauf exception traitée séparément comme .qb-pdf-icon)
+     disparaissent proprement plutôt que de laisser un rond/carré coloré
+     vide. :empty se corrige tout seul si l'un de ces éléments est un jour
+     rempli dynamiquement par autre chose que du texte statique. */
+  .cookie-banner-icon:empty, .mode-btn-icon:empty, .top-search-icon:empty,
+  .pro-cat-icon:empty, .pro-nav-icon:empty, .pro-stat-icon:empty,
+  .adm-nav-icon:empty, .adm-stat-icon:empty, .ec-card-icon:empty,
+  .hayeva-char-fallback-emoji:empty{
+    display:none;
+  }
   :root{
     --sand:#FFFFFF;
     --sand-deep:#F3F1EC;
     --cream:#FFFFFF;
-    --terracotta:#1C2B3A;
-    --terracotta-deep:#101B24;
+    /* --terracotta valait #1C2B3A (un bleu marine, malgré son nom) : c'était
+       la couleur d'accent/CTA de TOUT le site public (boutons, badges,
+       bordures actives, prix mis en avant...) — 90 usages, quasiment
+       identique à --ink, d'où l'impression de site "fade" malgré un hero
+       coloré (qui utilise sa propre variable --hl-orange, jamais celle-ci).
+       Remplacée par ce même orange de la marque, déjà éprouvé au hero, pour
+       une couleur d'accent cohérente sur tout le site plutôt qu'un hero
+       vif isolé au milieu d'un reste monochrome. Jamais touché : les
+       variantes scopées (.gate-bg-active, :root[data-universe=...],
+       .pro-shell) qui redéfinissent déjà --terracotta pour leur propre
+       contexte, ainsi que --ink (texte) qui reste inchangé partout. */
+    --terracotta:#E85A12;
+    --terracotta-deep:#C94400;
     --sky:#5A87AD;
     --sky-deep:#2C4A66;
     --ink:#16222C;
@@ -340,7 +373,7 @@ if ('serviceWorker' in navigator){
        (plomberie/eau). Ne pas confondre avec :root[data-universe=...]
        ci-dessous, un système de reskin complet de la page par métier,
        plus ancien et indépendant de cette charte d'accents. */
-    --cat-chauffage:#E2735C;
+    --cat-chauffage:#CB3D28;
     --cat-plomberie:#3E86B8;
     --cat-clim-a:#BFE3F2;
     --cat-clim-b:#5FA8CC;
@@ -388,19 +421,24 @@ if ('serviceWorker' in navigator){
   }
 
   /* ---------- Univers par service (transformation de toute la page) ---------- */
+  /* Refonte demandée explicitement : une seule teinte de rouge (#CB3D28,
+     fourni par l'utilisateur) pour tout l'univers chauffage — chaque jeton
+     ci-dessous est un simple dégradé de clarté de cette même teinte (même
+     H/S, seul L change), plus aucune autre couleur (rose/brun/pêche comme
+     avant) mélangée dans la palette. */
   :root[data-universe="chauffage"]{
-    --sand:#AD5F58;
-    --sand-deep:#B9695F;
-    --cream:#9A4F49;
-    --terracotta:#F6ECE8;
-    --terracotta-deep:#EAD8D0;
-    --sky:#E8B7A8;
-    --sky-deep:#D6997F;
-    --ink:#FFF9F5;
-    --ink-soft:#F0D9D0;
-    --line:rgba(255,249,245,0.22);
-    --white:#4A231F;
-    --cat-chauffage:#F6ECE8;
+    --sand:#AA3422;
+    --sand-deep:#912C1D;
+    --cream:#772418;
+    --terracotta:#CB3D28;
+    --terracotta-deep:#992F1E;
+    --sky:#E79588;
+    --sky-deep:#DD6755;
+    --ink:#FBECEA;
+    --ink-soft:#F2C2BB;
+    --line:rgba(251,236,234,0.22);
+    --white:#44150D;
+    --cat-chauffage:#CB3D28;
   }
   :root[data-universe="plomberie"]{
     --sand:#5C8699;
@@ -416,17 +454,21 @@ if ('serviceWorker' in navigator){
     --white:#1F3E48;
     --cat-plomberie:#EAF2F4;
   }
+  /* Demande explicite : climatisation = gris très clair / blanc, sans
+     couleur vive qui « fait mal aux yeux » — contrairement à chauffage
+     (rouge saturé) et plomberie (bleu), cet univers reste volontairement
+     neutre et peu saturé du fond jusqu'aux accents. */
   :root[data-universe="clim"]{
-    --sand:#F5F7F6;
-    --sand-deep:#EAF1F2;
+    --sand:#F7F7F8;
+    --sand-deep:#EDEDF0;
     --cream:#FFFFFF;
-    --terracotta:#315D69;
-    --terracotta-deep:#26454E;
-    --sky:#8FC4D1;
-    --sky-deep:#6BA8B6;
-    --ink:#24383F;
-    --ink-soft:#61747A;
-    --line:rgba(36,56,63,0.12);
+    --terracotta:#5A6670;
+    --terracotta-deep:#434B53;
+    --sky:#E4E7E9;
+    --sky-deep:#C7CCD0;
+    --ink:#2B3238;
+    --ink-soft:#6B7378;
+    --line:rgba(43,50,56,0.12);
     --white:#FFFFFF;
   }
   @media (prefers-reduced-motion: no-preference){
@@ -466,17 +508,22 @@ if ('serviceWorker' in navigator){
   }
   :root[data-universe] .edge-glow{ opacity:1; }
 
+  /* Couleurs relevées nettement (opacité quasi doublée, teintes plus
+     contrastées vs le fond de chaque univers) : la version précédente,
+     proche en teinte du fond de sa propre page, était en pratique
+     invisible — l'animation tournait déjà correctement (voir plus bas)
+     mais ne se voyait pas. */
   :root[data-universe="chauffage"]{
-    --edge-c1: rgba(214,153,127,0.38);
-    --edge-c2: rgba(246,236,232,0.26);
+    --edge-c1: rgba(203,61,40,0.55);
+    --edge-c2: rgba(255,222,214,0.4);
   }
   :root[data-universe="plomberie"]{
-    --edge-c1: rgba(130,179,192,0.36);
-    --edge-c2: rgba(234,242,244,0.26);
+    --edge-c1: rgba(160,224,240,0.6);
+    --edge-c2: rgba(255,255,255,0.4);
   }
   :root[data-universe="clim"]{
-    --edge-c1: rgba(143,196,209,0.28);
-    --edge-c2: rgba(255,255,255,0.4);
+    --edge-c1: rgba(90,102,112,0.28);
+    --edge-c2: rgba(255,255,255,0.7);
   }
 
   @media (prefers-reduced-motion: no-preference){
@@ -516,7 +563,17 @@ if ('serviceWorker' in navigator){
      épinglés plus haut dans ce fichier, pour la même raison. */
   body{
     margin:0;
-    background:#FFFFFF;
+    /* var(--sand) = #FFFFFF hors univers (aucun changement visuel normal).
+       Corrige un vrai bug trouvé en test réel : les couleurs de texte
+       (--ink) changent au niveau de :root quand un univers métier est actif
+       (chauffage/plomberie/clim), donc PARTOUT sur la page, alors que
+       jusqu'ici seul le fond de .univers-section et #tarifs suivait — texte
+       quasi blanc sur fond resté blanc dans "Nos réalisations" et plus bas
+       (footer, FAQ...). Le fond de la page suit maintenant la même
+       transition douce déjà en place (voir body,body* ci-dessous), donc
+       tout redevient cohérent et lisible, y compris en dehors des sections
+       spécifiquement recolorées. */
+    background:var(--sand);
     color:var(--ink);
     font-family:"Poppins", system-ui, sans-serif;
     padding-inline:0;
@@ -561,7 +618,7 @@ if ('serviceWorker' in navigator){
      lancée — retirer ce bloc et son <div class="opening-banner"> le jour
      de l'ouverture officielle, aucun autre changement nécessaire). ---------- */
   .opening-banner{
-    background:var(--terracotta-deep); color:#F2E8D6; text-align:center;
+    background:#0A0A0A; color:#F2E8D6; text-align:center;
     padding:10px 16px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.82rem;
   }
   .opening-banner p{ margin:0; max-width:900px; margin-inline:auto; line-height:1.4; }
@@ -690,6 +747,7 @@ if ('serviceWorker' in navigator){
     transition:transform .2s, box-shadow .2s;
     flex:none;
     margin-left:clamp(2px, 0.8vw, 12px);
+    margin-right:clamp(8px, 1.6vw, 22px);
   }
   .call-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 22px -8px rgba(14,134,201,0.65); }
   .call-btn svg{ flex:none; }
@@ -977,6 +1035,17 @@ if ('serviceWorker' in navigator){
     flex-wrap:wrap;
   }
   .trustline .dot{width:5px;height:5px;border-radius:50%;background:var(--hl-blue); flex:none;}
+  .hero-founder-link{
+    display:inline-flex; align-items:center; gap:9px;
+    margin-top:18px;
+    font-size:1.05rem; font-weight:800;
+    color:var(--hl-orange, var(--terracotta));
+    text-decoration:none;
+    border-bottom:2px solid transparent;
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .hero-founder-link:hover{ border-color:currentColor; }
+  .hero-founder-link svg{ width:22px; height:22px; flex:none; }
 
   /* ---------- Hero scene ---------- */
   .scene-card{
@@ -1418,8 +1487,11 @@ if ('serviceWorker' in navigator){
     display:inline-block;
     font-size:0.74rem;
     font-weight:700;
-    color:var(--sky-deep);
-    background:color-mix(in srgb, var(--sky) 16%, transparent);
+    /* var(--sky-accent)/--sky-accent-soft : jamais redéfinis par un thème
+       d'univers (contrairement à --sky/--sky-deep), donc toujours lisibles
+       quel que soit l'univers actif (clim/plomberie/chauffage). */
+    color:var(--sky-accent, #5AA9D6);
+    background:var(--sky-accent-soft, #D6ECF7);
     padding:3px 9px;
     border-radius:999px;
     margin:6px 0 8px;
@@ -1511,8 +1583,11 @@ if ('serviceWorker' in navigator){
     font-size:0.88rem;
     font-style:normal;
     font-weight:600;
-    color:var(--sky-deep);
-    background:color-mix(in srgb, var(--sky) 14%, transparent);
+    /* var(--sky-accent)/--sky-accent-soft : jamais redéfinis par un thème
+       d'univers (contrairement à --sky/--sky-deep), donc toujours lisibles
+       quel que soit l'univers actif (clim/plomberie/chauffage). */
+    color:var(--sky-accent, #5AA9D6);
+    background:var(--sky-accent-soft, #D6ECF7);
     padding:11px 14px;
     border-radius:10px;
   }
@@ -1713,6 +1788,12 @@ if ('serviceWorker' in navigator){
   .multi-price small{ font-size:0.6em; font-weight:700; }
   .multi-card > p{ margin-bottom:14px; }
   .multi-card .bullets{ margin-bottom:12px; }
+  /* #multiCta est un <a>, donc display:inline par défaut : sans le passer en
+     inline-block, son padding ne réserve pas correctement sa hauteur dans le
+     flux du bloc, et le texte qui le suit (.multi-gift-note) chevauche son
+     bas au lieu de s'afficher dessous. */
+  .multi-card .btn-primary{ display:inline-block; margin-bottom:14px; }
+  .multi-gift-note{ font-size:0.82rem; color:var(--ink-soft); margin:0; }
 
   .price-groups{
     display:grid;
@@ -1782,7 +1863,36 @@ if ('serviceWorker' in navigator){
     margin:20px 0 6px;
     align-items:stretch;
   }
-  @media (max-width:760px){ .pack-grid{grid-template-columns:1fr;} }
+  /* Mobile : carrousel glissable au doigt plutôt qu'un simple empilement
+     vertical — demande explicite d'une animation "quand je glisse d'un pack
+     à l'autre". scroll-snap fournit le glissé natif/fluide ; le JS plus bas
+     (voir "Carrousel packs (glisser au doigt)") ajoute la mise en avant
+     animée de la carte centrée pendant le glissement. */
+  @media (max-width:760px){
+    .pack-grid{
+      grid-template-columns:none;
+      display:flex;
+      overflow-x:auto;
+      scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling:touch;
+      scroll-padding-inline:24px;
+      padding:4px 24px 14px;
+      margin-inline:-24px;
+      scrollbar-width:none;
+    }
+    .pack-grid::-webkit-scrollbar{ display:none; }
+    .pack-card{
+      scroll-snap-align:center;
+      flex:0 0 84%;
+      transition:transform .35s ease, opacity .35s ease;
+      transform:scale(0.94);
+      opacity:0.75;
+    }
+    .pack-card.is-centered{ transform:scale(1); opacity:1; }
+  }
+  @media (max-width:760px) and (prefers-reduced-motion: reduce){
+    .pack-card{ transition:none; transform:none; opacity:1; }
+  }
   .pack-card{
     position:relative;
     background:var(--sand);
@@ -1895,24 +2005,25 @@ if ('serviceWorker' in navigator){
     border-radius:999px;
     white-space:nowrap;
   }
-  /* Avantage réel du Pack Premium : déplacement offert MÊME hors de la
-     zone de 25 km (voir isFreeTravelPack côté JS / is_free_travel_pack
-     côté SQL) — le déplacement offert DANS la zone de 25 km, lui,
-     s'applique à toutes les prestations, pas seulement au Premium (voir
+  /* Déplacement offert MÊME hors de la zone de 25 km : initialement
+     réservé au Pack Premium, étendu au Pack Confort sur demande explicite
+     (voir isFreeTravelPack côté JS / is_free_travel_pack côté SQL) — le
+     déplacement offert DANS la zone de 25 km, lui, s'applique à toutes les
+     prestations, pas seulement à ces deux paliers (voir
      0024_pricing_tiers_plomberie_chauffage.sql). Élégant et discret plutôt
      que criard : léger liseré doré sur la carte, un badge compact au même
-     emplacement que .pack-badge, et une ligne de rappel sous le prix. */
+     emplacement que .pack-badge, et une ligne de rappel sous le prix.
+     .pack-badge ~ .pack-badge : quand une carte affiche les DEUX badges
+     (Pack Confort désormais), le second est décalé plus haut pour ne pas
+     se superposer au premier, sans dépendre d'une carte précise. */
   .pack-free-travel{ border-color:#C9A24A; }
+  .pack-badge ~ .pack-badge{ top:-38px; }
   .pack-badge-travel{
     background:linear-gradient(135deg, #D9B25C, #B5842E);
     color:#fff;
     box-shadow:0 4px 12px -5px rgba(181,132,46,0.65);
   }
   .pack-features li.pack-feature-highlight{ font-weight:800; color:#B5842E; }
-  .pack-features li.pack-feature-highlight::before{ content:"🎁"; }
-  .pack-travel-note{
-    font-size:0.78rem; font-weight:700; color:#8A6416; margin:4px 0 0;
-  }
   .price-list{list-style:none; margin:0; padding:0;}
   .price-row{
     display:flex;
@@ -2010,11 +2121,11 @@ if ('serviceWorker' in navigator){
     .fuel-toggle-btn{ flex:1; padding:0 12px; }
   }
   .fuel-panel{
-    transition:opacity .5s ease, transform .5s ease;
+    transition:opacity .45s ease, transform .45s ease;
   }
   .fuel-panel.is-fading{
     opacity:0;
-    transform:translateY(8px);
+    transform:translateY(20px) scale(0.98);
   }
   @media (prefers-reduced-motion: reduce){
     .fuel-panel{ transition:none; }
@@ -2105,7 +2216,11 @@ if ('serviceWorker' in navigator){
     height:420px;
     border-radius:12px;
     overflow:hidden;
-    background:var(--terracotta-deep);
+    /* Couleur fixe, jamais liée à --terracotta-deep : ce jeton est devenu un
+       orange vif (voir recolorisation globale du site) alors que ce repli
+       doit rester un fond sombre uni, quel que soit le thème/univers actif
+       (voir commentaire plus bas sur le comportement de repli MapTiler). */
+    background:#101B24;
   }
   @media (max-width:600px){ #zoneMap{ height:340px; } }
   .leaflet-control-zoom a{
@@ -2438,13 +2553,6 @@ if ('serviceWorker' in navigator){
   }
   .espace-pro-dash-banner button:hover{ background:rgba(255,255,255,0.15); }
   .espace-dash-banner-actions{ display:flex; gap:10px; flex-wrap:wrap; }
-  /* "Site HAYEVA" : seul bouton plein (fond blanc) de la bannière, pour se
-     distinguer visuellement de "Se déconnecter" (contour) — c'est l'action
-     qu'on veut le plus visible, celle qui ramène au site sans déconnexion. */
-  #espaceClientGoToSiteBtn{
-    background:#fff !important; color:var(--navy-fixed) !important; border-color:#fff !important;
-  }
-  #espaceClientGoToSiteBtn:hover{ background:rgba(255,255,255,0.88) !important; }
 
   /* Espace Client : tableau de bord */
   .ec-dash-body{ display:flex; flex-direction:column; }
@@ -2461,13 +2569,13 @@ if ('serviceWorker' in navigator){
      strictement limitée à ce composant). */
   .ec-tab:nth-of-type(1){ --ec-tab-c:var(--turquoise); --ec-tab-c-soft:var(--turquoise-soft); }
   .ec-tab:nth-of-type(2){ --ec-tab-c:var(--sky-accent); --ec-tab-c-soft:var(--sky-accent-soft); }
-  .ec-tab:nth-of-type(3){ --ec-tab-c:var(--cat-chauffage); --ec-tab-c-soft:rgba(226,115,92,0.16); }
+  .ec-tab:nth-of-type(3){ --ec-tab-c:var(--cat-chauffage); --ec-tab-c-soft:rgba(203,61,40,0.14); }
   .ec-tab:nth-of-type(4){ --ec-tab-c:var(--amber); --ec-tab-c-soft:var(--amber-soft); }
   .ec-tab:nth-of-type(5){ --ec-tab-c:var(--cat-plomberie); --ec-tab-c-soft:rgba(62,134,184,0.16); }
   .ec-tab:nth-of-type(6){ --ec-tab-c:var(--turquoise); --ec-tab-c-soft:var(--turquoise-soft); }
   .ec-tab:nth-of-type(7){ --ec-tab-c:var(--amber); --ec-tab-c-soft:var(--amber-soft); }
   .ec-tab:nth-of-type(8){ --ec-tab-c:var(--sky-accent); --ec-tab-c-soft:var(--sky-accent-soft); }
-  .ec-tab:nth-of-type(9){ --ec-tab-c:var(--cat-chauffage); --ec-tab-c-soft:rgba(226,115,92,0.16); }
+  .ec-tab:nth-of-type(9){ --ec-tab-c:var(--cat-chauffage); --ec-tab-c-soft:rgba(203,61,40,0.14); }
   .ec-tab{
     flex:0 0 auto; display:inline-flex; align-items:center; gap:10px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem;
     padding:12px 18px; border-radius:14px; border:1.5px solid var(--line); background:var(--cream); color:var(--ink-soft);
@@ -2578,45 +2686,51 @@ if ('serviceWorker' in navigator){
   }
   .ec-appt-cancel-btn:hover{ background:#8A2E2E; border-color:#8A2E2E; color:#fff; }
 
-  /* ---------- Bandeau de consentement cookies ----------
-     PRÉPARÉ mais INACTIF sur le fond : le site ne charge aujourd'hui aucun
+  /* ---------- Modale de consentement cookies (bloquante) ----------
+     PRÉPARÉE mais INACTIVE sur le fond : le site ne charge aujourd'hui aucun
      traceur soumis à consentement (voir page légale "Cookies" — aucun
-     Analytics tiers, aucun pixel pub). Ce bandeau existe pour être prêt le
+     Analytics tiers, aucun pixel pub). Ce mécanisme existe pour être prêt le
      jour où un tel outil serait ajouté ; en attendant, le choix de
      l'utilisateur est enregistré mais ne déclenche concrètement rien
      (window.sudCookieConsent expose l'API que chargerait alors un futur
-     script tiers avant de s'activer). z-index supérieur à celui du portail
-     "Bienvenue" (9999) : le bandeau doit rester visible même sur ce tout
+     script tiers avant de s'activer).
+     BLOQUANTE PAR DEMANDE EXPLICITE : un fond plein écran capte tous les
+     clics (rien n'est cliquable en dessous, y compris les formulaires de
+     connexion) tant qu'un choix n'a pas été fait — ni clic en dehors, ni
+     touche Échap pour fermer sans choisir. z-index supérieur à celui du
+     portail "Bienvenue" (9999) : la modale doit bloquer même ce tout
      premier écran, pas seulement une fois entré sur le site. */
   .cookie-banner{
-    position:fixed; left:0; right:0; bottom:0; z-index:10000;
-    display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap;
-    background:var(--navy-fixed); color:#fff; padding:18px 24px;
-    box-shadow:0 -12px 32px -14px rgba(0,0,0,0.4);
-    transform:translateY(100%); transition:transform .35s ease;
+    position:fixed; inset:0; z-index:10000;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    background:rgba(10,16,22,0.72); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+    opacity:0; pointer-events:none; transition:opacity .3s ease;
   }
-  .cookie-banner.is-visible{ transform:translateY(0); }
+  .cookie-banner.is-visible{ opacity:1; pointer-events:auto; }
   .cookie-banner[hidden]{ display:none; }
-  .cookie-banner-text{ font-size:0.85rem; line-height:1.5; max-width:640px; margin:0; opacity:0.92; }
+  .cookie-banner-box{
+    background:var(--navy-fixed); color:#fff; border-radius:22px; padding:34px 30px;
+    max-width:460px; width:100%; text-align:center;
+    box-shadow:0 40px 80px -24px rgba(0,0,0,0.65);
+    transform:scale(0.94); transition:transform .3s ease;
+  }
+  .cookie-banner.is-visible .cookie-banner-box{ transform:scale(1); }
+  .cookie-banner-icon{ font-size:2.4rem; margin-bottom:10px; }
+  .cookie-banner-text{ font-size:0.92rem; line-height:1.6; margin:0 0 24px; opacity:0.92; }
   .cookie-banner-text a{ color:#fff; text-decoration:underline; }
-  .cookie-banner-actions{ display:flex; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
+  .cookie-banner-actions{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
   /* Les deux choix ont la même taille et le même poids visuel : le refus
      doit être aussi facile d'accès que l'acceptation (déjà le principe
      annoncé sur la page légale "Cookies"). */
   .cookie-banner-btn{
-    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem;
-    border-radius:999px; padding:11px 22px; cursor:pointer; white-space:nowrap;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem;
+    border-radius:999px; padding:13px 22px; cursor:pointer; white-space:nowrap; flex:1 1 150px;
     transition:transform .15s ease, filter .15s ease;
   }
   .cookie-banner-btn:hover{ filter:brightness(1.1); transform:translateY(-1px); }
   .cookie-banner-btn:active{ transform:scale(0.96); }
   .cookie-banner-refuse{ background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,0.5); }
   .cookie-banner-accept{ background:var(--turquoise); color:#fff; border:1.5px solid var(--turquoise); }
-  @media (max-width:600px){
-    .cookie-banner{ justify-content:flex-start; padding:16px 18px; }
-    .cookie-banner-actions{ width:100%; }
-    .cookie-banner-btn{ flex:1 1 0; text-align:center; }
-  }
 
   /* ---------- Assistant Hayeva (widget flottant, espace public) ----------
      Jetons globaux uniquement (--terracotta/--sky/--turquoise/--sand/
@@ -2691,20 +2805,29 @@ if ('serviceWorker' in navigator){
     animation:aiInviteIn .35s ease;
   }
   @keyframes aiInviteIn{ from{ opacity:0; transform:translateY(8px) scale(0.97); } to{ opacity:1; transform:none; } }
+  /* Couleur fixe (jamais var(--ink)) : cette bulle a un fond blanc en dur
+     (#fff ci-dessus) quel que soit l'univers/thème de page actif, alors que
+     --ink devient un blanc quasi pur dans certains univers (ex. chauffage,
+     pensé pour du texte clair sur fond sombre ailleurs) — texte blanc sur
+     bulle blanche, invisible. Le fond ne changeant jamais ici, le texte non
+     plus. */
   .ai-widget-invite-title{
-    margin:0; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.86rem; color:var(--ink); line-height:1.3;
+    margin:0; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.86rem; color:#111; line-height:1.3;
   }
   .ai-widget-invite-sub{
-    margin:3px 0 0; font-size:0.78rem; color:var(--ink-soft); line-height:1.35;
+    margin:3px 0 0; font-size:0.78rem; color:#4A4A4A; line-height:1.35;
     transition:opacity .25s ease;
   }
   .ai-widget-invite-sub.is-fading{ opacity:0; }
+  /* Couleurs fixes ici aussi, même raison que .ai-widget-invite-title
+     ci-dessus (bulle toujours blanche, --sand-deep/--ink-soft ne le sont
+     pas dans tous les univers). */
   .ai-widget-invite-close{
     position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; border:none;
-    background:var(--sand-deep); color:var(--ink-soft); font-size:0.68rem; line-height:1; cursor:pointer;
+    background:#F0EFEC; color:#4A4A4A; font-size:0.68rem; line-height:1; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
-  .ai-widget-invite-close:hover{ background:var(--line); color:var(--ink); }
+  .ai-widget-invite-close:hover{ background:#E2E0DB; color:#111; }
   /* Repliée : ne garde que le titre, en pastille compacte accolée au personnage. */
   .ai-widget-invite.is-collapsed{
     padding:9px 16px; max-width:none;
@@ -3590,6 +3713,21 @@ if ('serviceWorker' in navigator){
     width:30px; height:30px; border-radius:9px; transition:background .18s;
   }
   .pro-nav-label{ flex:1 1 auto; }
+  /* Retour au site public : manquait totalement côté Espace Pro (seul
+     l'Espace Particulier l'avait). Essayé d'abord dans la sidebar sombre,
+     jugé trop discret/pas assez trouvable — posé à la place bien en vue
+     dans la zone claire, à côté du "Bonjour ..." (première chose lue en
+     arrivant sur le tableau de bord), jamais caché dans un menu qu'il faut
+     chercher. */
+  .pro-page-head-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .pro-site-link{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:1.05rem; color:#fff;
+    background:var(--pro-ocean); border:1px solid var(--pro-ocean); border-radius:999px; padding:16px 30px;
+    cursor:pointer; white-space:nowrap; flex:0 0 auto;
+    transition:transform .15s ease, filter .18s ease; box-shadow:0 10px 24px -10px rgba(44,111,179,0.6);
+  }
+  .pro-site-link:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .pro-site-link:active{ transform:scale(0.96); }
   .pro-sidebar-logout-btn{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:rgba(255,255,255,0.82);
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); border-radius:12px; padding:10px 14px;
@@ -3626,6 +3764,7 @@ if ('serviceWorker' in navigator){
     .pro-nav-icon{ font-size:1.1rem; }
     .pro-sidebar-logout-btn{ flex:0 0 auto; padding:8px 10px; font-size:0; width:38px; }
     .pro-sidebar-logout-btn::before{ content:'⏻'; font-size:1rem; }
+    .pro-site-link{ width:100%; text-align:center; }
     .pro-main{ padding:20px 14px 38px; }
   }
 
@@ -3685,6 +3824,31 @@ if ('serviceWorker' in navigator){
   .ec-next-appt .ec-eyebrow{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; opacity:0.75; margin-bottom:8px; }
   .ec-next-appt h3{ font-size:1.15rem; margin-bottom:10px; color:#fff; }
   .ec-next-appt-meta{ display:flex; flex-wrap:wrap; gap:16px; font-size:0.85rem; opacity:0.92; align-items:center; }
+  /* Lien retour site, posé bien en vue à côté du "Bonjour ..." (première
+     chose lue en arrivant sur le tableau de bord) — remplace l'ancien
+     bouton blanc de la bannière sombre du haut (retiré, jugé pas assez
+     visible), même principe côté Espace Pro (.pro-site-link). Volontairement
+     grand : c'est LE lien qu'un visiteur ne doit jamais avoir à chercher. */
+  .ec-home-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  /* Plus gros et franchement noir (pas la couleur --ink par défaut, plus
+     douce) : avec la photo maintenant bien visible juste derrière (voir
+     .auth-bg-img ci-dessus), "Bonjour ..." doit rester lisible d'un coup
+     d'œil quel que soit ce qu'il y a dans la photo à cet endroit — la légère
+     ombre blanche aide encore un peu par-dessus, sans en dépendre. */
+  .ec-home-head .ec-section-title{
+    margin:0; font-size:1.75rem; font-weight:800; color:#000;
+    text-shadow:0 1px 3px rgba(255,255,255,0.55);
+  }
+  .ec-site-link{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:1.05rem; color:#fff;
+    background:var(--sky-deep); border:1px solid var(--sky-deep); border-radius:999px; padding:16px 30px;
+    cursor:pointer; white-space:nowrap; flex:0 0 auto;
+    transition:transform .15s ease, filter .18s ease; box-shadow:0 10px 24px -10px rgba(44,74,102,0.6);
+  }
+  .ec-site-link:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+  .ec-site-link:active{ transform:scale(0.96); }
+  @media (max-width:480px){ .ec-site-link{ width:100%; text-align:center; } }
+
   .ec-home-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:10px; }
   @media (max-width:760px){ .ec-home-grid{ grid-template-columns:1fr 1fr; } }
   @media (max-width:480px){ .ec-home-grid{ grid-template-columns:1fr; } }
@@ -3900,6 +4064,61 @@ if ('serviceWorker' in navigator){
     text-transform:uppercase;
     letter-spacing:0.03em;
     line-height:1.3;
+  }
+
+  /* Bio du fondateur — ouverte depuis un petit lien en haut du site (hero),
+     dans le même overlay plein écran que les pages légales (voir
+     #founderBioOverlay, calqué sur #legalOverlay) plutôt qu'inline dans une
+     section, pour rester un texte qu'on choisit d'ouvrir et de lire, pas un
+     mur de texte imposé au milieu de la page. */
+  .founder-bio-card h2{
+    margin:0 0 4px;
+    font-size:1.3rem;
+  }
+  .founder-bio-card h3{
+    font-size:clamp(1.1rem,2.2vw,1.35rem);
+    color:var(--ink-soft);
+    font-weight:600;
+    margin:0 0 22px;
+  }
+  .founder-bio-card h4{
+    font-family:"Poppins",sans-serif;
+    font-size:clamp(1.05rem,2vw,1.25rem);
+    color:var(--ink);
+    margin:30px 0 14px;
+  }
+  .founder-bio-card p{
+    margin:0 0 16px;
+    line-height:1.7;
+    color:var(--ink-soft);
+  }
+  .founder-bio-card p:last-of-type{ margin-bottom:0; }
+  .founder-bio-quote{
+    font-style:italic;
+    font-weight:700;
+    color:var(--ink) !important;
+    border-left:3px solid var(--terracotta);
+    padding-left:16px;
+    margin:8px 0 20px !important;
+  }
+  .founder-bio-welcome{
+    font-family:"Poppins",sans-serif;
+    font-weight:800;
+    font-size:1.1rem;
+    color:var(--ink) !important;
+    margin-top:26px !important;
+  }
+  .founder-signature{
+    margin-top:24px !important;
+    font-weight:800;
+    color:var(--ink) !important;
+  }
+  .founder-signature span{
+    display:block;
+    font-weight:600;
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    margin-top:2px;
   }
 
   /* Contact band — deliberately fixed dark navy, independent of light/dark theme */
@@ -4360,6 +4579,31 @@ if ('serviceWorker' in navigator){
   #espacePro.is-open.gate-bg-active .auth-bg-overlay{
     display:block;
   }
+  /* Même photo Côte d'Azur derrière le tableau de bord de l'Espace Client
+     une fois connecté (demande explicite), mais "en fondu" — jamais le
+     traitement sombre/saturé de l'écran de connexion ci-dessus, qui rendrait
+     le thème clair du tableau de bord illisible. Les jetons --ink/--cream/
+     --sand ne sont PAS redéfinis ici (contrairement à .gate-bg-active) :
+     cartes blanches, texte sombre, tout le reste du tableau de bord reste
+     exactement comme conçu — seule la photo apparaît, très adoucie, derrière,
+     puis s'efface en blanc avant d'atteindre les cartes. */
+  #espaceClient.is-open:not(.gate-bg-active) .auth-bg,
+  #espaceClient.is-open:not(.gate-bg-active) .auth-bg-overlay{
+    display:block;
+  }
+  #espaceClient.is-open:not(.gate-bg-active) .auth-bg-img{
+    filter:saturate(1) brightness(1) blur(0px);
+    opacity:0.75;
+  }
+  #espaceClient.is-open:not(.gate-bg-active) .auth-bg-overlay{
+    background:linear-gradient(180deg,
+      rgba(255,255,255,0) 0%,
+      transparent 30%,
+      color-mix(in srgb, var(--sand) 35%, transparent) 55%,
+      color-mix(in srgb, var(--sand) 75%, transparent) 75%,
+      var(--sand) 96%,
+      var(--sand) 100%);
+  }
   #espaceClient.is-open > .wrap, #espacePro.is-open > .wrap{ position:relative; z-index:1; }
   /* Cartes de connexion/inscription en verre dépoli : même traitement que
      .portal-card. Sans effet visible tant que .gate-bg-active n'est pas
@@ -4612,17 +4856,17 @@ if ('serviceWorker' in navigator){
   </span>
   <div class="ai-widget-invite" id="aiWidgetInvite">
     <button type="button" class="ai-widget-invite-close" id="aiWidgetInviteClose" aria-label="Masquer l'invitation">✕</button>
-    <p class="ai-widget-invite-title">👋 Besoin d'aide ?</p>
+    <p class="ai-widget-invite-title">Besoin d'aide ?</p>
     <p class="ai-widget-invite-sub" id="aiWidgetInviteSub">Décrivez-moi votre problème, je vous guide.</p>
   </div>
-  <span class="ai-widget-toggle-fallback-label">✨ Assistant Hayeva</span>
+  <span class="ai-widget-toggle-fallback-label">Assistant Hayeva</span>
 </div>
 <div class="ai-widget-panel" id="aiWidgetPanel" hidden role="dialog" aria-modal="false" aria-labelledby="aiWidgetTitle">
   <div class="ai-widget-header">
     <span class="hayeva-char hayeva-char-mini" id="hayevaCharPanel" aria-hidden="true">
       <img src="images/assistant-character/character.png" alt=""
            onerror="this.closest('.hayeva-char').classList.add('hayeva-char-missing')">
-      <span class="hayeva-char-fallback-emoji">✨</span>
+      <span class="hayeva-char-fallback-emoji"></span>
     </span>
     <span class="ai-widget-header-title" id="aiWidgetTitle">Assistant Hayeva</span>
     <button type="button" class="ai-widget-close" id="aiWidgetClose" aria-label="Fermer">✕</button>
@@ -4761,11 +5005,14 @@ if ('serviceWorker' in navigator){
   </div>
 </div>
 
-<div class="cookie-banner" id="cookieBanner" hidden role="dialog" aria-label="Préférences cookies">
-  <p class="cookie-banner-text">🍪 Ce site n'utilise aucun cookie ni traceur nécessitant votre consentement (pas d'outil de mesure d'audience tiers, pas de publicité). Seuls des éléments strictement nécessaires au fonctionnement du site sont utilisés. <a href="#legal/cookies" data-legal-link="cookies">En savoir plus</a></p>
-  <div class="cookie-banner-actions">
-    <button type="button" class="cookie-banner-btn cookie-banner-refuse" id="cookieBannerRefuse">Tout refuser</button>
-    <button type="button" class="cookie-banner-btn cookie-banner-accept" id="cookieBannerAccept">Tout accepter</button>
+<div class="cookie-banner" id="cookieBanner" hidden role="dialog" aria-modal="true" aria-label="Préférences cookies">
+  <div class="cookie-banner-box">
+    <p class="cookie-banner-icon" aria-hidden="true"></p>
+    <p class="cookie-banner-text">Ce site n'utilise aucun cookie ni traceur nécessitant votre consentement (pas d'outil de mesure d'audience tiers, pas de publicité). Seuls des éléments strictement nécessaires au fonctionnement du site sont utilisés. <a href="#legal/cookies" data-legal-link="cookies">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="cookie-banner-btn cookie-banner-refuse" id="cookieBannerRefuse">Tout refuser</button>
+      <button type="button" class="cookie-banner-btn cookie-banner-accept" id="cookieBannerAccept">Tout accepter</button>
+    </div>
   </div>
 </div>
 
@@ -4773,7 +5020,7 @@ if ('serviceWorker' in navigator){
 <div class="edge-glow edge-glow-right" aria-hidden="true"></div>
 
 <div class="opening-banner" role="note">
-  <p>🚧 Entreprise en cours de création — Interventions disponibles à partir du <strong>1er novembre 2026</strong></p>
+  <p>Entreprise en cours de création — Interventions disponibles à partir du <strong>1er novembre 2026</strong></p>
 </div>
 
 <header>
@@ -4788,10 +5035,10 @@ if ('serviceWorker' in navigator){
       </div>
       <div class="mode-switch" id="modeSwitch" role="group" aria-label="Choisir votre profil : particulier ou professionnel">
         <button type="button" class="mode-btn is-active" data-mode-btn="particulier" aria-pressed="true">
-          <span class="mode-btn-icon" aria-hidden="true">👤</span><span class="mode-btn-text">Particulier</span>
+          <span class="mode-btn-icon" aria-hidden="true"></span><span class="mode-btn-text">Particulier</span>
         </button>
         <button type="button" class="mode-btn" data-mode-btn="professionnel" aria-pressed="false">
-          <span class="mode-btn-icon" aria-hidden="true">🏢</span><span class="mode-btn-text">Professionnel</span>
+          <span class="mode-btn-icon" aria-hidden="true"></span><span class="mode-btn-text">Professionnel</span>
         </button>
       </div>
       <nav class="links" id="navLinks">
@@ -4805,6 +5052,10 @@ if ('serviceWorker' in navigator){
       <button type="button" class="header-login-link" id="headerLoginBtn" hidden>
         <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h11M11 8l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Se connecter
+      </button>
+      <button type="button" class="header-login-link" id="headerLogoutBtn" hidden>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 12H4M8 8l-4 4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Se déconnecter
       </button>
     </div>
     <a class="call-btn" href="tel:+33671262302" aria-label="Appeler le 06 71 26 23 02">
@@ -4862,6 +5113,10 @@ if ('serviceWorker' in navigator){
           <span>Intervention rapide</span><span class="dot"></span>
           <span>Basés à Fréjus</span>
         </div>
+        <a href="#" class="hero-founder-link" id="founderBioOpenBtn1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
+          Bio du fondateur
+        </a>
       </div>
 
       <div data-audience="pro" hidden>
@@ -4875,13 +5130,17 @@ if ('serviceWorker' in navigator){
           <a class="btn-hero-secondary" href="#rdv">Demander une intervention</a>
         </div>
         <p class="hero-pro-login-link">
-          <a href="#espacePro">🔐 Se connecter à mon espace Pro</a>
+          <a href="#espacePro">Se connecter à mon espace Pro</a>
         </p>
         <div class="trustline">
           <span>Tarifs dégressifs</span><span class="dot"></span>
           <span>Compte-rendu numérique</span><span class="dot"></span>
           <span>Basés à Fréjus</span>
         </div>
+        <a href="#" class="hero-founder-link" id="founderBioOpenBtn2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
+          Bio du fondateur
+        </a>
       </div>
     </div>
   </section>
@@ -4900,7 +5159,7 @@ if ('serviceWorker' in navigator){
         </button>
         <button type="button" class="besoin-cat-btn hover-lift" data-cat="chauffage" style="--accent-cat:var(--cat-chauffage); --accent-cat-soft:var(--amber-soft);">
           <span class="besoin-cat-icon">
-            <svg viewBox="0 0 30 30" fill="none"><path d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.35"/></svg>
+            <svg viewBox="0 0 30 30" fill="none"><path d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.7"/></svg>
           </span>
           <span class="besoin-cat-label">Chauffage</span>
           <span class="besoin-cat-sub">Entretien &amp; dépannage</span>
@@ -5156,7 +5415,7 @@ if ('serviceWorker' in navigator){
           Climatisation
         </button>
         <button class="tab-btn" data-tab="chauffage" type="button" style="--accent-cat:var(--cat-chauffage);">
-          <svg viewBox="0 0 30 30" fill="none"><path class="heatline1" d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/><path class="heatline2" d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.35"/></svg>
+          <svg viewBox="0 0 30 30" fill="none"><path class="heatline1" d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="none"/><path class="heatline2" d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.7"/></svg>
           Chauffage
         </button>
         <button class="tab-btn is-plomberie" data-tab="plomberie" type="button" style="--accent-cat:var(--cat-plomberie);">
@@ -5222,7 +5481,7 @@ if ('serviceWorker' in navigator){
       </div>
 
       <div id="climPromo" class="promo-banner" hidden>
-        <span class="promo-badge">🎁 Offre exclusive Noël</span>
+        <span class="promo-badge">Offre exclusive Noël</span>
         <h3>Pack Découverte Entretien Climatisation — 99 € TTC</h3>
         <p>Du 15 octobre au 15 novembre, toute réservation d'un entretien de climatisation vous fait participer à un tirage au sort pour tenter de gagner une Nintendo Switch 2.</p>
         <p class="promo-legal">Jeu sans obligation d'achat — pour participer sans réserver, contactez-nous par email ou téléphone.</p>
@@ -5242,8 +5501,10 @@ if ('serviceWorker' in navigator){
           <li>Resserrage des éléments de plomberie si besoin</li>
           <li>Vérification générale de vos équipements</li>
           <li>✓ Déplacement offert dans la zone de 25 km</li>
+          <li>✓ Un cadeau surprise HAYEVA offert, au choix <sup>*</sup></li>
         </ul>
         <a class="btn-primary" href="#rdv" id="multiCta">Réserver ce forfait</a>
+        <p class="multi-gift-note"><sup>*</sup> Cadeau au choix : porte-clés multifonction HAYEVA (mini lampe &amp; tournevis), désodorisant parfumé pour filtre de climatisation HAYEVA, ou huile essentielle en roll-on HAYEVA.</p>
       </div>
 
       <div class="price-logos reveal-on-scroll" id="priceLogos">
@@ -5252,7 +5513,7 @@ if ('serviceWorker' in navigator){
           <span>Climatisation</span>
         </button>
         <button class="price-logo-btn" data-cat="chauffage" type="button" style="--accent-cat:var(--cat-chauffage);">
-          <svg viewBox="0 0 30 30" fill="none"><path class="heatline1" d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/><path class="heatline2" d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.35"/></svg>
+          <svg viewBox="0 0 30 30" fill="none"><path class="heatline1" d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="none"/><path class="heatline2" d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.7"/></svg>
           <span>Chauffage</span>
         </button>
         <button class="price-logo-btn is-plomberie" data-cat="plomberie" type="button" style="--accent-cat:var(--cat-plomberie);">
@@ -5262,7 +5523,7 @@ if ('serviceWorker' in navigator){
       </div>
 
       <div class="price-reveal" id="priceReveal">
-        <p class="price-empty" id="priceEmpty">👆 Cliquez sur une activité ci-dessus pour voir les tarifs correspondants.</p>
+        <p class="price-empty" id="priceEmpty">Cliquez sur une activité ci-dessus pour voir les tarifs correspondants.</p>
 
         <div class="price-group" data-cat="clim" hidden>
           <h3>Climatisation — Entretien</h3>
@@ -5283,7 +5544,8 @@ if ('serviceWorker' in navigator){
               <p class="pack-extra">2ᵉ unité : -10 € (49 € TTC)</p>
               <button type="button" class="pack-cta" data-pack="clim-essentiel">Choisir Essentiel</button>
             </div>
-            <div class="pack-card pack-featured">
+            <div class="pack-card pack-featured pack-free-travel">
+              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
               <span class="pack-badge">Le plus choisi</span>
               <h4>Pack Confort</h4>
               <p class="pack-tagline">L'entretien complet</p>
@@ -5294,6 +5556,7 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle unité extérieure</li>
                 <li>Contrôle chaud / froid</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
+                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">79 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -20 € (59 € TTC)</p>
@@ -5312,14 +5575,15 @@ if ('serviceWorker' in navigator){
                 <li>Compte rendu d'intervention</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
                 <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
+                <li class="pack-feature-highlight">Un cadeau surprise HAYEVA offert, au choix <sup>*</sup></li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -30 € (99 € TTC)</p>
-              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance — y compris hors de la zone standard</p>
               <button type="button" class="pack-cta" data-pack="clim-premium">Choisir Premium</button>
+              <p class="multi-gift-note"><sup>*</sup> Cadeau au choix : porte-clés multifonction HAYEVA (mini lampe &amp; tournevis), désodorisant parfumé pour filtre de climatisation HAYEVA, ou huile essentielle en roll-on HAYEVA.</p>
             </div>
           </div>
-          <p class="price-note-small">Prix suggérés à confirmer — 🚐 déplacement offert dans la zone de 25 km autour de HAYEVA, tarif selon nombre d'unités.</p>
+          <p class="price-note-small">Prix suggérés à confirmer — déplacement offert dans la zone de 25 km autour de HAYEVA, tarif selon nombre d'unités.</p>
         </div>
 
         <div class="price-group" data-cat="chauffage" hidden>
@@ -5348,7 +5612,8 @@ if ('serviceWorker' in navigator){
               <p class="pack-price">99 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-essentiel">Choisir Essentiel</button>
             </div>
-            <div class="pack-card pack-featured">
+            <div class="pack-card pack-featured pack-free-travel">
+              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
               <span class="pack-badge">Le plus choisi</span>
               <h4>Pack Confort</h4>
               <p class="pack-tagline">L'entretien complet</p>
@@ -5361,6 +5626,7 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle de la combustion et des réglages</li>
                 <li>Conseils d'optimisation de l'installation</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
+                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-confort">Choisir Confort</button>
@@ -5378,10 +5644,11 @@ if ('serviceWorker' in navigator){
                 <li>Compte rendu d'intervention</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
                 <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
+                <li class="pack-feature-highlight">Un cadeau surprise HAYEVA offert, au choix <sup>*</sup></li>
               </ul>
               <p class="pack-price">169 € <small>TTC</small></p>
-              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance — y compris hors de la zone standard</p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-premium">Choisir Premium</button>
+              <p class="multi-gift-note"><sup>*</sup> Cadeau au choix : porte-clés multifonction HAYEVA (mini lampe &amp; tournevis), désodorisant parfumé pour filtre de climatisation HAYEVA, ou huile essentielle en roll-on HAYEVA.</p>
             </div>
           </div>
 
@@ -5402,7 +5669,8 @@ if ('serviceWorker' in navigator){
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-essentiel">Choisir Essentiel</button>
             </div>
-            <div class="pack-card pack-featured">
+            <div class="pack-card pack-featured pack-free-travel">
+              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
               <span class="pack-badge">Le plus choisi</span>
               <h4>Pack Confort</h4>
               <p class="pack-tagline">L'entretien complet</p>
@@ -5415,6 +5683,7 @@ if ('serviceWorker' in navigator){
                 <li>Analyse et réglage de la combustion</li>
                 <li>Contrôle du vase d'expansion et de la pression</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
+                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">169 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-confort">Choisir Confort</button>
@@ -5433,10 +5702,11 @@ if ('serviceWorker' in navigator){
                 <li>Compte rendu détaillé d'intervention</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
                 <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
+                <li class="pack-feature-highlight">Un cadeau surprise HAYEVA offert, au choix <sup>*</sup></li>
               </ul>
               <p class="pack-price">219 € <small>TTC</small></p>
-              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance — y compris hors de la zone standard</p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-premium">Choisir Premium</button>
+              <p class="multi-gift-note"><sup>*</sup> Cadeau au choix : porte-clés multifonction HAYEVA (mini lampe &amp; tournevis), désodorisant parfumé pour filtre de climatisation HAYEVA, ou huile essentielle en roll-on HAYEVA.</p>
             </div>
           </div>
           <p class="price-note-small">Tarifs TTC pour l'entretien d'une chaudière individuelle standard. Pièces détachées et réparations non comprises. Un supplément peut s'appliquer selon l'installation, son état ou les conditions d'accès.</p>
@@ -5473,10 +5743,10 @@ if ('serviceWorker' in navigator){
       </div>
 
       <p class="price-note-small">Main-d'œuvre : à partir de 50 € TTC selon durée de l'intervention, voir devis.</p>
-      <p class="price-note-small">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
+      <p class="price-note-small">Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
       <p class="price-disclaimer">Tarifs TTC donnés à titre indicatif. Les montants « à partir de » peuvent varier selon le temps d'intervention, l'accessibilité, l'installation existante, le matériel nécessaire ou la difficulté constatée sur place — un devis précis vous est toujours confirmé avant intervention.</p>
-      <p class="photo-tip">💳 Profitez de -10% si vous réglez votre prestation à l'avance — contactez-nous pour en profiter.</p>
-      <p class="photo-tip">📷 Une photo de la panne ou de l'installation nous aide souvent à vous donner un tarif précis avant même notre venue : décrivez votre besoin dans le formulaire de réservation, nous vous recontactons pour l'obtenir facilement.</p>
+      <p class="photo-tip">Profitez de -10% si vous réglez votre prestation à l'avance — contactez-nous pour en profiter.</p>
+      <p class="photo-tip">Une photo de la panne ou de l'installation nous aide souvent à vous donner un tarif précis avant même notre venue : décrivez votre besoin dans le formulaire de réservation, nous vous recontactons pour l'obtenir facilement.</p>
     </div>
   </section>
 
@@ -5652,7 +5922,7 @@ if ('serviceWorker' in navigator){
         results.innerHTML =
           '<p class="hint">' + climClarification + '</p>' +
           '<button type="button" class="top-search-item" id="topSearchClimEntretienCta">' +
-            '<span class="top-search-icon" aria-hidden="true">❄️</span>' +
+            '<span class="top-search-icon" aria-hidden="true"></span>' +
             '<span class="top-search-text"><span class="top-search-name">Voir les prestations climatisation</span></span>' +
             '<span class="top-search-arrow">→</span>' +
           '</button>';
@@ -5788,7 +6058,7 @@ if ('serviceWorker' in navigator){
             <label id="bkAddressFreeTextLabel" style="position:relative;">Ville / adresse d'intervention
               <input id="bkAddress" type="text" placeholder="12 avenue de la République, Fréjus…" autocomplete="off">
               <ul class="address-suggestions" id="bkAddressSuggestions" hidden></ul>
-              <span class="travel-hint">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont indiqués avant confirmation du rendez-vous.</span>
+              <span class="travel-hint">Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont indiqués avant confirmation du rendez-vous.</span>
               <span class="travel-note" id="travelEstimateNote"></span>
             </label>
             <label class="full" id="bkCustomerAddressBlock" hidden>Adresse d'intervention (Espace Client)
@@ -5834,7 +6104,7 @@ if ('serviceWorker' in navigator){
             <span class="confirm-check">✓</span>
             <h3>Demande envoyée</h3>
             <p>Votre demande de rendez-vous a bien été envoyée. Nous vous confirmons rapidement le créneau.</p>
-            <p class="hint">📷 Vous pouvez joindre une photo directement dans l'email qui vient de s'ouvrir avant de l'envoyer.</p>
+            <p class="hint">Vous pouvez joindre une photo directement dans l'email qui vient de s'ouvrir avant de l'envoyer.</p>
             <p class="hint" id="confirmFallback"></p>
           </div>
           <div class="confirm-screen" id="bkConfirmReal" hidden>
@@ -5844,7 +6114,7 @@ if ('serviceWorker' in navigator){
             <p>Votre demande a bien été enregistrée. Nous vous confirmerons votre rendez-vous très prochainement.</p>
             <p class="hint" id="bkConfirmRealDetails"></p>
             <div class="bk-prep-block" id="bkConfirmPrepBlock" hidden>
-              <p class="bk-prep-block-title">🔧 Préparez votre intervention</p>
+              <p class="bk-prep-block-title">Préparez votre intervention</p>
               <p id="bkConfirmPrepText"></p>
             </div>
             <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
@@ -5869,7 +6139,7 @@ if ('serviceWorker' in navigator){
         <p class="eyebrow">Zone d'intervention</p>
         <h2 style="margin-top:10px; font-size:clamp(1.5rem,2.6vw,1.9rem);">Tout le Var, toutes les Alpes-Maritimes.</h2>
         <p style="margin-top:12px; margin-bottom:10px;">Basés à Fréjus, nous nous déplaçons dans l'intégralité du Var (83) et des Alpes-Maritimes (06), pour les particuliers comme pour les professionnels — pas seulement les villes listées ci-dessous.</p>
-        <p style="margin-bottom:26px; font-size:0.9rem; color:var(--ink-soft);">🚐 Déplacement offert dans un rayon de 25 km autour de HAYEVA (distance calculée par itinéraire routier réel, jamais à vol d'oiseau), pour l'ensemble des prestations. Au-delà, des frais kilométriques peuvent s'appliquer et sont toujours indiqués avant confirmation du rendez-vous — quelle que soit la commune, l'éligibilité au rayon inclus dépend de la distance routière réelle jusqu'à votre adresse exacte.</p>
+        <p style="margin-bottom:26px; font-size:0.9rem; color:var(--ink-soft);">Déplacement offert dans un rayon de 25 km autour de HAYEVA (distance calculée par itinéraire routier réel, jamais à vol d'oiseau), pour l'ensemble des prestations. Au-delà, des frais kilométriques peuvent s'appliquer et sont toujours indiqués avant confirmation du rendez-vous — quelle que soit la commune, l'éligibilité au rayon inclus dépend de la distance routière réelle jusqu'à votre adresse exacte.</p>
 
         <div class="dept-block">
           <h3>Alpes-Maritimes (06)</h3>
@@ -5968,7 +6238,7 @@ if ('serviceWorker' in navigator){
     // politique d'usage interdit une intégration directe sur un site
     // commercial en production (d'où le blocage 403 précédemment constaté).
     //
-    // ⚠️ CLÉ À RENSEIGNER PAR JULIEN — jamais créée ni devinée ici :
+    // CLÉ À RENSEIGNER PAR JULIEN — jamais créée ni devinée ici :
     //   1. Créer un compte sur https://cloud.maptiler.com/
     //   2. Menu de gauche "API keys" (ou https://cloud.maptiler.com/account/keys/)
     //      → une clé par défaut existe déjà, ou "New key" pour en créer une.
@@ -5977,7 +6247,7 @@ if ('serviceWorker' in navigator){
     // Tant que MAPTILER_API_KEY est vide, ou si les tuiles ne chargent pas
     // (clé invalide, quota dépassé, service indisponible), la carte revient
     // automatiquement au repli déjà en place : fond sombre uni
-    // (var(--terracotta-deep) sur #zoneMap), points des villes, cercle de
+    // (#101B24 fixe sur #zoneMap, indépendant du thème/univers actif), points des villes, cercle de
     // zone et infobulles inchangés — jamais de tuiles cassées ni de mosaïque
     // d'erreurs visible.
     var MAPTILER_API_KEY = '7wGZAWaSDZekaE6rL6RW';
@@ -6080,10 +6350,10 @@ if ('serviceWorker' in navigator){
       </div>
 
       <div class="pro-cats">
-        <div class="pro-cat-card"><span class="pro-cat-icon" aria-hidden="true">🏠</span> Locations saisonnières</div>
-        <div class="pro-cat-card"><span class="pro-cat-icon" aria-hidden="true">🚐</span> Mobil-homes</div>
+        <div class="pro-cat-card"><span class="pro-cat-icon" aria-hidden="true"></span> Locations saisonnières</div>
+        <div class="pro-cat-card"><span class="pro-cat-icon" aria-hidden="true"></span> Mobil-homes</div>
         <button type="button" class="pro-cat-card" id="multiLogementsQuickLink">
-          <span class="pro-cat-icon" aria-hidden="true">🏘️</span> Plusieurs logements
+          <span class="pro-cat-icon" aria-hidden="true"></span> Plusieurs logements
         </button>
       </div>
 
@@ -6147,14 +6417,14 @@ if ('serviceWorker' in navigator){
         </div>
       </div>
       <p class="price-note-small">Ces prestations correspondent à un contrôle visuel et fonctionnel réalisé dans le cadre des compétences de HAYEVA (plomberie, chauffage, climatisation). Elles ne constituent ni une certification officielle, ni un diagnostic réglementaire, ni une attestation de conformité.</p>
-      <p class="price-note-small">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
+      <p class="price-note-small">Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
 
       <div class="pro-report">
         <h3>Un compte-rendu clair après chaque Check</h3>
         <div class="pro-levels">
-          <span>🟢 Fonctionnel</span>
-          <span>🟠 À surveiller</span>
-          <span>🔴 Intervention recommandée</span>
+          <span>Fonctionnel</span>
+          <span>À surveiller</span>
+          <span>Intervention recommandée</span>
         </div>
         <p>Chaque élément contrôlé (Check Complet et Premium) est classé selon ces trois niveaux dans un compte-rendu numérique envoyé après le passage du technicien. Si une anomalie est repérée, elle est simplement signalée avec son niveau de priorité — <strong>aucune réparation n'est jamais ajoutée ni facturée automatiquement</strong>. Vous restez libre de demander une intervention ou un devis séparé.</p>
       </div>
@@ -6195,7 +6465,7 @@ if ('serviceWorker' in navigator){
       <div class="tarifs-pro" id="tarifsPro">
         <h3>Tarifs professionnels — remise multi-logements</h3>
         <div class="tarifs-pro-grid" id="tarifsProGrid"></div>
-        <p class="price-note-small" style="margin-top:14px;">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
+        <p class="price-note-small" style="margin-top:14px;">Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
       </div>
     </div>
   </section>
@@ -6300,7 +6570,7 @@ if ('serviceWorker' in navigator){
             </div>
           </form>
 
-          <p class="espace-pro-dev-notice" id="espaceProDevNotice">🔧 Authentification sécurisée à connecter : l'espace professionnel n'est pas encore relié à une base de données distante ni à un système de comptes. En attendant, vous pouvez essayer une démonstration locale ci-dessous.</p>
+          <p class="espace-pro-dev-notice" id="espaceProDevNotice">Authentification sécurisée à connecter : l'espace professionnel n'est pas encore relié à une base de données distante ni à un système de comptes. En attendant, vous pouvez essayer une démonstration locale ci-dessous.</p>
 
           <div class="espace-pro-demo-divider"><span>ou</span></div>
 
@@ -6317,25 +6587,25 @@ if ('serviceWorker' in navigator){
             </div>
             <div class="pro-sidebar-nav" id="proSidebarNav" role="tablist">
               <button type="button" class="pro-nav-btn is-active" data-pro-page="dashboard" role="tab" aria-selected="true">
-                <span class="pro-nav-icon" aria-hidden="true">🏠</span><span class="pro-nav-label">Tableau de bord</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Tableau de bord</span>
               </button>
               <button type="button" class="pro-nav-btn" data-pro-page="logements" role="tab" aria-selected="false">
-                <span class="pro-nav-icon" aria-hidden="true">🏘</span><span class="pro-nav-label">Mes logements</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Mes logements</span>
               </button>
               <button type="button" class="pro-nav-btn" data-pro-page="rendezvous" role="tab" aria-selected="false">
-                <span class="pro-nav-icon" aria-hidden="true">📅</span><span class="pro-nav-label">Mes rendez-vous</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Mes rendez-vous</span>
               </button>
               <button type="button" class="pro-nav-btn" data-pro-page="rapports" role="tab" aria-selected="false">
-                <span class="pro-nav-icon" aria-hidden="true">📄</span><span class="pro-nav-label">Mes rapports</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Mes rapports</span>
               </button>
               <button type="button" class="pro-nav-btn" data-pro-page="factures" role="tab" aria-selected="false">
-                <span class="pro-nav-icon" aria-hidden="true">🧾</span><span class="pro-nav-label">Mes factures</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Mes factures</span>
               </button>
               <button type="button" class="pro-nav-btn" data-pro-page="devis" role="tab" aria-selected="false">
-                <span class="pro-nav-icon" aria-hidden="true">📝</span><span class="pro-nav-label">Mes demandes de devis</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Mes demandes de devis</span>
               </button>
               <button type="button" class="pro-nav-btn" data-pro-page="parametres" role="tab" aria-selected="false">
-                <span class="pro-nav-icon" aria-hidden="true">⚙️</span><span class="pro-nav-label">Paramètres</span>
+                <span class="pro-nav-icon" aria-hidden="true"></span><span class="pro-nav-label">Paramètres</span>
               </button>
             </div>
             <button type="button" class="pro-sidebar-logout-btn" id="espaceProLogoutBtn">Se déconnecter</button>
@@ -6344,43 +6614,48 @@ if ('serviceWorker' in navigator){
           <div class="pro-main">
             <section class="pro-page" id="proPageDashboard" data-pro-page="dashboard">
               <div class="pro-page-head">
-                <p class="pro-eyebrow">Tableau de bord</p>
-                <h2 class="pro-page-title">Bonjour THE BIG BOSS 👑</h2>
+                <div class="pro-page-head-top">
+                  <div>
+                    <p class="pro-eyebrow">Tableau de bord</p>
+                    <h2 class="pro-page-title">Bonjour THE BIG BOSS</h2>
+                  </div>
+                  <button type="button" class="pro-site-link" id="espaceProGoToSiteBtn">Voir le site HAYEVA</button>
+                </div>
                 <p class="pro-page-sub">Vue d'ensemble de vos logements et rendez-vous HAYEVA.</p>
               </div>
               <div class="pro-stats-grid" id="proStatsGrid">
                 <div class="pro-stat-card pro-stat-ocean">
-                  <span class="pro-stat-icon" aria-hidden="true">🏘</span>
+                  <span class="pro-stat-icon" aria-hidden="true"></span>
                   <span class="pro-stat-value" id="proStatProperties">—</span>
                   <span class="pro-stat-label">Logements</span>
                 </div>
                 <div class="pro-stat-card pro-stat-turquoise">
-                  <span class="pro-stat-icon" aria-hidden="true">📅</span>
+                  <span class="pro-stat-icon" aria-hidden="true"></span>
                   <span class="pro-stat-value" id="proStatUpcoming">—</span>
                   <span class="pro-stat-label">Rendez-vous à venir</span>
                 </div>
                 <div class="pro-stat-card pro-stat-coral">
-                  <span class="pro-stat-icon" aria-hidden="true">📄</span>
+                  <span class="pro-stat-icon" aria-hidden="true"></span>
                   <span class="pro-stat-value" id="proStatReports">Bientôt</span>
                   <span class="pro-stat-label">Rapports disponibles</span>
                 </div>
                 <div class="pro-stat-card pro-stat-sand">
-                  <span class="pro-stat-icon" aria-hidden="true">🧾</span>
+                  <span class="pro-stat-icon" aria-hidden="true"></span>
                   <span class="pro-stat-value" id="proStatInvoices">Bientôt</span>
                   <span class="pro-stat-label">Factures disponibles</span>
                 </div>
               </div>
               <div id="proNextApptCard"></div>
               <div class="pro-quicklinks">
-                <button type="button" class="pro-quicklink-btn" data-pro-goto="rendezvous">📅 Voir mes rendez-vous</button>
-                <button type="button" class="pro-quicklink-btn" data-pro-goto="logements">🏘 Ajouter un logement</button>
+                <button type="button" class="pro-quicklink-btn" data-pro-goto="rendezvous">Voir mes rendez-vous</button>
+                <button type="button" class="pro-quicklink-btn" data-pro-goto="logements">Ajouter un logement</button>
               </div>
             </section>
 
             <section class="pro-page" id="proPageLogements" data-pro-page="logements" hidden>
               <div class="pro-page-head">
                 <p class="pro-eyebrow">Espace professionnel</p>
-                <h2 class="pro-page-title">🏘 Mes logements</h2>
+                <h2 class="pro-page-title">Mes logements</h2>
                 <p class="pro-page-sub">Référence, adresse et type — synchronisés sur tous vos appareils.</p>
               </div>
               <div id="proPropertiesPanel"><p class="ec-loading">Chargement…</p></div>
@@ -6389,7 +6664,7 @@ if ('serviceWorker' in navigator){
             <section class="pro-page" id="proPageRdv" data-pro-page="rendezvous" hidden>
               <div class="pro-page-head">
                 <p class="pro-eyebrow">Espace professionnel</p>
-                <h2 class="pro-page-title">📅 Mes rendez-vous</h2>
+                <h2 class="pro-page-title">Mes rendez-vous</h2>
                 <p class="pro-page-sub">Consultation, déplacement et annulation lorsque le rendez-vous le permet.</p>
               </div>
               <div id="espaceProApptSummary" class="espace-pro-appt-list"><p class="espace-pro-appt-loading">Chargement…</p></div>
@@ -6399,7 +6674,7 @@ if ('serviceWorker' in navigator){
             <section class="pro-page" id="proPageRapports" data-pro-page="rapports" hidden>
               <div class="pro-page-head">
                 <p class="pro-eyebrow">Espace professionnel</p>
-                <h2 class="pro-page-title">📄 Mes rapports</h2>
+                <h2 class="pro-page-title">Mes rapports</h2>
               </div>
               <div class="pro-empty-state">
                 <strong>Comptes-rendus numériques par logement</strong>
@@ -6411,7 +6686,7 @@ if ('serviceWorker' in navigator){
             <section class="pro-page" id="proPageFactures" data-pro-page="factures" hidden>
               <div class="pro-page-head">
                 <p class="pro-eyebrow">Espace professionnel</p>
-                <h2 class="pro-page-title">🧾 Mes factures</h2>
+                <h2 class="pro-page-title">Mes factures</h2>
               </div>
               <div class="pro-empty-state">
                 <strong>Historique de facturation par logement</strong>
@@ -6423,7 +6698,7 @@ if ('serviceWorker' in navigator){
             <section class="pro-page" id="proPageDevis" data-pro-page="devis" hidden>
               <div class="pro-page-head">
                 <p class="pro-eyebrow">Espace professionnel</p>
-                <h2 class="pro-page-title">📝 Mes demandes de devis</h2>
+                <h2 class="pro-page-title">Mes demandes de devis</h2>
               </div>
               <div class="pro-empty-state">
                 <strong>Suivi de vos demandes de devis en cours</strong>
@@ -6435,7 +6710,7 @@ if ('serviceWorker' in navigator){
             <section class="pro-page" id="proPageParametres" data-pro-page="parametres" hidden>
               <div class="pro-page-head">
                 <p class="pro-eyebrow">Espace professionnel</p>
-                <h2 class="pro-page-title">⚙️ Paramètres</h2>
+                <h2 class="pro-page-title">Paramètres</h2>
                 <p class="pro-page-sub">Informations de votre compte professionnel.</p>
               </div>
               <div id="proSettingsPanel"><p class="ec-loading">Chargement…</p></div>
@@ -6458,35 +6733,35 @@ if ('serviceWorker' in navigator){
               </div>
               <div class="adm-sidebar-nav" id="admSidebarNav" role="tablist">
                 <button type="button" class="adm-nav-btn is-active" data-adm-page="dashboard" role="tab" aria-selected="true">
-                  <span class="adm-nav-icon" aria-hidden="true">🏠</span><span class="adm-nav-label">Tableau de bord</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Tableau de bord</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="planning" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">📅</span><span class="adm-nav-label">Planning</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Planning</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="requests" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">🔔</span><span class="adm-nav-label">Demandes récentes</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Demandes récentes</span>
                   <span class="adm-nav-badge" id="admSidebarReqBadge" hidden>0</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="archives" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">🗄️</span><span class="adm-nav-label">Archives</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Archives</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="accounts" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">👥</span><span class="adm-nav-label">Inscriptions</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Inscriptions</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="quotes" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">📄</span><span class="adm-nav-label">Devis</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Devis</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="stats" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">📊</span><span class="adm-nav-label">Statistiques</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Statistiques</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="pricing" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">🧮</span><span class="adm-nav-label">Chiffrage</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Chiffrage</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="catalog" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">📦</span><span class="adm-nav-label">Catalogue</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Catalogue</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true">⚙️</span><span class="adm-nav-label">Paramètres</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Paramètres</span>
                 </button>
               </div>
             </nav>
@@ -6496,50 +6771,50 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageDashboard" data-adm-page="dashboard">
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">🏠 Tableau de bord</h2>
+                  <h2 class="adm-page-title">Tableau de bord</h2>
                   <p class="adm-page-sub">Vue d'ensemble de l'activité HAYEVA.</p>
                 </div>
                 <div class="adm-stats-grid">
                   <div class="adm-stat-card adm-stat-ocean">
-                    <span class="adm-stat-icon" aria-hidden="true">📅</span>
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatToday">—</span>
                     <span class="adm-stat-label">Rendez-vous aujourd'hui</span>
                   </div>
                   <div class="adm-stat-card adm-stat-coral">
-                    <span class="adm-stat-icon" aria-hidden="true">🔔</span>
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatNew">—</span>
                     <span class="adm-stat-label">Demandes récentes</span>
                   </div>
                   <div class="adm-stat-card adm-stat-turquoise">
-                    <span class="adm-stat-icon" aria-hidden="true">🗓️</span>
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatWeek">—</span>
                     <span class="adm-stat-label">Rendez-vous cette semaine</span>
                   </div>
                   <div class="adm-stat-card adm-stat-sand">
-                    <span class="adm-stat-icon" aria-hidden="true">📄</span>
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatQuotes">—</span>
                     <span class="adm-stat-label">Devis en attente</span>
                   </div>
                 </div>
                 <div class="adm-quicklinks">
-                  <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">📅 Ouvrir le planning</button>
-                  <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">🔔 Voir les dernières demandes</button>
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">Ouvrir le planning</button>
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">Voir les dernières demandes</button>
                 </div>
               </section>
 
               <section class="adm-page" id="admPagePlanning" data-adm-page="planning" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">📅 Tous les rendez-vous</h2>
+                  <h2 class="adm-page-title">Tous les rendez-vous</h2>
                   <p class="adm-page-sub">Vue d'ensemble des réservations HAYEVA, tous clients confondus — statut et ajout au calendrier depuis chaque rendez-vous.</p>
                   <p class="admin-bk-pending-count" id="adminBkPendingCount" hidden></p>
                 </div>
                 <div class="admin-bk-toolbar">
                   <div class="admin-bk-view-toggle" id="adminBkViewToggle" role="group" aria-label="Mode d'affichage">
-                    <button type="button" class="admin-bk-view-tab is-active" data-admin-bk-view="planning">🗓️ Planning</button>
+                    <button type="button" class="admin-bk-view-tab is-active" data-admin-bk-view="planning">Planning</button>
                     <button type="button" class="admin-bk-view-tab" data-admin-bk-view="liste">☰ Liste</button>
                   </div>
-                  <button type="button" class="admin-bk-history-btn" id="adminBkHistoryBtn">🗂️ Historique (annulés / refusés)</button>
+                  <button type="button" class="admin-bk-history-btn" id="adminBkHistoryBtn">Historique (annulés / refusés)</button>
                 </div>
                 <div class="admin-bk-planning-nav" id="adminBkPlanningNav">
                   <button type="button" class="admin-bk-planning-nav-btn" data-admin-planning-nav="prev">← Semaine précédente</button>
@@ -6560,7 +6835,7 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageRequests" data-adm-page="requests" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">🔔 Demandes récentes <span class="admin-req-badge" id="adminReqBadge" hidden>0</span></h2>
+                  <h2 class="adm-page-title">Demandes récentes <span class="admin-req-badge" id="adminReqBadge" hidden>0</span></h2>
                   <p class="adm-page-sub">Toutes les réservations reçues sur HAYEVA, les plus récentes en premier.</p>
                 </div>
                 <div class="admin-bk-toolbar">
@@ -6576,7 +6851,7 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageArchives" data-adm-page="archives" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">🗄️ Archives</h2>
+                  <h2 class="adm-page-title">Archives</h2>
                   <p class="adm-page-sub">Demandes refusées ou annulées — la suppression définitive n'est possible que pour celles refusées par vous.</p>
                 </div>
                 <div id="adminArchivesList"><p class="ec-loading">Chargement…</p></div>
@@ -6585,7 +6860,7 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageAccounts" data-adm-page="accounts" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">👥 Inscriptions</h2>
+                  <h2 class="adm-page-title">Inscriptions</h2>
                   <p class="adm-page-sub">Recherchez un compte par nom, téléphone ou e-mail — rien ne s'affiche tant que vous n'avez rien saisi.</p>
                 </div>
                 <div class="admin-bk-filters" id="adminAccountsFilters" role="group" aria-label="Filtrer par type de compte">
@@ -6593,7 +6868,7 @@ if ('serviceWorker' in navigator){
                   <button type="button" class="gallery-filter-btn" data-admin-account-type="professional">Professionnels</button>
                 </div>
                 <div class="admin-accounts-search-wrap">
-                  <input type="search" id="adminAccountsSearch" class="admin-accounts-search" placeholder="🔍 Rechercher par nom, téléphone ou e-mail…" autocomplete="off">
+                  <input type="search" id="adminAccountsSearch" class="admin-accounts-search" placeholder="Rechercher par nom, téléphone ou e-mail…" autocomplete="off">
                 </div>
                 <div id="adminAccountsList"></div>
               </section>
@@ -6601,12 +6876,12 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageQuotes" data-adm-page="quotes" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">📄 Devis</h2>
+                  <h2 class="adm-page-title">Devis</h2>
                   <p class="adm-page-sub">Demandes de devis gratuit, les plus récentes en premier — cliquez pour ouvrir la fiche complète.</p>
                 </div>
                 <div id="adminQuotesList"><p class="ec-loading">Chargement…</p></div>
 
-                <h3 class="adm-subhead" style="margin-top:28px;">📄 Devis chiffrés</h3>
+                <h3 class="adm-subhead" style="margin-top:28px;">Devis chiffrés</h3>
                 <p class="adm-page-sub" style="margin-top:-8px;">Devis avec options et pièces jointes envoyés aux clients. Pour en créer un, ouvrez une demande de devis ci-dessus et cliquez « Créer un devis chiffré ».</p>
                 <div id="adminPricedQuotesList"><p class="ec-loading">Chargement…</p></div>
               </section>
@@ -6614,7 +6889,7 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageStats" data-adm-page="stats" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">📊 Statistiques</h2>
+                  <h2 class="adm-page-title">Statistiques</h2>
                   <p class="adm-page-sub">Fréquentation du site — mesure d'audience interne et anonyme, aucun service tiers.</p>
                 </div>
 
@@ -6626,22 +6901,22 @@ if ('serviceWorker' in navigator){
 
                 <div class="adm-stats-grid">
                   <div class="adm-stat-card adm-stat-ocean">
-                    <span class="adm-stat-icon">🟢</span>
+                    <span class="adm-stat-icon"></span>
                     <span class="adm-stat-value" id="admStatOnline">—</span>
                     <span class="adm-stat-label">En ligne maintenant</span>
                   </div>
                   <div class="adm-stat-card adm-stat-turquoise">
-                    <span class="adm-stat-icon">👤</span>
+                    <span class="adm-stat-icon"></span>
                     <span class="adm-stat-value" id="admStatVisitors">—</span>
                     <span class="adm-stat-label" id="admStatVisitorsLabel">Visiteurs aujourd'hui</span>
                   </div>
                   <div class="adm-stat-card adm-stat-coral">
-                    <span class="adm-stat-icon">👁</span>
+                    <span class="adm-stat-icon"></span>
                     <span class="adm-stat-value" id="admStatPageviews">—</span>
                     <span class="adm-stat-label" id="admStatPageviewsLabel">Pages vues aujourd'hui</span>
                   </div>
                   <div class="adm-stat-card adm-stat-sand">
-                    <span class="adm-stat-icon">📅</span>
+                    <span class="adm-stat-icon"></span>
                     <span class="adm-stat-value" id="admStat7d">—</span>
                     <span class="adm-stat-label">Visiteurs — 7 derniers jours</span>
                   </div>
@@ -6660,12 +6935,12 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPagePricing" data-adm-page="pricing" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration — usage interne uniquement</p>
-                  <h2 class="adm-page-title">🧮 Chiffrage</h2>
+                  <h2 class="adm-page-title">Chiffrage</h2>
                   <p class="adm-page-sub">Estimation rapide d'un prix à proposer sur place. N'affiche jamais un prix légal ou obligatoire — une indication interne à ajuster selon le cas réel.</p>
                 </div>
 
                 <details class="qc-settings-box" id="qcSettingsBox">
-                  <summary class="qc-settings-summary">⚙️ Réglages du calculateur (taux, déplacement, TVA)</summary>
+                  <summary class="qc-settings-summary">Réglages du calculateur (taux, déplacement, TVA)</summary>
                   <form id="qcSettingsForm"><p class="ec-loading">Chargement…</p></form>
                 </details>
 
@@ -6675,17 +6950,17 @@ if ('serviceWorker' in navigator){
                   <button type="button" class="gallery-filter-btn" data-qc-type="professionnel">Professionnel</button>
                 </div>
                 <div class="qc-type-toggle" id="qcDomainToggle" role="group" aria-label="Domaine">
-                  <button type="button" class="gallery-filter-btn is-active" data-qc-domain="plomberie">🔧 Plomberie</button>
-                  <button type="button" class="gallery-filter-btn" data-qc-domain="chauffage">🔥 Chauffage</button>
-                  <button type="button" class="gallery-filter-btn" data-qc-domain="climatisation">❄️ Climatisation</button>
-                  <button type="button" class="gallery-filter-btn" data-qc-domain="autre">🛠️ Autre</button>
+                  <button type="button" class="gallery-filter-btn is-active" data-qc-domain="plomberie">Plomberie</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-domain="chauffage">Chauffage</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-domain="climatisation">Climatisation</button>
+                  <button type="button" class="gallery-filter-btn" data-qc-domain="autre">Autre</button>
                 </div>
 
                 <div class="qc-ai-prefill">
-                  <label for="qcAiDescription">✨ Décrivez l'intervention (facultatif) — l'IA pré-remplit le formulaire ci-dessous, à vérifier avant d'enregistrer</label>
+                  <label for="qcAiDescription">Décrivez l'intervention (facultatif) — l'IA pré-remplit le formulaire ci-dessous, à vérifier avant d'enregistrer</label>
                   <div class="qc-ai-prefill-row">
                     <input type="text" id="qcAiDescription" placeholder="Ex. Remplacement mitigeur cuisine + déplacement + environ 1h de travail">
-                    <button type="button" class="qc-ai-prefill-btn" id="qcAiPrefillBtn">✨ Pré-remplir avec l'IA</button>
+                    <button type="button" class="qc-ai-prefill-btn" id="qcAiPrefillBtn">Pré-remplir avec l'IA</button>
                   </div>
                   <p class="qc-ai-prefill-msg" id="qcAiPrefillMsg" hidden></p>
                 </div>
@@ -6717,21 +6992,21 @@ if ('serviceWorker' in navigator){
                 <div class="qc-breakdown" id="qcBreakdown"></div>
 
                 <div class="qc-actions">
-                  <button type="button" class="btn-primary" id="qcPrepareBtn">📋 Préparer le devis</button>
-                  <button type="button" class="adm-quicklink-btn" id="qcSaveHistoryBtn">💾 Enregistrer dans l'historique</button>
+                  <button type="button" class="btn-primary" id="qcPrepareBtn">Préparer le devis</button>
+                  <button type="button" class="adm-quicklink-btn" id="qcSaveHistoryBtn">Enregistrer dans l'historique</button>
                 </div>
                 <div class="qc-prepared-box" id="qcPreparedBox" hidden></div>
                 <p class="qc-disclaimer">Estimation interne HAYEVA — ne constitue pas un devis légal tant qu'il n'a pas été formellement communiqué au client.</p>
 
                 <h3 class="adm-subhead">Historique des chiffrages</h3>
-                <input type="search" class="qc-history-search" id="qcHistorySearch" placeholder="🔍 Rechercher par client ou intervention…">
+                <input type="search" class="qc-history-search" id="qcHistorySearch" placeholder="Rechercher par client ou intervention…">
                 <div id="qcHistoryList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageCatalog" data-adm-page="catalog" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">📦 Catalogue fournisseurs</h2>
+                  <h2 class="adm-page-title">Catalogue fournisseurs</h2>
                   <p class="adm-page-sub">Import manuel CSV/XLSX en attendant les accès officiels CEDEO / Leroy Merlin. Le prix d'achat, la marge et les informations fournisseur ne sont jamais visibles par le client — seul le produit ajouté à un devis (avec son prix de vente) l'est.</p>
                 </div>
 
@@ -6767,12 +7042,12 @@ if ('serviceWorker' in navigator){
                   Colonnes attendues (première ligne = en-têtes) : <code>fournisseur</code> (cedeo ou leroy_merlin), <code>reference</code>, <code>categorie</code> (plomberie/chauffage/climatisation/sanitaire/accessoire/autre), <code>nom</code>, <code>prix_achat_ht</code> (en euros, ex. 40.00) — obligatoires. Facultatifs : <code>ean</code>, <code>marque</code>, <code>modele</code>, <code>description</code>, <code>photo_url</code>, <code>url_fournisseur</code>, <code>tva_fournisseur</code> (%, 20 par défaut), <code>disponibilite</code> (disponible/limite/indisponible/inconnu). Un produit déjà présent (même fournisseur + même référence) est mis à jour, jamais dupliqué.
                 </p>
                 <input type="file" id="catalogImportFile" accept=".csv,.xlsx,.xls">
-                <button type="button" class="btn-primary" id="catalogImportBtn" style="margin-top:10px;">📥 Importer</button>
+                <button type="button" class="btn-primary" id="catalogImportBtn" style="margin-top:10px;">Importer</button>
                 <div id="catalogImportResult"></div>
 
                 <h3 class="adm-subhead" style="margin-top:28px;">Produits</h3>
                 <div class="adm-quicklinks" style="flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                  <input type="search" id="catalogSearchInput" class="bk-search" placeholder="🔍 Produit, marque, référence…" style="flex:1 1 220px;">
+                  <input type="search" id="catalogSearchInput" class="bk-search" placeholder="Produit, marque, référence…" style="flex:1 1 220px;">
                   <select id="catalogFilterSupplier">
                     <option value="">Tous fournisseurs</option>
                     <option value="cedeo">CEDEO</option>
@@ -6794,7 +7069,7 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">⚙️ Paramètres</h2>
+                  <h2 class="adm-page-title">Paramètres</h2>
                   <p class="adm-page-sub">Barème de déplacement et notifications de l'équipe HAYEVA.</p>
                 </div>
                 <h3 class="adm-subhead">Déplacements</h3>
@@ -6815,18 +7090,18 @@ if ('serviceWorker' in navigator){
                   </div>
                 </form>
 
-                <h3 class="adm-subhead">🔧 Consignes de préparation avant intervention</h3>
+                <h3 class="adm-subhead">Consignes de préparation avant intervention</h3>
                 <p class="adm-page-sub" style="margin-top:-8px;">Texte envoyé au client (e-mail de confirmation, espace particulier, tunnel de réservation) selon la prestation réservée. Jamais généré par l'assistant IA — modifiez librement le texte ci-dessous, il est utilisé tel quel.</p>
                 <div id="prepInstructionsPanel"><p class="ec-loading">Chargement…</p></div>
 
                 <h3 class="adm-subhead">Notifications push</h3>
                 <div class="admin-push-panel">
                   <p class="admin-push-row">Notifications de nouvelles réservations : <span class="admin-push-status is-off" id="adminPushStatus">Désactivées</span></p>
-                  <button type="button" class="admin-push-toggle-btn" id="adminPushToggleBtn" hidden>🔔 Activer les notifications</button>
+                  <button type="button" class="admin-push-toggle-btn" id="adminPushToggleBtn" hidden>Activer les notifications</button>
                   <div class="admin-push-ios-note" id="adminPushIosNote" hidden>
                     <p><strong>Sur iPhone/iPad</strong>, Safari exige d'abord d'installer HAYEVA sur l'écran d'accueil avant de pouvoir activer les notifications :</p>
                     <ol>
-                      <li>Appuyez sur <strong>Partager</strong> <span aria-hidden="true">⬆️</span> en bas de Safari</li>
+                      <li>Appuyez sur <strong>Partager</strong> <span aria-hidden="true"></span> en bas de Safari</li>
                       <li>Choisissez <strong>Sur l'écran d'accueil</strong></li>
                       <li>Appuyez sur <strong>Ajouter</strong></li>
                       <li>Ouvrez ensuite HAYEVA depuis l'icône ajoutée à votre écran d'accueil, puis revenez sur cette page pour activer les notifications</li>
@@ -6835,7 +7110,7 @@ if ('serviceWorker' in navigator){
                   <p class="admin-push-unsupported-note" id="adminPushUnsupportedNote" hidden>Les notifications push ne sont pas prises en charge par ce navigateur.</p>
                 </div>
 
-                <h3 class="adm-subhead">✨ Assistant IA</h3>
+                <h3 class="adm-subhead">Assistant IA</h3>
                 <div id="aiSettingsPanel"><p class="ec-loading">Chargement…</p></div>
               </section>
 
@@ -6978,30 +7253,29 @@ if ('serviceWorker' in navigator){
             </div>
           </div>
 
-          <p class="espace-pro-dev-notice" id="espaceClientDevNotice" hidden>🔧 Authentification sécurisée à connecter : l'espace client n'est pas encore relié à une base de données distante.</p>
+          <p class="espace-pro-dev-notice" id="espaceClientDevNotice" hidden>Authentification sécurisée à connecter : l'espace client n'est pas encore relié à une base de données distante.</p>
         </div>
       </div>
 
       <div id="espaceClientDashboard" hidden>
         <div class="espace-pro-dash-banner">
-          <span id="espaceClientBannerText">🔐 Espace client</span>
+          <span id="espaceClientBannerText">Espace client</span>
           <div class="espace-dash-banner-actions">
-            <button type="button" id="espaceClientGoToSiteBtn">🌐 Site HAYEVA</button>
             <button type="button" id="espaceClientLogoutBtn">Se déconnecter</button>
           </div>
         </div>
 
         <div class="ec-dash-body">
           <nav class="ec-tabs" id="ecTabs">
-            <button type="button" class="ec-tab is-active" data-ec-tab="home">🏠 Accueil</button>
-            <button type="button" class="ec-tab" data-ec-tab="appointments">📅 Mes rendez-vous</button>
-            <button type="button" class="ec-tab" data-ec-tab="interventions">🛠️ Mes interventions</button>
-            <button type="button" class="ec-tab" data-ec-tab="equipment">⚙️ Mes équipements</button>
-            <button type="button" class="ec-tab" data-ec-tab="quotes">📋 Mes devis</button>
-            <button type="button" class="ec-tab" data-ec-tab="invoices">🧾 Mes factures</button>
-            <button type="button" class="ec-tab" data-ec-tab="documents">📁 Mes documents</button>
-            <button type="button" class="ec-tab" data-ec-tab="addresses">📍 Mes adresses</button>
-            <button type="button" class="ec-tab" data-ec-tab="profile">👤 Mon profil</button>
+            <button type="button" class="ec-tab is-active" data-ec-tab="home">Accueil</button>
+            <button type="button" class="ec-tab" data-ec-tab="appointments">Mes rendez-vous</button>
+            <button type="button" class="ec-tab" data-ec-tab="interventions">Mes interventions</button>
+            <button type="button" class="ec-tab" data-ec-tab="equipment">Mes équipements</button>
+            <button type="button" class="ec-tab" data-ec-tab="quotes">Mes devis</button>
+            <button type="button" class="ec-tab" data-ec-tab="invoices">Mes factures</button>
+            <button type="button" class="ec-tab" data-ec-tab="documents">Mes documents</button>
+            <button type="button" class="ec-tab" data-ec-tab="addresses">Mes adresses</button>
+            <button type="button" class="ec-tab" data-ec-tab="profile">Mon profil</button>
           </nav>
 
           <div class="ec-panels">
@@ -7305,7 +7579,7 @@ if ('serviceWorker' in navigator){
         <h2>Cookies et traceurs</h2>
         <p class="legal-updated">Dernière mise à jour : 25/09/2026 — d'après un audit réel du site, pas une mention générique.</p>
         <p>Le site HAYEVA n'utilise <strong>aucun cookie ni traceur publicitaire</strong>, <strong>aucun outil de mesure d'audience tiers</strong> (type Google Analytics) et <strong>aucun pixel de réseau social</strong>. Aucun de ces éléments ne dépose de traceur soumis à consentement au sens de l'article 82 de la loi Informatique et Libertés.</p>
-        <p>Un bandeau de consentement (« Tout accepter » / « Tout refuser », les deux choix également accessibles) est néanmoins présent dès votre arrivée sur le site, préparé par anticipation d'un futur outil qui en nécessiterait un. <strong>Votre choix est enregistré mais ne déclenche aujourd'hui aucun effet concret</strong>, puisqu'aucun traceur soumis à consentement n'est actuellement chargé. Si HAYEVA active un jour un tel outil, ce bandeau conditionnera réellement son chargement et cette page sera mise à jour en conséquence. Vous pouvez revenir sur votre choix à tout moment en effaçant les données de navigation de ce site dans votre navigateur.</p>
+        <p>Une fenêtre de consentement (« Tout accepter » / « Tout refuser », les deux choix également accessibles) s'affiche néanmoins dès votre arrivée sur le site et doit être renseignée avant de poursuivre votre navigation, préparée par anticipation d'un futur outil qui en nécessiterait une. <strong>Votre choix est enregistré mais ne déclenche aujourd'hui aucun effet concret</strong>, puisqu'aucun traceur soumis à consentement n'est actuellement chargé. Si HAYEVA active un jour un tel outil, cette fenêtre conditionnera réellement son chargement et cette page sera mise à jour en conséquence. Vous pouvez revenir sur votre choix à tout moment en effaçant les données de navigation de ce site dans votre navigateur.</p>
 
         <h3>Ce que le site utilise réellement</h3>
         <table>
@@ -7377,6 +7651,96 @@ if ('serviceWorker' in navigator){
     </div>
   </div>
 </div>
+
+<!-- ============================================================
+     OVERLAY BIO DU FONDATEUR — calqué sur #legalOverlay ci-dessus
+     (mêmes classes .legal-overlay*), mais un seul document, sans barre de
+     navigation multi-pages : ouvert depuis le petit lien "Bio du fondateur"
+     dans le hero (voir #founderBioOpenBtn1/2), jamais affiché par défaut.
+     ============================================================ -->
+<div class="legal-overlay" id="founderBioOverlay" hidden>
+  <div class="legal-overlay-inner">
+    <div class="legal-overlay-topbar">
+      <span class="legal-overlay-brand">HAYEVA — Bio du fondateur</span>
+      <button type="button" class="legal-overlay-close" id="founderBioOverlayClose" aria-label="Fermer">✕</button>
+    </div>
+    <div class="legal-overlay-content">
+      <article class="founder-bio-card">
+        <h2>Bio du fondateur</h2>
+        <h3>Mon histoire</h3>
+        <p>Je m'appelle Julien Martin, je suis originaire du Muy, dans le sud de la France, et ma passion pour la plomberie, le chauffage et la climatisation ne date pas d'hier.</p>
+        <p>Depuis tout petit, j'ai grandi dans une grande maison ancienne, avec une isolation loin d'être parfaite. À la maison, j'entendais régulièrement mes parents me dire : « Attention au chauffage, ça coûte cher ! »</p>
+        <p>Entre les radiateurs, les problèmes de plomberie et les canalisations qui se bouchaient, j'ai rapidement commencé à m'intéresser au fonctionnement de notre maison. Vers mes 15 ans, je mettais déjà les mains dans la plomberie pour essayer de déboucher les tuyaux et résoudre les petits problèmes du quotidien.</p>
+        <p>Sans vraiment m'en rendre compte, j'étais déjà en train de découvrir mon futur métier.</p>
+
+        <h4>Une histoire de famille que je n'avais pas encore comprise</h4>
+        <p>Ce qui est assez particulier, c'est que je n'ai compris que bien plus tard que cette attirance pour le métier avait peut-être aussi une histoire familiale.</p>
+        <p>Avec le recul, je me souviens que mon père m'avait raconté avoir lui-même suivi une formation dans la plomberie. Et avant lui, mon grand-père exerçait déjà dans le domaine du chauffage, dans les Vosges.</p>
+        <p>Pourtant, lorsque j'ai choisi de m'orienter vers la plomberie et le chauffage, je ne l'ai pas fait avec l'idée de poursuivre une tradition familiale. Je suis allé vers ce métier naturellement, simplement parce qu'il me plaisait et que j'aimais comprendre, réparer et trouver des solutions.</p>
+        <p>Ce n'est qu'aujourd'hui que je réalise quelque chose qui me fait sourire : d'une certaine manière, ce métier s'est transmis de génération en génération sans que j'aie réellement conscience de suivre les traces de mon père et de mon grand-père.</p>
+        <p>Mon grand-père dans le chauffage, mon père formé à la plomberie, puis moi dans la plomberie, le chauffage et la climatisation.</p>
+        <p>Trois générations, et une même attirance pour le métier.</p>
+
+        <h4>Une passion devenue mon métier</h4>
+        <p>Je me suis donc naturellement orienté vers les métiers du chauffage, de la plomberie, puis de la climatisation.</p>
+        <p>J'ai commencé par un Bac Professionnel TISEC – Technicien en Installation des Systèmes Énergétiques et Climatiques. C'est notamment pendant mes stages que j'ai compris que ce domaine était bien plus qu'un simple métier pour moi.</p>
+        <p>J'accompagnais mon responsable sur des dépannages chez les particuliers. Nous arrivions parfois chez des personnes confrontées à une panne de chauffage, une fuite ou un problème qui perturbait complètement leur quotidien. Lorsque nous repartions avec le problème résolu et que le client nous remerciait sincèrement, j'éprouvais une vraie satisfaction.</p>
+        <p>J'avais trouvé ce qui me plaisait : comprendre un problème, trouver une solution et rendre service.</p>
+        <p>J'ai ensuite poursuivi avec un CAP dans le domaine de la plomberie. Cette formation a rapidement débouché sur un CDI, car mon Bac Professionnel et mes différentes expériences en entreprise m'avaient déjà permis d'acquérir de solides connaissances sur le terrain.</p>
+        <p>J'ai souhaité aller encore plus loin en suivant, auprès de ce même employeur situé à Lorgues, une Mention Complémentaire en Maintenance des Équipements Thermiques Individuels pendant un an.</p>
+        <p>L'objectif était simple : me perfectionner dans le chauffage, approfondir le diagnostic et la maintenance, et mieux comprendre le fonctionnement des différents équipements et technologies.</p>
+
+        <h4>Une question a changé ma manière de voir mon métier</h4>
+        <p>Pendant cette année d'apprentissage, une question revenait régulièrement dans ma tête :</p>
+        <p class="founder-bio-quote">« L'équipement installé chez ce client est-il réellement adapté à son logement et à ses besoins ? »</p>
+        <p>Une chaudière, une climatisation ou un système de chauffage représente souvent une dépense importante. Pourtant, la puissance d'un appareil ne fait pas tout. L'isolation du logement, sa superficie, son exposition, son utilisation et les habitudes de ses occupants jouent également un rôle essentiel.</p>
+        <p>J'ai donc commencé à me former en autodidacte sur l'isolation et la performance énergétique des logements.</p>
+        <p>Je cherchais à comprendre comment limiter les déperditions de chaleur, améliorer le confort et éviter de consommer inutilement de l'énergie. Cette curiosité allait jusque chez moi : pendant mes études, je cherchais constamment des moyens d'optimiser notre consommation, notamment en surveillant et en purgeant régulièrement les radiateurs.</p>
+        <p>Je ne voulais plus seulement savoir installer ou réparer un équipement. Je voulais comprendre pourquoi il était nécessaire, comment il devait être dimensionné et comment obtenir le meilleur confort possible sans faire exploser les dépenses énergétiques.</p>
+
+        <h4>Pourquoi j'ai créé HAYEVA</h4>
+        <p>C'est cette vision que je souhaite aujourd'hui transmettre à travers HAYEVA.</p>
+        <p>Mon objectif n'est pas simplement d'intervenir chez vous pour effectuer une prestation et repartir.</p>
+        <p>Je veux prendre le temps de comprendre votre logement, vos équipements et vos besoins afin de vous proposer une solution cohérente et adaptée.</p>
+        <p>Parce qu'un équipement plus cher ou plus puissant n'est pas forcément un meilleur choix. Parfois, une amélioration, un entretien ou quelques réglages peuvent déjà permettre de retrouver du confort et de réduire sa consommation.</p>
+        <p>Mon métier consiste à vous apporter mon savoir-faire, mais aussi à vous aider à comprendre votre logement et vos équipements afin de faire les bons choix.</p>
+        <p>Je souhaite exercer ce métier avec une idée simple : rendre service, rechercher des solutions efficaces et vous aider à améliorer votre confort sans vous pousser vers des dépenses inutiles.</p>
+        <p>Et pour vous montrer que cette passion ne date pas de la création de HAYEVA, vous pourrez également découvrir sur ce site une présentation consacrée à l'isolation que j'avais réalisée de ma propre initiative pendant ma Mention Complémentaire en maintenance thermique.</p>
+        <p>À l'époque, je l'avais créée simplement parce que le sujet me passionnait.</p>
+        <p>Aujourd'hui, cette curiosité est devenue une partie intégrante de ma façon de travailler.</p>
+        <p>Et finalement, lorsque je repense au parcours de mon grand-père, à celui de mon père et maintenant au mien, HAYEVA représente aussi, à sa manière, la continuité d'une histoire familiale que je n'avais jamais prévu d'écrire.</p>
+        <p class="founder-bio-welcome">Bienvenue chez HAYEVA.</p>
+
+        <p class="founder-signature">Julien Martin<span>Fondateur de HAYEVA</span></p>
+      </article>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var overlay = document.getElementById('founderBioOverlay');
+  if (!overlay) return;
+  function openFounderBio(){
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    var contentEl = overlay.querySelector('.legal-overlay-content');
+    if (contentEl) contentEl.scrollTop = 0;
+  }
+  function closeFounderBio(){
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+  }
+  var closeBtn = document.getElementById('founderBioOverlayClose');
+  if (closeBtn) closeBtn.addEventListener('click', closeFounderBio);
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeFounderBio(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !overlay.hidden) closeFounderBio(); });
+  ['founderBioOpenBtn1','founderBioOpenBtn2'].forEach(function(id){
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', function(e){ e.preventDefault(); openFounderBio(); });
+  });
+})();
+</script>
 
 <script>
 (function(){
@@ -7487,15 +7851,15 @@ if ('serviceWorker' in navigator){
     return s.title + ' (' + svcPriceLine(s) + ')';
   }
 
-  var POPULAR_IDS = ['clim-confort','chauffage-depannage','plomberie-depannage','multi','devis'];
+  var POPULAR_IDS = ['clim-confort','chauffage-chaudiere-gaz-confort','chauffage-depannage','plomberie-depannage','multi','devis'];
 
   var CATEGORY_META = {
-    clim:{ label:'Climatisation', icon:'❄️' },
-    chauffage:{ label:'Chauffage', icon:'🔥' },
-    plomberie:{ label:'Plomberie', icon:'💧' },
-    multi:{ label:'Multi-services', icon:'🧰' },
-    devis:{ label:'Devis', icon:'📋' },
-    pro:{ label:'Check technique pro', icon:'🏠' }
+    clim:{ label:'Climatisation', icon:'' },
+    chauffage:{ label:'Chauffage', icon:'' },
+    plomberie:{ label:'Plomberie', icon:'' },
+    multi:{ label:'Multi-services', icon:'' },
+    devis:{ label:'Devis', icon:'' },
+    pro:{ label:'Check technique pro', icon:'' }
   };
 
   function serviceCategory(id){
@@ -7509,7 +7873,7 @@ if ('serviceWorker' in navigator){
   }
 
   function categoryMeta(id){
-    return CATEGORY_META[serviceCategory(id)] || { label:'', icon:'🔧' };
+    return CATEGORY_META[serviceCategory(id)] || { label:'', icon:'' };
   }
 
   function normalizeText(s){
@@ -8125,7 +8489,7 @@ if ('serviceWorker' in navigator){
     if (travelState.status !== 'ok' || travelState.distanceKm === null){
       return {
         status:'unavailable', km:null, extraKm:0, base:base, travelFee:null, total:null,
-        distanceLabel: '⚠️ Frais de déplacement à vérifier',
+        distanceLabel: 'Frais de déplacement à vérifier',
         travelLabel: 'Nous n\'avons pas pu calculer automatiquement la distance pour cette adresse. HAYEVA vérifiera les éventuels frais de déplacement avant confirmation du rendez-vous.',
         totalLabel: null, quote:null
       };
@@ -8210,7 +8574,7 @@ if ('serviceWorker' in navigator){
         '<p class="result-cat">'+meta.label+'</p>' +
         '<p class="result-line"><strong>Main-d\'œuvre :</strong> '+s.price+'</p>' +
         supplyLine +
-        '<p class="result-line">🕒 Environ '+durLabel+' • déplacement inclus</p>';
+        '<p class="result-line">Environ '+durLabel+' • déplacement inclus</p>';
     }
     return '<span class="opt-title">'+svcLabel(s)+'</span><span class="opt-duration">'+durLabel+'</span><p class="opt-desc">'+s.desc+'</p>';
   }
@@ -8227,7 +8591,7 @@ if ('serviceWorker' in navigator){
       bkSearchHint.textContent = 'Résultats pour « ' + query.trim() + ' » :';
       serviceOptionsEl.innerHTML =
         '<p class="hint">' + climClarification + '</p>' +
-        '<button type="button" class="option-card" id="bkSearchClimEntretienCta">❄️ Voir les prestations climatisation</button>';
+        '<button type="button" class="option-card" id="bkSearchClimEntretienCta">Voir les prestations climatisation</button>';
       var climCta = document.getElementById('bkSearchClimEntretienCta');
       if (climCta) climCta.addEventListener('click', function(){
         bkSearch.value = 'climatisation';
@@ -8400,7 +8764,7 @@ if ('serviceWorker' in navigator){
     // 0024_pricing_tiers_plomberie_chauffage.sql). Note discrète, hors
     // tableau du récapitulatif.
     var fromNote = svc.tier === 'from'
-      ? '<p class="hint bk-price-from-hint">💬 Tarif « à partir de » : le montant définitif dépend de l\'installation, de l\'accessibilité et du matériel constatés sur place.</p>'
+      ? '<p class="hint bk-price-from-hint">Tarif « à partir de » : le montant définitif dépend de l\'installation, de l\'accessibilité et du matériel constatés sur place.</p>'
       : '';
 
     // Consigne de préparation ("À prévoir avant notre arrivée") : discrète
@@ -8409,16 +8773,16 @@ if ('serviceWorker' in navigator){
     ensurePrepDataLoaded();
     var prepText = prepInstructionForFrontendId(bkCatalogCache, prepCategoriesCache, svc.id);
     var prepNote = prepText
-      ? '<p class="hint bk-prep-hint">🔧 <strong>À prévoir avant notre arrivée</strong> : ' + prepText + '</p>'
+      ? '<p class="hint bk-prep-hint"><strong>À prévoir avant notre arrivée</strong> : ' + prepText + '</p>'
       : '';
 
     var travelRows = '';
     if (travel.status === 'free'){
-      travelRows += '<div class="s-row s-row-free-travel"><span class="s-label">🎁 Déplacement</span><span class="s-value">0 € — OFFERT avec ce pack</span></div>';
+      travelRows += '<div class="s-row s-row-free-travel"><span class="s-label">Déplacement</span><span class="s-value">0 € — OFFERT avec ce pack</span></div>';
     } else if (travel.status === 'computing'){
       travelRows += '<div class="s-row"><span class="s-label">Déplacement</span><span class="s-value">Calcul en cours…</span></div>';
     } else if (travel.status === 'unavailable'){
-      travelRows += '<div class="s-row s-row-warning"><span class="s-label">⚠️ Déplacement</span><span class="s-value">À vérifier par HAYEVA</span></div>';
+      travelRows += '<div class="s-row s-row-warning"><span class="s-label">Déplacement</span><span class="s-value">À vérifier par HAYEVA</span></div>';
     } else if (travel.status === 'ok'){
       travelRows += '<div class="s-row"><span class="s-label">Distance routière</span><span class="s-value">'+travel.km+' km</span></div>';
       travelRows += '<div class="s-row"><span class="s-label">Déplacement — '+FREE_TRAVEL_KM+' premiers km</span><span class="s-value">Inclus</span></div>';
@@ -8477,7 +8841,7 @@ if ('serviceWorker' in navigator){
       '<div class="s-row"><span class="s-label">Nom</span><span class="s-value">'+(bkName.value || '—')+'</span></div>'+
       '<div class="s-row"><span class="s-label">Téléphone</span><span class="s-value">'+(bkPhone.value || '—')+'</span></div>' +
       '<div class="s-row"><span class="s-label">E-mail</span><span class="s-value">'+(bkEmail.value || '—')+'</span></div>' +
-      (isRaffleEntry ? '<div class="s-row"><span class="s-label">🎁 N° de participation</span><span class="s-value">'+getRaffleTicket()+'</span></div>' : '') +
+      (isRaffleEntry ? '<div class="s-row"><span class="s-label">N° de participation</span><span class="s-value">'+getRaffleTicket()+'</span></div>' : '') +
       fromNote + prepNote;
 
     return isRaffleEntry;
@@ -9038,22 +9402,22 @@ if ('serviceWorker' in navigator){
       return;
     }
     if (travel.status === 'computing'){
-      travelEstimateNote.textContent = '🚐 Calcul de la distance routière en cours…';
+      travelEstimateNote.textContent = 'Calcul de la distance routière en cours…';
       travelEstimateNote.classList.add('is-muted');
       return;
     }
     if (travel.status === 'unavailable'){
-      travelEstimateNote.textContent = '⚠️ Frais de déplacement à vérifier — nous confirmerons le montant avant votre rendez-vous.';
+      travelEstimateNote.textContent = 'Frais de déplacement à vérifier — nous confirmerons le montant avant votre rendez-vous.';
       travelEstimateNote.classList.add('is-muted');
       return;
     }
     if (travel.status === 'free'){
-      travelEstimateNote.textContent = '🎁 Déplacement offert avec ce pack — 0 €, quelle que soit la distance.';
+      travelEstimateNote.textContent = 'Déplacement offert avec ce pack — 0 €, quelle que soit la distance.';
       travelEstimateNote.classList.remove('is-muted');
       return;
     }
     travelEstimateNote.classList.remove('is-muted');
-    travelEstimateNote.textContent = '🚐 ' + travel.distanceLabel + ' · ' + travel.travelLabel;
+    travelEstimateNote.textContent = '' + travel.distanceLabel + ' · ' + travel.travelLabel;
   }
 
   [bkName, bkPhone, bkEmail, bkAddress].forEach(function(input){
@@ -9477,12 +9841,12 @@ if ('serviceWorker' in navigator){
   var NAV_PARTICULIER_MOBILE = [
     ['#accueil', 'Accueil'], ['#services', 'Services'], ['#rdv', 'Rendez-vous'], ['#tarifs', 'Tarifs'],
     ['#zone', "Zone d'intervention"], ['#faq', 'FAQ'], ['#pourquoi', 'Pourquoi nous ?'], ['#contact', 'Contact'],
-    ['#espaceClient', '🔐 Mon espace', 'sep']
+    ['#espaceClient', 'Mon espace', 'sep']
   ];
   var NAV_PRO_MOBILE = [
     ['#accueil', 'Accueil'], ['#pro', 'Check technique'], ['#multiLogements', 'Multi-logements'], ['#tarifsPro', 'Tarifs pro'],
     ['#zone', "Zone d'intervention"], ['#faq', 'FAQ'], ['#contact', 'Contact'],
-    ['#espacePro', '🔐 Espace Pro', 'sep']
+    ['#espacePro', 'Espace Pro', 'sep']
   ];
 
   function renderLinks(list){
@@ -9515,7 +9879,7 @@ if ('serviceWorker' in navigator){
       var loginLink = document.createElement('a');
       loginLink.href = '#';
       loginLink.id = 'mobileLoginLink';
-      loginLink.textContent = '🔐 Se connecter';
+      loginLink.textContent = 'Se connecter';
       loginLink.hidden = true;
       loginLink.addEventListener('click', function(e){
         e.preventDefault();
@@ -9528,6 +9892,23 @@ if ('serviceWorker' in navigator){
       mobileNav.appendChild(loginLink);
       var existingHlb = document.getElementById('headerLoginBtn');
       if (existingHlb) loginLink.hidden = existingHlb.hidden;
+
+      // "Se déconnecter" : même miroir mobile, pour #headerLogoutBtn.
+      var logoutLink = document.createElement('a');
+      logoutLink.href = '#';
+      logoutLink.id = 'mobileLogoutLink';
+      logoutLink.textContent = 'Se déconnecter';
+      logoutLink.hidden = true;
+      logoutLink.addEventListener('click', function(e){
+        e.preventDefault();
+        mobileNav.hidden = true;
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        var hlob = document.getElementById('headerLogoutBtn');
+        if (hlob) hlob.click();
+      });
+      mobileNav.appendChild(logoutLink);
+      var existingHlob = document.getElementById('headerLogoutBtn');
+      if (existingHlob) logoutLink.hidden = existingHlob.hidden;
     }
   }
 
@@ -9679,12 +10060,12 @@ if ('serviceWorker' in navigator){
   }
 
   var PROPERTY_TYPE_LABELS = {
-    location_saisonniere: '🏠 Location saisonnière',
-    appartement: '🏢 Appartement',
-    maison_villa: '🏡 Maison / Villa',
-    mobil_home: '🚐 Mobil-home',
-    chalet: '⛺ Chalet',
-    autre: '📦 Autre'
+    location_saisonniere: 'Location saisonnière',
+    appartement: 'Appartement',
+    maison_villa: 'Maison / Villa',
+    mobil_home: 'Mobil-home',
+    chalet: 'Chalet',
+    autre: 'Autre'
   };
 
   var proPropertiesCache = null;
@@ -9727,7 +10108,7 @@ if ('serviceWorker' in navigator){
       } else {
         html += '<div class="ec-list">';
         rows.forEach(function(p){
-          var icon = (PROPERTY_TYPE_LABELS[p.property_type] || '📦').split(' ')[0];
+          var icon = (PROPERTY_TYPE_LABELS[p.property_type] || '').split(' ')[0];
           html += '<div class="ec-row"><div class="ec-row-info">' +
             '<span class="ec-row-title">' + icon + ' ' + escapeHtml(p.reference) + (p.name ? ' — ' + escapeHtml(p.name) : '') + '</span>' +
             '<span class="ec-row-meta">' + escapeHtml(p.address) + (p.postal_code ? ', ' + escapeHtml(p.postal_code) : '') + (p.city ? ' ' + escapeHtml(p.city) : '') + '</span>' +
@@ -9895,9 +10276,9 @@ if ('serviceWorker' in navigator){
     nextCardEl.innerHTML = '<div class="ec-next-appt"><p class="ec-eyebrow">Prochain rendez-vous</p>' +
       '<h3>' + escapeHtml(svcName) + '</h3>' +
       '<div class="ec-next-appt-meta">' +
-        '<span>📅 ' + espaceProApptFmtDateTime(b.date, b.start_time) + '</span>' +
+        '<span>' + espaceProApptFmtDateTime(b.date, b.start_time) + '</span>' +
         '<span>' + escapeHtml(statusInfo[0]) + '</span>' +
-        (b.guest_address ? '<span>📍 ' + escapeHtml(b.guest_address) + '</span>' : '') +
+        (b.guest_address ? '<span>' + escapeHtml(b.guest_address) + '</span>' : '') +
       '</div></div>';
   }
 
@@ -10229,7 +10610,7 @@ if ('serviceWorker' in navigator){
     { cat:'rapports-faq', popular:false, q:"Les rapports peuvent-ils contenir des photos ?",
       a:"Oui, lorsque la formule sélectionnée le prévoit ou lorsqu'une photo est utile pour documenter une anomalie." },
     { cat:'rapports-faq', popular:false, q:"Que signifient les couleurs du rapport ?",
-      a:"🟢 Fonctionnel : aucun problème particulier constaté lors du contrôle réalisé. 🟠 À surveiller : un élément mérite une surveillance ou une intervention future. 🔴 Intervention recommandée : une anomalie a été constatée et une intervention est recommandée. Ces indicateurs correspondent uniquement au périmètre du contrôle réalisé." },
+      a:"Fonctionnel : aucun problème particulier constaté lors du contrôle réalisé. À surveiller : un élément mérite une surveillance ou une intervention future. Intervention recommandée : une anomalie a été constatée et une intervention est recommandée. Ces indicateurs correspondent uniquement au périmètre du contrôle réalisé." },
     { cat:'rapports-faq', popular:false, q:"Pouvez-vous envoyer le rapport au propriétaire ?",
       a:"Lorsque la fonctionnalité est disponible et avec les coordonnées nécessaires, le rapport peut être transmis au gestionnaire ou au destinataire prévu." },
 
@@ -10542,6 +10923,7 @@ if ('serviceWorker' in navigator){
   var devNotice = document.getElementById('espaceProDevNotice');
   var demoBtn = document.getElementById('espaceProDemoBtn');
   var logoutBtn = document.getElementById('espaceProLogoutBtn');
+  var goToSiteBtn = document.getElementById('espaceProGoToSiteBtn');
   var showSignupLink = document.getElementById('espaceProShowSignup');
   var showLoginLink = document.getElementById('espaceProShowLogin');
   var forgotLink = document.getElementById('espaceProForgotLink');
@@ -10672,7 +11054,7 @@ if ('serviceWorker' in navigator){
       return fetchRole(session.user.id);
     }).then(function(role){
       if (role === 'professional' || role === 'admin'){
-        renderUnlocked('real', '🔐 Espace professionnel — ' + (session.user.email || 'connecté'));
+        renderUnlocked('real', 'Espace professionnel — ' + (session.user.email || 'connecté'));
         initAdminPanel(role);
         // "Mes rendez-vous" est initialisé plus tôt (chargement de la page),
         // avant qu'une session ne soit forcément déjà disponible : on le
@@ -10689,7 +11071,7 @@ if ('serviceWorker' in navigator){
   // ---- État initial ----
   if (!sb.configured){
     renderLocked();
-    if (isDemoUnlocked()) renderUnlocked('demo', '🔐 Espace professionnel — démonstration locale');
+    if (isDemoUnlocked()) renderUnlocked('demo', 'Espace professionnel — démonstration locale');
   } else {
     if (devNotice) devNotice.hidden = true; // Supabase configuré : la note "à connecter" n'a plus lieu d'être
     // Idem pour le mode démonstration locale : avec une authentification
@@ -10706,7 +11088,7 @@ if ('serviceWorker' in navigator){
       if (session){
         handleRealSession(session);
       } else if (isDemoUnlocked()){
-        renderUnlocked('demo', '🔐 Espace professionnel — démonstration locale');
+        renderUnlocked('demo', 'Espace professionnel — démonstration locale');
       }
     });
     sb.client.auth.onAuthStateChange(function(event, session){
@@ -10892,7 +11274,7 @@ if ('serviceWorker' in navigator){
     demoBtn.addEventListener('click', function(){
       setDemoUnlocked(true);
       if (window.sudFlashVeil) window.sudFlashVeil();
-      renderUnlocked('demo', '🔐 Espace professionnel — démonstration locale');
+      renderUnlocked('demo', 'Espace professionnel — démonstration locale');
       dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
     });
   }
@@ -10914,6 +11296,17 @@ if ('serviceWorker' in navigator){
         setDemoUnlocked(false);
         afterProLogout();
       }
+    });
+  }
+
+  // "Voir le site HAYEVA" (zone claire du tableau de bord Espace Pro) :
+  // ferme uniquement l'écran plein écran pour révéler le site en dessous,
+  // jamais de déconnexion — même principe côté Espace Particulier
+  // (ecHomeGoToSiteBtn). La session Supabase (localStorage) n'est pas touchée.
+  if (goToSiteBtn){
+    goToSiteBtn.addEventListener('click', function(){
+      if (window.sudCloseEspace) window.sudCloseEspace('espacePro');
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     });
   }
 
@@ -10960,13 +11353,13 @@ if ('serviceWorker' in navigator){
   var ADMIN_EMAIL_TYPE_LABEL = { received:'Demande reçue', confirmed:'Confirmation', cancelled:'Annulation' };
   function admEmailStatusHtml(b, emails){
     var row = emails && emails[b.id + ':received'];
-    if (!row) return '<span class="admin-bk-email-status admin-bk-email-pending">✉ E-mail non envoyé</span>';
-    if (row.status === 'sent') return '<span class="admin-bk-email-status admin-bk-email-sent">✉ E-mail envoyé</span>';
+    if (!row) return '<span class="admin-bk-email-status admin-bk-email-pending">E-mail non envoyé</span>';
+    if (row.status === 'sent') return '<span class="admin-bk-email-status admin-bk-email-sent">E-mail envoyé</span>';
     if (row.status === 'failed'){
-      return '<span class="admin-bk-email-status admin-bk-email-failed">⚠ Échec d\'envoi</span>' +
+      return '<span class="admin-bk-email-status admin-bk-email-failed">Échec d\'envoi</span>' +
         '<button type="button" class="admin-bk-resend-email-btn" data-booking-id="' + b.id + '" data-email-type="received">Renvoyer</button>';
     }
-    return '<span class="admin-bk-email-status admin-bk-email-pending">✉ Envoi en cours…</span>';
+    return '<span class="admin-bk-email-status admin-bk-email-pending">Envoi en cours…</span>';
   }
 
   function admContactFor(b, profileMap){
@@ -11070,8 +11463,8 @@ if ('serviceWorker' in navigator){
         (expanded ?
           '<div class="admin-account-row-full">' +
             '<span class="ec-badge ' + (r.type === 'professional' ? 'ec-badge-professionnel' : 'ec-badge-particulier') + '">' + (r.type === 'professional' ? 'Professionnel' : 'Particulier') + '</span>' +
-            (r.email ? '<span>✉️ ' + admEscape(r.email) + '</span>' : '') +
-            (r.phone ? '<span>📞 ' + admEscape(r.phone) + '</span>' : '') +
+            (r.email ? '<span>' + admEscape(r.email) + '</span>' : '') +
+            (r.phone ? '<span>' + admEscape(r.phone) + '</span>' : '') +
             (r.siret ? '<span>SIRET ' + admEscape(r.siret) + '</span>' : '') +
             '<span>Inscrit le ' + admFmtDate(r.created_at) + '</span>' +
           '</div>'
@@ -11169,7 +11562,7 @@ if ('serviceWorker' in navigator){
     var count = adminBookingsCache.rows.filter(function(b){ return b.status === 'PENDING'; }).length;
     if (count > 0){
       el.hidden = false;
-      el.textContent = '🟠 Demande' + (count > 1 ? 's' : '') + ' en attente : ' + count;
+      el.textContent = 'Demande' + (count > 1 ? 's' : '') + ' en attente : ' + count;
     } else {
       el.hidden = true;
       el.textContent = '';
@@ -11273,33 +11666,33 @@ if ('serviceWorker' in navigator){
         optionsHtml += '<option value="' + admEscape(b.status) + '" selected>' + admEscape(b.status) + '</option>';
       }
       var travelLine = b.distance_calculation_status !== 'ok'
-        ? '<span class="ec-row-meta admin-bk-travel-warning">⚠️ Déplacement à vérifier — prestation ' + admFmtEuros(b.service_price_cents) + '</span>'
-        : '<span class="ec-row-meta">🚐 ' + (b.one_way_distance_km != null ? b.one_way_distance_km + ' km aller · ' : '') +
+        ? '<span class="ec-row-meta admin-bk-travel-warning">Déplacement à vérifier — prestation ' + admFmtEuros(b.service_price_cents) + '</span>'
+        : '<span class="ec-row-meta">' + (b.one_way_distance_km != null ? b.one_way_distance_km + ' km aller · ' : '') +
           'prestation ' + admFmtEuros(b.service_price_cents) +
           (b.travel_fee_cents > 0 ? ' + déplacement ' + admFmtEuros(b.travel_fee_cents) + ' (' + admFmtEuros(b.travel_rate_per_km_cents) + '/km)' : ' + déplacement inclus') +
           ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span>';
       var cancelMeta = adminCancelledMetaCache[b.id];
       var cancelledByLine = (b.status === 'CANCELLED' && cancelMeta && cancelMeta.cancelled_by === 'customer')
-        ? '<span class="ec-row-meta admin-bk-cancelled-by">🙍 Annulé par le client' + (cancelMeta.cancelled_at ? ' le ' + admFmtDateTime(cancelMeta.cancelled_at) : '') + '</span>'
+        ? '<span class="ec-row-meta admin-bk-cancelled-by">Annulé par le client' + (cancelMeta.cancelled_at ? ' le ' + admFmtDateTime(cancelMeta.cancelled_at) : '') + '</span>'
         : '';
       html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
         '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
         '<span class="ec-row-meta">' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
-        (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
-        (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
+        (contact.address ? '<span class="ec-row-meta">' + admEscape(contact.address) + '</span>' : '') +
+        (contact.phone ? '<span class="ec-row-meta">' + admEscape(contact.phone) + '</span>' : '') +
         travelLine +
         cancelledByLine +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
-        (b.notes ? '<span class="admin-bk-note">💬 ' + admEscape(b.notes) + '</span>' : '') +
+        (b.notes ? '<span class="admin-bk-note">' + admEscape(b.notes) + '</span>' : '') +
         '<span class="ec-row-meta">' + admEmailStatusHtml(b, adminBookingsCache.emails) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
         (b.status === 'PENDING' ?
-          '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">✅ Accepter</button>' +
-          '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">❌ Refuser</button>' +
-          '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">🕐 Proposer un autre créneau</button>'
+          '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">Accepter</button>' +
+          '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">Refuser</button>' +
+          '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">Proposer un autre créneau</button>'
           : '') +
         '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
-        (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">📅 Ajouter à Apple Calendar</button>' : '') +
+        (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">Ajouter à Apple Calendar</button>' : '') +
         (b.status === 'PENDING' ?
           '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
             '<div class="admin-bk-propose-form-row">' +
@@ -11842,7 +12235,7 @@ if ('serviceWorker' in navigator){
     }
     var modalCancelMeta = adminCancelledMetaCache[id];
     var modalCancelledByLine = (b.status === 'CANCELLED' && modalCancelMeta && modalCancelMeta.cancelled_by === 'customer')
-      ? '<p class="admin-bk-modal-note">🙍 Annulé par le client' + (modalCancelMeta.cancelled_at ? ' le ' + admFmtDateTime(modalCancelMeta.cancelled_at) : '') + '</p>'
+      ? '<p class="admin-bk-modal-note">Annulé par le client' + (modalCancelMeta.cancelled_at ? ' le ' + admFmtDateTime(modalCancelMeta.cancelled_at) : '') + '</p>'
       : '';
 
     // Correction 2026-09-24 : une demande PENDING n'a plus de menu déroulant
@@ -11854,10 +12247,10 @@ if ('serviceWorker' in navigator){
     if (b.status === 'PENDING'){
       actionsHtml =
         '<div class="admin-bk-modal-decision">' +
-          '<button type="button" class="admin-bk-decision-btn admin-bk-decision-accept" data-booking-id="' + b.id + '">✅ Accepter la demande</button>' +
-          '<button type="button" class="admin-bk-decision-btn admin-bk-decision-refuse" data-booking-id="' + b.id + '">❌ Refuser la demande</button>' +
+          '<button type="button" class="admin-bk-decision-btn admin-bk-decision-accept" data-booking-id="' + b.id + '">Accepter la demande</button>' +
+          '<button type="button" class="admin-bk-decision-btn admin-bk-decision-refuse" data-booking-id="' + b.id + '">Refuser la demande</button>' +
         '</div>' +
-        '<button type="button" class="admin-bk-modal-propose-toggle" data-booking-id="' + b.id + '">🕐 Proposer un autre créneau à la place</button>' +
+        '<button type="button" class="admin-bk-modal-propose-toggle" data-booking-id="' + b.id + '">Proposer un autre créneau à la place</button>' +
         '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
           '<div class="admin-bk-propose-form-row">' +
             '<label>Nouvelle date<input type="date" class="admin-bk-propose-date" required></label>' +
@@ -11888,7 +12281,7 @@ if ('serviceWorker' in navigator){
     }
 
     var quoteCreateHtml = (b.customer_user_id || b.professional_account_id)
-      ? '<button type="button" class="admin-bk-modal-propose-toggle" id="admOpenQuoteBuilderBtn" data-booking-id="' + b.id + '">📄 Créer un devis chiffré pour ce client</button>'
+      ? '<button type="button" class="admin-bk-modal-propose-toggle" id="admOpenQuoteBuilderBtn" data-booking-id="' + b.id + '">Créer un devis chiffré pour ce client</button>'
       : '';
 
     // Suppression définitive — réservée aux demandes REFUSÉES PAR L'ADMIN
@@ -11901,7 +12294,7 @@ if ('serviceWorker' in navigator){
     if (b.status === 'CANCELLED' && modalCancelMeta && modalCancelMeta.cancelled_by === 'admin'){
       deleteHtml =
         '<div class="admin-bk-modal-delete-zone">' +
-          '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">🗑️ Supprimer définitivement cette demande</button>' +
+          '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">Supprimer définitivement cette demande</button>' +
           '<p class="admin-bk-delete-hint">Irréversible — supprime complètement cet enregistrement, sans corbeille ni historique.</p>' +
         '</div>';
     }
@@ -11910,15 +12303,15 @@ if ('serviceWorker' in navigator){
       '<h3 class="admin-bk-modal-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + ' ' + admReqStatusBadge(b) + '</h3>' +
       '<p class="admin-bk-modal-ref">Réf. ' + admEscape(b.reference) + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</p>' +
       '<div class="admin-bk-modal-rows">' +
-        (contact.phone ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Téléphone</span><span>📞 ' + admEscape(contact.phone) + '</span></div>' : '') +
-        (contact.email ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">E-mail</span><span>✉️ ' + admEscape(contact.email) + '</span></div>' : '') +
-        (contact.address ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Adresse</span><span>📍 ' + admEscape(contact.address) + '</span></div>' : '') +
+        (contact.phone ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Téléphone</span><span>' + admEscape(contact.phone) + '</span></div>' : '') +
+        (contact.email ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">E-mail</span><span>' + admEscape(contact.email) + '</span></div>' : '') +
+        (contact.address ? '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Adresse</span><span>' + admEscape(contact.address) + '</span></div>' : '') +
         '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prestation</span><span>' + admEscape(svcName) + '</span></div>' +
         '<div class="admin-bk-modal-row"><span class="admin-bk-modal-row-label">Prix</span><span>' + admFmtEuros(b.service_price_cents) +
           (b.travel_fee_cents > 0 ? ' + ' + admFmtEuros(b.travel_fee_cents) + ' déplacement' : '') + ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span></div>' +
       '</div>' +
       modalCancelledByLine +
-      (b.notes ? '<p class="admin-bk-modal-note">💬 ' + admEscape(b.notes) + '</p>' : '') +
+      (b.notes ? '<p class="admin-bk-modal-note">' + admEscape(b.notes) + '</p>' : '') +
       actionsHtml +
       '<p style="margin-top:14px;">' + quoteCreateHtml + '</p>' +
       deleteHtml;
@@ -12194,12 +12587,12 @@ if ('serviceWorker' in navigator){
         '<div class="ec-row-info">' +
           '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) +
             ' ' + admReqStatusBadge(b) + '</span>' +
-          '<span class="ec-row-meta">📥 Demande reçue le ' + admFmtDateTime(b.created_at) + '</span>' +
-          '<span class="ec-row-meta">📅 Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
-          (contact.address ? '<span class="ec-row-meta">📍 ' + admEscape(contact.address) + '</span>' : '') +
-          (contact.phone ? '<span class="ec-row-meta">📞 ' + admEscape(contact.phone) + '</span>' : '') +
-          (contact.email ? '<span class="ec-row-meta">✉️ ' + admEscape(contact.email) + '</span>' : '') +
-          '<span class="ec-row-meta">💶 Prix estimé : ' + admFmtEuros(b.total_cents) + '</span>' +
+          '<span class="ec-row-meta">Demande reçue le ' + admFmtDateTime(b.created_at) + '</span>' +
+          '<span class="ec-row-meta">Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+          (contact.address ? '<span class="ec-row-meta">' + admEscape(contact.address) + '</span>' : '') +
+          (contact.phone ? '<span class="ec-row-meta">' + admEscape(contact.phone) + '</span>' : '') +
+          (contact.email ? '<span class="ec-row-meta">' + admEscape(contact.email) + '</span>' : '') +
+          '<span class="ec-row-meta">Prix estimé : ' + admFmtEuros(b.total_cents) + '</span>' +
           '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         '</div>' +
         '<span class="admin-req-open-hint">Voir le détail →</span>' +
@@ -12245,12 +12638,12 @@ if ('serviceWorker' in navigator){
         html += '<div class="ec-row">' +
           '<div class="ec-row-info">' +
             '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + ' ' + who + '</span>' +
-            '<span class="ec-row-meta">📅 Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
-            (meta && meta.cancelled_at ? '<span class="ec-row-meta">🗓️ Le ' + admFmtDateTime(meta.cancelled_at) + '</span>' : '') +
-            (meta && meta.admin_cancel_reason ? '<span class="ec-row-meta">💬 Motif : ' + admEscape(meta.admin_cancel_reason) + '</span>' : '') +
+            '<span class="ec-row-meta">Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+            (meta && meta.cancelled_at ? '<span class="ec-row-meta">Le ' + admFmtDateTime(meta.cancelled_at) + '</span>' : '') +
+            (meta && meta.admin_cancel_reason ? '<span class="ec-row-meta">Motif : ' + admEscape(meta.admin_cancel_reason) + '</span>' : '') +
             '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
           '</div>' +
-          (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">🗑️ Supprimer</button>' : '') +
+          (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">Supprimer</button>' : '') +
           '</div>';
       });
       html += '</div>';
@@ -12419,11 +12812,11 @@ if ('serviceWorker' in navigator){
       return reg.pushManager.getSubscription();
     }).then(function(sub){
       if (sub){
-        btn.textContent = '🔕 Désactiver les notifications';
+        btn.textContent = 'Désactiver les notifications';
         statusEl.textContent = 'Activées';
         statusEl.className = 'admin-push-status is-on';
       } else {
-        btn.textContent = '🔔 Activer les notifications';
+        btn.textContent = 'Activer les notifications';
         statusEl.textContent = 'Désactivées';
         statusEl.className = 'admin-push-status is-off';
       }
@@ -12950,13 +13343,13 @@ if ('serviceWorker' in navigator){
     var editable = quote.status === 'DRAFT';
     var body = qbBody();
     var html = '';
-    html += '<h3 class="admin-bk-modal-title">📄 Devis ' + admEscape(quote.reference) + '</h3>';
+    html += '<h3 class="admin-bk-modal-title">Devis ' + admEscape(quote.reference) + '</h3>';
     html += '<p class="admin-bk-modal-ref">Statut : ' + qbStatusBadgeHtml(quote.status) +
       (quote.version > 1 ? ' · version ' + quote.version : '') + '</p>';
 
     if (!editable){
       html += '<p class="admin-bk-modal-note">Ce devis a été envoyé (ou accepté/refusé) : il n\'est plus modifiable. Pour changer une option ou une photo, créez une nouvelle version.</p>';
-      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbNewVersionBtn">🆕 Créer une nouvelle version modifiable</button>';
+      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbNewVersionBtn">Créer une nouvelle version modifiable</button>';
     }
 
     html += '<label style="display:block; margin:14px 0;">Titre du devis (facultatif, visible par le client)' +
@@ -12981,15 +13374,15 @@ if ('serviceWorker' in navigator){
           html += '<div class="qb-attachment-thumb" data-attachment-id="' + a.id + '"><img src="' + (urlByPath[a.storage_path] || '') + '" alt="">' +
             (editable ? '<button type="button" class="qb-attachment-remove" data-attachment-id="' + a.id + '" aria-label="Supprimer">✕</button>' : '') + '</div>';
         } else {
-          html += '<div class="qb-attachment-thumb" data-attachment-id="' + a.id + '"><span class="qb-pdf-icon">📄</span>' +
+          html += '<div class="qb-attachment-thumb" data-attachment-id="' + a.id + '"><span class="qb-pdf-icon" style="font-size:0.7rem;font-weight:800;letter-spacing:0.02em;">PDF</span>' +
             (editable ? '<button type="button" class="qb-attachment-remove" data-attachment-id="' + a.id + '" aria-label="Supprimer">✕</button>' : '') + '</div>';
         }
       });
       html += '</div>';
       if (editable){
         html += '<div class="qb-option-actions">' +
-          '<label class="qb-upload-label">📷 Ajouter une photo ou un document<input type="file" class="qb-opt-file-input" accept="image/jpeg,image/png,image/webp,application/pdf" multiple></label>' +
-          '<button type="button" class="qb-option-remove" data-option-id="' + opt.id + '">🗑️ Supprimer cette option</button>' +
+          '<label class="qb-upload-label">Ajouter une photo ou un document<input type="file" class="qb-opt-file-input" accept="image/jpeg,image/png,image/webp,application/pdf" multiple></label>' +
+          '<button type="button" class="qb-option-remove" data-option-id="' + opt.id + '">Supprimer cette option</button>' +
         '</div>';
       }
       html += '<p class="qb-msg" hidden></p>';
@@ -12997,10 +13390,10 @@ if ('serviceWorker' in navigator){
     });
 
     if (editable){
-      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbAddOptionBtn">➕ Ajouter une option / solution</button>';
-      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbAddFromCatalogBtn" style="margin-left:8px;">📦 Ajouter un produit du catalogue</button>';
+      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbAddOptionBtn">Ajouter une option / solution</button>';
+      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbAddFromCatalogBtn" style="margin-left:8px;">Ajouter un produit du catalogue</button>';
       html += '<div class="qb-footer">' +
-        '<button type="button" class="btn-primary" id="qbSendBtn"' + (options.length ? '' : ' disabled') + '>📨 Envoyer le devis au client</button>' +
+        '<button type="button" class="btn-primary" id="qbSendBtn"' + (options.length ? '' : ' disabled') + '>Envoyer le devis au client</button>' +
         '<p class="qb-msg" id="qbFooterMsg" hidden></p>' +
       '</div>';
       if (!options.length){
@@ -13501,7 +13894,7 @@ if ('serviceWorker' in navigator){
       '<p class="admin-bk-modal-note">Prix de vente calculé actuellement : <strong>' + (product.sale_price_cents != null ? admFmtEuros(product.sale_price_cents) : '—') + '</strong></p>' +
       '<div class="qb-footer">' +
         '<button type="button" class="btn-primary" id="peSaveBtn">Enregistrer</button>' +
-        '<button type="button" class="qb-option-remove" id="peDeleteBtn">🗑️ Supprimer ce produit</button>' +
+        '<button type="button" class="qb-option-remove" id="peDeleteBtn">Supprimer ce produit</button>' +
         '<p class="qb-msg" id="peMsg" hidden></p>' +
       '</div>';
     overlay.hidden = false;
@@ -13635,7 +14028,7 @@ if ('serviceWorker' in navigator){
             resultEl.innerHTML = '<p class="admin-bk-modal-note">Échec de l\'import : ' + admEscape(res.error.message) + '</p>';
             return;
           }
-          resultEl.innerHTML = '<p class="admin-bk-modal-note">✅ ' + valid.length + ' produit(s) importé(s)/mis à jour.' + (invalid.length ? ' ⚠️ ' + invalid.length + ' ligne(s) ignorée(s).' : '') + '</p>' + catalogImportErrorList(invalid);
+          resultEl.innerHTML = '<p class="admin-bk-modal-note">' + valid.length + ' produit(s) importé(s)/mis à jour.' + (invalid.length ? ' ' + invalid.length + ' ligne(s) ignorée(s).' : '') + '</p>' + catalogImportErrorList(invalid);
           admLoadCatalogProducts();
         });
       }).catch(function(err){
@@ -13652,7 +14045,7 @@ if ('serviceWorker' in navigator){
     if (!overlay || !body) return;
     body.innerHTML =
       '<h3 class="admin-bk-modal-title">Ajouter un produit du catalogue</h3>' +
-      '<input type="search" id="pickerSearch" class="bk-search" placeholder="🔍 Produit, marque, référence…" style="width:100%;margin-bottom:12px;">' +
+      '<input type="search" id="pickerSearch" class="bk-search" placeholder="Produit, marque, référence…" style="width:100%;margin-bottom:12px;">' +
       '<div id="pickerResults"><p class="ec-loading">Tapez pour rechercher…</p></div>';
     overlay.hidden = false;
 
@@ -13874,7 +14267,7 @@ if ('serviceWorker' in navigator){
     if (!name || !match){ hintEl.innerHTML = ''; return; }
     var range = [match.price_low_cents, match.price_typical_cents, match.price_high_cents]
       .filter(function(v){ return v != null; }).map(admFmtEuros).join(' — ');
-    hintEl.innerHTML = '<div class="qc-catalog-hint"><strong>📚 Aide au prix — ' + admEscape(match.name) + '</strong>' +
+    hintEl.innerHTML = '<div class="qc-catalog-hint"><strong>Aide au prix — ' + admEscape(match.name) + '</strong>' +
       (range ? 'Fourchette enregistrée : ' + range + '<br>' : '') +
       (match.typical_duration_minutes ? 'Durée habituelle : ' + match.typical_duration_minutes + ' min<br>' : '') +
       (match.typical_supplies ? 'Fournitures généralement nécessaires : ' + admEscape(match.typical_supplies) + '<br>' : '') +
@@ -13945,7 +14338,7 @@ if ('serviceWorker' in navigator){
         (vatApplicable ? '<div class="qc-breakdown-row qc-ht"><span>Total HT</span><span>' + admFmtEuros(totalHtCents) + '</span></div>' +
           '<div class="qc-breakdown-row qc-ht"><span>TVA (' + vatRate + '%)</span><span>' + admFmtEuros(totalTtcCents - totalHtCents) + '</span></div>' : '') +
         '<div class="qc-breakdown-row qc-total"><span>TOTAL ' + (vatApplicable ? 'TTC' : '(non assujetti à la TVA)') + '</span><span>' + admFmtEuros(totalTtcCents) + '</span></div>' +
-        (belowMinimum ? '<p class="qc-why" style="color:var(--adm-amber);">⚠️ En dessous du minimum d\'intervention configuré (' + admFmtEuros(minimumCents) + ').</p>' : '') +
+        (belowMinimum ? '<p class="qc-why" style="color:var(--adm-amber);">En dessous du minimum d\'intervention configuré (' + admFmtEuros(minimumCents) + ').</p>' : '') +
         '<p class="qc-why">Pourquoi ce prix ? ' + techCount + ' technicien(s) × ' + (minutes/60).toFixed(2) + ' h × ' + hourlyRateEuros.toFixed(2) + ' €/h de main-d\'œuvre, + ' + (travelKm*2).toFixed(1) + ' km de déplacement (aller-retour), + fournitures avec marge' + (discountCents ? ', − remise' : '') + ', ' + (vatApplicable ? 'TVA à ' + vatRate + '% appliquée.' : 'aucune TVA appliquée (régime non assujetti).') + ' Cette estimation n\'est ni un prix légal ni un prix obligatoire.</p>';
     }
     qcLastComputed = {
@@ -14200,12 +14593,12 @@ if ('serviceWorker' in navigator){
     panel.innerHTML =
       '<div class="admin-push-panel">' +
         '<p class="admin-push-row">Statut : <span class="adm-badge ' + statusClass + '">' + statusLabel + '</span></p>' +
-        '<button type="button" class="admin-push-toggle-btn" id="aiToggleBtn">' + (settings.enabled ? '⏻ Désactiver immédiatement' : "✨ Activer l'assistant") + '</button>' +
+        '<button type="button" class="admin-push-toggle-btn" id="aiToggleBtn">' + (settings.enabled ? '⏻ Désactiver immédiatement' : "Activer l'assistant") + '</button>' +
       '</div>' +
       '<div class="adm-stats-grid" style="margin-top:16px;">' +
-        '<div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-icon" aria-hidden="true">💬</span><span class="adm-stat-value">' + stats.conversationsToday + '</span><span class="adm-stat-label">Conversations aujourd\'hui</span></div>' +
-        '<div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-icon" aria-hidden="true">📨</span><span class="adm-stat-value">' + stats.requestCount + '</span><span class="adm-stat-label">Requêtes IA aujourd\'hui</span></div>' +
-        '<div class="adm-stat-card adm-stat-sand"><span class="adm-stat-icon" aria-hidden="true">💰</span><span class="adm-stat-value">' + admEstimateAiCostEuros(stats.inputTokens, stats.outputTokens) + '</span><span class="adm-stat-label">Coût estimé aujourd\'hui</span></div>' +
+        '<div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value">' + stats.conversationsToday + '</span><span class="adm-stat-label">Conversations aujourd\'hui</span></div>' +
+        '<div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value">' + stats.requestCount + '</span><span class="adm-stat-label">Requêtes IA aujourd\'hui</span></div>' +
+        '<div class="adm-stat-card adm-stat-sand"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value">' + admEstimateAiCostEuros(stats.inputTokens, stats.outputTokens) + '</span><span class="adm-stat-label">Coût estimé aujourd\'hui</span></div>' +
       '</div>' +
       '<form class="ec-form" id="aiQuotaForm" style="margin-top:18px;">' +
         '<label>Plafond de requêtes / jour<input type="number" id="aiSetDailyCap" min="1" value="' + settings.daily_request_cap + '"></label>' +
@@ -14425,7 +14818,6 @@ if ('serviceWorker' in navigator){
   var signupSuccess = document.getElementById('espaceClientSignupSuccess');
   var devNotice = document.getElementById('espaceClientDevNotice');
   var logoutBtn = document.getElementById('espaceClientLogoutBtn');
-  var goToSiteBtn = document.getElementById('espaceClientGoToSiteBtn');
   var showSignupLink = document.getElementById('espaceClientShowSignup');
   var showLoginLink = document.getElementById('espaceClientShowLogin');
   var forgotLink = document.getElementById('espaceClientForgotLink');
@@ -14446,20 +14838,6 @@ if ('serviceWorker' in navigator){
       e.preventDefault();
       if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
       if (window.sudOpenPortal) window.sudOpenPortal();
-    });
-  }
-
-  // "Site HAYEVA" (bannière du tableau de bord, une fois connecté) : referme
-  // l'écran plein écran pour révéler le site public — jamais de
-  // déconnexion, jamais de retour au portail "Bienvenue" (contrairement à
-  // "← Retour" ci-dessus, qui lui n'existe que côté écran de connexion,
-  // avant d'être identifié). La session Supabase (localStorage) est
-  // totalement indépendante de cet état d'affichage : fermer l'écran ne la
-  // touche pas, le client reste connecté en naviguant sur le site.
-  if (goToSiteBtn){
-    goToSiteBtn.addEventListener('click', function(){
-      if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     });
   }
 
@@ -14528,7 +14906,7 @@ if ('serviceWorker' in navigator){
   }
   function renderUnlocked(label){
     setGateView('dashboard');
-    if (bannerText) bannerText.textContent = '🔐 Espace particulier' + (label ? (' — ' + label) : '');
+    if (bannerText) bannerText.textContent = 'Espace particulier' + (label ? (' — ' + label) : '');
     // Reste dans l'écran plein écran déjà ouvert (ou ne l'ouvre pas du tout
     // s'il s'agit d'une restauration silencieuse de session au chargement de
     // la page) : le tableau de bord prend simplement la place du formulaire
@@ -14753,8 +15131,10 @@ if ('serviceWorker' in navigator){
         var res = results[1];
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var firstName = profile && profile.first_name ? profile.first_name.trim() : '';
-        var html = '<p class="ec-section-title" style="margin-bottom:18px;">' +
-          (firstName ? 'Bonjour ' + ecEscape(firstName) + ' 👋' : 'Bonjour 👋') + '</p>';
+        var html = '<div class="ec-home-head">' +
+          '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) + '' : 'Bonjour') + '</p>' +
+          '<button type="button" class="ec-site-link" id="ecHomeGoToSiteBtn">Voir le site HAYEVA</button>' +
+        '</div>';
         var b = res.data && res.data[0];
         if (b){
           var svcName = (b.services && b.services.name) || 'Service';
@@ -14762,23 +15142,35 @@ if ('serviceWorker' in navigator){
           html += '<div class="ec-next-appt"><p class="ec-eyebrow">Prochain rendez-vous</p>' +
             '<h3>' + ecEscape(svcName) + '</h3>' +
             '<div class="ec-next-appt-meta">' +
-              '<span>📅 ' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) + '</span>' +
+              '<span>' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) + '</span>' +
               '<span>' + ecBadge(b.status) + '</span>' +
-              (addr ? '<span>📍 ' + ecEscape(addr) + '</span>' : '') +
+              (addr ? '<span>' + ecEscape(addr) + '</span>' : '') +
             '</div></div>';
         } else {
           html += '<div class="ec-empty"><strong>Aucun rendez-vous à venir</strong>Réservez votre prochaine intervention en quelques clics.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
         }
         html += '<div class="ec-home-grid">' +
-          '<div class="espace-pro-card" data-ec-goto="appointments" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true">📅</span>Rendez-vous</h3><p>Consultez l’historique complet de vos rendez-vous.</p></div>' +
-          '<div class="espace-pro-card" data-ec-goto="quotes" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true">📋</span>Devis &amp; factures</h3><p>Retrouvez vos documents commerciaux.</p></div>' +
-          '<div class="espace-pro-card"><h3><span class="ec-card-icon" aria-hidden="true">📞</span>Une question ?</h3><p>Contactez-nous au <a href="tel:+33671262302">06 71 26 23 02</a>.</p></div>' +
+          '<div class="espace-pro-card" data-ec-goto="appointments" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true"></span>Rendez-vous</h3><p>Consultez l’historique complet de vos rendez-vous.</p></div>' +
+          '<div class="espace-pro-card" data-ec-goto="quotes" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true"></span>Devis &amp; factures</h3><p>Retrouvez vos documents commerciaux.</p></div>' +
+          '<div class="espace-pro-card"><h3><span class="ec-card-icon" aria-hidden="true"></span>Une question ?</h3><p>Contactez-nous au <a href="tel:+33671262302">06 71 26 23 02</a>.</p></div>' +
         '</div>';
         panel.innerHTML = html;
         // Cartes cliquables : ramènent vers l'onglet correspondant, avec le
         // même petit flash visuel que le clic sur un onglet natif — jamais
         // sur le lien tél. imbriqué (stopPropagation ci-dessus), sinon le
         // clic "Appeler" déclencherait aussi une navigation d'onglet.
+        // Seul bouton "retour au site" de l'Espace Client (l'ancien, dans la
+        // bannière sombre, jugé pas assez visible, a été retiré) : referme
+        // l'écran plein écran, jamais de déconnexion. Réinjecté à chaque
+        // appel de ecLoadHome() — d'où le ré-attachement du listener ici,
+        // plutôt qu'une seule fois au chargement de la page.
+        var homeSiteBtn = document.getElementById('ecHomeGoToSiteBtn');
+        if (homeSiteBtn){
+          homeSiteBtn.addEventListener('click', function(){
+            if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+          });
+        }
         Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(card){
           card.addEventListener('click', function(){ ecShowTab(card.getAttribute('data-ec-goto')); });
           card.addEventListener('keydown', function(e){
@@ -14851,7 +15243,7 @@ if ('serviceWorker' in navigator){
               (addr ? ' · ' + ecEscape(addr) : '') + '</span>' +
             '<span class="ec-row-meta">Réf. ' + ecEscape(b.reference) + '</span>' +
             (priceLine.length ? '<span class="ec-row-meta">' + priceLine.join(' · ') + '</span>' : '') +
-            (prepText ? '<span class="ec-row-meta ec-row-prep">🔧 Préparez votre intervention : ' + ecEscape(prepText) + '</span>' : '') +
+            (prepText ? '<span class="ec-row-meta ec-row-prep">Préparez votre intervention : ' + ecEscape(prepText) + '</span>' : '') +
             '</div>' + ecBadge(b.status) +
             (ecIsUpcomingModifiable(b) ?
               '<div class="ec-appt-actions">' +
@@ -15277,7 +15669,7 @@ if ('serviceWorker' in navigator){
           if (a.file_type === 'image'){
             html += '<img src="' + (urlByPath[a.storage_path] || '') + '" alt="' + ecEscape(opt.label) + '">';
           } else {
-            html += '<a class="ec-quote-pdf-chip" href="' + (urlByPath[a.storage_path] || '#') + '" target="_blank" rel="noopener">📄 ' + ecEscape(a.file_name || 'Document') + '</a>';
+            html += '<a class="ec-quote-pdf-chip" href="' + (urlByPath[a.storage_path] || '#') + '" target="_blank" rel="noopener">' + ecEscape(a.file_name || 'Document') + '</a>';
           }
         });
         html += '</div>';
@@ -15300,13 +15692,13 @@ if ('serviceWorker' in navigator){
       if (quote.selected_option_id){
         html += '<div class="ec-quote-accept-zone">' +
           '<p>Solution sélectionnée — total <strong>' + ecFmtEuros(quote.total_cents) + '</strong>. La sélection d\'une option ne vaut pas acceptation du devis.</p>' +
-          '<button type="button" class="btn-primary" id="ecQuoteAcceptBtn">✅ Accepter le devis</button>' +
+          '<button type="button" class="btn-primary" id="ecQuoteAcceptBtn">Accepter le devis</button>' +
         '</div>';
       } else {
         html += '<p class="hint">Sélectionnez une solution ci-dessus avant de pouvoir accepter le devis.</p>';
       }
     } else if (quote.status === 'ACCEPTED'){
-      html += '<div class="ec-quote-accept-zone"><p>✅ Devis accepté' + (quote.accepted_at ? ' le ' + new Date(quote.accepted_at).toLocaleDateString('fr-FR') : '') + ' — total <strong>' + ecFmtEuros(quote.total_cents) + '</strong>.</p></div>';
+      html += '<div class="ec-quote-accept-zone"><p>Devis accepté' + (quote.accepted_at ? ' le ' + new Date(quote.accepted_at).toLocaleDateString('fr-FR') : '') + ' — total <strong>' + ecFmtEuros(quote.total_cents) + '</strong>.</p></div>';
     }
 
     html += '<p class="ec-quote-msg" id="ecQuoteMsg" hidden></p>';
@@ -15897,7 +16289,7 @@ if ('serviceWorker' in navigator){
     },
     {
       id: 'demo-3', rating: 5, source: 'demo', verified: false,
-      text: "Super intervention, problème réglé rapidement 👍",
+      text: "Super intervention, problème réglé rapidement",
       customerDisplayName: 'Client démo', service: 'Dépannage chauffage', city: 'Fréjus'
     },
     {
@@ -16304,6 +16696,44 @@ if ('serviceWorker' in navigator){
       if (mobileLoginLinkNoSb) mobileLoginLinkNoSb.hidden = true;
     }
   }
+
+  // ---------- Bouton "Se déconnecter" du header ----------
+  // Miroir exact du bouton "Se connecter" ci-dessus : visible uniquement
+  // quand une session existe. Appelle directement sb.client.auth.signOut() —
+  // les scripts de l'Espace Client et de l'Espace Pro écoutent déjà tous les
+  // deux onAuthStateChange('SIGNED_OUT') et réinitialisent leur propre écran
+  // en conséquence (voir renderLocked() dans chacun des deux scripts), donc
+  // aucune logique dupliquée ici. Referme aussi un espace resté ouvert en
+  // plein écran pour revenir au site public.
+  var headerLogoutBtn = document.getElementById('headerLogoutBtn');
+  if (headerLogoutBtn){
+    headerLogoutBtn.addEventListener('click', function(){
+      if (!sb || !sb.client) return;
+      headerLogoutBtn.disabled = true;
+      sb.client.auth.signOut().finally(function(){
+        headerLogoutBtn.disabled = false;
+        closeEspace('espaceClient');
+        closeEspace('espacePro');
+      });
+    });
+    if (sb && sb.configured){
+      var refreshHeaderLogoutBtn = function(session){
+        headerLogoutBtn.hidden = !session;
+        var mobileLogoutLink = document.getElementById('mobileLogoutLink');
+        if (mobileLogoutLink) mobileLogoutLink.hidden = !session;
+      };
+      sb.client.auth.getSession().then(function(res){
+        refreshHeaderLogoutBtn(res && res.data && res.data.session);
+      }).catch(function(){});
+      sb.client.auth.onAuthStateChange(function(event, session){
+        refreshHeaderLogoutBtn(session);
+      });
+    } else {
+      headerLogoutBtn.hidden = true;
+      var mobileLogoutLinkNoSb = document.getElementById('mobileLogoutLink');
+      if (mobileLogoutLinkNoSb) mobileLogoutLinkNoSb.hidden = true;
+    }
+  }
 })();
 </script>
 
@@ -16333,6 +16763,31 @@ if ('serviceWorker' in navigator){
     });
   }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
   Array.prototype.forEach.call(targets, function(el){ io.observe(el); });
+})();
+</script>
+
+<script>
+(function(){
+  // ---------- Carrousel packs (glisser au doigt) ----------
+  // Mobile uniquement (voir .pack-grid en media query ci-dessus, qui passe
+  // en défilement horizontal avec scroll-snap sous 760px) : met en avant
+  // (échelle 1, pleine opacité) la carte actuellement centrée pendant le
+  // glissement, les cartes voisines restant légèrement réduites/atténuées —
+  // demande explicite d'une animation "quand je glisse d'un pack à l'autre",
+  // aussi bien pour les packs chauffage que climatisation (même classe
+  // .pack-grid partagée par toutes les instances, un seul script suffit).
+  var grids = document.querySelectorAll('.pack-grid');
+  if (!grids.length || !('IntersectionObserver' in window)) return;
+  Array.prototype.forEach.call(grids, function(grid){
+    var cards = grid.querySelectorAll('.pack-card');
+    if (!cards.length) return;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        entry.target.classList.toggle('is-centered', entry.intersectionRatio > 0.6);
+      });
+    }, { root: grid, threshold: [0, 0.6, 1] });
+    Array.prototype.forEach.call(cards, function(card){ io.observe(card); });
+  });
 })();
 </script>
 
@@ -16678,10 +17133,10 @@ if ('serviceWorker' in navigator){
     var hasDevis = false;
     matches.slice(0, 2).forEach(function(s){
       if (s.id === 'devis') hasDevis = true;
-      wrap.appendChild(bookingCtaButton('📅 ' + s.title + ' — ' + window.sudBooking.priceLine(s), s.id));
+      wrap.appendChild(bookingCtaButton('' + s.title + ' — ' + window.sudBooking.priceLine(s), s.id));
     });
     if (!hasDevis){
-      wrap.appendChild(bookingCtaButton('📋 Demander un devis personnalisé', 'devis', 'ai-widget-cta-btn-secondary'));
+      wrap.appendChild(bookingCtaButton('Demander un devis personnalisé', 'devis', 'ai-widget-cta-btn-secondary'));
     }
     messagesEl.appendChild(wrap);
     scrollToBottom();
@@ -16746,7 +17201,7 @@ if ('serviceWorker' in navigator){
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ai-widget-cta-btn ai-widget-cta-btn-secondary';
-    btn.textContent = '📍 Calculer mes frais de déplacement';
+    btn.textContent = 'Calculer mes frais de déplacement';
     btn.addEventListener('click', function(){
       btn.disabled = true;
       btn.textContent = 'Calcul en cours…';
@@ -16756,18 +17211,18 @@ if ('serviceWorker' in navigator){
         if (res.status === 'ok'){
           var msg;
           if (res.fee > 0){
-            msg = '🚐 Depuis ' + res.originLabel + ' jusqu\'à ' + res.place.label + ' : ' + res.distanceKm + ' km au total. ' +
+            msg = 'Depuis ' + res.originLabel + ' jusqu\'à ' + res.place.label + ' : ' + res.distanceKm + ' km au total. ' +
               'Les ' + res.includedKm + ' premiers km sont inclus ; au-delà, les frais de déplacement s\'élèvent à ' + fmt(res.fee) + '. ' +
               'Ce montant vous sera confirmé avant la validation de votre rendez-vous.';
           } else {
-            msg = '🚐 Bonne nouvelle : ' + res.place.label + ' se situe dans notre zone de déplacement gratuit (' + res.includedKm + ' km inclus depuis ' + res.originLabel + '). Le déplacement est donc offert.';
+            msg = 'Bonne nouvelle : ' + res.place.label + ' se situe dans notre zone de déplacement gratuit (' + res.includedKm + ' km inclus depuis ' + res.originLabel + '). Le déplacement est donc offert.';
           }
           addMessage('assistant', msg);
         } else {
           addMessage('assistant', "Le calcul automatique n'est pas disponible pour le moment. Indiquez votre adresse lors de la réservation : nous vous confirmerons le tarif du déplacement avant de valider votre rendez-vous.");
           var askWrap = document.createElement('div');
           askWrap.className = 'ai-widget-cta';
-          askWrap.appendChild(bookingCtaButton('📋 Demander le tarif du déplacement', 'devis', 'ai-widget-cta-btn-secondary'));
+          askWrap.appendChild(bookingCtaButton('Demander le tarif du déplacement', 'devis', 'ai-widget-cta-btn-secondary'));
           messagesEl.appendChild(askWrap);
           scrollToBottom();
         }
@@ -16788,7 +17243,7 @@ if ('serviceWorker' in navigator){
     setCharacterState('is-greeting', 700);
     if (!welcomed){
       welcomed = true;
-      addMessage('assistant', "Bonjour 👋\nJe suis l'assistant Hayeva.\nExpliquez-moi votre problème et je vais vous aider à identifier l'intervention adaptée.");
+      addMessage('assistant', "Bonjour, dites-moi tout et je vous aide à trouver la bonne solution.");
     }
     input.focus();
   }
