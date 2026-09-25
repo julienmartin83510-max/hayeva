@@ -4,7 +4,7 @@
     {
       "name": "hayeva-local",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8890"],
+      "runtimeArgs": ["-m", "http.server", "8890", "--directory", "/Users/julienmartin/Desktop/hayeva-repo"],
       "port": 8890
     }
   ]

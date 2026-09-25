@@ -40,6 +40,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HAYEVA">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Lecture CSV/XLSX du catalogue fournisseurs (admin, import manuel — voir
+     tâche 14). Chargée globalement mais n'est utilisée que par l'admin. -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
@@ -57,8 +60,56 @@
 
   var configured = SUPABASE_URL.indexOf('YOUR_SUPABASE_URL') !== 0 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE_ANON_KEY') !== 0;
   var client = null;
+
+  // ---------- "Rester connecté sur cet appareil" ----------
+  // Ne stocke jamais le mot de passe : contrôle uniquement où Supabase Auth
+  // écrit le TOKEN de session qu'il génère lui-même. Coché -> localStorage
+  // (survit à la fermeture du navigateur). Décoché (par défaut) ->
+  // sessionStorage (efface la session à la fermeture de l'onglet/navigateur,
+  // jamais écrite sur le disque). getItem lit les deux emplacements (une
+  // session restaurée doit être trouvée quel que soit l'état actuel de la
+  // case, qui ne reflète que le PROCHAIN choix de l'utilisateur) ;
+  // removeItem (utilisé par signOut()) efface systématiquement les deux, ce
+  // qui garantit une déconnexion réellement complète.
+  var sudRememberMe = false;
+  try {
+    for (var sudI = 0; sudI < window.localStorage.length; sudI++){
+      var sudK = window.localStorage.key(sudI);
+      if (sudK && sudK.indexOf('sb-') === 0 && sudK.indexOf('-auth-token') !== -1){ sudRememberMe = true; break; }
+    }
+  } catch(e){}
+  window.sudSetRememberMe = function(v){ sudRememberMe = !!v; };
+  var sudAuthStorage = {
+    getItem: function(key){
+      try {
+        var v = window.localStorage.getItem(key);
+        if (v !== null) return v;
+      } catch(e){}
+      try { return window.sessionStorage.getItem(key); } catch(e){ return null; }
+    },
+    setItem: function(key, value){
+      try {
+        if (sudRememberMe){
+          window.localStorage.setItem(key, value);
+          window.sessionStorage.removeItem(key);
+        } else {
+          window.sessionStorage.setItem(key, value);
+          window.localStorage.removeItem(key);
+        }
+      } catch(e){}
+    },
+    removeItem: function(key){
+      try { window.localStorage.removeItem(key); } catch(e){}
+      try { window.sessionStorage.removeItem(key); } catch(e){}
+    }
+  };
+
   if (configured && window.supabase && window.supabase.createClient){
-    try { client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ client = null; }
+    try {
+      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { storage: sudAuthStorage, persistSession: true, autoRefreshToken: true }
+      });
+    } catch(e){ client = null; }
   }
   window.sudSupabase = { client: client, configured: !!client };
 })();
@@ -1256,6 +1307,22 @@ if ('serviceWorker' in navigator){
   }
   .confirm-screen h3{ margin-bottom:10px; }
   .confirm-screen > p{ margin-bottom:6px; }
+  /* Sur l'écran de confirmation finale, la consigne de préparation doit
+     être clairement visible — pas une simple ligne discrète comme dans le
+     récapitulatif (voir .bk-prep-hint). */
+  .bk-prep-block{
+    margin:18px auto 0;
+    padding:14px 16px;
+    border-radius:12px;
+    background:var(--turquoise-soft, #CFEFEA);
+    text-align:left;
+  }
+  .bk-prep-block-title{
+    font-weight:800;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .bk-prep-block p{ margin:0; font-size:0.92rem; color:var(--ink); }
   .confirm-screen .summary-card{ text-align:left; margin-top:20px; }
   .confirm-screen .hint{ margin-top:16px; }
   .service-options{
@@ -1762,11 +1829,13 @@ if ('serviceWorker' in navigator){
     border-radius:999px;
     white-space:nowrap;
   }
-  /* Avantage "Déplacement offert" — packs d'entretien Premium uniquement
-     (voir isFreeTravelPack côté JS / is_free_travel_pack côté SQL). Élégant
-     et discret plutôt que criard : léger liseré doré sur la carte, un badge
-     compact au même emplacement que .pack-badge, et une ligne de rappel
-     sous le prix. */
+  /* Avantage réel du Pack Premium : déplacement offert MÊME hors de la
+     zone de 25 km (voir isFreeTravelPack côté JS / is_free_travel_pack
+     côté SQL) — le déplacement offert DANS la zone de 25 km, lui,
+     s'applique à toutes les prestations, pas seulement au Premium (voir
+     0024_pricing_tiers_plomberie_chauffage.sql). Élégant et discret plutôt
+     que criard : léger liseré doré sur la carte, un badge compact au même
+     emplacement que .pack-badge, et une ligne de rappel sous le prix. */
   .pack-free-travel{ border-color:#C9A24A; }
   .pack-badge-travel{
     background:linear-gradient(135deg, #D9B25C, #B5842E);
@@ -1796,6 +1865,32 @@ if ('serviceWorker' in navigator){
     color:var(--ink);
     white-space:nowrap;
     font-variant-numeric:tabular-nums;
+  }
+  /* "À partir de" doit être réellement visible (pas une mention discrète) :
+     même poids/couleur que le montant, jamais en petit texte gris. */
+  .price-from-tag{
+    display:inline-block;
+    font-weight:800;
+    font-size:0.78em;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    color:var(--sky-accent, #5AA9D6);
+    margin-right:6px;
+  }
+  .price-row-quote .p-value{ color:var(--sky-accent, #5AA9D6); }
+  .price-quote-cta{
+    display:inline-block;
+    margin-left:10px;
+    padding:4px 12px;
+    border-radius:999px;
+    background:var(--sky-accent, #5AA9D6);
+    color:#fff;
+    font-weight:700;
+    font-size:0.78rem;
+    text-decoration:none;
+    white-space:nowrap;
+    cursor:pointer;
+    border:none;
   }
   .price-disclaimer{
     margin-top:22px;
@@ -2223,6 +2318,11 @@ if ('serviceWorker' in navigator){
     font-family:inherit; font-size:0.95rem; padding:12px 14px; border-radius:10px; border:1.5px solid var(--line); background:var(--sand); color:var(--ink);
   }
   .espace-pro-login-form .btn-primary{ width:100%; margin-top:4px; }
+  .espace-pro-remember-me{
+    flex-direction:row !important; align-items:center; gap:8px !important; font-weight:600 !important;
+    cursor:pointer; user-select:none;
+  }
+  .espace-pro-remember-me input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--sky-deep); cursor:pointer; flex-shrink:0; }
   .espace-pro-login-links{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:0.82rem; }
   .espace-pro-login-links a{ color:var(--sky-deep); text-decoration:underline; cursor:pointer; }
   .espace-pro-form-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -2320,6 +2420,41 @@ if ('serviceWorker' in navigator){
   .ec-badge-particulier{ background:var(--sky-accent-soft); color:var(--sky-accent); }
   .ec-badge-professionnel{ background:var(--amber-soft); color:var(--amber); }
 
+  /* ---------- Détail d'un devis (options, photos, sélection) ---------- */
+  .ec-quote-list-row{ cursor:pointer; }
+  .ec-quote-list-row:hover{ border-color:var(--sky-accent); }
+  .ec-quote-option{
+    background:var(--cream); border:1.5px solid var(--line); border-radius:14px; padding:18px;
+    margin-bottom:16px;
+  }
+  .ec-quote-option.is-selected{ border-color:var(--turquoise); box-shadow:0 0 0 2px var(--turquoise-soft); }
+  .ec-quote-option-photos{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .ec-quote-option-photos img{
+    width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid var(--line); cursor:zoom-in;
+  }
+  .ec-quote-pdf-chip{
+    display:inline-flex; align-items:center; gap:6px; height:88px; padding:0 14px; border-radius:10px;
+    border:1px solid var(--line); background:var(--sand-deep); color:var(--ink); text-decoration:none; font-size:0.82rem;
+  }
+  .ec-quote-option-title{ margin:0 0 4px; font-size:1.02rem; }
+  .ec-quote-selected-tag{ color:var(--turquoise); font-size:0.8rem; font-weight:700; }
+  .ec-quote-option-ref{ font-size:0.8rem; color:var(--ink-soft); margin:0 0 6px; }
+  .ec-quote-option-desc{ font-size:0.88rem; color:var(--ink); margin:0 0 12px; }
+  .ec-quote-price-rows{ display:flex; flex-direction:column; gap:4px; margin-bottom:14px; }
+  .ec-quote-price-row{ display:flex; justify-content:space-between; font-size:0.86rem; color:var(--ink-soft); }
+  .ec-quote-price-total{ font-weight:800; color:var(--ink); font-size:0.98rem; border-top:1px dashed var(--line); padding-top:6px; margin-top:2px; }
+  .ec-quote-select-btn{ margin:0; }
+  .ec-quote-accept-zone{
+    background:var(--turquoise-soft); border-radius:12px; padding:16px 18px; margin-top:6px;
+  }
+  .ec-quote-accept-zone p{ margin:0 0 10px; font-size:0.9rem; }
+  .ec-quote-accept-zone .btn-primary{ margin:0; }
+  .ec-quote-msg{ font-size:0.85rem; margin-top:10px; }
+  .ec-quote-msg.is-error{ color:#B23A3A; }
+  @media (max-width:480px){
+    .ec-quote-option-photos img, .ec-quote-pdf-chip{ width:72px; height:72px; }
+  }
+
   /* ---------- Actions "Déplacer" / "Annuler" (Mes rendez-vous, Espace
      Client) — jetons GLOBAUX uniquement (--sand/--ink/--line/...), jamais
      --adm-* : ces boutons et leurs modales vivent hors de
@@ -2398,21 +2533,60 @@ if ('serviceWorker' in navigator){
   .hayeva-char.is-talking{ animation:hayevaGlow 1.6s ease-in-out infinite; }
   .hayeva-char.is-success img{ animation:hayevaSuccess .6s ease; }
   @media (prefers-reduced-motion: reduce){
-    .hayeva-char, .hayeva-char img{ animation:none !important; }
+    .hayeva-char, .hayeva-char img, .ai-widget-invite, .ai-widget-invite-sub{ animation:none !important; transition:none !important; }
   }
 
-  .ai-widget-toggle-bubble{
-    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--ink);
-    background:#fff; border-radius:999px; padding:10px 16px; white-space:nowrap;
-    box-shadow:0 8px 20px -8px rgba(16,27,46,0.3);
+  /* ---------- Bulle d'invitation — premium, discrète, jamais une pop-up.
+     .ai-widget-toggle est maintenant un <div role="button"> (plus un
+     <button>) pour pouvoir contenir en toute légalité le vrai <button> de
+     fermeture (✕) sans imbrication de boutons invalide. Ouverture du chat
+     gérée en JS sur ce conteneur + gestion clavier (Enter/Espace). ---------- */
+  .ai-widget-invite{
+    position:relative; background:#fff; border-radius:16px; padding:12px 30px 11px 14px;
+    box-shadow:0 10px 26px -10px rgba(16,27,46,0.35); max-width:230px;
+    animation:aiInviteIn .35s ease;
   }
+  @keyframes aiInviteIn{ from{ opacity:0; transform:translateY(8px) scale(0.97); } to{ opacity:1; transform:none; } }
+  .ai-widget-invite-title{
+    margin:0; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.86rem; color:var(--ink); line-height:1.3;
+  }
+  .ai-widget-invite-sub{
+    margin:3px 0 0; font-size:0.78rem; color:var(--ink-soft); line-height:1.35;
+    transition:opacity .25s ease;
+  }
+  .ai-widget-invite-sub.is-fading{ opacity:0; }
+  .ai-widget-invite-close{
+    position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; border:none;
+    background:var(--sand-deep); color:var(--ink-soft); font-size:0.68rem; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ai-widget-invite-close:hover{ background:var(--line); color:var(--ink); }
+  /* Repliée : ne garde que le titre, en pastille compacte accolée au personnage. */
+  .ai-widget-invite.is-collapsed{
+    padding:9px 16px; max-width:none;
+  }
+  .ai-widget-invite.is-collapsed .ai-widget-invite-title{ font-size:0.8rem; white-space:nowrap; }
+  .ai-widget-invite.is-collapsed .ai-widget-invite-sub,
+  .ai-widget-invite.is-collapsed .ai-widget-invite-close{ display:none; }
+  /* Survol desktop : re-déploiement temporaire même si repliée. */
+  @media (hover:hover){
+    .ai-widget-toggle:hover .ai-widget-invite.is-collapsed{
+      padding:12px 30px 11px 14px; max-width:230px;
+    }
+    .ai-widget-toggle:hover .ai-widget-invite.is-collapsed .ai-widget-invite-sub,
+    .ai-widget-toggle:hover .ai-widget-invite.is-collapsed .ai-widget-invite-close{ display:block; }
+    .ai-widget-toggle:hover .ai-widget-invite.is-collapsed .ai-widget-invite-close{ display:flex; }
+  }
+  /* Masquée pour la session (croix cliquée) : personnage seul, cliquable. */
+  .ai-widget-invite[hidden]{ display:none; }
+
   .ai-widget-toggle-fallback-label{
     display:none; align-items:center; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem;
     color:#fff; background:linear-gradient(135deg, var(--terracotta) 0%, var(--sky-deep) 140%);
     border-radius:999px; padding:14px 20px; box-shadow:0 12px 30px -10px rgba(16,27,46,0.45); white-space:nowrap;
   }
   .ai-widget-toggle:has(.hayeva-char-missing) .hayeva-char,
-  .ai-widget-toggle:has(.hayeva-char-missing) .ai-widget-toggle-bubble{ display:none; }
+  .ai-widget-toggle:has(.hayeva-char-missing) .ai-widget-invite{ display:none; }
   .ai-widget-toggle:has(.hayeva-char-missing) .ai-widget-toggle-fallback-label{ display:inline-flex; }
 
   .hayeva-char-mini{ width:36px; height:36px; box-shadow:none; }
@@ -2490,7 +2664,13 @@ if ('serviceWorker' in navigator){
     }
     .ai-widget-toggle{ right:14px; bottom:14px; }
     .hayeva-char{ width:48px; height:48px; }
-    .ai-widget-toggle-bubble{ display:none; }
+    /* Mobile : toujours la version compacte (jamais la bulle détaillée avec
+       rotation de sous-textes) — reste visible et cliquable, sans prendre
+       de largeur inutile ni gêner le reste de la page. */
+    .ai-widget-invite{ padding:8px 14px; max-width:none; }
+    .ai-widget-invite .ai-widget-invite-title{ font-size:0.76rem; white-space:nowrap; }
+    .ai-widget-invite .ai-widget-invite-sub,
+    .ai-widget-invite .ai-widget-invite-close{ display:none; }
     .ai-widget-toggle-fallback-label{ padding:12px 16px; font-size:0.8rem; }
   }
 
@@ -2979,6 +3159,41 @@ if ('serviceWorker' in navigator){
   .admin-bk-modal{
     background:var(--adm-card-bg); border-radius:18px; padding:28px 26px; max-width:440px; width:100%;
     box-shadow:0 24px 60px -20px rgba(0,0,0,0.4); position:relative; margin-block:auto;
+  }
+  .admin-bk-modal-wide{ max-width:760px; }
+  /* ---------- Éditeur de devis (options + pièces jointes) ---------- */
+  .qb-option-card{
+    border:1px solid var(--adm-line); border-radius:14px; padding:16px; margin-bottom:16px; background:var(--adm-sand);
+  }
+  .qb-option-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+  .qb-option-head input[type="text"]{ font-weight:700; font-size:1rem; }
+  .qb-field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .qb-field-row label{ display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--adm-ink-soft); }
+  .qb-field-row input, .qb-field-row textarea, .qb-option-head input, .admin-bk-modal-wide textarea{
+    font-family:inherit; font-size:0.9rem; padding:8px 10px; border-radius:8px; border:1px solid var(--adm-line);
+    background:var(--adm-card-bg); color:var(--adm-ink); width:100%;
+  }
+  .qb-option-total{ font-weight:700; color:var(--adm-ocean); margin:4px 0 10px; }
+  .qb-attachments{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
+  .qb-attachment-thumb{ position:relative; width:76px; height:76px; border-radius:10px; overflow:hidden; border:1px solid var(--adm-line); background:var(--adm-card-bg); }
+  .qb-attachment-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .qb-attachment-thumb .qb-pdf-icon{ display:flex; align-items:center; justify-content:center; height:100%; font-size:1.6rem; }
+  .qb-attachment-remove{
+    position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%; border:none;
+    background:rgba(16,27,46,0.72); color:#fff; font-size:0.7rem; line-height:1; cursor:pointer;
+  }
+  .qb-option-actions{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .qb-option-actions button{ font-size:0.82rem; padding:6px 12px; border-radius:999px; border:1px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink); cursor:pointer; }
+  .qb-option-remove{ color:#B23A3A !important; border-color:#B23A3A55 !important; }
+  .qb-upload-label{ display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .qb-upload-label input[type="file"]{ position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+  .qb-footer{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:18px; padding-top:16px; border-top:1px solid var(--adm-line); }
+  .qb-footer .btn-primary{ margin:0; }
+  .qb-msg{ font-size:0.85rem; }
+  .qb-msg.is-error{ color:#B23A3A; }
+  .qb-msg.is-ok{ color:#2E8B57; }
+  @media (max-width:560px){
+    .qb-field-row{ grid-template-columns:1fr; }
   }
   .admin-bk-modal-close{
     position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%;
@@ -4160,14 +4375,18 @@ if ('serviceWorker' in navigator){
      character.png, absent pour l'instant) animé uniquement en CSS/JS —
      voir SPEC.md. Repli automatique sur l'apparence texte d'origine via
      onerror si le fichier n'existe pas encore : jamais de bouton cassé. -->
-<button type="button" class="ai-widget-toggle" id="aiWidgetToggle" hidden>
+<div class="ai-widget-toggle" id="aiWidgetToggle" role="button" tabindex="0" aria-label="Ouvrir l'assistant Hayeva" hidden>
   <span class="hayeva-char" id="hayevaCharToggle" aria-hidden="true">
     <img src="images/assistant-character/character.png" alt=""
          onerror="this.closest('.hayeva-char').classList.add('hayeva-char-missing')">
   </span>
-  <span class="ai-widget-toggle-bubble">Besoin d'aide ?</span>
+  <div class="ai-widget-invite" id="aiWidgetInvite">
+    <button type="button" class="ai-widget-invite-close" id="aiWidgetInviteClose" aria-label="Masquer l'invitation">✕</button>
+    <p class="ai-widget-invite-title">👋 Besoin d'aide ?</p>
+    <p class="ai-widget-invite-sub" id="aiWidgetInviteSub">Décrivez-moi votre problème, je vous guide.</p>
+  </div>
   <span class="ai-widget-toggle-fallback-label">✨ Assistant Hayeva</span>
-</button>
+</div>
 <div class="ai-widget-panel" id="aiWidgetPanel" hidden role="dialog" aria-modal="false" aria-labelledby="aiWidgetTitle">
   <div class="ai-widget-header">
     <span class="hayeva-char hayeva-char-mini" id="hayevaCharPanel" aria-hidden="true">
@@ -4191,6 +4410,30 @@ if ('serviceWorker' in navigator){
   <div class="admin-bk-modal" role="dialog" aria-modal="true" aria-labelledby="adminBkModalBody">
     <button type="button" class="admin-bk-modal-close" id="adminBkModalClose" aria-label="Fermer">✕</button>
     <div id="adminBkModalBody"></div>
+  </div>
+</div>
+<!-- Créateur/éditeur de devis chiffré (options + pièces jointes), voir
+     admOpenQuoteBuilder(). Même famille visuelle que la fiche rendez-vous
+     ci-dessus (.admin-bk-modal), juste plus large. -->
+<div class="admin-bk-modal-overlay" id="adminQuoteBuilderOverlay" hidden>
+  <div class="admin-bk-modal admin-bk-modal-wide" role="dialog" aria-modal="true" aria-labelledby="adminQuoteBuilderBody">
+    <button type="button" class="admin-bk-modal-close" id="adminQuoteBuilderClose" aria-label="Fermer">✕</button>
+    <div id="adminQuoteBuilderBody"></div>
+  </div>
+</div>
+<!-- Édition d'un produit du catalogue fournisseurs, voir admOpenProductEditor(). -->
+<div class="admin-bk-modal-overlay" id="adminProductEditorOverlay" hidden>
+  <div class="admin-bk-modal admin-bk-modal-wide" role="dialog" aria-modal="true" aria-labelledby="adminProductEditorBody">
+    <button type="button" class="admin-bk-modal-close" id="adminProductEditorClose" aria-label="Fermer">✕</button>
+    <div id="adminProductEditorBody"></div>
+  </div>
+</div>
+<!-- Recherche catalogue depuis l'éditeur de devis ("Ajouter un produit"),
+     voir admOpenCatalogPicker(). -->
+<div class="admin-bk-modal-overlay" id="adminCatalogPickerOverlay" hidden>
+  <div class="admin-bk-modal admin-bk-modal-wide" role="dialog" aria-modal="true" aria-labelledby="adminCatalogPickerBody">
+    <button type="button" class="admin-bk-modal-close" id="adminCatalogPickerClose" aria-label="Fermer">✕</button>
+    <div id="adminCatalogPickerBody"></div>
   </div>
 </div>
 <!-- "Déplacer mon rendez-vous" (Espace Client) — jetons globaux uniquement,
@@ -4747,7 +4990,7 @@ if ('serviceWorker' in navigator){
           <li>Nettoyage des siphons (évier, douche &amp; lavabo)</li>
           <li>Resserrage des éléments de plomberie si besoin</li>
           <li>Vérification générale de vos équipements</li>
-          <li>Déplacement inclus</li>
+          <li>✓ Déplacement offert dans la zone de 25 km</li>
         </ul>
         <a class="btn-primary" href="#rdv" id="multiCta">Réserver ce forfait</a>
       </div>
@@ -4783,7 +5026,7 @@ if ('serviceWorker' in navigator){
                 <li>Nettoyage unité intérieure</li>
                 <li>Contrôle de l'évacuation des condensats</li>
                 <li>Contrôle du fonctionnement</li>
-                <li>Déplacement inclus</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
               </ul>
               <p class="pack-price">59 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -10 € (49 € TTC)</p>
@@ -4799,14 +5042,14 @@ if ('serviceWorker' in navigator){
                 <li>Nettoyage échangeur / turbine selon accessibilité</li>
                 <li>Contrôle unité extérieure</li>
                 <li>Contrôle chaud / froid</li>
-                <li>Déplacement inclus</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
               </ul>
               <p class="pack-price">79 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -20 € (59 € TTC)</p>
               <button type="button" class="pack-cta" data-pack="clim-confort">Choisir Confort</button>
             </div>
             <div class="pack-card pack-free-travel">
-              <span class="pack-badge pack-badge-travel">Déplacement offert</span>
+              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
               <h4>Pack Premium</h4>
               <p class="pack-tagline">L'entretien intégral</p>
               <ul class="pack-features">
@@ -4816,15 +5059,16 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle approfondi de l'installation</li>
                 <li>Remplacement des piles de la télécommande</li>
                 <li>Compte rendu d'intervention</li>
-                <li class="pack-feature-highlight">Déplacement 100% offert</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
+                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -30 € (99 € TTC)</p>
-              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance</p>
+              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance — y compris hors de la zone standard</p>
               <button type="button" class="pack-cta" data-pack="clim-premium">Choisir Premium</button>
             </div>
           </div>
-          <p class="price-note-small">Prix suggérés à confirmer — déplacement inclus, tarif selon nombre d'unités.</p>
+          <p class="price-note-small">Prix suggérés à confirmer — 🚐 déplacement offert dans la zone de 25 km autour de HAYEVA, tarif selon nombre d'unités.</p>
         </div>
 
         <div class="price-group" data-cat="chauffage" hidden>
@@ -4848,7 +5092,7 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle du fonctionnement</li>
                 <li>Mesure du monoxyde de carbone</li>
                 <li>Attestation d'entretien</li>
-                <li>Déplacement inclus</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
               </ul>
               <p class="pack-price">99 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-essentiel">Choisir Essentiel</button>
@@ -4865,13 +5109,13 @@ if ('serviceWorker' in navigator){
                 <li>Vérification des raccordements accessibles</li>
                 <li>Contrôle de la combustion et des réglages</li>
                 <li>Conseils d'optimisation de l'installation</li>
-                <li>Déplacement inclus</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-confort">Choisir Confort</button>
             </div>
             <div class="pack-card pack-free-travel">
-              <span class="pack-badge pack-badge-travel">Déplacement offert</span>
+              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
               <h4>Pack Premium</h4>
               <p class="pack-tagline">Entretien &amp; tranquillité</p>
               <ul class="pack-features">
@@ -4881,10 +5125,11 @@ if ('serviceWorker' in navigator){
                 <li>Purge si nécessaire</li>
                 <li>Contrôle du thermostat / régulation</li>
                 <li>Compte rendu d'intervention</li>
-                <li class="pack-feature-highlight">Déplacement 100% offert</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
+                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">169 € <small>TTC</small></p>
-              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance</p>
+              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance — y compris hors de la zone standard</p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-premium">Choisir Premium</button>
             </div>
           </div>
@@ -4901,7 +5146,7 @@ if ('serviceWorker' in navigator){
                 <li>Vérification de l'évacuation des fumées</li>
                 <li>Contrôle de la combustion</li>
                 <li>Attestation d'entretien</li>
-                <li>Déplacement inclus</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-essentiel">Choisir Essentiel</button>
@@ -4918,13 +5163,13 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle de la pompe fioul</li>
                 <li>Analyse et réglage de la combustion</li>
                 <li>Contrôle du vase d'expansion et de la pression</li>
-                <li>Déplacement inclus</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
               </ul>
               <p class="pack-price">169 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-confort">Choisir Confort</button>
             </div>
             <div class="pack-card pack-free-travel">
-              <span class="pack-badge pack-badge-travel">Déplacement offert</span>
+              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
               <h4>Pack Premium</h4>
               <p class="pack-tagline">Entretien &amp; tranquillité</p>
               <ul class="pack-features">
@@ -4935,22 +5180,23 @@ if ('serviceWorker' in navigator){
                 <li>Purge si nécessaire</li>
                 <li>Contrôle visuel des éléments accessibles de l'alimentation fioul</li>
                 <li>Compte rendu détaillé d'intervention</li>
-                <li class="pack-feature-highlight">Déplacement 100% offert</li>
+                <li>✓ Déplacement offert dans la zone de 25 km</li>
+                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">219 € <small>TTC</small></p>
-              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance</p>
+              <p class="pack-travel-note">🎁 Déplacement offert, quelle que soit la distance — y compris hors de la zone standard</p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-premium">Choisir Premium</button>
             </div>
           </div>
           <p class="price-note-small">Tarifs TTC pour l'entretien d'une chaudière individuelle standard. Pièces détachées et réparations non comprises. Un supplément peut s'appliquer selon l'installation, son état ou les conditions d'accès.</p>
 
           <ul class="price-list">
-            <li class="price-row"><span class="p-name">Dépannage chauffage</span><span class="p-value">75 €</span></li>
-            <li class="price-row"><span class="p-name">Remplacement radiateur</span><span class="p-value">150 €</span></li>
-            <li class="price-row"><span class="p-name">Remplacement circulateur</span><span class="p-value">208,33 €</span></li>
-            <li class="price-row"><span class="p-name">Remplacement vase d'expansion</span><span class="p-value">233,33 €</span></li>
-            <li class="price-row"><span class="p-name">Purge complète du circuit <em>(chaudière fioul)</em></span><span class="p-value">75 €</span></li>
-            <li class="price-row"><span class="p-name">Remise en pression du circuit <em>(chaudière fioul)</em></span><span class="p-value">50 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Dépannage chauffage</span><span class="p-value"><span class="price-from-tag">À partir de</span>75 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remplacement radiateur</span><span class="p-value"><span class="price-from-tag">À partir de</span>180 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remplacement circulateur</span><span class="p-value"><span class="price-from-tag">À partir de</span>250 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remplacement vase d'expansion</span><span class="p-value"><span class="price-from-tag">À partir de</span>200 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Purge complète du circuit <em>(chaudière fioul)</em></span><span class="p-value"><span class="price-from-tag">À partir de</span>75 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remise en pression du circuit <em>(chaudière fioul)</em></span><span class="p-value"><span class="price-from-tag">À partir de</span>50 €</span></li>
             <li class="price-row"><span class="p-name">Purge &amp; remise en pression <em>(chaudière gaz — offerte avec le Pack Premium, sinon)</em></span><span class="p-value">50 €</span></li>
           </ul>
         </div>
@@ -4958,25 +5204,26 @@ if ('serviceWorker' in navigator){
         <div class="price-group" data-cat="plomberie" hidden>
           <h3>Plomberie</h3>
           <ul class="price-list">
-            <li class="price-row"><span class="p-name">Forfait dépannage plomberie</span><span class="p-value">50 €</span></li>
-            <li class="price-row"><span class="p-name">Forfait recherche de fuite</span><span class="p-value">75 €</span></li>
-            <li class="price-row"><span class="p-name">Remplacement robinet évier <em>(déplacement compris)</em></span><span class="p-value">100 €</span></li>
-            <li class="price-row"><span class="p-name">Remplacement mécanisme WC</span><span class="p-value">83,33 €</span></li>
-            <li class="price-row"><span class="p-name">Remplacement chasse d'eau complète</span><span class="p-value">150 €</span></li>
-            <li class="price-row"><span class="p-name">Débouchage évier / lavabo</span><span class="p-value">75 €</span></li>
-            <li class="price-row"><span class="p-name">Débouchage WC</span><span class="p-value">100 €</span></li>
-            <li class="price-row"><span class="p-name">Pose sèche-serviettes</span><span class="p-value">250 €</span></li>
-            <li class="price-row"><span class="p-name">Pose colonne de douche</span><span class="p-value">160 €</span></li>
-            <li class="price-row"><span class="p-name">Pose paroi de douche</span><span class="p-value">180 €</span></li>
-            <li class="price-row"><span class="p-name">Pose receveur de douche</span><span class="p-value">350 €</span></li>
-            <li class="price-row"><span class="p-name">Pose baignoire</span><span class="p-value">500 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Forfait dépannage plomberie</span><span class="p-value"><span class="price-from-tag">À partir de</span>75 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Forfait recherche de fuite <em>(recherche simple, non destructive)</em></span><span class="p-value"><span class="price-from-tag">À partir de</span>90 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remplacement robinet évier / lavabo</span><span class="p-value"><span class="price-from-tag">À partir de</span>120 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remplacement mécanisme WC</span><span class="p-value"><span class="price-from-tag">À partir de</span>100 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Remplacement chasse d'eau complète</span><span class="p-value"><span class="price-from-tag">À partir de</span>150 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Débouchage évier / lavabo</span><span class="p-value"><span class="price-from-tag">À partir de</span>100 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Débouchage WC</span><span class="p-value"><span class="price-from-tag">À partir de</span>120 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Pose sèche-serviettes</span><span class="p-value"><span class="price-from-tag">À partir de</span>250 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Pose colonne de douche</span><span class="p-value"><span class="price-from-tag">À partir de</span>180 €</span></li>
+            <li class="price-row price-row-from"><span class="p-name">Pose paroi de douche</span><span class="p-value"><span class="price-from-tag">À partir de</span>200 €</span></li>
+            <li class="price-row price-row-quote"><span class="p-name">Pose receveur de douche</span><span class="p-value">Sur devis <button type="button" class="price-quote-cta" data-devis-service="plomberie-receveur">Demander un devis</button></span></li>
+            <li class="price-row price-row-quote"><span class="p-name">Pose baignoire</span><span class="p-value">Sur devis <button type="button" class="price-quote-cta" data-devis-service="plomberie-baignoire">Demander un devis</button></span></li>
           </ul>
+          <p class="price-note-small">Travaux importants (receveur, baignoire, modification du bâti ou de l'étanchéité) : intervention sous réserve de faisabilité technique et des activités couvertes par l'assurance professionnelle HAYEVA.</p>
         </div>
       </div>
 
       <p class="price-note-small">Main-d'œuvre : à partir de 50 € TTC selon durée de l'intervention, voir devis.</p>
-      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 25 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
-      <p class="price-disclaimer">Tarifs TTC donnés à titre indicatif, hors fournitures sauf mention contraire — un devis précis vous est toujours confirmé avant intervention.</p>
+      <p class="price-note-small">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
+      <p class="price-disclaimer">Tarifs TTC donnés à titre indicatif. Les montants « à partir de » peuvent varier selon le temps d'intervention, l'accessibilité, l'installation existante, le matériel nécessaire ou la difficulté constatée sur place — un devis précis vous est toujours confirmé avant intervention.</p>
       <p class="photo-tip">💳 Profitez de -10% si vous réglez votre prestation à l'avance — contactez-nous pour en profiter.</p>
       <p class="photo-tip">📷 Une photo de la panne ou de l'installation nous aide souvent à vous donner un tarif précis avant même notre venue : décrivez votre besoin dans le formulaire de réservation, nous vous recontactons pour l'obtenir facilement.</p>
     </div>
@@ -5087,6 +5334,19 @@ if ('serviceWorker' in navigator){
       });
     }catch(e){}
 
+    // Prestations "Sur devis" (travaux importants type receveur/baignoire) :
+    // envoie directement vers le tunnel de réservation avec la prestation
+    // demandée présélectionnée — jamais de prix fixe automatique affiché.
+    try{
+      Array.prototype.forEach.call(document.querySelectorAll('[data-devis-service]'), function(btn){
+        btn.addEventListener('click', function(){
+          if (window.sudBooking) window.sudBooking.selectService(btn.getAttribute('data-devis-service'));
+          var el = document.getElementById('rdv');
+          if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      });
+    }catch(e){}
+
     try{
       var fuelToggle = document.getElementById('fuelToggle');
       var fuelPanels = { gaz: document.getElementById('fuelGaz'), fioul: document.getElementById('fuelFioul') };
@@ -5168,7 +5428,7 @@ if ('serviceWorker' in navigator){
         btn.innerHTML =
           '<span class="top-search-icon" aria-hidden="true">'+meta.icon+'</span>' +
           '<span class="top-search-text">' +
-            '<span class="top-search-name">'+s.title+' — '+s.price+'</span>' +
+            '<span class="top-search-name">'+s.title+' — '+window.sudBooking.priceLine(s)+'</span>' +
             '<span class="top-search-cat">'+meta.label+'</span>' +
           '</span>' +
           '<span class="top-search-arrow">→</span>';
@@ -5277,14 +5537,14 @@ if ('serviceWorker' in navigator){
             <label id="bkAddressFreeTextLabel" style="position:relative;">Ville / adresse d'intervention
               <input id="bkAddress" type="text" placeholder="12 avenue de la République, Fréjus…" autocomplete="off">
               <ul class="address-suggestions" id="bkAddressSuggestions" hidden></ul>
-              <span class="travel-hint">Déplacement inclus dans un rayon de 25 km autour de Fréjus. Au-delà, des frais kilométriques peuvent s'appliquer et sont indiqués avant confirmation du rendez-vous.</span>
+              <span class="travel-hint">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont indiqués avant confirmation du rendez-vous.</span>
               <span class="travel-note" id="travelEstimateNote"></span>
             </label>
             <label class="full" id="bkCustomerAddressBlock" hidden>Adresse d'intervention (Espace Client)
               <select id="bkAddressSelect"></select>
             </label>
             <div class="full espace-pro-form-grid-2" id="bkNewAddressFields" hidden>
-              <label>Libellé<input id="bkNewAddrLabel" type="text" placeholder="Ex. Maison principale"></label>
+              <label>Libellé (facultatif)<input id="bkNewAddrLabel" type="text" placeholder="Ex. Maison principale, Appartement, Bureau…"></label>
               <label style="position:relative;">Adresse<input id="bkNewAddrAddress" type="text" placeholder="12 rue des Pins" autocomplete="off"><ul class="address-suggestions" id="bkNewAddrSuggestions" hidden></ul></label>
               <label>Code postal<input id="bkNewAddrPostal" type="text" placeholder="83600"></label>
               <label>Ville<input id="bkNewAddrCity" type="text" placeholder="Fréjus"></label>
@@ -5332,6 +5592,10 @@ if ('serviceWorker' in navigator){
             <p>Merci d'avoir pris rendez-vous avec Hayeva.</p>
             <p>Votre demande a bien été enregistrée. Nous vous confirmerons votre rendez-vous très prochainement.</p>
             <p class="hint" id="bkConfirmRealDetails"></p>
+            <div class="bk-prep-block" id="bkConfirmPrepBlock" hidden>
+              <p class="bk-prep-block-title">🔧 Préparez votre intervention</p>
+              <p id="bkConfirmPrepText"></p>
+            </div>
             <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
               <button type="button" class="btn-primary" id="bkGoToAppointmentsBtn" hidden>Voir mes rendez-vous</button>
               <button type="button" class="btn-primary" id="bkGoHomeBtn">Retour à l'accueil</button>
@@ -5354,7 +5618,7 @@ if ('serviceWorker' in navigator){
         <p class="eyebrow">Zone d'intervention</p>
         <h2 style="margin-top:10px; font-size:clamp(1.5rem,2.6vw,1.9rem);">Tout le Var, toutes les Alpes-Maritimes.</h2>
         <p style="margin-top:12px; margin-bottom:10px;">Basés à Fréjus, nous nous déplaçons dans l'intégralité du Var (83) et des Alpes-Maritimes (06), pour les particuliers comme pour les professionnels — pas seulement les villes listées ci-dessous.</p>
-        <p style="margin-bottom:26px; font-size:0.9rem; color:var(--ink-soft);">🚐 Déplacement inclus dans un rayon de 25 km autour de Fréjus (distance calculée par itinéraire routier réel, jamais à vol d'oiseau). Au-delà, des frais kilométriques peuvent s'appliquer et sont toujours indiqués avant confirmation du rendez-vous — quelle que soit la commune, l'éligibilité au rayon inclus dépend de la distance routière réelle jusqu'à votre adresse exacte.</p>
+        <p style="margin-bottom:26px; font-size:0.9rem; color:var(--ink-soft);">🚐 Déplacement offert dans un rayon de 25 km autour de HAYEVA (distance calculée par itinéraire routier réel, jamais à vol d'oiseau), pour l'ensemble des prestations. Au-delà, des frais kilométriques peuvent s'appliquer et sont toujours indiqués avant confirmation du rendez-vous — quelle que soit la commune, l'éligibilité au rayon inclus dépend de la distance routière réelle jusqu'à votre adresse exacte.</p>
 
         <div class="dept-block">
           <h3>Alpes-Maritimes (06)</h3>
@@ -5441,26 +5705,71 @@ if ('serviceWorker' in navigator){
     var map = L.map(mapEl, {
       scrollWheelZoom: false,
       zoomControl: true,
-      attributionControl: true
+      attributionControl: false
     });
     // Le zoom à la molette ne s'active qu'au clic, pour ne pas piéger le
     // scroll de la page quand on survole la carte en parcourant le site.
     map.on('click', function(){ map.scrollWheelZoom.enable(); });
     mapEl.addEventListener('mouseleave', function(){ map.scrollWheelZoom.disable(); });
 
-    // Fond de carte OpenStreetMap standard : rendu clair et coloré (routes,
-    // eau, végétation), proche de l'apparence Google Maps, à la demande
-    // explicite — le fond CARTO "Voyager" essayé juste avant s'est révélé
-    // exiger désormais une clé API (filigrane "API KEY REQUIRED" sur les
-    // tuiles), contrairement à ce que documentait encore son usage classique
-    // sans clé ; les tuiles OSM standard, elles, restent réellement libres
-    // d'accès (attribution obligatoire, conservée ci-dessous).
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      subdomains: 'abc',
-      maxZoom: 19,
-      minZoom: 7
-    }).addTo(map);
+    // Fond de tuiles MapTiler Cloud (style "backdrop-dark" — cohérent avec
+    // le bleu nuit du site) : remplace tile.openstreetmap.org, dont la
+    // politique d'usage interdit une intégration directe sur un site
+    // commercial en production (d'où le blocage 403 précédemment constaté).
+    //
+    // ⚠️ CLÉ À RENSEIGNER PAR JULIEN — jamais créée ni devinée ici :
+    //   1. Créer un compte sur https://cloud.maptiler.com/
+    //   2. Menu de gauche "API keys" (ou https://cloud.maptiler.com/account/keys/)
+    //      → une clé par défaut existe déjà, ou "New key" pour en créer une.
+    //   3. Copier la clé et la coller ci-dessous, entre les guillemets, à la
+    //      place de la chaîne vide.
+    // Tant que MAPTILER_API_KEY est vide, ou si les tuiles ne chargent pas
+    // (clé invalide, quota dépassé, service indisponible), la carte revient
+    // automatiquement au repli déjà en place : fond sombre uni
+    // (var(--terracotta-deep) sur #zoneMap), points des villes, cercle de
+    // zone et infobulles inchangés — jamais de tuiles cassées ni de mosaïque
+    // d'erreurs visible.
+    var MAPTILER_API_KEY = '7wGZAWaSDZekaE6rL6RW';
+
+    // Ajoute réellement les tuiles + leur attribution obligatoire — appelée
+    // seulement après avoir vérifié que la clé fonctionne (voir plus bas).
+    function addMaptilerLayer(){
+      var attributionCtrl = L.control.attribution({ position: 'bottomright' })
+        .addAttribution('&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
+        .addTo(map);
+      var tileErrorCount = 0;
+      var maptilerLayer = L.tileLayer('https://api.maptiler.com/maps/backdrop-dark/256/{z}/{x}/{y}.png?key=' + MAPTILER_API_KEY, {
+        maxZoom: 19,
+        minZoom: 7
+      });
+      // Repli propre si le service devient indisponible EN COURS D'USAGE
+      // (panne réseau, panne MapTiler...) : au bout de quelques tuiles en
+      // échec, on retire le calque ET son attribution plutôt que de laisser
+      // des tuiles cassées à l'écran — le fond sombre uni de #zoneMap reste
+      // visible dessous, exactement le même repli qu'en l'absence de clé.
+      maptilerLayer.on('tileerror', function(){
+        tileErrorCount++;
+        if (tileErrorCount >= 4 && map.hasLayer(maptilerLayer)){
+          map.removeLayer(maptilerLayer);
+          map.removeControl(attributionCtrl);
+        }
+      });
+      maptilerLayer.addTo(map);
+    }
+
+    if (MAPTILER_API_KEY){
+      // IMPORTANT : l'endpoint de TUILES de MapTiler ne renvoie jamais
+      // d'erreur HTTP pour une clé invalide — il répond 200 avec une image
+      // filigranée "Invalid key" (vérifié en conditions réelles), donc
+      // écouter "tileerror" seul ne détecte JAMAIS ce cas. L'endpoint
+      // tiles.json, lui, renvoie une vraie erreur HTTP (403 confirmé en
+      // conditions réelles) : on vérifie la clé avec ce dernier AVANT
+      // d'ajouter la moindre tuile visible, pour ne jamais laisser
+      // apparaître le filigrane sur le site.
+      fetch('https://api.maptiler.com/maps/backdrop-dark/tiles.json?key=' + MAPTILER_API_KEY)
+        .then(function(res){ if (res.ok) addMaptilerLayer(); })
+        .catch(function(){ /* réseau indisponible : reste sur le repli sombre */ });
+    }
 
     var allPoints = [[HQ.lat, HQ.lng]].concat(CITIES.map(function(c){ return [c.lat, c.lng]; }));
     map.fitBounds(allPoints, { padding: [28, 28] });
@@ -5587,7 +5896,7 @@ if ('serviceWorker' in navigator){
         </div>
       </div>
       <p class="price-note-small">Ces prestations correspondent à un contrôle visuel et fonctionnel réalisé dans le cadre des compétences de HAYEVA (plomberie, chauffage, climatisation). Elles ne constituent ni une certification officielle, ni un diagnostic réglementaire, ni une attestation de conformité.</p>
-      <p class="price-note-small">🚐 Déplacement inclus jusqu'à 25 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
+      <p class="price-note-small">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
 
       <div class="pro-report">
         <h3>Un compte-rendu clair après chaque Check</h3>
@@ -5635,7 +5944,7 @@ if ('serviceWorker' in navigator){
       <div class="tarifs-pro" id="tarifsPro">
         <h3>Tarifs professionnels — remise multi-logements</h3>
         <div class="tarifs-pro-grid" id="tarifsProGrid"></div>
-        <p class="price-note-small" style="margin-top:14px;">🚐 Déplacement inclus jusqu'à 25 km du point de départ HAYEVA. Au-delà, 0,70 € TTC par kilomètre supplémentaire, calculé sur le trajet aller-retour. Les éventuels frais de déplacement sont affichés avant validation de votre demande.</p>
+        <p class="price-note-small" style="margin-top:14px;">🚐 Déplacement offert jusqu'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>
       </div>
     </div>
   </section>
@@ -5680,6 +5989,9 @@ if ('serviceWorker' in navigator){
             </label>
             <label>Mot de passe
               <input type="password" id="espaceProPassword" placeholder="••••••••" autocomplete="current-password" required>
+            </label>
+            <label class="espace-pro-remember-me">
+              <input type="checkbox" id="espaceProRememberMe"> Rester connecté sur cet appareil
             </label>
             <p class="espace-pro-form-error" id="espaceProLoginError" hidden></p>
             <button type="submit" class="btn-primary" id="espaceProLoginSubmit">Se connecter</button>
@@ -5919,6 +6231,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="pricing" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">🧮</span><span class="adm-nav-label">Chiffrage</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="catalog" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true">📦</span><span class="adm-nav-label">Catalogue</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true">⚙️</span><span class="adm-nav-label">Paramètres</span>
                 </button>
@@ -6039,6 +6354,10 @@ if ('serviceWorker' in navigator){
                   <p class="adm-page-sub">Demandes de devis gratuit, les plus récentes en premier — cliquez pour ouvrir la fiche complète.</p>
                 </div>
                 <div id="adminQuotesList"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead" style="margin-top:28px;">📄 Devis chiffrés</h3>
+                <p class="adm-page-sub" style="margin-top:-8px;">Devis avec options et pièces jointes envoyés aux clients. Pour en créer un, ouvrez une demande de devis ci-dessus et cliquez « Créer un devis chiffré ».</p>
+                <div id="adminPricedQuotesList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageStats" data-adm-page="stats" hidden>
@@ -6158,6 +6477,69 @@ if ('serviceWorker' in navigator){
                 <div id="qcHistoryList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
+              <section class="adm-page" id="admPageCatalog" data-adm-page="catalog" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">📦 Catalogue fournisseurs</h2>
+                  <p class="adm-page-sub">Import manuel CSV/XLSX en attendant les accès officiels CEDEO / Leroy Merlin. Le prix d'achat, la marge et les informations fournisseur ne sont jamais visibles par le client — seul le produit ajouté à un devis (avec son prix de vente) l'est.</p>
+                </div>
+
+                <h3 class="adm-subhead">Règles de marge</h3>
+                <div id="marginRulesList"><p class="ec-loading">Chargement…</p></div>
+                <form class="ec-form" id="marginRuleForm" style="margin-top:12px;">
+                  <label>Nom<input type="text" id="mrLabel" placeholder="Ex. Règle générale" required></label>
+                  <label>Catégorie (vide = générale)
+                    <select id="mrCategory">
+                      <option value="">— Toutes catégories (générale) —</option>
+                      <option value="plomberie">Plomberie</option>
+                      <option value="chauffage">Chauffage</option>
+                      <option value="climatisation">Climatisation</option>
+                      <option value="sanitaire">Sanitaire</option>
+                      <option value="accessoire">Accessoire</option>
+                      <option value="autre">Autre</option>
+                    </select>
+                  </label>
+                  <label>Type
+                    <select id="mrType">
+                      <option value="multiplier">Coefficient multiplicateur (ex. 1,4)</option>
+                      <option value="percentage">Pourcentage de marge (ex. 40 pour +40%)</option>
+                      <option value="fixed_amount">Marge fixe (€, ex. 15)</option>
+                    </select>
+                  </label>
+                  <label>Valeur<input type="number" id="mrValue" step="0.01" required></label>
+                  <button type="submit" class="btn-primary ec-form-full" id="mrSubmit">Ajouter la règle</button>
+                  <p class="qc-disclaimer ec-form-full" id="mrMsg" hidden></p>
+                </form>
+
+                <h3 class="adm-subhead" style="margin-top:28px;">Importer un catalogue (CSV ou XLSX)</h3>
+                <p class="adm-page-sub" style="margin-top:-8px;">
+                  Colonnes attendues (première ligne = en-têtes) : <code>fournisseur</code> (cedeo ou leroy_merlin), <code>reference</code>, <code>categorie</code> (plomberie/chauffage/climatisation/sanitaire/accessoire/autre), <code>nom</code>, <code>prix_achat_ht</code> (en euros, ex. 40.00) — obligatoires. Facultatifs : <code>ean</code>, <code>marque</code>, <code>modele</code>, <code>description</code>, <code>photo_url</code>, <code>url_fournisseur</code>, <code>tva_fournisseur</code> (%, 20 par défaut), <code>disponibilite</code> (disponible/limite/indisponible/inconnu). Un produit déjà présent (même fournisseur + même référence) est mis à jour, jamais dupliqué.
+                </p>
+                <input type="file" id="catalogImportFile" accept=".csv,.xlsx,.xls">
+                <button type="button" class="btn-primary" id="catalogImportBtn" style="margin-top:10px;">📥 Importer</button>
+                <div id="catalogImportResult"></div>
+
+                <h3 class="adm-subhead" style="margin-top:28px;">Produits</h3>
+                <div class="adm-quicklinks" style="flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                  <input type="search" id="catalogSearchInput" class="bk-search" placeholder="🔍 Produit, marque, référence…" style="flex:1 1 220px;">
+                  <select id="catalogFilterSupplier">
+                    <option value="">Tous fournisseurs</option>
+                    <option value="cedeo">CEDEO</option>
+                    <option value="leroy_merlin">Leroy Merlin</option>
+                  </select>
+                  <select id="catalogFilterCategory">
+                    <option value="">Toutes catégories</option>
+                    <option value="plomberie">Plomberie</option>
+                    <option value="chauffage">Chauffage</option>
+                    <option value="climatisation">Climatisation</option>
+                    <option value="sanitaire">Sanitaire</option>
+                    <option value="accessoire">Accessoire</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+                <div id="catalogProductsList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
@@ -6181,6 +6563,10 @@ if ('serviceWorker' in navigator){
                     <p class="admin-travel-settings-msg" id="adminTravelSettingsMsg" hidden></p>
                   </div>
                 </form>
+
+                <h3 class="adm-subhead">🔧 Consignes de préparation avant intervention</h3>
+                <p class="adm-page-sub" style="margin-top:-8px;">Texte envoyé au client (e-mail de confirmation, espace particulier, tunnel de réservation) selon la prestation réservée. Jamais généré par l'assistant IA — modifiez librement le texte ci-dessous, il est utilisé tel quel.</p>
+                <div id="prepInstructionsPanel"><p class="ec-loading">Chargement…</p></div>
 
                 <h3 class="adm-subhead">Notifications push</h3>
                 <div class="admin-push-panel">
@@ -6274,6 +6660,9 @@ if ('serviceWorker' in navigator){
             </label>
             <label>Mot de passe
               <input type="password" id="espaceClientPassword" placeholder="••••••••" autocomplete="current-password" required>
+            </label>
+            <label class="espace-pro-remember-me">
+              <input type="checkbox" id="espaceClientRememberMe"> Rester connecté sur cet appareil
             </label>
             <p class="espace-pro-form-error" id="espaceClientLoginError" hidden></p>
             <button type="submit" class="btn-primary" id="espaceClientLoginSubmit">Se connecter</button>
@@ -6561,7 +6950,7 @@ if ('serviceWorker' in navigator){
         <p>Les prix affichés sur le site sont exprimés en euros, toutes taxes comprises (TTC). Ils correspondent à la prestation décrite dans les conditions normales d'intervention. Un tarif affiché comme indicatif, ou une prestation fonctionnant uniquement sur devis, est clairement signalée comme telle : aucun montant non définitif n'est présenté comme un prix ferme.</p>
 
         <h3>Article 8 — Frais de déplacement</h3>
-        <p>Le déplacement est inclus dans un rayon de 25 km autour de Fréjus. Au-delà, des frais kilométriques peuvent s'appliquer ; lorsqu'ils sont calculables, ils sont annoncés avant la confirmation du rendez-vous. Certains forfaits d'entretien haut de gamme (Pack Premium climatisation, chaudière gaz, chaudière fioul) incluent le déplacement offert, quelle que soit la distance : cette information est indiquée clairement sur la fiche du pack concerné et reportée dans le récapitulatif de la demande.</p>
+        <p>Le déplacement est offert dans un rayon de 25 km autour de HAYEVA, pour l'ensemble des prestations (plomberie, chauffage, climatisation, packs d'entretien et interventions correspondantes). Au-delà de cette zone, des frais kilométriques peuvent s'appliquer ; lorsqu'ils sont calculables, ils sont annoncés avant la confirmation du rendez-vous — HAYEVA ne présente jamais automatiquement un déplacement comme gratuit au-delà de la zone incluse. Les packs Premium climatisation, chaudière gaz et chaudière fioul incluent en outre le déplacement offert même en dehors de cette zone de 25 km : cette information est indiquée clairement sur la fiche du pack concerné et reportée dans le récapitulatif de la demande.</p>
 
         <h3>Article 9 — Diagnostics et prestations complémentaires</h3>
         <p>Lorsqu'un diagnostic réalisé sur place révèle la nécessité d'une prestation complémentaire non initialement prévue, HAYEVA en informe le client et recueille son accord avant toute réalisation et toute facturation supplémentaire.</p>
@@ -6804,24 +7193,24 @@ if ('serviceWorker' in navigator){
     { id:'chauffage-chaudiere-fioul-essentiel', title:'Chauffage — Chaudière Fioul — Pack Essentiel', price:'129 € TTC', duration:60, desc:"L'entretien indispensable pour une chaudière fioul.", keywords:"chaudiere chaudiaire chaufage fioul mazout entretien chaudiere maintenance revision controle chaudiere attestation" },
     { id:'chauffage-chaudiere-fioul-confort', title:'Chauffage — Chaudière Fioul — Pack Confort', price:'169 € TTC', duration:90, desc:"L'entretien complet pour une chaudière fioul.", keywords:"chaudiere chaudiaire chaufage fioul mazout entretien chaudiere maintenance revision controle chaudiere attestation" },
     { id:'chauffage-chaudiere-fioul-premium', title:'Chauffage — Chaudière Fioul — Pack Premium', price:'219 € TTC', duration:120, desc:"Entretien et tranquillité pour une chaudière fioul, avec contrôle du thermostat et de la régulation.", keywords:"chaudiere chaudiaire chaufage fioul mazout entretien chaudiere maintenance revision thermostat regulation" },
-    { id:'chauffage-depannage', title:'Dépannage chauffage', price:'75 € TTC', duration:90, desc:"Intervention rapide sur votre chauffage.", keywords:"chaufage panne urgence chauffage en panne chaudiere en panne plus de chauffage pas de chaleur chauffe eau ballon d'eau chaude cumulus dep depannage" },
-    { id:'chauffage-radiateur', title:'Remplacement radiateur', price:'150 € TTC', duration:90, desc:"Dépose et pose d'un radiateur.", supply:true, keywords:"radi radiateur casse radiateur froid changer radiateur chauffage" },
-    { id:'chauffage-circulateur', title:'Remplacement circulateur', price:'208,33 € TTC', duration:90, desc:"Remplacement du circulateur de chauffage.", supply:true, keywords:"pompe circulation circulateur chaufage" },
-    { id:'chauffage-vase', title:"Remplacement vase d'expansion", price:'233,33 € TTC', duration:90, desc:"Remplacement du vase d'expansion.", supply:true, keywords:"vase expansion chaufage" },
-    { id:'chauffage-purge', title:'Purge complète du circuit — chaudière fioul', price:'75 € TTC', duration:60, desc:"Rinçage sans produit du circuit de chauffage.", keywords:"purge radiateur vidange circuit fioul chaudiere" },
-    { id:'chauffage-pression', title:'Remise en pression du circuit — chaudière fioul', price:'50 € TTC', duration:45, desc:"Remise en pression du circuit de chauffage.", keywords:"pression chaudiere manometre remettre pression fioul" },
-    { id:'plomberie-depannage', title:'Forfait dépannage plomberie', price:'50 € TTC', duration:60, desc:"Intervention rapide pour une panne ou une fuite.", keywords:"plombier plomberie urgence panne fuite d'eau dep depannage" },
-    { id:'plomberie-fuite', title:'Forfait recherche de fuite', price:'75 € TTC', duration:60, desc:"Recherche de l'origine d'une fuite.", keywords:"fuite d'eau eau qui coule canalisation percee plombier plomberie" },
-    { id:'plomberie-robinet', title:'Remplacement robinet évier', price:'100 € TTC', duration:60, desc:"Déplacement compris.", supply:true, keywords:"robin robinetterie robinet casse changer robinet mitigeur evier plomberie" },
-    { id:'plomberie-wc-mecanisme', title:'Remplacement mécanisme WC', price:'83,33 € TTC', duration:60, desc:"Remplacement du mécanisme de chasse d'eau.", supply:true, keywords:"wc toilettes toilette toil mecanisme chasse d'eau casse plomberie" },
-    { id:'plomberie-chasse-eau', title:"Remplacement chasse d'eau complète", price:'150 € TTC', duration:90, desc:"Remplacement complet de la chasse d'eau.", supply:true, keywords:"wc toilettes toilette toil reservoir chasse eau plomberie" },
-    { id:'plomberie-debouchage-evier', title:'Débouchage évier / lavabo', price:'75 € TTC', duration:60, desc:"Débouchage d'un évier ou d'un lavabo.", keywords:"lav evier lavabo bouche canalisation bouchee evacuation bouchee plomberie" },
-    { id:'plomberie-debouchage-wc', title:'Débouchage WC', price:'100 € TTC', duration:60, desc:"Débouchage de WC.", keywords:"wc toilettes toilette toil bouche plomberie" },
-    { id:'plomberie-seche-serviette', title:'Pose sèche-serviettes', price:'250 € TTC', duration:120, desc:"Installation d'un sèche-serviettes.", supply:true, keywords:"instal seche serviette radiateur salle de bain plomberie" },
-    { id:'plomberie-colonne-douche', title:'Pose colonne de douche', price:'160 € TTC', duration:90, desc:"Installation d'une colonne de douche.", supply:true, keywords:"instal douch douche colonne plomberie" },
-    { id:'plomberie-paroi-douche', title:'Pose paroi de douche', price:'180 € TTC', duration:120, desc:"Installation d'une paroi de douche.", supply:true, keywords:"instal douch douche paroi vitre porte plomberie" },
-    { id:'plomberie-receveur', title:'Pose receveur de douche', price:'350 € TTC', duration:180, desc:"Installation d'un receveur de douche.", supply:true, keywords:"instal douch douche receveur bac plomberie" },
-    { id:'plomberie-baignoire', title:'Pose baignoire', price:'500 € TTC', duration:240, desc:"Installation d'une baignoire.", supply:true, keywords:"instal baignoire bain plomberie" },
+    { id:'chauffage-depannage', title:'Dépannage chauffage', price:'75 € TTC', tier:'from', duration:90, desc:"Intervention rapide sur votre chauffage. Le montant définitif dépend du temps d'intervention et de la panne constatée.", keywords:"chaufage panne urgence chauffage en panne chaudiere en panne plus de chauffage pas de chaleur chauffe eau ballon d'eau chaude cumulus dep depannage" },
+    { id:'chauffage-radiateur', title:'Remplacement radiateur', price:'180 € TTC', tier:'from', duration:90, desc:"Dépose et pose d'un radiateur. Le tarif dépend du modèle, de l'accessibilité et de l'installation existante.", supply:true, keywords:"radi radiateur casse radiateur froid changer radiateur chauffage" },
+    { id:'chauffage-circulateur', title:'Remplacement circulateur', price:'250 € TTC', tier:'from', duration:90, desc:"Remplacement du circulateur de chauffage. Le tarif dépend du modèle et de l'accessibilité.", supply:true, keywords:"pompe circulation circulateur chaufage" },
+    { id:'chauffage-vase', title:"Remplacement vase d'expansion", price:'200 € TTC', tier:'from', duration:90, desc:"Remplacement du vase d'expansion. Le tarif dépend du modèle et de l'accessibilité.", supply:true, keywords:"vase expansion chaufage" },
+    { id:'chauffage-purge', title:'Purge complète du circuit — chaudière fioul', price:'75 € TTC', tier:'from', duration:60, desc:"Rinçage sans produit du circuit de chauffage. Le temps d'intervention peut varier selon l'installation.", keywords:"purge radiateur vidange circuit fioul chaudiere" },
+    { id:'chauffage-pression', title:'Remise en pression du circuit — chaudière fioul', price:'50 € TTC', tier:'from', duration:45, desc:"Remise en pression du circuit de chauffage. Le temps d'intervention peut varier selon l'installation.", keywords:"pression chaudiere manometre remettre pression fioul" },
+    { id:'plomberie-depannage', title:'Forfait dépannage plomberie', price:'75 € TTC', tier:'from', duration:60, desc:"Intervention rapide pour une panne ou une fuite. Le tarif dépend du temps d'intervention et de l'accessibilité.", keywords:"plombier plomberie urgence panne fuite d'eau dep depannage" },
+    { id:'plomberie-fuite', title:'Forfait recherche de fuite', price:'90 € TTC', tier:'from', duration:60, desc:"Recherche de fuite simple et non destructive. Les investigations complexes ou destructives ne sont pas comprises dans ce forfait.", keywords:"fuite d'eau eau qui coule canalisation percee plombier plomberie" },
+    { id:'plomberie-robinet', title:'Remplacement robinet évier', price:'120 € TTC', tier:'from', duration:60, desc:"Remplacement standard. Le tarif définitif dépend du modèle et de l'installation existante.", supply:true, keywords:"robin robinetterie robinet casse changer robinet mitigeur evier plomberie" },
+    { id:'plomberie-wc-mecanisme', title:'Remplacement mécanisme WC', price:'100 € TTC', tier:'from', duration:60, desc:"Remplacement du mécanisme de chasse d'eau. Le tarif dépend du modèle et de l'accessibilité.", supply:true, keywords:"wc toilettes toilette toil mecanisme chasse d'eau casse plomberie" },
+    { id:'plomberie-chasse-eau', title:"Remplacement chasse d'eau complète", price:'150 € TTC', tier:'from', duration:90, desc:"Remplacement complet de la chasse d'eau. Le tarif dépend du modèle et de l'installation existante.", supply:true, keywords:"wc toilettes toilette toil reservoir chasse eau plomberie" },
+    { id:'plomberie-debouchage-evier', title:'Débouchage évier / lavabo', price:'100 € TTC', tier:'from', duration:60, desc:"Débouchage d'un évier ou d'un lavabo. Le tarif dépend de la difficulté du bouchon.", keywords:"lav evier lavabo bouche canalisation bouchee evacuation bouchee plomberie" },
+    { id:'plomberie-debouchage-wc', title:'Débouchage WC', price:'120 € TTC', tier:'from', duration:60, desc:"Débouchage de WC. Le tarif dépend de la difficulté du bouchon.", keywords:"wc toilettes toilette toil bouche plomberie" },
+    { id:'plomberie-seche-serviette', title:'Pose sèche-serviettes', price:'250 € TTC', tier:'from', duration:120, desc:"Installation d'un sèche-serviettes. Le tarif dépend du modèle et de l'installation existante.", supply:true, keywords:"instal seche serviette radiateur salle de bain plomberie" },
+    { id:'plomberie-colonne-douche', title:'Pose colonne de douche', price:'180 € TTC', tier:'from', duration:90, desc:"Installation d'une colonne de douche. Le tarif dépend du modèle et de l'installation existante.", supply:true, keywords:"instal douch douche colonne plomberie" },
+    { id:'plomberie-paroi-douche', title:'Pose paroi de douche', price:'200 € TTC', tier:'from', duration:120, desc:"Installation d'une paroi de douche. Le tarif dépend du modèle et de l'installation existante.", supply:true, keywords:"instal douch douche paroi vitre porte plomberie" },
+    { id:'plomberie-receveur', title:'Pose receveur de douche', price:'Sur devis', tier:'quote', duration:60, desc:"Travaux importants nécessitant une vérification de l'installation sur place. Intervention sous réserve de faisabilité technique et des activités couvertes par l'assurance professionnelle HAYEVA.", supply:true, keywords:"instal douch douche receveur bac plomberie" },
+    { id:'plomberie-baignoire', title:'Pose baignoire', price:'Sur devis', tier:'quote', duration:60, desc:"Travaux importants nécessitant une vérification de l'installation sur place. Intervention sous réserve de faisabilité technique et des activités couvertes par l'assurance professionnelle HAYEVA.", supply:true, keywords:"instal baignoire bain plomberie" },
     { id:'multi', title:'Entretien Multi-Services', price:'150 € TTC', duration:120, desc:"Climatisation ou chaudière au choix, contrôle plomberie et vérification générale.", keywords:"forfait multi entretien complet pack multi tout en un maintenance" },
     { id:'devis', title:'Devis gratuit', price:'Gratuit', duration:60, desc:"Visite pour étudier votre projet et établir un devis.", keywords:"devis estimation prix combien ca coute gratuit" },
     { id:'pro-check-express', title:'Check Technique — Pack Express', price:'69 € TTC', duration:45, desc:"Contrôle visuel et fonctionnel rapide plomberie, chauffage et climatisation pour location saisonnière ou mobil-home.", keywords:"check technique conciergerie airbnb location saisonniere mobil home camping controle express gestionnaire bien" },
@@ -6829,7 +7218,22 @@ if ('serviceWorker' in navigator){
     { id:'pro-check-premium', title:'Check Technique — Pack Premium', price:'149 € TTC', duration:100, desc:"Contrôle visuel et fonctionnel approfondi avec rapport détaillé par équipement et priorisation des anomalies.", keywords:"check technique conciergerie airbnb location saisonniere mobil home camping controle premium rapport gestionnaire bien" }
   ];
 
-  function svcLabel(s){ return s.price === 'Gratuit' ? s.title : s.title + ' (' + s.price + ')'; }
+  // Libellé de prix : 3 régimes d'affichage (voir 0024_pricing_tiers_plomberie_chauffage.sql,
+  // services.price_display_mode) — FIXE (par défaut, comme avant), "à
+  // partir de" (tier:'from', le prix réservable reste identique, seul
+  // l'affichage change — jamais présenté comme définitif), "Sur devis"
+  // (tier:'quote', aucun montant affiché). Réutilisé partout où un prix de
+  // prestation est montré (recherche, récapitulatif, assistant IA) pour
+  // éviter toute formulation contradictoire d'un endroit à l'autre.
+  function svcPriceLine(s){
+    if (s.price === 'Gratuit' || s.price === 'Sur devis') return s.price;
+    if (s.tier === 'from') return 'à partir de ' + s.price;
+    return s.price;
+  }
+  function svcLabel(s){
+    if (s.price === 'Gratuit' || s.tier === 'quote') return s.title;
+    return s.title + ' (' + svcPriceLine(s) + ')';
+  }
 
   var POPULAR_IDS = ['clim-confort','chauffage-depannage','plomberie-depannage','multi','devis'];
 
@@ -7704,6 +8108,22 @@ if ('serviceWorker' in navigator){
     var isPro = document.documentElement.getAttribute('data-mode') === 'professionnel';
     var isQuoteOnly = bkAuthContext.resolvedParams && bkAuthContext.resolvedParams.quoteOnly;
 
+    // "À partir de" : jamais présenté comme un montant définitif (voir
+    // 0024_pricing_tiers_plomberie_chauffage.sql). Note discrète, hors
+    // tableau du récapitulatif.
+    var fromNote = svc.tier === 'from'
+      ? '<p class="hint bk-price-from-hint">💬 Tarif « à partir de » : le montant définitif dépend de l\'installation, de l\'accessibilité et du matériel constatés sur place.</p>'
+      : '';
+
+    // Consigne de préparation ("À prévoir avant notre arrivée") : discrète
+    // ici dans le tunnel (voir 0025_prep_instructions.sql), affichée bien
+    // plus visiblement sur l'écran de confirmation finale (étape 4).
+    ensurePrepDataLoaded();
+    var prepText = prepInstructionForFrontendId(bkCatalogCache, prepCategoriesCache, svc.id);
+    var prepNote = prepText
+      ? '<p class="hint bk-prep-hint">🔧 <strong>À prévoir avant notre arrivée</strong> : ' + prepText + '</p>'
+      : '';
+
     var travelRows = '';
     if (travel.status === 'free'){
       travelRows += '<div class="s-row s-row-free-travel"><span class="s-label">🎁 Déplacement</span><span class="s-value">0 € — OFFERT avec ce pack</span></div>';
@@ -7769,7 +8189,8 @@ if ('serviceWorker' in navigator){
       '<div class="s-row"><span class="s-label">Nom</span><span class="s-value">'+(bkName.value || '—')+'</span></div>'+
       '<div class="s-row"><span class="s-label">Téléphone</span><span class="s-value">'+(bkPhone.value || '—')+'</span></div>' +
       '<div class="s-row"><span class="s-label">E-mail</span><span class="s-value">'+(bkEmail.value || '—')+'</span></div>' +
-      (isRaffleEntry ? '<div class="s-row"><span class="s-label">🎁 N° de participation</span><span class="s-value">'+getRaffleTicket()+'</span></div>' : '');
+      (isRaffleEntry ? '<div class="s-row"><span class="s-label">🎁 N° de participation</span><span class="s-value">'+getRaffleTicket()+'</span></div>' : '') +
+      fromNote + prepNote;
 
     return isRaffleEntry;
   }
@@ -7910,7 +8331,7 @@ if ('serviceWorker' in navigator){
       if (bkAuthContext.isRealCustomer && bkAuthContext.resolvedParams && !bkAuthContext.resolvedParams.quoteOnly){
         addressOk = bkAddressSelect.value && bkAddressSelect.value !== '__new__'
           ? true
-          : !!(bkNewAddrLabel.value.trim() && bkNewAddrAddress.value.trim());
+          : !!bkNewAddrAddress.value.trim();
       } else {
         addressOk = !!bkAddress.value.trim();
       }
@@ -7944,18 +8365,70 @@ if ('serviceWorker' in navigator){
     if (bkCatalogCache) return Promise.resolve(bkCatalogCache);
     if (!sb || !sb.configured) return Promise.resolve(null);
     return Promise.all([
-      sb.client.from('services').select('slug,booking_type,is_active'),
+      sb.client.from('services').select('slug,booking_type,is_active,prep_instruction_key'),
       sb.client.from('service_packs').select('slug,is_active,services(slug)')
     ]).then(function(results){
       if (results[0].error || results[1].error) return null;
       var bySlug = {}, byPackSlug = {};
-      (results[0].data || []).forEach(function(s){ bySlug[s.slug] = { bookingType: s.booking_type, isActive: s.is_active }; });
+      (results[0].data || []).forEach(function(s){ bySlug[s.slug] = { bookingType: s.booking_type, isActive: s.is_active, prepKey: s.prep_instruction_key }; });
       (results[1].data || []).forEach(function(p){
         byPackSlug[p.slug] = { serviceSlug: p.services && p.services.slug, isActive: p.is_active };
       });
       bkCatalogCache = { bySlug: bySlug, byPackSlug: byPackSlug };
       return bkCatalogCache;
     }).catch(function(){ return null; });
+  }
+
+  // ---------- Consignes de préparation avant intervention ----------
+  // Texte structuré configuré en base (prep_instruction_categories, voir
+  // 0025_prep_instructions.sql), JAMAIS généré par l'IA. Cache partagé avec
+  // l'Espace Client (ecLoadAppointments) via window.sudFetchPrepCategories,
+  // pour ne faire l'appel réseau qu'une seule fois par page.
+  var prepCategoriesCache = null;
+  function fetchPrepCategories(){
+    var sb = window.sudSupabase;
+    if (prepCategoriesCache) return Promise.resolve(prepCategoriesCache);
+    if (!sb || !sb.configured) return Promise.resolve(null);
+    return sb.client.from('prep_instruction_categories').select('key,instruction,is_active,is_default')
+      .then(function(res){
+        if (res.error) return null;
+        prepCategoriesCache = res.data || [];
+        return prepCategoriesCache;
+      }).catch(function(){ return null; });
+  }
+  function resolvePrepInstruction(categories, key){
+    if (!categories || !categories.length) return null;
+    if (key){
+      var match = categories.filter(function(c){ return c.key === key && c.is_active; })[0];
+      if (match) return match.instruction;
+    }
+    var def = categories.filter(function(c){ return c.is_default && c.is_active; })[0];
+    return def ? def.instruction : null;
+  }
+  // Résout la consigne pour un id frontend (service OU pack) à partir du
+  // catalogue déjà chargé (fetchBookingCatalog) — un pack hérite toujours de
+  // la clé de son service parent, jamais sa propre clé séparée.
+  function prepInstructionForFrontendId(catalog, categories, frontendId){
+    if (!catalog) return null;
+    var key = null;
+    if (catalog.byPackSlug[frontendId]){
+      var p = catalog.byPackSlug[frontendId];
+      key = (p.serviceSlug && catalog.bySlug[p.serviceSlug]) ? catalog.bySlug[p.serviceSlug].prepKey : null;
+    } else if (catalog.bySlug[frontendId]){
+      key = catalog.bySlug[frontendId].prepKey;
+    }
+    return resolvePrepInstruction(categories, key);
+  }
+  window.sudFetchPrepCategories = fetchPrepCategories;
+  window.sudResolvePrepInstruction = resolvePrepInstruction;
+
+  var bkPrepPromiseStarted = false;
+  function ensurePrepDataLoaded(){
+    if (bkPrepPromiseStarted) return;
+    bkPrepPromiseStarted = true;
+    Promise.all([fetchBookingCatalog(), fetchPrepCategories()]).then(function(){
+      if (step === 3) buildSummary();
+    });
   }
   function resolveBookingParams(frontendId, catalog){
     if (!catalog) return null;
@@ -7997,11 +8470,15 @@ if ('serviceWorker' in navigator){
     if (selected && selected !== '__new__'){
       return Promise.resolve({ kind:'ok', addressId: selected });
     }
-    var label = bkNewAddrLabel.value.trim();
     var address = bkNewAddrAddress.value.trim();
-    if (!label || !address){
+    if (!address){
       return Promise.resolve({ kind:'address-error', error: { message:'Merci de renseigner une adresse d’intervention.' } });
     }
+    // Libellé facultatif (voir bkNewAddrLabel) : jamais rempli
+    // artificiellement dans le champ visible par le client, mais
+    // customer_addresses.label reste NOT NULL en base — repli neutre,
+    // jamais un nom inventé comme "Maison principale".
+    var label = bkNewAddrLabel.value.trim() || 'Adresse d’intervention';
     return sb.client.from('customer_addresses').insert({
       customer_user_id: uid,
       label: label,
@@ -8174,6 +8651,18 @@ if ('serviceWorker' in navigator){
           if (window.sudEspaceClientRefresh) window.sudEspaceClientRefresh();
           if (window.sudEspaceProApptRefresh) window.sudEspaceProApptRefresh();
           if (window.sudTrack) window.sudTrack('booking_completed', 'rdv');
+          var prepBlock = document.getElementById('bkConfirmPrepBlock');
+          var prepTextEl = document.getElementById('bkConfirmPrepText');
+          if (prepBlock && prepTextEl){
+            prepBlock.hidden = true;
+            Promise.all([fetchBookingCatalog(), fetchPrepCategories()]).then(function(results){
+              var text = prepInstructionForFrontendId(results[0], results[1], svc.id);
+              if (text){
+                prepTextEl.textContent = text;
+                prepBlock.hidden = false;
+              }
+            });
+          }
           showStep(4);
           return;
         }
@@ -8390,6 +8879,12 @@ if ('serviceWorker' in navigator){
     },
     getService: function(id){
       return SERVICES.filter(function(s){ return s.id === id; })[0] || null;
+    },
+    priceLine: function(s){
+      return svcPriceLine(s);
+    },
+    svcLabel: function(s){
+      return svcLabel(s);
     },
     multiPropertyEstimate: function(unitPrice, count){
       return multiPropertyEstimate(unitPrice, count);
@@ -9945,6 +10440,8 @@ if ('serviceWorker' in navigator){
       var email = document.getElementById('espaceProEmail').value.trim();
       var password = document.getElementById('espaceProPassword').value;
       if (!email || !password) return;
+      var rememberMeEl = document.getElementById('espaceProRememberMe');
+      if (window.sudSetRememberMe) window.sudSetRememberMe(!!(rememberMeEl && rememberMeEl.checked));
       loginSubmitBtn.disabled = true;
       loginSubmitBtn.textContent = 'Connexion…';
       sb.client.auth.signInWithPassword({ email: email, password: password })
@@ -10553,7 +11050,7 @@ if ('serviceWorker' in navigator){
   function admLoadBookings(){
     admSetBkLoadingState();
     sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
       .order('date', { ascending:true })
       .order('start_time', { ascending:true })
       .limit(500)
@@ -11095,6 +11592,10 @@ if ('serviceWorker' in navigator){
         '</div>';
     }
 
+    var quoteCreateHtml = (b.customer_user_id || b.professional_account_id)
+      ? '<button type="button" class="admin-bk-modal-propose-toggle" id="admOpenQuoteBuilderBtn" data-booking-id="' + b.id + '">📄 Créer un devis chiffré pour ce client</button>'
+      : '';
+
     // Suppression définitive — réservée aux demandes REFUSÉES PAR L'ADMIN
     // (status CANCELLED et cancelled_by='admin', jamais une annulation
     // client ni un rendez-vous confirmé/terminé) : portée explicitement
@@ -11124,6 +11625,7 @@ if ('serviceWorker' in navigator){
       modalCancelledByLine +
       (b.notes ? '<p class="admin-bk-modal-note">💬 ' + admEscape(b.notes) + '</p>' : '') +
       actionsHtml +
+      '<p style="margin-top:14px;">' + quoteCreateHtml + '</p>' +
       deleteHtml;
 
     overlay.hidden = false;
@@ -12043,6 +12545,874 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // ============================================================
+  // ---------- Devis chiffrés : options + pièces jointes (admin) ----------
+  // ============================================================
+  // Modèle "écriture immédiate" : chaque ajout/modification est un aller-
+  // retour direct vers Supabase (comme le reste de l'admin — Chiffrage,
+  // consignes de préparation), jamais un gros brouillon local envoyé d'un
+  // coup. Plus simple à garder cohérent avec le stockage des fichiers
+  // (l'upload d'une photo a besoin d'un quote_id et d'un option_id déjà
+  // réels en base). Un devis SENT/ACCEPTED n'est plus modifiable : la RLS
+  // (0026_quote_options_attachments.sql) le bloque déjà côté serveur, cette
+  // UI se contente de ne pas proposer les actions d'édition dans ce cas.
+  var qbCurrentQuoteId = null;
+
+  // admStatusBadgeHtml() ne connaît que les statuts de réservation
+  // (CONFIRMED/PENDING/COMPLETED/CANCELLED) — un devis a son propre cycle
+  // de statuts, badge dédié réutilisant les mêmes classes CSS .adm-badge-*.
+  function qbStatusBadgeHtml(status){
+    var map = {
+      DRAFT: ['adm-badge-pending', 'Brouillon'],
+      SENT: ['adm-badge-pending', 'Envoyé'],
+      ACCEPTED: ['adm-badge-confirmed', 'Accepté'],
+      REFUSED: ['adm-badge-cancelled', 'Refusé'],
+      EXPIRED: ['adm-badge-cancelled', 'Expiré']
+    };
+    var conf = map[status];
+    if (!conf) return '';
+    return ' <span class="adm-badge ' + conf[0] + '">' + conf[1] + '</span>';
+  }
+
+  function qbOverlay(){ return document.getElementById('adminQuoteBuilderOverlay'); }
+  function qbBody(){ return document.getElementById('adminQuoteBuilderBody'); }
+  function qbClose(){
+    var o = qbOverlay(); if (o) o.hidden = true; qbCurrentQuoteId = null;
+    admRenderPricedQuotesList();
+  }
+
+  // Crée un devis DRAFT vide rattaché au client d'une réservation, puis
+  // ouvre l'éditeur dessus. Un devis nécessite un compte réel (particulier
+  // ou pro) — jamais une simple réservation invité (voir bouton conditionnel
+  // dans admOpenBookingModal).
+  function admCreateQuoteFromBooking(bookingId){
+    var b = adminBookingsCache && adminBookingsCache.rows.filter(function(x){ return x.id === bookingId; })[0];
+    if (!b) return;
+    var v_ref = 'DV-' + new Date().getFullYear() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    sb.client.from('quotes').insert({
+      customer_user_id: b.customer_user_id || null,
+      professional_account_id: b.professional_account_id || null,
+      booking_id: b.id,
+      reference: v_ref,
+      status: 'DRAFT',
+      subtotal_cents: 0,
+      total_cents: 0
+    }).select('id').single().then(function(res){
+      if (res.error || !res.data){ window.alert("Impossible de créer le devis : " + (res.error ? res.error.message : 'erreur inconnue')); return; }
+      admCloseBookingModal();
+      admOpenQuoteBuilder(res.data.id);
+    });
+  }
+
+  function qbAttachmentUrl(path){
+    return sb.client.storage.from('quote-attachments').createSignedUrl(path, 3600).then(function(res){
+      return (res.data && res.data.signedUrl) || null;
+    }).catch(function(){ return null; });
+  }
+
+  function admOpenQuoteBuilder(quoteId){
+    qbCurrentQuoteId = quoteId;
+    var o = qbOverlay();
+    if (o){ o.hidden = false; }
+    qbBody().innerHTML = '<p class="ec-loading">Chargement…</p>';
+    qbRefresh();
+  }
+
+  function qbRefresh(){
+    var quoteId = qbCurrentQuoteId;
+    if (!quoteId) return;
+    Promise.all([
+      sb.client.from('quotes').select('*').eq('id', quoteId).maybeSingle(),
+      sb.client.from('quote_options').select('*').eq('quote_id', quoteId).order('sort_order', { ascending:true }).order('created_at', { ascending:true }),
+      sb.client.from('quote_attachments').select('*').eq('quote_id', quoteId).order('created_at', { ascending:true })
+    ]).then(function(results){
+      var quote = results[0].data;
+      var options = results[1].data || [];
+      var attachments = results[2].data || [];
+      if (!quote){ qbBody().innerHTML = '<p class="admin-accounts-hint">Devis introuvable.</p>'; return; }
+      var attByOption = {};
+      attachments.forEach(function(a){
+        var k = a.quote_option_id || '_none';
+        (attByOption[k] = attByOption[k] || []).push(a);
+      });
+      // Résout toutes les URL signées nécessaires (images uniquement — un
+      // PDF s'affiche via une icône + lien, pas besoin de la charger pour
+      // l'aperçu) avant de construire le HTML, pour ne jamais afficher un
+      // <img> cassé le temps d'un aller-retour asynchrone supplémentaire.
+      var imgAttachments = attachments.filter(function(a){ return a.file_type === 'image'; });
+      Promise.all(imgAttachments.map(function(a){ return qbAttachmentUrl(a.storage_path); }))
+        .then(function(urls){
+          var urlByPath = {};
+          imgAttachments.forEach(function(a, i){ urlByPath[a.storage_path] = urls[i]; });
+          qbRender(quote, options, attByOption, urlByPath);
+        });
+    });
+  }
+
+  function qbFmtEuros(cents){ return admFmtEuros(cents || 0); }
+
+  function qbRender(quote, options, attByOption, urlByPath){
+    var editable = quote.status === 'DRAFT';
+    var body = qbBody();
+    var html = '';
+    html += '<h3 class="admin-bk-modal-title">📄 Devis ' + admEscape(quote.reference) + '</h3>';
+    html += '<p class="admin-bk-modal-ref">Statut : ' + qbStatusBadgeHtml(quote.status) +
+      (quote.version > 1 ? ' · version ' + quote.version : '') + '</p>';
+
+    if (!editable){
+      html += '<p class="admin-bk-modal-note">Ce devis a été envoyé (ou accepté/refusé) : il n\'est plus modifiable. Pour changer une option ou une photo, créez une nouvelle version.</p>';
+      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbNewVersionBtn">🆕 Créer une nouvelle version modifiable</button>';
+    }
+
+    html += '<label style="display:block; margin:14px 0;">Titre du devis (facultatif, visible par le client)' +
+      '<input type="text" id="qbTitleInput" value="' + admEscape(quote.title || '') + '" ' + (editable ? '' : 'disabled') + ' placeholder="Ex. Remplacement robinet cuisine"></label>';
+
+    options.forEach(function(opt){
+      var atts = attByOption[opt.id] || [];
+      html += '<div class="qb-option-card" data-option-id="' + opt.id + '">';
+      html += '<div class="qb-option-head"><input type="text" class="qb-opt-label" value="' + admEscape(opt.label) + '" placeholder="Nom de l\'option (ex. Robinet GROHE)" ' + (editable ? '' : 'disabled') + '></div>';
+      html += '<div class="qb-field-row">' +
+        '<label>Référence (facultatif)<input type="text" class="qb-opt-reference" value="' + admEscape(opt.reference || '') + '" ' + (editable ? '' : 'disabled') + '></label>' +
+        '<label>Fourniture (€ TTC)<input type="number" min="0" step="0.01" class="qb-opt-supply" value="' + (opt.supply_cents / 100).toFixed(2) + '" ' + (editable ? '' : 'disabled') + '></label>' +
+      '</div>';
+      html += '<div class="qb-field-row">' +
+        '<label>Description<textarea class="qb-opt-description" rows="2" ' + (editable ? '' : 'disabled') + '>' + admEscape(opt.description || '') + '</textarea></label>' +
+        '<label>Pose (€ TTC)<input type="number" min="0" step="0.01" class="qb-opt-labor" value="' + (opt.labor_cents / 100).toFixed(2) + '" ' + (editable ? '' : 'disabled') + '></label>' +
+      '</div>';
+      html += '<p class="qb-option-total">Total : ' + qbFmtEuros(opt.total_cents) + '</p>';
+      html += '<div class="qb-attachments">';
+      atts.forEach(function(a){
+        if (a.file_type === 'image'){
+          html += '<div class="qb-attachment-thumb" data-attachment-id="' + a.id + '"><img src="' + (urlByPath[a.storage_path] || '') + '" alt="">' +
+            (editable ? '<button type="button" class="qb-attachment-remove" data-attachment-id="' + a.id + '" aria-label="Supprimer">✕</button>' : '') + '</div>';
+        } else {
+          html += '<div class="qb-attachment-thumb" data-attachment-id="' + a.id + '"><span class="qb-pdf-icon">📄</span>' +
+            (editable ? '<button type="button" class="qb-attachment-remove" data-attachment-id="' + a.id + '" aria-label="Supprimer">✕</button>' : '') + '</div>';
+        }
+      });
+      html += '</div>';
+      if (editable){
+        html += '<div class="qb-option-actions">' +
+          '<label class="qb-upload-label">📷 Ajouter une photo ou un document<input type="file" class="qb-opt-file-input" accept="image/jpeg,image/png,image/webp,application/pdf" multiple></label>' +
+          '<button type="button" class="qb-option-remove" data-option-id="' + opt.id + '">🗑️ Supprimer cette option</button>' +
+        '</div>';
+      }
+      html += '<p class="qb-msg" hidden></p>';
+      html += '</div>';
+    });
+
+    if (editable){
+      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbAddOptionBtn">➕ Ajouter une option / solution</button>';
+      html += '<button type="button" class="admin-bk-modal-propose-toggle" id="qbAddFromCatalogBtn" style="margin-left:8px;">📦 Ajouter un produit du catalogue</button>';
+      html += '<div class="qb-footer">' +
+        '<button type="button" class="btn-primary" id="qbSendBtn"' + (options.length ? '' : ' disabled') + '>📨 Envoyer le devis au client</button>' +
+        '<p class="qb-msg" id="qbFooterMsg" hidden></p>' +
+      '</div>';
+      if (!options.length){
+        html += '<p class="admin-bk-modal-note">Ajoutez au moins une option avant d\'envoyer le devis. Pour un devis classique, une seule option suffit — nommez-la comme vous voulez (ex. « Solution unique »).</p>';
+      }
+    }
+
+    body.innerHTML = html;
+    body.setAttribute('data-editable', editable ? '1' : '0');
+  }
+
+  function qbShowMsg(el, text, isError){
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = text;
+    el.className = 'qb-msg ' + (isError ? 'is-error' : 'is-ok');
+  }
+
+  function qbAddOption(){
+    if (!qbCurrentQuoteId) return;
+    sb.client.from('quote_options').insert({
+      quote_id: qbCurrentQuoteId,
+      label: 'Nouvelle option',
+      supply_cents: 0,
+      labor_cents: 0
+    }).then(function(res){
+      if (res.error){ window.alert("Impossible d'ajouter l'option : " + res.error.message); return; }
+      qbRefresh();
+    });
+  }
+
+  function qbSaveOptionFields(card){
+    var optionId = card.getAttribute('data-option-id');
+    var label = card.querySelector('.qb-opt-label').value.trim() || 'Option';
+    var reference = card.querySelector('.qb-opt-reference').value.trim();
+    var description = card.querySelector('.qb-opt-description').value.trim();
+    var supply = Math.round((parseFloat(card.querySelector('.qb-opt-supply').value) || 0) * 100);
+    var labor = Math.round((parseFloat(card.querySelector('.qb-opt-labor').value) || 0) * 100);
+    sb.client.from('quote_options').update({
+      label: label, reference: reference || null, description: description || null,
+      supply_cents: supply, labor_cents: labor
+    }).eq('id', optionId).then(function(res){
+      var msgEl = card.querySelector('.qb-msg');
+      if (res.error){ qbShowMsg(msgEl, 'Échec de l\'enregistrement.', true); return; }
+      qbShowMsg(msgEl, 'Enregistré.', false);
+      var totalEl = card.querySelector('.qb-option-total');
+      if (totalEl) totalEl.textContent = 'Total : ' + qbFmtEuros(supply + labor);
+    });
+  }
+
+  function qbRemoveOption(optionId){
+    if (!window.confirm('Supprimer définitivement cette option et ses pièces jointes ?')) return;
+    sb.client.from('quote_options').delete().eq('id', optionId).then(function(res){
+      if (res.error){ window.alert('Échec de la suppression : ' + res.error.message); return; }
+      qbRefresh();
+    });
+  }
+
+  // Extension de fichier fiable indépendamment du nom d'origine (parfois
+  // absent/trompeur sur mobile) : dérivée du type MIME réel du fichier.
+  function qbExtForMime(mime){
+    if (mime === 'image/png') return 'png';
+    if (mime === 'image/webp') return 'webp';
+    if (mime === 'application/pdf') return 'pdf';
+    return 'jpg';
+  }
+
+  function qbUploadFiles(optionId, files){
+    var quoteId = qbCurrentQuoteId;
+    var allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    var maxBytes = 8 * 1024 * 1024;
+    var tasks = Array.prototype.filter.call(files, function(f){
+      if (allowed.indexOf(f.type) === -1){ window.alert(f.name + ' : format non accepté (JPG, PNG, WEBP ou PDF uniquement).'); return false; }
+      if (f.size > maxBytes){ window.alert(f.name + ' : fichier trop volumineux (8 Mo maximum).'); return false; }
+      return true;
+    }).map(function(f){
+      var path = quoteId + '/' + (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).slice(2))) + '.' + qbExtForMime(f.type);
+      return sb.client.storage.from('quote-attachments').upload(path, f, { contentType: f.type }).then(function(upRes){
+        if (upRes.error) throw upRes.error;
+        return sb.client.from('quote_attachments').insert({
+          quote_id: quoteId, quote_option_id: optionId, storage_path: path,
+          file_type: f.type === 'application/pdf' ? 'pdf' : 'image',
+          file_name: f.name
+        });
+      });
+    });
+    Promise.all(tasks).then(function(){ qbRefresh(); }).catch(function(err){
+      window.alert("Échec de l'envoi d'un fichier : " + (err && err.message ? err.message : 'erreur inconnue'));
+      qbRefresh();
+    });
+  }
+
+  function qbRemoveAttachment(attachmentId){
+    sb.client.from('quote_attachments').select('storage_path').eq('id', attachmentId).maybeSingle().then(function(res){
+      var path = res.data && res.data.storage_path;
+      sb.client.from('quote_attachments').delete().eq('id', attachmentId).then(function(delRes){
+        if (delRes.error){ window.alert('Échec de la suppression : ' + delRes.error.message); return; }
+        if (path) sb.client.storage.from('quote-attachments').remove([path]).catch(function(){});
+        qbRefresh();
+      });
+    });
+  }
+
+  function qbSendQuote(){
+    if (!qbCurrentQuoteId) return;
+    if (!window.confirm('Envoyer ce devis au client ? Il ne sera plus modifiable ensuite (une nouvelle version sera nécessaire pour le changer).')) return;
+    sb.client.from('quotes').update({ status: 'SENT', sent_at: new Date().toISOString() }).eq('id', qbCurrentQuoteId).then(function(res){
+      var msgEl = document.getElementById('qbFooterMsg');
+      if (res.error){ qbShowMsg(msgEl, 'Échec de l\'envoi.', true); return; }
+      qbShowMsg(msgEl, 'Devis envoyé au client.', false);
+      qbRefresh();
+    });
+  }
+
+  // Nouvelle version : copie le devis (nouveau brouillon, jamais une
+  // réécriture de l'original — voir commentaire en tête de
+  // 0026_quote_options_attachments.sql) + ses options. Les pièces jointes
+  // pointent vers les MÊMES fichiers Storage (jamais re-uploadés) : une
+  // ligne quote_attachments par option copiée, storage_path identique.
+  function qbCreateNewVersion(){
+    var quoteId = qbCurrentQuoteId;
+    if (!quoteId) return;
+    Promise.all([
+      sb.client.from('quotes').select('*').eq('id', quoteId).maybeSingle(),
+      sb.client.from('quote_options').select('*').eq('quote_id', quoteId),
+      sb.client.from('quote_attachments').select('*').eq('quote_id', quoteId)
+    ]).then(function(results){
+      var oldQuote = results[0].data;
+      var oldOptions = results[1].data || [];
+      var oldAttachments = results[2].data || [];
+      if (!oldQuote) return;
+      var newRef = 'DV-' + new Date().getFullYear() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      sb.client.from('quotes').insert({
+        customer_user_id: oldQuote.customer_user_id,
+        professional_account_id: oldQuote.professional_account_id,
+        booking_id: oldQuote.booking_id,
+        reference: newRef,
+        status: 'DRAFT',
+        title: oldQuote.title,
+        subtotal_cents: 0, total_cents: 0,
+        version: oldQuote.version + 1,
+        parent_quote_id: oldQuote.id
+      }).select('id').single().then(function(newQuoteRes){
+        if (newQuoteRes.error || !newQuoteRes.data){ window.alert('Échec de la création de la nouvelle version.'); return; }
+        var newQuoteId = newQuoteRes.data.id;
+        var optionIdMap = {};
+        var insertOptions = oldOptions.map(function(o){
+          return sb.client.from('quote_options').insert({
+            quote_id: newQuoteId, label: o.label, reference: o.reference, description: o.description,
+            supply_cents: o.supply_cents, labor_cents: o.labor_cents, sort_order: o.sort_order
+          }).select('id').single().then(function(r){ if (r.data) optionIdMap[o.id] = r.data.id; });
+        });
+        Promise.all(insertOptions).then(function(){
+          var insertAttachments = oldAttachments.map(function(a){
+            return sb.client.from('quote_attachments').insert({
+              quote_id: newQuoteId,
+              quote_option_id: a.quote_option_id ? optionIdMap[a.quote_option_id] : null,
+              storage_path: a.storage_path, file_type: a.file_type, file_name: a.file_name
+            });
+          });
+          Promise.all(insertAttachments).then(function(){
+            admOpenQuoteBuilder(newQuoteId);
+            admRenderPricedQuotesList();
+          });
+        });
+      });
+    });
+  }
+
+  // ---------- Délégation d'événements de l'éditeur ----------
+  var qbBodyEl = document.getElementById('adminQuoteBuilderBody');
+  if (qbBodyEl){
+    qbBodyEl.addEventListener('click', function(e){
+      if (e.target.id === 'qbAddOptionBtn'){ qbAddOption(); return; }
+      if (e.target.id === 'qbAddFromCatalogBtn'){ admOpenCatalogPicker(qbCurrentQuoteId); return; }
+      if (e.target.id === 'qbSendBtn'){ qbSendQuote(); return; }
+      if (e.target.id === 'qbNewVersionBtn'){ qbCreateNewVersion(); return; }
+      var removeOptBtn = e.target.closest('.qb-option-remove');
+      if (removeOptBtn){ qbRemoveOption(removeOptBtn.getAttribute('data-option-id')); return; }
+      var removeAttBtn = e.target.closest('.qb-attachment-remove');
+      if (removeAttBtn){ qbRemoveAttachment(removeAttBtn.getAttribute('data-attachment-id')); return; }
+    });
+    qbBodyEl.addEventListener('change', function(e){
+      if (e.target.classList && e.target.classList.contains('qb-opt-file-input')){
+        var card = e.target.closest('.qb-option-card');
+        if (card && e.target.files && e.target.files.length){
+          qbUploadFiles(card.getAttribute('data-option-id'), e.target.files);
+        }
+        return;
+      }
+      if (e.target.id === 'qbTitleInput'){
+        if (!qbCurrentQuoteId) return;
+        sb.client.from('quotes').update({ title: e.target.value.trim() || null }).eq('id', qbCurrentQuoteId).then(function(){});
+        return;
+      }
+    });
+    // "blur" (pas "change") pour les champs de texte/nombre d'une option :
+    // enregistre dès que l'admin quitte le champ, sans devoir cliquer un
+    // bouton "Enregistrer" séparé pour chaque ligne.
+    qbBodyEl.addEventListener('blur', function(e){
+      var cls = e.target.classList;
+      if (!cls) return;
+      if (cls.contains('qb-opt-label') || cls.contains('qb-opt-reference') || cls.contains('qb-opt-description') ||
+          cls.contains('qb-opt-supply') || cls.contains('qb-opt-labor')){
+        var card = e.target.closest('.qb-option-card');
+        if (card) qbSaveOptionFields(card);
+      }
+    }, true);
+  }
+  var qbCloseBtn = document.getElementById('adminQuoteBuilderClose');
+  if (qbCloseBtn) qbCloseBtn.addEventListener('click', qbClose);
+  var qbOverlayEl = document.getElementById('adminQuoteBuilderOverlay');
+  if (qbOverlayEl) qbOverlayEl.addEventListener('click', function(e){ if (e.target === qbOverlayEl) qbClose(); });
+
+  // Bouton "Créer un devis chiffré" dans la fiche rendez-vous — délégué sur
+  // le même overlay que le reste de cette fiche (voir plus haut,
+  // adminBkModalOverlayEl), jamais un listener séparé sur un bouton qui
+  // n'existe pas encore au chargement de la page.
+  if (adminBkModalOverlayEl){
+    adminBkModalOverlayEl.addEventListener('click', function(e){
+      if (e.target.id === 'admOpenQuoteBuilderBtn'){
+        admCreateQuoteFromBooking(e.target.getAttribute('data-booking-id'));
+      }
+    });
+  }
+
+  // ---------- Liste des devis chiffrés (tous statuts, plus récents en premier) ----------
+  function admRenderPricedQuotesList(){
+    var listEl = document.getElementById('adminPricedQuotesList');
+    if (!listEl) return;
+    sb.client.from('quotes').select('id, reference, status, version, title, created_at, sent_at, accepted_at')
+      .order('created_at', { ascending:false }).limit(100)
+      .then(function(res){
+        if (res.error){ listEl.innerHTML = '<p class="admin-accounts-hint">Indisponible — la migration 0026_quote_options_attachments.sql est-elle appliquée ?</p>'; return; }
+        var rows = res.data || [];
+        if (!rows.length){ listEl.innerHTML = '<p class="admin-accounts-hint">Aucun devis chiffré pour le moment.</p>'; return; }
+        var html = '<div class="admin-accounts-list">';
+        rows.forEach(function(q){
+          html += '<div class="admin-account-row qb-list-row" data-quote-id="' + q.id + '">' +
+            '<div class="admin-account-row-summary">' +
+              '<span class="admin-account-row-name">' + admEscape(q.title || q.reference) + '</span>' +
+              '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(q.reference) + (q.version > 1 ? ' · v' + q.version : '') + '</span>' +
+              '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admFmtDate(q.created_at) + '</span>' +
+              qbStatusBadgeHtml(q.status) +
+            '</div></div>';
+        });
+        html += '</div>';
+        listEl.innerHTML = html;
+      });
+  }
+  var adminPricedQuotesListEl = document.getElementById('adminPricedQuotesList');
+  if (adminPricedQuotesListEl){
+    adminPricedQuotesListEl.addEventListener('click', function(e){
+      var row = e.target.closest('.qb-list-row');
+      if (!row) return;
+      admOpenQuoteBuilder(row.getAttribute('data-quote-id'));
+    });
+  }
+
+  // ============================================================
+  // ---------- Catalogue fournisseurs (tâche 14) ----------
+  // ============================================================
+  // Aucun connecteur CEDEO/Leroy Merlin réel ici (accès officiels non
+  // obtenus) : uniquement l'import manuel CSV/XLSX + la gestion des règles
+  // de marge + l'intégration au devis. Prix d'achat/marge/URL fournisseur :
+  // jamais exposés au client (RLS admin-only, voir 0030/0031). Le régime de
+  // TVA (quote_calc_settings.vat_applicable) est relu ici en lecture seule
+  // pour l'affichage du "coût réel" — jamais recalculé/deviné côté client.
+
+  var catalogVatRegimeCache = null;
+  var catalogMarginRulesCache = null;
+
+  function catalogFetchVatRegime(){
+    if (catalogVatRegimeCache) return Promise.resolve(catalogVatRegimeCache);
+    return sb.client.from('quote_calc_settings').select('vat_applicable,vat_rate_percent').eq('id', true).maybeSingle()
+      .then(function(res){ catalogVatRegimeCache = res.data || { vat_applicable:false, vat_rate_percent:20 }; return catalogVatRegimeCache; });
+  }
+  function catalogFetchMarginRules(force){
+    if (catalogMarginRulesCache && !force) return Promise.resolve(catalogMarginRulesCache);
+    return sb.client.from('margin_rules').select('*').then(function(res){
+      catalogMarginRulesCache = res.data || [];
+      return catalogMarginRulesCache;
+    });
+  }
+  // Même logique de priorité que find_margin_rule() côté SQL (catégorie
+  // spécifique > règle générale) — réimplémentée ici uniquement pour
+  // l'AFFICHAGE (quelle règle s'applique), jamais pour calculer un montant
+  // facturé : le prix de vente réel vient toujours de sale_price_cents,
+  // calculé côté serveur par le trigger.
+  function catalogFindMarginRule(rules, category){
+    var active = (rules || []).filter(function(r){ return r.is_active; });
+    var specific = active.filter(function(r){ return r.category === category; }).sort(function(a,b){ return a.sort_order - b.sort_order; })[0];
+    if (specific) return specific;
+    return active.filter(function(r){ return !r.category; }).sort(function(a,b){ return a.sort_order - b.sort_order; })[0] || null;
+  }
+  function catalogRealCostCents(p, regime){
+    if (p.purchase_price_ht_cents == null) return null;
+    return regime.vat_applicable ? p.purchase_price_ht_cents : p.purchase_price_ttc_cents;
+  }
+  function catalogRuleValueLabel(r){
+    if (r.rule_type === 'multiplier') return 'x' + r.rule_value;
+    if (r.rule_type === 'percentage') return '+' + r.rule_value + '%';
+    return '+' + admFmtEuros(Math.round(r.rule_value * 100));
+  }
+  function catalogSupplierLabel(s){ return s === 'cedeo' ? 'CEDEO' : (s === 'leroy_merlin' ? 'Leroy Merlin' : s); }
+  function catalogAvailabilityLabel(a){
+    return { available:'Disponible', limited:'Stock limité', unavailable:'Indisponible', unknown:'Inconnue' }[a] || 'Inconnue';
+  }
+  function catalogAvailabilityBadgeClass(a){
+    if (a === 'available') return 'adm-badge-confirmed';
+    if (a === 'limited') return 'adm-badge-pending';
+    if (a === 'unavailable') return 'adm-badge-cancelled';
+    return '';
+  }
+
+  // ---------- Règles de marge ----------
+  function admRenderMarginRules(rules){
+    var el = document.getElementById('marginRulesList');
+    if (!el) return;
+    if (!rules.length){
+      el.innerHTML = '<p class="admin-accounts-hint">Aucune règle configurée — sans au moins une règle générale (catégorie vide), aucun prix de vente ne sera calculé.</p>';
+      return;
+    }
+    var html = '<div class="admin-accounts-list">';
+    rules.slice().sort(function(a,b){ return (a.category||'').localeCompare(b.category||'') || a.sort_order-b.sort_order; }).forEach(function(r){
+      html += '<div class="admin-account-row" data-rule-id="' + r.id + '">' +
+        '<div class="admin-account-row-summary">' +
+          '<span class="admin-account-row-name">' + admEscape(r.label) + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + (r.category ? admEscape(r.category) : 'Générale') + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + catalogRuleValueLabel(r) + '</span>' +
+          (r.is_active ? '' : ' <span class="adm-badge adm-badge-cancelled">Désactivée</span>') +
+        '</div>' +
+        '<div style="display:flex; gap:8px; flex:0 0 auto;">' +
+          '<button type="button" class="ec-row-del" data-rule-toggle="' + r.id + '">' + (r.is_active ? 'Désactiver' : 'Activer') + '</button>' +
+          '<button type="button" class="ec-row-del" data-rule-del="' + r.id + '">Supprimer</button>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+  function admLoadMarginRules(){
+    catalogFetchMarginRules(true).then(admRenderMarginRules);
+  }
+  function catalogRecomputeAllPrices(){
+    sb.client.rpc('recompute_all_supplier_sale_prices').then(function(){
+      var page = document.getElementById('admPageCatalog');
+      if (page && !page.hidden) admLoadCatalogProducts();
+    });
+  }
+  var marginRulesListEl = document.getElementById('marginRulesList');
+  if (marginRulesListEl){
+    marginRulesListEl.addEventListener('click', function(e){
+      var toggleBtn = e.target.closest('[data-rule-toggle]');
+      if (toggleBtn){
+        var id = toggleBtn.getAttribute('data-rule-toggle');
+        var rule = (catalogMarginRulesCache || []).filter(function(r){ return r.id === id; })[0];
+        if (!rule) return;
+        sb.client.from('margin_rules').update({ is_active: !rule.is_active }).eq('id', id).then(function(){
+          admLoadMarginRules();
+          catalogRecomputeAllPrices();
+        });
+        return;
+      }
+      var delBtn = e.target.closest('[data-rule-del]');
+      if (delBtn){
+        if (!window.confirm('Supprimer définitivement cette règle de marge ?')) return;
+        sb.client.from('margin_rules').delete().eq('id', delBtn.getAttribute('data-rule-del')).then(function(){
+          admLoadMarginRules();
+          catalogRecomputeAllPrices();
+        });
+      }
+    });
+  }
+  var marginRuleFormEl = document.getElementById('marginRuleForm');
+  if (marginRuleFormEl){
+    marginRuleFormEl.addEventListener('submit', function(e){
+      e.preventDefault();
+      var label = document.getElementById('mrLabel').value.trim();
+      var category = document.getElementById('mrCategory').value || null;
+      var type = document.getElementById('mrType').value;
+      var value = parseFloat(document.getElementById('mrValue').value);
+      var msgEl = document.getElementById('mrMsg');
+      if (!label || isNaN(value)){ msgEl.hidden = false; msgEl.textContent = 'Merci de renseigner un nom et une valeur.'; return; }
+      document.getElementById('mrSubmit').disabled = true;
+      sb.client.from('margin_rules').insert({ label: label, category: category, rule_type: type, rule_value: value }).then(function(res){
+        document.getElementById('mrSubmit').disabled = false;
+        msgEl.hidden = false;
+        msgEl.textContent = res.error ? 'Échec : ' + res.error.message : 'Règle ajoutée.';
+        if (!res.error){
+          marginRuleFormEl.reset();
+          admLoadMarginRules();
+          catalogRecomputeAllPrices();
+        }
+      });
+    });
+  }
+
+  // ---------- Liste des produits ----------
+  var catalogProductsCache = [];
+  function admRenderCatalogProducts(rows, regime, rules){
+    var el = document.getElementById('catalogProductsList');
+    if (!el) return;
+    if (!rows.length){ el.innerHTML = '<p class="admin-accounts-hint">Aucun produit — importez un fichier CSV/XLSX ci-dessus.</p>'; return; }
+    var html = '<div class="admin-accounts-list">';
+    rows.forEach(function(p){
+      var realCost = catalogRealCostCents(p, regime);
+      var rule = catalogFindMarginRule(rules, p.category);
+      html += '<div class="admin-account-row" data-product-id="' + p.id + '" style="align-items:flex-start;">' +
+        '<div class="admin-account-row-summary" style="flex-direction:column; align-items:flex-start; gap:2px;">' +
+          '<span class="admin-account-row-name">' + admEscape(p.name) + (p.is_active ? '' : ' <span class="adm-badge adm-badge-cancelled">Inactif</span>') + '</span>' +
+          '<span class="admin-account-row-detail">' + catalogSupplierLabel(p.supplier) + ' · Réf. ' + admEscape(p.supplier_ref) + (p.brand ? ' · ' + admEscape(p.brand) : '') + (p.model ? ' ' + admEscape(p.model) : '') + ' · ' + admEscape(p.category) + '</span>' +
+          '<span class="admin-account-row-detail">Achat HT ' + admFmtEuros(p.purchase_price_ht_cents) + ' · Coût réel (' + (regime.vat_applicable ? 'assujetti' : 'franchise en base') + ') ' + admFmtEuros(realCost) + ' · Règle : ' + (rule ? admEscape(rule.label) : '—') + '</span>' +
+          '<span class="admin-account-row-detail"><strong>Prix de vente : ' + (p.sale_price_cents != null ? admFmtEuros(p.sale_price_cents) : '—') + (p.manual_sale_price_cents != null ? ' (fixé manuellement)' : '') + '</strong>' +
+            ' <span class="adm-badge ' + catalogAvailabilityBadgeClass(p.availability) + '">' + catalogAvailabilityLabel(p.availability) + '</span></span>' +
+          '<span class="admin-account-row-detail">Dernière mise à jour : ' + (p.last_synced_at ? admFmtDateTime(p.last_synced_at) : 'jamais') + '</span>' +
+        '</div>' +
+        '<div style="display:flex; gap:8px; flex:0 0 auto;">' +
+          '<button type="button" class="ec-row-del" data-product-edit="' + p.id + '">Modifier</button>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+  function admLoadCatalogProducts(){
+    var el = document.getElementById('catalogProductsList');
+    if (!el) return;
+    var search = (document.getElementById('catalogSearchInput') || {}).value || '';
+    var supplier = (document.getElementById('catalogFilterSupplier') || {}).value || '';
+    var category = (document.getElementById('catalogFilterCategory') || {}).value || '';
+    var query = sb.client.from('supplier_products').select('*').order('updated_at', { ascending:false }).limit(300);
+    if (supplier) query = query.eq('supplier', supplier);
+    if (category) query = query.eq('category', category);
+    var term = search.trim().replace(/[,%]/g, '');
+    if (term) query = query.or('name.ilike.%' + term + '%,brand.ilike.%' + term + '%,supplier_ref.ilike.%' + term + '%');
+    Promise.all([query, catalogFetchVatRegime(), catalogFetchMarginRules()]).then(function(results){
+      if (results[0].error){ el.innerHTML = '<p class="admin-accounts-hint">Indisponible — les migrations 0030/0031 (catalogue fournisseurs) sont-elles appliquées ?</p>'; return; }
+      catalogProductsCache = results[0].data || [];
+      admRenderCatalogProducts(catalogProductsCache, results[1], results[2]);
+    });
+  }
+  ['catalogSearchInput', 'catalogFilterSupplier', 'catalogFilterCategory'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.addEventListener(id === 'catalogSearchInput' ? 'input' : 'change', function(){ admLoadCatalogProducts(); });
+  });
+  var catalogProductsListEl = document.getElementById('catalogProductsList');
+  if (catalogProductsListEl){
+    catalogProductsListEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-product-edit]');
+      if (btn) admOpenProductEditor(btn.getAttribute('data-product-edit'));
+    });
+  }
+
+  // ---------- Éditeur d'un produit ----------
+  function admOpenProductEditor(productId){
+    var product = catalogProductsCache.filter(function(p){ return p.id === productId; })[0];
+    if (!product) return;
+    var overlay = document.getElementById('adminProductEditorOverlay');
+    var body = document.getElementById('adminProductEditorBody');
+    if (!overlay || !body) return;
+    var catOptions = ['plomberie', 'chauffage', 'climatisation', 'sanitaire', 'accessoire', 'autre'].map(function(c){
+      return '<option value="' + c + '"' + (product.category === c ? ' selected' : '') + '>' + c + '</option>';
+    }).join('');
+    var availOptions = ['unknown', 'available', 'limited', 'unavailable'].map(function(a){
+      return '<option value="' + a + '"' + (product.availability === a ? ' selected' : '') + '>' + catalogAvailabilityLabel(a) + '</option>';
+    }).join('');
+    body.innerHTML =
+      '<h3 class="admin-bk-modal-title">Modifier le produit</h3>' +
+      '<div class="qb-field-row">' +
+        '<label>Fournisseur<select id="peSupplier">' +
+          '<option value="cedeo"' + (product.supplier === 'cedeo' ? ' selected' : '') + '>CEDEO</option>' +
+          '<option value="leroy_merlin"' + (product.supplier === 'leroy_merlin' ? ' selected' : '') + '>Leroy Merlin</option>' +
+        '</select></label>' +
+        '<label>Référence<input type="text" id="peRef" value="' + admEscape(product.supplier_ref) + '"></label>' +
+      '</div>' +
+      '<div class="qb-field-row">' +
+        '<label>Marque<input type="text" id="peBrand" value="' + admEscape(product.brand || '') + '"></label>' +
+        '<label>Modèle<input type="text" id="peModel" value="' + admEscape(product.model || '') + '"></label>' +
+      '</div>' +
+      '<div class="qb-field-row">' +
+        '<label>Catégorie<select id="peCategory">' + catOptions + '</select></label>' +
+        '<label>EAN<input type="text" id="peEan" value="' + admEscape(product.ean || '') + '"></label>' +
+      '</div>' +
+      '<label style="display:block;margin:10px 0;">Nom<input type="text" id="peName" value="' + admEscape(product.name) + '" style="width:100%;"></label>' +
+      '<label style="display:block;margin:10px 0;">Description<textarea id="peDescription" rows="2" style="width:100%;">' + admEscape(product.description || '') + '</textarea></label>' +
+      '<div class="qb-field-row">' +
+        '<label>Photo (URL)<input type="text" id="pePhoto" value="' + admEscape(product.photo_url || '') + '"></label>' +
+        '<label>URL fournisseur (admin uniquement)<input type="text" id="peSupplierUrl" value="' + admEscape(product.supplier_url || '') + '"></label>' +
+      '</div>' +
+      '<div class="qb-field-row">' +
+        '<label>Prix d\'achat HT (€)<input type="number" step="0.01" id="pePriceHt" value="' + (product.purchase_price_ht_cents != null ? (product.purchase_price_ht_cents / 100).toFixed(2) : '') + '"></label>' +
+        '<label>TVA fournisseur (%)<input type="number" step="0.01" id="peVat" value="' + product.purchase_price_vat_rate + '"></label>' +
+      '</div>' +
+      '<div class="qb-field-row">' +
+        '<label>Disponibilité<select id="peAvailability">' + availOptions + '</select></label>' +
+        '<label>Prix de vente manuel (€, vide = calcul automatique)<input type="number" step="0.01" id="peManualPrice" value="' + (product.manual_sale_price_cents != null ? (product.manual_sale_price_cents / 100).toFixed(2) : '') + '"></label>' +
+      '</div>' +
+      '<label style="display:flex;align-items:center;gap:8px;margin:10px 0;"><input type="checkbox" id="peActive" ' + (product.is_active ? 'checked' : '') + '> Actif (proposable dans un nouveau devis)</label>' +
+      '<p class="admin-bk-modal-note">Prix de vente calculé actuellement : <strong>' + (product.sale_price_cents != null ? admFmtEuros(product.sale_price_cents) : '—') + '</strong></p>' +
+      '<div class="qb-footer">' +
+        '<button type="button" class="btn-primary" id="peSaveBtn">Enregistrer</button>' +
+        '<button type="button" class="qb-option-remove" id="peDeleteBtn">🗑️ Supprimer ce produit</button>' +
+        '<p class="qb-msg" id="peMsg" hidden></p>' +
+      '</div>';
+    overlay.hidden = false;
+
+    document.getElementById('peSaveBtn').onclick = function(){
+      var payload = {
+        supplier: document.getElementById('peSupplier').value,
+        supplier_ref: document.getElementById('peRef').value.trim(),
+        brand: document.getElementById('peBrand').value.trim() || null,
+        model: document.getElementById('peModel').value.trim() || null,
+        category: document.getElementById('peCategory').value,
+        ean: document.getElementById('peEan').value.trim() || null,
+        name: document.getElementById('peName').value.trim(),
+        description: document.getElementById('peDescription').value.trim() || null,
+        photo_url: document.getElementById('pePhoto').value.trim() || null,
+        supplier_url: document.getElementById('peSupplierUrl').value.trim() || null,
+        purchase_price_ht_cents: document.getElementById('pePriceHt').value ? Math.round(parseFloat(document.getElementById('pePriceHt').value) * 100) : null,
+        purchase_price_vat_rate: parseFloat(document.getElementById('peVat').value) || 0,
+        availability: document.getElementById('peAvailability').value,
+        manual_sale_price_cents: document.getElementById('peManualPrice').value ? Math.round(parseFloat(document.getElementById('peManualPrice').value) * 100) : null,
+        is_active: document.getElementById('peActive').checked
+      };
+      var msgEl = document.getElementById('peMsg');
+      document.getElementById('peSaveBtn').disabled = true;
+      sb.client.from('supplier_products').update(payload).eq('id', productId).then(function(res){
+        document.getElementById('peSaveBtn').disabled = false;
+        msgEl.hidden = false;
+        msgEl.textContent = res.error ? 'Échec : ' + res.error.message : 'Enregistré.';
+        if (!res.error) admLoadCatalogProducts();
+      });
+    };
+    document.getElementById('peDeleteBtn').onclick = function(){
+      if (!window.confirm('Supprimer définitivement ce produit du catalogue ?')) return;
+      sb.client.from('supplier_products').delete().eq('id', productId).then(function(res){
+        if (res.error){ window.alert('Échec : ' + res.error.message); return; }
+        overlay.hidden = true;
+        admLoadCatalogProducts();
+      });
+    };
+  }
+  var adminProductEditorCloseBtn = document.getElementById('adminProductEditorClose');
+  if (adminProductEditorCloseBtn) adminProductEditorCloseBtn.addEventListener('click', function(){ document.getElementById('adminProductEditorOverlay').hidden = true; });
+  var adminProductEditorOverlayEl = document.getElementById('adminProductEditorOverlay');
+  if (adminProductEditorOverlayEl) adminProductEditorOverlayEl.addEventListener('click', function(e){ if (e.target === adminProductEditorOverlayEl) adminProductEditorOverlayEl.hidden = true; });
+
+  // ---------- Import CSV/XLSX ----------
+  var CATALOG_VALID_SUPPLIERS = ['cedeo', 'leroy_merlin'];
+  var CATALOG_VALID_CATEGORIES = ['plomberie', 'chauffage', 'climatisation', 'sanitaire', 'accessoire', 'autre'];
+  var CATALOG_AVAILABILITY_MAP = { disponible:'available', limite:'limited', indisponible:'unavailable', inconnu:'unknown' };
+
+  function catalogParseFile(file){
+    return file.arrayBuffer().then(function(buf){
+      var wb = XLSX.read(buf, { type: 'array' });
+      var sheet = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    });
+  }
+  function catalogValidateRow(row, lineNo){
+    var errors = [];
+    var supplier = String(row.fournisseur || '').trim().toLowerCase();
+    if (CATALOG_VALID_SUPPLIERS.indexOf(supplier) === -1) errors.push('fournisseur invalide (cedeo ou leroy_merlin attendu)');
+    var ref = String(row.reference || '').trim();
+    if (!ref) errors.push('référence manquante');
+    var category = String(row.categorie || '').trim().toLowerCase();
+    if (CATALOG_VALID_CATEGORIES.indexOf(category) === -1) errors.push('catégorie invalide');
+    var name = String(row.nom || '').trim();
+    if (!name) errors.push('nom manquant');
+    var price = parseFloat(String(row.prix_achat_ht).replace(',', '.'));
+    if (isNaN(price) || price < 0) errors.push('prix_achat_ht invalide');
+    var availRaw = String(row.disponibilite || 'inconnu').trim().toLowerCase();
+    var availability = CATALOG_AVAILABILITY_MAP[availRaw] || 'unknown';
+    if (errors.length) return { ok:false, line:lineNo, errors:errors };
+    return {
+      ok:true,
+      data: {
+        supplier: supplier,
+        supplier_ref: ref,
+        ean: String(row.ean || '').trim() || null,
+        brand: String(row.marque || '').trim() || null,
+        model: String(row.modele || '').trim() || null,
+        category: category,
+        name: name,
+        description: String(row.description || '').trim() || null,
+        photo_url: String(row.photo_url || '').trim() || null,
+        supplier_url: String(row.url_fournisseur || '').trim() || null,
+        purchase_price_ht_cents: Math.round(price * 100),
+        purchase_price_vat_rate: (row.tva_fournisseur !== undefined && row.tva_fournisseur !== '') ? parseFloat(String(row.tva_fournisseur).replace(',', '.')) : 20,
+        availability: availability,
+        last_synced_at: new Date().toISOString(),
+        last_sync_status: 'ok'
+      }
+    };
+  }
+  function catalogImportErrorList(invalid){
+    if (!invalid.length) return '';
+    return '<ul class="admin-bk-modal-note" style="margin-top:8px;">' +
+      invalid.slice(0, 20).map(function(r){ return '<li>Ligne ' + r.line + ' : ' + r.errors.join(', ') + '</li>'; }).join('') +
+      (invalid.length > 20 ? '<li>… et ' + (invalid.length - 20) + ' autre(s)</li>' : '') +
+      '</ul>';
+  }
+  var catalogImportBtnEl = document.getElementById('catalogImportBtn');
+  if (catalogImportBtnEl){
+    catalogImportBtnEl.addEventListener('click', function(){
+      var fileInput = document.getElementById('catalogImportFile');
+      var resultEl = document.getElementById('catalogImportResult');
+      if (!fileInput.files || !fileInput.files[0]){
+        resultEl.innerHTML = '<p class="admin-bk-modal-note">Choisissez un fichier CSV ou XLSX avant d\'importer.</p>';
+        return;
+      }
+      if (typeof XLSX === 'undefined'){
+        resultEl.innerHTML = '<p class="admin-bk-modal-note">Bibliothèque de lecture de fichiers indisponible — rechargez la page.</p>';
+        return;
+      }
+      catalogImportBtnEl.disabled = true;
+      resultEl.innerHTML = '<p class="ec-loading">Lecture du fichier…</p>';
+      catalogParseFile(fileInput.files[0]).then(function(rows){
+        var valid = [], invalid = [];
+        rows.forEach(function(row, i){
+          var r = catalogValidateRow(row, i + 2);
+          if (r.ok) valid.push(r.data); else invalid.push(r);
+        });
+        if (!valid.length){
+          catalogImportBtnEl.disabled = false;
+          resultEl.innerHTML = '<p class="admin-bk-modal-note">Aucune ligne valide trouvée (' + invalid.length + ' ligne(s) en erreur).</p>' + catalogImportErrorList(invalid);
+          return;
+        }
+        sb.client.from('supplier_products').upsert(valid, { onConflict: 'supplier,supplier_ref' }).select('id').then(function(res){
+          catalogImportBtnEl.disabled = false;
+          fileInput.value = '';
+          if (res.error){
+            resultEl.innerHTML = '<p class="admin-bk-modal-note">Échec de l\'import : ' + admEscape(res.error.message) + '</p>';
+            return;
+          }
+          resultEl.innerHTML = '<p class="admin-bk-modal-note">✅ ' + valid.length + ' produit(s) importé(s)/mis à jour.' + (invalid.length ? ' ⚠️ ' + invalid.length + ' ligne(s) ignorée(s).' : '') + '</p>' + catalogImportErrorList(invalid);
+          admLoadCatalogProducts();
+        });
+      }).catch(function(err){
+        catalogImportBtnEl.disabled = false;
+        resultEl.innerHTML = '<p class="admin-bk-modal-note">Fichier illisible : ' + admEscape(err.message || String(err)) + '</p>';
+      });
+    });
+  }
+
+  // ---------- "Ajouter un produit du catalogue" depuis l'éditeur de devis ----------
+  function admOpenCatalogPicker(quoteId){
+    var overlay = document.getElementById('adminCatalogPickerOverlay');
+    var body = document.getElementById('adminCatalogPickerBody');
+    if (!overlay || !body) return;
+    body.innerHTML =
+      '<h3 class="admin-bk-modal-title">Ajouter un produit du catalogue</h3>' +
+      '<input type="search" id="pickerSearch" class="bk-search" placeholder="🔍 Produit, marque, référence…" style="width:100%;margin-bottom:12px;">' +
+      '<div id="pickerResults"><p class="ec-loading">Tapez pour rechercher…</p></div>';
+    overlay.hidden = false;
+
+    var searchInput = document.getElementById('pickerSearch');
+    var resultsEl = document.getElementById('pickerResults');
+    function runSearch(){
+      var q = searchInput.value.trim().replace(/[,%]/g, '');
+      if (!q){ resultsEl.innerHTML = '<p class="ec-loading">Tapez pour rechercher…</p>'; return; }
+      sb.client.from('supplier_products').select('*').eq('is_active', true)
+        .or('name.ilike.%' + q + '%,brand.ilike.%' + q + '%,supplier_ref.ilike.%' + q + '%')
+        .limit(20).then(function(res){
+          var rows = res.data || [];
+          if (!rows.length){ resultsEl.innerHTML = '<p class="admin-accounts-hint">Aucun produit trouvé.</p>'; return; }
+          resultsEl.innerHTML = '<div class="admin-accounts-list">' + rows.map(function(p){
+            return '<div class="admin-account-row qb-list-row" data-pick-product="' + p.id + '">' +
+              '<div class="admin-account-row-summary">' +
+                '<span class="admin-account-row-name">' + admEscape(p.name) + '</span>' +
+                '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + catalogSupplierLabel(p.supplier) + ' · ' + (p.sale_price_cents != null ? admFmtEuros(p.sale_price_cents) : 'prix non calculé') + '</span>' +
+              '</div></div>';
+          }).join('') + '</div>';
+        });
+    }
+    searchInput.oninput = runSearch;
+    resultsEl.onclick = function(e){
+      var row = e.target.closest('[data-pick-product]');
+      if (!row) return;
+      var pid = row.getAttribute('data-pick-product');
+      sb.client.from('supplier_products').select('*').eq('id', pid).maybeSingle().then(function(res){
+        var p = res.data;
+        if (!p) return;
+        if (p.sale_price_cents == null){
+          window.alert('Ce produit n\'a pas de prix de vente calculé (aucune règle de marge ne s\'applique à sa catégorie) — complétez-le dans le Catalogue avant de l\'ajouter à un devis.');
+          return;
+        }
+        sb.client.from('quote_options').insert({
+          quote_id: quoteId,
+          label: p.name,
+          reference: p.supplier_ref,
+          description: p.description,
+          supply_cents: p.sale_price_cents,
+          labor_cents: 0
+        }).then(function(insRes){
+          overlay.hidden = true;
+          if (insRes.error){ window.alert('Échec : ' + insRes.error.message); return; }
+          qbRefresh();
+        });
+      });
+    };
+    searchInput.focus();
+  }
+  var adminCatalogPickerCloseBtn = document.getElementById('adminCatalogPickerClose');
+  if (adminCatalogPickerCloseBtn) adminCatalogPickerCloseBtn.addEventListener('click', function(){ document.getElementById('adminCatalogPickerOverlay').hidden = true; });
+  var adminCatalogPickerOverlayEl = document.getElementById('adminCatalogPickerOverlay');
+  if (adminCatalogPickerOverlayEl) adminCatalogPickerOverlayEl.addEventListener('click', function(e){ if (e.target === adminCatalogPickerOverlayEl) adminCatalogPickerOverlayEl.hidden = true; });
+
   // ---------- Supabase Realtime : synchronisation live des réservations ----------
   // Écoute INSERT et UPDATE sur bookings — RLS déjà correcte pour Realtime
   // (la policy "bookings: owner or admin read", 0001_init.sql, s'applique
@@ -12097,6 +13467,10 @@ if ('serviceWorker' in navigator){
       admRefreshPushUI();
       admSetupBkRealtime();
       if (typeof admLoadAiSettings === 'function') admLoadAiSettings();
+      if (typeof admLoadPrepInstructions === 'function') admLoadPrepInstructions();
+      if (typeof admRenderPricedQuotesList === 'function') admRenderPricedQuotesList();
+      if (typeof admLoadMarginRules === 'function') admLoadMarginRules();
+      if (typeof admLoadCatalogProducts === 'function') admLoadCatalogProducts();
     } else {
       panel.hidden = true;
       admTeardownBkRealtime();
@@ -12600,6 +13974,64 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // ---------- Consignes de préparation avant intervention (admin) ----------
+  // Voir 0025_prep_instructions.sql : une ligne par catégorie, texte 100%
+  // configurable ici, jamais généré par l'IA. "is_default" = repli
+  // générique utilisé quand une prestation n'a pas de catégorie dédiée.
+  function admRenderPrepInstructions(rows){
+    var panel = document.getElementById('prepInstructionsPanel');
+    if (!panel) return;
+    rows = rows.slice().sort(function(a, b){ return a.sort_order - b.sort_order; });
+    panel.innerHTML = rows.map(function(r){
+      return '<div class="admin-prep-row" data-key="' + admEscape(r.key) + '" style="border:1px solid var(--adm-line,#dde3e8); border-radius:10px; padding:12px 14px; margin-bottom:10px;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">' +
+          '<strong>' + admEscape(r.label) + (r.is_default ? ' <span class="adm-badge adm-badge-confirmed">Repli par défaut</span>' : '') + '</strong>' +
+          '<label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; white-space:nowrap;">' +
+            '<input type="checkbox" class="admin-prep-active" ' + (r.is_active ? 'checked' : '') + '> Active</label>' +
+        '</div>' +
+        '<textarea class="admin-prep-text" rows="3" style="width:100%; resize:vertical;">' + admEscape(r.instruction) + '</textarea>' +
+        '<div style="margin-top:8px; display:flex; align-items:center; gap:10px;">' +
+          '<button type="button" class="btn-primary admin-prep-save">Enregistrer</button>' +
+          '<span class="admin-prep-msg" hidden></span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(panel.querySelectorAll('.admin-prep-row'), function(rowEl){
+      var key = rowEl.getAttribute('data-key');
+      rowEl.querySelector('.admin-prep-save').addEventListener('click', function(){
+        var saveBtn = rowEl.querySelector('.admin-prep-save');
+        var msgEl = rowEl.querySelector('.admin-prep-msg');
+        var text = rowEl.querySelector('.admin-prep-text').value.trim();
+        var isActive = rowEl.querySelector('.admin-prep-active').checked;
+        if (!text){
+          msgEl.hidden = false; msgEl.textContent = 'Le texte ne peut pas être vide.';
+          return;
+        }
+        saveBtn.disabled = true;
+        sb.client.from('prep_instruction_categories').update({
+          instruction: text, is_active: isActive, updated_at: new Date().toISOString()
+        }).eq('key', key).then(function(res){
+          saveBtn.disabled = false;
+          msgEl.hidden = false;
+          msgEl.textContent = res.error ? 'Échec de l\'enregistrement.' : 'Enregistré.';
+        });
+      });
+    });
+  }
+
+  function admLoadPrepInstructions(){
+    var panel = document.getElementById('prepInstructionsPanel');
+    if (!panel) return;
+    sb.client.from('prep_instruction_categories').select('*').then(function(res){
+      if (res.error || !res.data){
+        panel.innerHTML = '<div class="ec-empty"><strong>Indisponible</strong>La table prep_instruction_categories existe-t-elle ? (migration 0025_prep_instructions.sql)</div>';
+        return;
+      }
+      admRenderPrepInstructions(res.data);
+    });
+  }
+
   // ---- Génération .ics (Europe/Paris, VTIMEZONE standard UE) ----
   // Règle DST UE (dernier dimanche de mars/octobre) fixe depuis 1996 :
   // bloc VTIMEZONE statique, aucun calcul de fuseau à l'exécution.
@@ -13070,12 +14502,17 @@ if ('serviceWorker' in navigator){
   function ecLoadAppointments(){
     var panel = document.getElementById('ecPanelAppointments');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
-    sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, service_price_cents, travel_fee_cents, discount_cents, total_cents, services(name), customer_addresses(label,address,city)')
-      .eq('customer_user_id', ecUser.id)
-      .order('date', { ascending:false })
-      .order('start_time', { ascending:false })
-      .then(function(res){
+    Promise.all([
+      sb.client.from('bookings')
+        .select('id, reference, date, start_time, status, service_duration_minutes, service_price_cents, travel_fee_cents, discount_cents, total_cents, services(name, prep_instruction_key), customer_addresses(label,address,city)')
+        .eq('customer_user_id', ecUser.id)
+        .order('date', { ascending:false })
+        .order('start_time', { ascending:false }),
+      window.sudFetchPrepCategories ? window.sudFetchPrepCategories() : Promise.resolve(null)
+    ])
+      .then(function(results){
+        var res = results[0];
+        var prepCategories = results[1];
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var rows = res.data || [];
         ecAppointmentsCache = rows;
@@ -13096,6 +14533,12 @@ if ('serviceWorker' in navigator){
           if (b.travel_fee_cents) priceLine.push('Déplacement ' + ecFmtEuros(b.travel_fee_cents));
           if (b.discount_cents) priceLine.push('Réduction −' + ecFmtEuros(b.discount_cents));
           if (b.total_cents != null) priceLine.push('Total TTC ' + ecFmtEuros(b.total_cents));
+          // Consigne de préparation : jamais pour un rendez-vous annulé (voir
+          // 0025_prep_instructions.sql — repli générique via is_default).
+          var prepKey = b.services ? b.services.prep_instruction_key : null;
+          var prepText = (b.status !== 'CANCELLED' && window.sudResolvePrepInstruction)
+            ? window.sudResolvePrepInstruction(prepCategories, prepKey)
+            : null;
           html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
             '<span class="ec-row-title">' + ecEscape(svcName) + '</span>' +
             '<span class="ec-row-meta">' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) +
@@ -13103,6 +14546,7 @@ if ('serviceWorker' in navigator){
               (addr ? ' · ' + ecEscape(addr) : '') + '</span>' +
             '<span class="ec-row-meta">Réf. ' + ecEscape(b.reference) + '</span>' +
             (priceLine.length ? '<span class="ec-row-meta">' + priceLine.join(' · ') + '</span>' : '') +
+            (prepText ? '<span class="ec-row-meta ec-row-prep">🔧 Préparez votre intervention : ' + ecEscape(prepText) + '</span>' : '') +
             '</div>' + ecBadge(b.status) +
             (ecIsUpcomingModifiable(b) ?
               '<div class="ec-appt-actions">' +
@@ -13456,7 +14900,7 @@ if ('serviceWorker' in navigator){
     var panel = document.getElementById('ecPanelQuotes');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
     sb.client.from('quotes')
-      .select('id, reference, status, total_cents, created_at')
+      .select('id, reference, status, title, total_cents, created_at, selected_option_id')
       .eq('customer_user_id', ecUser.id)
       .order('created_at', { ascending:false })
       .then(function(res){
@@ -13468,15 +14912,140 @@ if ('serviceWorker' in navigator){
         }
         var html = '<p class="ec-section-title">Mes devis</p><div class="ec-list">';
         rows.forEach(function(q){
-          html += '<div class="ec-row"><div class="ec-row-info">' +
-            '<span class="ec-row-title">Devis ' + ecEscape(q.reference) + '</span>' +
-            '<span class="ec-row-meta">' + new Date(q.created_at).toLocaleDateString('fr-FR') + ' · ' + ecFmtEuros(q.total_cents) + '</span>' +
+          var showTotal = q.status === 'ACCEPTED' || q.selected_option_id;
+          html += '<div class="ec-row ec-quote-list-row" data-quote-id="' + q.id + '"><div class="ec-row-info">' +
+            '<span class="ec-row-title">' + ecEscape(q.title || ('Devis ' + q.reference)) + '</span>' +
+            '<span class="ec-row-meta">' + new Date(q.created_at).toLocaleDateString('fr-FR') + (showTotal ? ' · ' + ecFmtEuros(q.total_cents) : '') + '</span>' +
             '</div>' + ecBadge(q.status) + '</div>';
         });
         html += '</div>';
         panel.innerHTML = html;
       }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
+
+  // ---------- Détail d'un devis : options, photos, sélection, acceptation ----------
+  function ecQuoteAttachmentUrl(path){
+    return sb.client.storage.from('quote-attachments').createSignedUrl(path, 3600).then(function(res){
+      return (res.data && res.data.signedUrl) || null;
+    }).catch(function(){ return null; });
+  }
+
+  function ecOpenQuoteDetail(quoteId){
+    var panel = document.getElementById('ecPanelQuotes');
+    panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    Promise.all([
+      sb.client.from('quotes').select('*').eq('id', quoteId).maybeSingle(),
+      sb.client.from('quote_options').select('*').eq('quote_id', quoteId).order('sort_order', { ascending:true }).order('created_at', { ascending:true }),
+      sb.client.from('quote_attachments').select('*').eq('quote_id', quoteId).order('created_at', { ascending:true })
+    ]).then(function(results){
+      var quote = results[0].data;
+      var options = results[1].data || [];
+      var attachments = results[2].data || [];
+      if (!quote){ panel.innerHTML = ecErrorBlock(); return; }
+      var attByOption = {};
+      attachments.forEach(function(a){
+        var k = a.quote_option_id || '_none';
+        (attByOption[k] = attByOption[k] || []).push(a);
+      });
+      Promise.all(attachments.map(function(a){ return ecQuoteAttachmentUrl(a.storage_path); })).then(function(urls){
+        var urlByPath = {};
+        attachments.forEach(function(a, i){ urlByPath[a.storage_path] = urls[i]; });
+        ecRenderQuoteDetail(quote, options, attByOption, urlByPath);
+      });
+    }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
+  }
+
+  function ecRenderQuoteDetail(quote, options, attByOption, urlByPath){
+    ecCurrentQuoteId = quote.id;
+    var panel = document.getElementById('ecPanelQuotes');
+    var html = '<button type="button" class="restart-link" id="ecQuoteBackBtn">← Retour à mes devis</button>';
+    html += '<p class="ec-section-title">' + ecEscape(quote.title || ('Devis ' + quote.reference)) + '</p>';
+    html += '<p class="ec-section-sub">Réf. ' + ecEscape(quote.reference) + ' ' + ecBadge(quote.status) + '</p>';
+
+    options.forEach(function(opt){
+      var atts = attByOption[opt.id] || [];
+      var isSelected = quote.selected_option_id === opt.id;
+      html += '<div class="ec-quote-option' + (isSelected ? ' is-selected' : '') + '">';
+      if (atts.length){
+        html += '<div class="ec-quote-option-photos">';
+        atts.forEach(function(a){
+          if (a.file_type === 'image'){
+            html += '<img src="' + (urlByPath[a.storage_path] || '') + '" alt="' + ecEscape(opt.label) + '">';
+          } else {
+            html += '<a class="ec-quote-pdf-chip" href="' + (urlByPath[a.storage_path] || '#') + '" target="_blank" rel="noopener">📄 ' + ecEscape(a.file_name || 'Document') + '</a>';
+          }
+        });
+        html += '</div>';
+      }
+      html += '<h4 class="ec-quote-option-title">' + ecEscape(opt.label) + (isSelected ? ' <span class="ec-quote-selected-tag">✓ Sélectionnée</span>' : '') + '</h4>';
+      if (opt.reference) html += '<p class="ec-quote-option-ref">Référence : ' + ecEscape(opt.reference) + '</p>';
+      if (opt.description) html += '<p class="ec-quote-option-desc">' + ecEscape(opt.description) + '</p>';
+      html += '<div class="ec-quote-price-rows">' +
+        '<div class="ec-quote-price-row"><span>Fourniture</span><span>' + ecFmtEuros(opt.supply_cents) + '</span></div>' +
+        '<div class="ec-quote-price-row"><span>Pose</span><span>' + ecFmtEuros(opt.labor_cents) + '</span></div>' +
+        '<div class="ec-quote-price-row ec-quote-price-total"><span>Total TTC</span><span>' + ecFmtEuros(opt.total_cents) + '</span></div>' +
+      '</div>';
+      if (quote.status === 'SENT' && !isSelected){
+        html += '<button type="button" class="btn-primary ec-quote-select-btn" data-option-id="' + opt.id + '">Choisir cette solution</button>';
+      }
+      html += '</div>';
+    });
+
+    if (quote.status === 'SENT'){
+      if (quote.selected_option_id){
+        html += '<div class="ec-quote-accept-zone">' +
+          '<p>Solution sélectionnée — total <strong>' + ecFmtEuros(quote.total_cents) + '</strong>. La sélection d\'une option ne vaut pas acceptation du devis.</p>' +
+          '<button type="button" class="btn-primary" id="ecQuoteAcceptBtn">✅ Accepter le devis</button>' +
+        '</div>';
+      } else {
+        html += '<p class="hint">Sélectionnez une solution ci-dessus avant de pouvoir accepter le devis.</p>';
+      }
+    } else if (quote.status === 'ACCEPTED'){
+      html += '<div class="ec-quote-accept-zone"><p>✅ Devis accepté' + (quote.accepted_at ? ' le ' + new Date(quote.accepted_at).toLocaleDateString('fr-FR') : '') + ' — total <strong>' + ecFmtEuros(quote.total_cents) + '</strong>.</p></div>';
+    }
+
+    html += '<p class="ec-quote-msg" id="ecQuoteMsg" hidden></p>';
+    panel.innerHTML = html;
+  }
+
+  function ecShowQuoteMsg(text, isError){
+    var el = document.getElementById('ecQuoteMsg');
+    if (!el) return;
+    el.hidden = false; el.textContent = text;
+    el.className = 'ec-quote-msg' + (isError ? ' is-error' : '');
+  }
+
+  var ecQuotesPanelEl = document.getElementById('ecPanelQuotes');
+  if (ecQuotesPanelEl){
+    ecQuotesPanelEl.addEventListener('click', function(e){
+      var row = e.target.closest('.ec-quote-list-row');
+      if (row){ ecOpenQuoteDetail(row.getAttribute('data-quote-id')); return; }
+      if (e.target.id === 'ecQuoteBackBtn'){ ecLoadQuotes(); return; }
+      var selectBtn = e.target.closest('.ec-quote-select-btn');
+      if (selectBtn){
+        var quoteRow = panelQuoteIdInDom();
+        var optionId = selectBtn.getAttribute('data-option-id');
+        selectBtn.disabled = true;
+        sb.client.rpc('select_quote_option', { p_quote_id: quoteRow, p_option_id: optionId }).then(function(res){
+          if (res.error){ ecShowQuoteMsg(res.error.message || 'Échec de la sélection.', true); selectBtn.disabled = false; return; }
+          ecOpenQuoteDetail(quoteRow);
+        });
+        return;
+      }
+      if (e.target.id === 'ecQuoteAcceptBtn'){
+        var qid = panelQuoteIdInDom();
+        if (!window.confirm('Confirmez-vous l\'acceptation définitive de ce devis ? Cette action ne peut pas être annulée depuis votre espace.')) return;
+        e.target.disabled = true;
+        sb.client.rpc('accept_quote', { p_quote_id: qid }).then(function(res){
+          if (res.error){ ecShowQuoteMsg(res.error.message || 'Échec de l\'acceptation.', true); e.target.disabled = false; return; }
+          ecOpenQuoteDetail(qid);
+        });
+        return;
+      }
+    });
+  }
+  var ecCurrentQuoteId = null;
+  function panelQuoteIdInDom(){ return ecCurrentQuoteId; }
 
   function ecLoadInvoices(){
     var panel = document.getElementById('ecPanelInvoices');
@@ -13536,7 +15105,7 @@ if ('serviceWorker' in navigator){
       var editingId = null;
       var html = '<p class="ec-section-title">Mes adresses</p><p class="ec-section-sub">Utilisées pour préremplir vos futures réservations.</p>';
       html += '<form class="ec-form" id="ecAddrForm">' +
-        '<label>Libellé<input type="text" id="ecAddrLabel" placeholder="Ex. Maison principale" required></label>' +
+        '<label>Libellé (facultatif)<input type="text" id="ecAddrLabel" placeholder="Ex. Maison principale, Appartement, Bureau…"></label>' +
         '<label>Adresse<input type="text" id="ecAddrAddress" placeholder="12 rue des Pins" required></label>' +
         '<label>Code postal<input type="text" id="ecAddrPostal" placeholder="83600"></label>' +
         '<label>Ville<input type="text" id="ecAddrCity" placeholder="Fréjus"></label>' +
@@ -13575,7 +15144,7 @@ if ('serviceWorker' in navigator){
       if (form) form.addEventListener('submit', function(e){
         e.preventDefault();
         submitBtn.disabled = true;
-        var label = document.getElementById('ecAddrLabel').value.trim();
+        var label = document.getElementById('ecAddrLabel').value.trim() || 'Adresse d’intervention';
         var address = document.getElementById('ecAddrAddress').value.trim();
         var postal = document.getElementById('ecAddrPostal').value.trim() || null;
         var city = document.getElementById('ecAddrCity').value.trim() || null;
@@ -13843,6 +15412,8 @@ if ('serviceWorker' in navigator){
       var email = document.getElementById('espaceClientEmail').value.trim();
       var password = document.getElementById('espaceClientPassword').value;
       if (!email || !password) return;
+      var rememberMeEl = document.getElementById('espaceClientRememberMe');
+      if (window.sudSetRememberMe) window.sudSetRememberMe(!!(rememberMeEl && rememberMeEl.checked));
       loginSubmitBtn.disabled = true;
       loginSubmitBtn.textContent = 'Connexion…';
       sb.client.auth.signInWithPassword({ email: email, password: password })
@@ -14700,11 +16271,68 @@ if ('serviceWorker' in navigator){
   var welcomed = false;
   var requestInFlight = false;
 
+  // ---------- Bulle d'invitation (voir .ai-widget-invite) ----------
+  // Jamais une pop-up : une bulle discrète à côté du personnage, qui se
+  // replie seule après quelques secondes, se redéploie au survol desktop,
+  // et peut être masquée pour la session (sessionStorage) sans jamais
+  // désactiver l'assistant lui-même — seule cette invitation disparaît.
+  var inviteEl = document.getElementById('aiWidgetInvite');
+  var inviteSubEl = document.getElementById('aiWidgetInviteSub');
+  var inviteCloseBtn = document.getElementById('aiWidgetInviteClose');
+  var INVITE_SUBTEXTS = [
+    "Décrivez-moi votre problème, je vous guide.",
+    "Une fuite ? Un chauffage en panne ? Demandez-moi.",
+    "Je peux vous aider à trouver la bonne intervention.",
+    "Une question sur nos services ? Je suis là."
+  ];
+  var inviteSubIndex = 0;
+  var inviteCycleTimer = null;
+  var inviteCollapseTimer = null;
+  var INVITE_DISMISS_KEY = 'sud_ai_invite_dismissed';
+
+  function cycleInviteSub(){
+    if (!inviteSubEl) return;
+    inviteSubEl.classList.add('is-fading');
+    setTimeout(function(){
+      inviteSubIndex = (inviteSubIndex + 1) % INVITE_SUBTEXTS.length;
+      inviteSubEl.textContent = INVITE_SUBTEXTS[inviteSubIndex];
+      inviteSubEl.classList.remove('is-fading');
+    }, 220);
+  }
+
+  function startInvite(){
+    if (!inviteEl) return;
+    var dismissed = false;
+    try { dismissed = sessionStorage.getItem(INVITE_DISMISS_KEY) === '1'; } catch(e){}
+    if (dismissed){ inviteEl.hidden = true; return; }
+    inviteCycleTimer = setInterval(cycleInviteSub, 4000);
+    // Repliement automatique après ~9s : ne garde que le titre compact.
+    inviteCollapseTimer = setTimeout(function(){
+      inviteEl.classList.add('is-collapsed');
+      if (inviteCycleTimer){ clearInterval(inviteCycleTimer); inviteCycleTimer = null; }
+    }, 9000);
+    // Petit salut du personnage à sa toute première apparition.
+    setCharacterState('is-greeting', 700);
+  }
+
+  if (inviteCloseBtn){
+    inviteCloseBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if (inviteEl) inviteEl.hidden = true;
+      if (inviteCycleTimer){ clearInterval(inviteCycleTimer); inviteCycleTimer = null; }
+      if (inviteCollapseTimer){ clearTimeout(inviteCollapseTimer); inviteCollapseTimer = null; }
+      try { sessionStorage.setItem(INVITE_DISMISS_KEY, '1'); } catch(err){}
+    });
+  }
+
   function checkEnabled(){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
     sb.client.from('ai_settings_public').select('enabled').maybeSingle().then(function(res){
-      if (!res.error && res.data && res.data.enabled) toggleBtn.hidden = false;
+      if (!res.error && res.data && res.data.enabled){
+        toggleBtn.hidden = false;
+        startInvite();
+      }
     }).catch(function(){});
   }
   checkEnabled();
@@ -14745,7 +16373,7 @@ if ('serviceWorker' in navigator){
     var hasDevis = false;
     matches.slice(0, 2).forEach(function(s){
       if (s.id === 'devis') hasDevis = true;
-      wrap.appendChild(bookingCtaButton('📅 ' + s.title + ' — ' + s.price, s.id));
+      wrap.appendChild(bookingCtaButton('📅 ' + s.title + ' — ' + window.sudBooking.priceLine(s), s.id));
     });
     if (!hasDevis){
       wrap.appendChild(bookingCtaButton('📋 Demander un devis personnalisé', 'devis', 'ai-widget-cta-btn-secondary'));
@@ -14783,6 +16411,18 @@ if ('serviceWorker' in navigator){
     addBookingCta(confidentMatches);
     return true;
   }
+  // Slug de la prestation la plus confiante (même seuil que la CTA) — envoyé
+  // au serveur UNIQUEMENT comme indice ("je pense que ça correspond à ceci"),
+  // jamais avec un prix : le vrai tarif est toujours relu côté serveur
+  // depuis services/service_packs (voir ai-assistant/index.ts), impossible à
+  // forger depuis le navigateur.
+  function topConfidentMatchSlug(userText){
+    if (!window.sudBooking) return null;
+    if (window.sudBooking.isClimRepairQuery && window.sudBooking.isClimRepairQuery(userText)) return null;
+    var scored = (window.sudBooking.searchScored ? window.sudBooking.searchScored(userText) : []) || [];
+    var top = scored.filter(function(x){ return x.score >= AI_CTA_MIN_CONFIDENCE; })[0];
+    return top ? top.service.id : null;
+  }
 
   function openPanel(){
     panel.hidden = false;
@@ -14800,6 +16440,15 @@ if ('serviceWorker' in navigator){
     setCharacterState(null);
   }
   toggleBtn.addEventListener('click', openPanel);
+  // .ai-widget-toggle est un <div role="button"> (pas un <button>, pour
+  // pouvoir contenir en toute légalité le vrai <button> de fermeture de la
+  // bulle) : l'activation clavier n'est donc pas automatique, on la gère ici.
+  toggleBtn.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      openPanel();
+    }
+  });
   closeBtn.addEventListener('click', closePanel);
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape' && !panel.hidden) closePanel();
@@ -14821,7 +16470,7 @@ if ('serviceWorker' in navigator){
     setCharacterState('is-thinking');
 
     sb.client.functions.invoke('ai-assistant', {
-      body: { session_id: sessionId, message: text, conversation_id: conversationId, customer_type: 'particulier' }
+      body: { session_id: sessionId, message: text, conversation_id: conversationId, customer_type: 'particulier', matched_service_slug: topConfidentMatchSlug(text) }
     }).then(function(res){
       typingEl.hidden = true;
       requestInFlight = false;

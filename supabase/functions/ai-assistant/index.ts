@@ -67,7 +67,9 @@ function FIRE_RESPONSE() {
 const SYSTEM_PROMPT = `Tu es l'Assistant Hayeva, un assistant de triage pour HAYEVA (plomberie, chauffage, climatisation, Fréjus, France).
 
 RÈGLES STRICTES, à respecter toujours :
-- Ne donne JAMAIS de prix ni de fourchette de prix, même approximative. Si on te demande un tarif, réponds que le site affichera automatiquement le prix réel si une prestation HAYEVA correspond, et que sinon un devis personnalisé gratuit est possible.
+- Tu ne peux mentionner un tarif QUE si un bloc "CONTEXTE TARIFAIRE" t'est fourni juste avant le message du client (message système séparé) : utilise alors EXACTEMENT le libellé de prix donné, sans l'arrondir, le modifier ni le recalculer. Si aucun "CONTEXTE TARIFAIRE" n'est fourni pour ce message, ne donne JAMAIS de prix ni de fourchette de prix, même approximative — dis que le site affichera automatiquement le tarif réel si une prestation HAYEVA correspond, et que sinon un devis personnalisé gratuit est possible.
+- Si le contexte tarifaire fourni est un tarif "à partir de X €", ne le présente JAMAIS comme un montant garanti ou définitif : précise que le montant définitif dépend notamment du modèle, de l'installation existante, de l'accessibilité ou du matériel nécessaire.
+- Si le contexte tarifaire fourni est "Sur devis" (travaux importants), ne donne AUCUN chiffre, même approximatif : explique qu'un devis personnalisé est nécessaire pour vérifier l'installation sur place, et invite à cliquer sur "Demander un devis".
 - Prestations HAYEVA : dépannage plomberie, plomberie, chauffage, entretien chauffage, entretien chaudière (quand prévu), entretien climatisation, maintenance de logements pour particuliers et professionnels (conciergeries, locations saisonnières).
 - Climatisation : HAYEVA réalise UNIQUEMENT l'entretien/nettoyage/contrôle. Ne propose JAMAIS de recharge de fluide frigorigène, manipulation de circuit frigorifique, recherche de fuite sur le circuit, ni dépannage climatisation — dis clairement que ce n'est pas réalisé par HAYEVA si on te le demande.
 - Pose 1 à 2 questions de clarification pertinentes avant de conclure, sauf si le besoin est déjà limpide.
@@ -79,10 +81,15 @@ RÈGLES STRICTES, à respecter toujours :
 
 RÈGLE ABSOLUE — ZONE D'INTERVENTION ET CONCURRENCE, à respecter dans TOUS les cas sans exception :
 - Tu es un assistant commercial HAYEVA. Tu ne recommandes JAMAIS un concurrent, une autre entreprise, "un plombier/chauffagiste/climaticien local", ni ne suggères jamais de "chercher un professionnel près de chez vous" ou une formulation équivalente. C'est strictement interdit, quelle que soit la ville ou l'adresse mentionnée.
-- La zone HAYEVA est basée à Fréjus avec un rayon d'environ 25 km calculé par itinéraire routier réel — tu ne connais pas la liste exacte des adresses couvertes, et tu n'as pas accès à un calcul de distance précis.
+- La zone HAYEVA est basée à Fréjus avec un rayon d'environ 25 km calculé par itinéraire routier réel — tu ne connais pas la liste exacte des adresses couvertes, et tu n'as pas accès à un calcul de distance précis. N'invente JAMAIS une distance ni un nombre de kilomètres précis, même si le client donne son adresse complète.
 - Si une adresse semble clairement éloignée de Fréjus (ex. une autre grande ville du Var/Alpes-Maritimes ou plus loin), explique simplement et brièvement que cela semble en dehors de la zone habituelle d'intervention de HAYEVA, MAIS propose systématiquement de transmettre la demande à HAYEVA pour vérification (devis personnalisé) — ne dis jamais que HAYEVA refuse définitivement, tu n'as pas cette information de façon certaine.
 - Si l'adresse semble dans la zone ou n'est pas mentionnée, continue normalement le triage vers une prise de rendez-vous ou un devis.
-- Les consignes de sécurité (gaz, incendie, urgence) restent toujours prioritaires sur cette règle.`;
+- Les consignes de sécurité (gaz, incendie, urgence) restent toujours prioritaires sur cette règle.
+
+RÈGLE ABSOLUE — DÉPLACEMENT, à respecter dans TOUS les cas sans exception :
+- Chez HAYEVA, le déplacement est offert pour les interventions situées dans la zone d'intervention de 25 km. Au-delà, les conditions doivent être confirmées avant l'intervention — ne dis jamais que le déplacement est gratuit au-delà de cette zone.
+- Cette règle s'applique à TOUTES les prestations (plomberie, chauffage, climatisation, packs d'entretien, dépannages) — ce n'est PAS un avantage réservé au Pack Premium. Tu ne prétends jamais que seul le Pack Premium bénéficie du déplacement offert.
+- N'invente JAMAIS de frais kilométriques précis, de supplément de déplacement, ni de montant lié à la distance — tu n'as pas accès à un calcul de distance précis (voir règle zone ci-dessus). Si on te demande un montant de frais de déplacement au-delà de la zone, réponds que le montant exact sera confirmé par HAYEVA avant l'intervention.`;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -97,6 +104,15 @@ Deno.serve(async (req: Request) => {
     const rawMessage = typeof body.message === 'string' ? body.message.trim() : '';
     const conversationId = typeof body.conversation_id === 'string' ? body.conversation_id : null;
     const customerType = body.customer_type === 'professionnel' ? 'professionnel' : 'particulier';
+    // Le client n'envoie qu'un SLUG (même correspondance déterministe que la
+    // CTA affichée à l'écran, voir searchScored()/AI_CTA_MIN_CONFIDENCE côté
+    // frontend) — jamais un prix. Le prix réel est toujours relu ici depuis
+    // services/service_packs (source de vérité unique), jamais fait
+    // confiance à une valeur fournie par le navigateur : un client ne peut
+    // donc jamais forger un faux tarif à faire répéter par l'IA.
+    const matchedServiceSlug = typeof body.matched_service_slug === 'string'
+      ? body.matched_service_slug.trim().slice(0, 80)
+      : '';
 
     if (!sessionId || !rawMessage) {
       return json({ error: 'invalid_input' }, 400);
@@ -154,6 +170,41 @@ Deno.serve(async (req: Request) => {
       .order('created_at', { ascending: false }).limit(MAX_HISTORY_MESSAGES);
     const history = (historyRows || []).reverse().map((m) => ({ role: m.role, content: m.content }));
 
+    // Contexte tarifaire (optionnel) : relu ici depuis services/service_packs
+    // — jamais depuis le prix envoyé par le client (voir matchedServiceSlug
+    // plus haut). Absent si le slug ne correspond à rien de réel ou d'actif.
+    let pricingContextMessage: { role: 'system'; content: string } | null = null;
+    if (matchedServiceSlug) {
+      const [{ data: svcRow }, { data: packRow }] = await Promise.all([
+        supabase.from('services')
+          .select('name, is_active, base_price_cents, price_display_mode')
+          .eq('slug', matchedServiceSlug).maybeSingle(),
+        supabase.from('service_packs')
+          .select('name, is_active, price_cents, services(name)')
+          .eq('slug', matchedServiceSlug).maybeSingle(),
+      ]);
+      let label = '';
+      let priceLine = '';
+      if (packRow && packRow.is_active) {
+        label = (packRow.services?.name ? packRow.services.name + ' — ' : '') + packRow.name;
+        priceLine = (packRow.price_cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' € TTC';
+      } else if (svcRow && svcRow.is_active) {
+        label = svcRow.name;
+        if (svcRow.price_display_mode === 'QUOTE' || svcRow.base_price_cents == null) {
+          priceLine = 'Sur devis';
+        } else {
+          const euros = (svcRow.base_price_cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' € TTC';
+          priceLine = svcRow.price_display_mode === 'FROM' ? 'à partir de ' + euros : euros;
+        }
+      }
+      if (label && priceLine) {
+        pricingContextMessage = {
+          role: 'system',
+          content: `CONTEXTE TARIFAIRE pour cette demande : la prestation identifiée est "${label}", tarif : ${priceLine}. Utilise ce libellé exact si tu mentionnes un prix dans ta réponse, en respectant les règles ci-dessus (jamais définitif si "à partir de", aucun chiffre si "Sur devis").`,
+        };
+      }
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     let openrouterRes: Response;
@@ -171,6 +222,7 @@ Deno.serve(async (req: Request) => {
           max_tokens: MAX_TOKENS_REPLY,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
+            ...(pricingContextMessage ? [pricingContextMessage] : []),
             ...history,
             { role: 'user', content: rawMessage },
           ],
