@@ -1,0 +1,21 @@
+-- ============================================================
+-- Correctif défense en profondeur — anon pouvait appeler les RPC de devis
+-- ============================================================
+-- Trouvé en testant réellement (tâche 13) : un appel anonyme (déconnecté)
+-- à accept_quote() atteignait le corps de la fonction (message métier
+-- renvoyé), au lieu d'un refus de permission. Cause : "revoke all ... from
+-- public" (déjà présent dans 0026/0027/0028) ne retire PAS un droit
+-- explicitement accordé à anon par les privilèges par défaut du projet
+-- (alter default privileges ... grant execute on functions to anon), déjà
+-- observé et corrigé de la même façon pour create_booking() dans ce projet
+-- (voir 0001_init.sql, 0002_add_booking_notes.sql, etc. : chaque révision
+-- de create_booking() ajoute un "revoke execute ... from anon" séparé,
+-- jamais juste "from public"). Même correctif ici, par cohérence.
+--
+-- Aucune donnée n'a été exposée : les vérifications internes (ownership
+-- via auth.uid(), qui vaut NULL pour anon) bloquaient déjà tout accès réel
+-- — mais ce n'est pas une raison pour laisser un appel anonyme atteindre
+-- la logique métier. Défense en profondeur, comme partout ailleurs dans ce
+-- projet.
+revoke execute on function select_quote_option(uuid, uuid) from anon;
+revoke execute on function accept_quote(uuid) from anon;

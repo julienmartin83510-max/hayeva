@@ -94,9 +94,32 @@ Deno.serve(async (req: Request) => {
     }
 
     let serviceName = 'Intervention';
+    let prepInstructionKey: string | null = null;
     if (booking.service_id) {
-      const { data: svc } = await supabase.from('services').select('name').eq('id', booking.service_id).maybeSingle();
-      if (svc) serviceName = svc.name;
+      const { data: svc } = await supabase.from('services').select('name, prep_instruction_key').eq('id', booking.service_id).maybeSingle();
+      if (svc) {
+        serviceName = svc.name;
+        prepInstructionKey = svc.prep_instruction_key;
+      }
+    }
+
+    // Consigne de préparation avant intervention : texte configuré en base
+    // (prep_instruction_categories, voir 0025_prep_instructions.sql), JAMAIS
+    // généré ici. Repli sur la catégorie générique (is_default) si la
+    // prestation n'a pas de clé dédiée ou si sa catégorie est désactivée.
+    // Affichée uniquement pour un rendez-vous CONFIRMÉ (jamais pour une
+    // annulation).
+    let prepInstructionText: string | null = null;
+    if (emailType === 'confirmed') {
+      const { data: prepRows } = await supabase
+        .from('prep_instruction_categories')
+        .select('key, instruction, is_active, is_default');
+      const rows = prepRows || [];
+      const match = prepInstructionKey
+        ? rows.find((r) => r.key === prepInstructionKey && r.is_active)
+        : null;
+      const fallback = rows.find((r) => r.is_default && r.is_active);
+      prepInstructionText = (match || fallback)?.instruction || null;
     }
 
     const priceLine = fmtEuros(booking.service_price_cents || 0);
@@ -129,6 +152,16 @@ Deno.serve(async (req: Request) => {
       <tr><td style="padding:10px 0 0;color:#101B24;font-weight:700;border-top:1px solid #E5E0D5;">Total</td><td style="padding:10px 0 0;font-weight:700;text-align:right;border-top:1px solid #E5E0D5;">${totalLine}</td></tr>
     ` : '';
 
+    const prepBlockHtml = prepInstructionText ? `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:18px;">
+        <tr><td style="background:#CFEFEA;border-radius:10px;padding:14px 16px;font-size:14px;color:#101B24;">
+          <p style="margin:0 0 6px;font-weight:700;">🔧 Pour préparer notre intervention</p>
+          <p style="margin:0;">${escapeHtml(prepInstructionText)}</p>
+          <p style="margin:10px 0 0;font-style:italic;color:#3C4C58;">Ces quelques préparatifs nous permettront d'intervenir dans de bonnes conditions et d'éviter une perte de temps sur place.</p>
+        </td></tr>
+      </table>
+    ` : '';
+
     const html = renderEmailShell(`
       <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour ${escapeHtml(firstName || '')},</h2>
       <p style="margin:0 0 18px; font-size:15px;">${introText}</p>
@@ -140,6 +173,7 @@ Deno.serve(async (req: Request) => {
         <tr><td style="padding:7px 0;color:#5B6B78;">Adresse</td><td style="padding:7px 0;text-align:right;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
         ${detailsRows}
       </table>
+      ${prepBlockHtml}
       ${booking.customer_user_id ? `<p style="margin:22px 0 0;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir mon rendez-vous</a></p>` : ''}
     `, escapeHtml(booking.reference || ''));
 
