@@ -3556,12 +3556,16 @@ if ('serviceWorker' in navigator){
   .admin-bk-decision-btn[disabled]{ opacity:0.55; cursor:not-allowed; transform:none; }
   .admin-bk-decision-accept{ background:var(--adm-green); color:#fff; }
   .admin-bk-decision-refuse{ background:var(--adm-red); color:#fff; }
-  .admin-bk-modal-propose-toggle{
+  .admin-bk-modal-propose-toggle, .admin-bk-cancel-confirmed-toggle{
     display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700;
     font-size:0.8rem; color:var(--adm-ocean); background:transparent; border:1.5px solid var(--adm-ocean);
     border-radius:999px; padding:8px 16px; cursor:pointer; margin-bottom:6px;
   }
   .admin-bk-modal-propose-toggle:hover{ background:var(--adm-ocean); color:#fff; }
+  /* Teinte rouge distincte (destructif) pour "Annuler ce rendez-vous", même
+     forme que le bouton bleu "Proposer un autre créneau" ci-dessus. */
+  .admin-bk-cancel-confirmed-toggle{ color:var(--adm-red); border-color:var(--adm-red); }
+  .admin-bk-cancel-confirmed-toggle:hover{ background:var(--adm-red); color:#fff; }
   .admin-bk-refuse-form{
     display:flex; flex-direction:column; gap:10px; background:var(--adm-sand); border-radius:12px;
     padding:14px; margin-top:10px; box-sizing:border-box;
@@ -11747,6 +11751,17 @@ if ('serviceWorker' in navigator){
           '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">Refuser</button>' +
           '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">Proposer un autre créneau</button>'
           : '') +
+        // "Annuler ce rendez-vous" (CONFIRMED) : action admin dédiée, distincte
+        // du menu déroulant Statut ci-dessous. Passe par admRefuseBooking (déjà
+        // utilisée pour "Refuser la demande" sur une demande PENDING) plutôt que
+        // par une simple sélection "Annulé" dans le menu : enregistre
+        // cancelled_by='admin' + cancelled_at, condition déjà affichée partout
+        // ailleurs dans l'admin ("Annulé par le client" sinon rien) — sans ce
+        // passage, une réservation confirmée annulée via le seul menu déroulant
+        // resterait sans auteur tracé.
+        (b.status === 'CONFIRMED' ?
+          '<button type="button" class="admin-bk-action-btn admin-bk-cancel-confirmed-btn" data-booking-id="' + b.id + '">Annuler ce rendez-vous</button>'
+          : '') +
         '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
         (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">Ajouter à Apple Calendar</button>' : '') +
         (b.status === 'PENDING' ?
@@ -11968,7 +11983,21 @@ if ('serviceWorker' in navigator){
       var refuseBtn = e.target.closest('.admin-bk-refuse-btn');
       if (refuseBtn){
         refuseBtn.disabled = true;
-        admUpdateBookingStatus(refuseBtn.getAttribute('data-booking-id'), 'CANCELLED');
+        // admRefuseBooking (pas admUpdateBookingStatus) : trace cancelled_by='admin'
+        // (voir commentaire sur admin-bk-cancel-confirmed-btn ci-dessous — même
+        // logique, corrige au passage ce bouton qui ne le faisait pas encore).
+        admRefuseBooking(refuseBtn.getAttribute('data-booking-id'), '', function(err){
+          if (err){ refuseBtn.disabled = false; window.alert('Impossible de refuser cette demande.'); }
+        });
+        return;
+      }
+      var cancelConfirmedBtn = e.target.closest('.admin-bk-cancel-confirmed-btn');
+      if (cancelConfirmedBtn){
+        if (!window.confirm('Annuler ce rendez-vous confirmé ? Le client sera automatiquement prévenu par e-mail.')) return;
+        cancelConfirmedBtn.disabled = true;
+        admRefuseBooking(cancelConfirmedBtn.getAttribute('data-booking-id'), '', function(err){
+          if (err){ cancelConfirmedBtn.disabled = false; window.alert('Impossible d\'annuler ce rendez-vous.'); }
+        });
         return;
       }
       var proposeBtn = e.target.closest('.admin-bk-propose-btn');
@@ -12329,11 +12358,30 @@ if ('serviceWorker' in navigator){
           '</div>' +
         '</div>';
     } else {
+      // "Annuler ce rendez-vous" (CONFIRMED) : même formulaire de motif
+      // (.admin-bk-refuse-form/.admin-bk-refuse-reason/.admin-bk-refuse-confirm)
+      // que "Refuser la demande" ci-dessus — les gestionnaires de clic déjà
+      // câblés (admin-bk-refuse-confirm/-cancel, voir plus bas) le repèrent par
+      // classe et fonctionnent donc sans rien dupliquer. Le menu déroulant
+      // Statut reste inchangé juste en dessous pour les autres transitions
+      // (ex. marquer Terminé).
       actionsHtml =
         '<div class="admin-bk-modal-status-row">' +
           '<label for="adminBkModalStatusSelect">Statut</label>' +
           '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
-        '</div>';
+        '</div>' +
+        (b.status === 'CONFIRMED' ?
+          '<button type="button" class="admin-bk-cancel-confirmed-toggle" data-booking-id="' + b.id + '">Annuler ce rendez-vous</button>' +
+          '<div class="admin-bk-refuse-form" data-booking-id="' + b.id + '" hidden>' +
+            '<label>Motif de l\'annulation (facultatif, usage interne — jamais transmis au client)' +
+              '<textarea class="admin-bk-refuse-reason" placeholder="Ex. imprévu technicien, indisponibilité…"></textarea>' +
+            '</label>' +
+            '<div class="admin-bk-propose-form-row">' +
+              '<button type="button" class="admin-bk-refuse-confirm" data-booking-id="' + b.id + '">Confirmer l\'annulation</button>' +
+              '<button type="button" class="admin-bk-refuse-cancel">Annuler</button>' +
+            '</div>' +
+          '</div>'
+          : '');
     }
 
     var quoteCreateHtml = (b.customer_user_id || b.professional_account_id)
@@ -12493,6 +12541,16 @@ if ('serviceWorker' in navigator){
       if (proposeToggleBtn){
         var pform = adminBkModalOverlayEl.querySelector('.admin-bk-propose-form');
         if (pform) pform.hidden = !pform.hidden;
+        return;
+      }
+      // "Annuler ce rendez-vous" (CONFIRMED) : révèle le même formulaire de
+      // motif que "Refuser la demande" (.admin-bk-refuse-form) — sa confirmation
+      // est déjà gérée par les gestionnaires admin-bk-refuse-confirm/-cancel
+      // ci-dessus, communs aux deux cas.
+      var cancelConfirmedToggleBtn = e.target.closest('.admin-bk-cancel-confirmed-toggle');
+      if (cancelConfirmedToggleBtn){
+        var rform = adminBkModalOverlayEl.querySelector('.admin-bk-refuse-form');
+        if (rform) rform.hidden = !rform.hidden;
         return;
       }
       var proposeCancelBtn = e.target.closest('.admin-bk-propose-cancel');
