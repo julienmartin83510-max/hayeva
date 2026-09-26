@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page introuvable | HAYEVA</title>
+<!-- noindex : une 404 n'a aucune valeur à faire indexer, mais reste
+     accessible à l'affichage (pas de blocage robots.txt sur ce fichier —
+     Google doit pouvoir la LIRE pour confirmer qu'elle répond bien en 404,
+     voir https://developers.google.com/search/docs/crawling-indexing/http-network-errors). -->
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://hayeva.netlify.app/">
+<link rel="icon" type="image/png" sizes="192x192" href="images/pwa/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Outfit:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --terracotta:#1C2B3A; --terracotta-deep:#101B24; --ivory:#FBF7EF;
+    --ink-soft:#5B6B78; --turquoise:#2FB6A8; --amber:#E8A23C; --sky-accent:#5AA9D6;
+    color-scheme: light;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    min-height:100vh; min-height:100dvh;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--terracotta-deep);
+    background-image:
+      radial-gradient(ellipse 900px 600px at 50% 15%, rgba(47,182,168,0.16) 0%, transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 90%, rgba(232,162,60,0.14) 0%, transparent 60%);
+    color:var(--ivory);
+    font-family:"Outfit", system-ui, sans-serif;
+    padding:32px 20px;
+    text-align:center;
+  }
+  .box{ max-width:480px; }
+  .logo{ width:clamp(140px, 30vw, 180px); height:auto; display:block; margin:0 auto 22px; filter:drop-shadow(0 6px 22px rgba(0,0,0,0.4)); }
+  .code{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:clamp(3rem, 12vw, 4.5rem);
+    line-height:1; margin:0 0 8px; color:var(--sky-accent);
+  }
+  h1{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1.3rem; margin:0 0 12px;
+  }
+  p{ font-size:0.95rem; color:rgba(251,247,239,0.82); line-height:1.6; margin:0 0 26px; }
+  .actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:22px; }
+  .btn{
+    font-family:"Poppins",sans-serif; font-weight:600; font-size:0.88rem; text-decoration:none;
+    padding:12px 18px; border-radius:10px; transition:transform .2s ease, background .2s ease;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-primary{ background:var(--amber); color:var(--terracotta-deep); }
+  .btn-secondary{ background:rgba(255,255,255,0.1); color:var(--ivory); border:1px solid rgba(255,255,255,0.22); }
+  .btn:hover{ transform:translateY(-2px); }
+  .services{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; font-size:0.82rem; }
+  .services a{ color:rgba(251,247,239,0.75); text-decoration:none; border-bottom:1px solid transparent; }
+  .services a:hover{ color:var(--ivory); border-color:currentColor; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <img class="logo" src="images/brand/hayeva-logo.png"
+         srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
+         sizes="180px" alt="HAYEVA" width="900" height="607">
+    <p class="code">404</p>
+    <h1>Cette page n'existe pas.</h1>
+    <p>Le lien est peut-être incorrect ou la page a été déplacée. Retrouvez nos prestations de plomberie, chauffage et climatisation, ou prenez rendez-vous directement depuis l'accueil.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="/">↩ Retour à l'accueil</a>
+      <a class="btn btn-secondary" href="/#rdv">Prendre rendez-vous</a>
+    </div>
+    <div class="services">
+      <a href="/#services">Nos prestations</a>
+      <a href="/#zone">Zone d'intervention</a>
+      <a href="/#faq">FAQ</a>
+      <a href="/#contact">Contact</a>
+    </div>
+  </div>
+</body>
+</html>

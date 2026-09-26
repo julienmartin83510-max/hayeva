@@ -1,7 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  HAYEVA — sitemap.xml
+
+  Une seule URL réelle : le site est une page unique (SPA à ancres, voir
+  index.html), toutes les sections (#services, #tarifs, #zone, #rdv,
+  #pourquoi, #contact, #faq…) vivent sur la même ressource https://…/ et ne
+  sont donc jamais listées séparément ici — Google traite une URL avec
+  fragment (#…) comme identique à l'URL sans fragment, les y ajouter créerait
+  des doublons plutôt que des pages indexables distinctes.
+
+  URL provisoire : hayeva.netlify.app tant que hayeva.fr pointe vers une page
+  de parking OVH (voir robots.txt et le commentaire canonical d'index.html).
+  À remplacer ici EN MÊME TEMPS que le canonical/OG/JSON-LD une fois le
+  domaine définitif branché sur ce site.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://hayeva.netlify.app/</loc>
+    <lastmod>2026-09-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

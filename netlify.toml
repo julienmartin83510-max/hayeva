@@ -1,2 +1,36 @@
 [build]
   publish = "."
+
+# En-têtes globaux minimaux, sans risque pour Supabase/les CDN externes
+# (Leaflet, Google Fonts, Mapbox) déjà utilisés par le site : pas de
+# Content-Security-Policy ici, un CSP mal calibré casserait silencieusement
+# ces appels — à construire séparément, avec test complet, si souhaité un
+# jour. Aucun <iframe> sur le site (vérifié) : X-Frame-Options sans risque.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Images statiques (photos de prestations, logo, PWA) : cache modéré plutôt
+# qu'agressif — ces fichiers n'ont pas de nom "hashé" par un build, un
+# cache trop long (ex. 1 an "immutable") servirait une image périmée après
+# un remplacement de fichier sous le même nom. 1 jour + revalidation donne
+# déjà un vrai gain de performance sans ce risque.
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+# robots.txt/sitemap.xml : jamais mis en cache longtemps, doivent refléter
+# tout changement (ex. passage à hayeva.fr) sans délai de propagation CDN.
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
