@@ -130,6 +130,17 @@ Deno.serve(async (req: Request) => {
       ? fmtEuros(booking.service_price_cents || 0) + ' + déplacement à vérifier'
       : fmtEuros(booking.total_cents || 0);
 
+    // Deux annulations très différentes déclenchent ce même trigger (tout
+    // passage à CANCELLED) : un refus/annulation ADMIN d'une demande pas
+    // encore honorée (le texte "n'a pas pu être retenue" est adapté), et une
+    // annulation VOLONTAIRE du client depuis son Espace (cancel_own_booking,
+    // voir 0017_customer_reschedule_cancel.sql) — dans ce second cas, dire
+    // "n'a pas pu être retenue" est trompeur (le client a annulé lui-même un
+    // rendez-vous déjà confirmé) : booking.cancelled_by distingue les deux
+    // (colonne posée uniquement par cancel_own_booking(), présente dans
+    // to_jsonb(NEW) sans requête supplémentaire).
+    const isCustomerCancellation = emailType === 'cancelled' && booking.cancelled_by === 'customer';
+
     let subject: string;
     let introText: string;
     let badgeLabel: string;
@@ -139,6 +150,11 @@ Deno.serve(async (req: Request) => {
       introText = 'Bonne nouvelle, votre rendez-vous HAYEVA est <strong>confirmé</strong>.';
       badgeLabel = '✅ Confirmée';
       badgeTone = 'confirmed';
+    } else if (isCustomerCancellation) {
+      subject = 'Votre rendez-vous HAYEVA a bien été annulé';
+      introText = 'Votre rendez-vous HAYEVA a bien été <strong>annulé</strong>, comme demandé. Le créneau a été libéré. Vous pouvez prendre un nouveau rendez-vous depuis votre espace client dès que vous le souhaitez.';
+      badgeLabel = '✖ Annulé par vous';
+      badgeTone = 'cancelled';
     } else {
       subject = 'Votre demande de rendez-vous HAYEVA a été annulée';
       introText = 'Votre demande de rendez-vous n\'a malheureusement pas pu être retenue. N\'hésitez pas à nous contacter ou à effectuer une nouvelle demande pour un autre créneau.';

@@ -4973,11 +4973,18 @@ if ('serviceWorker' in navigator){
 </div>
 <div class="ec-cancel-overlay" id="ecCancelOverlay" hidden>
   <div class="ec-cancel-box" role="dialog" aria-modal="true" aria-labelledby="ecCancelTitle">
-    <p id="ecCancelTitle">Êtes-vous sûr de vouloir annuler ce rendez-vous ?</p>
+    <p id="ecCancelTitle" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.05rem; margin-bottom:10px;">Annuler ce rendez-vous ?</p>
+    <div class="ec-move-recap" id="ecCancelRecap"></div>
+    <p>Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action libérera le créneau.</p>
     <p class="ec-cancel-error" id="ecCancelError" hidden></p>
+    <!-- "Garder mon rendez-vous" en btn-primary (plein, prioritaire visuellement) et
+         "Confirmer l'annulation" en btn-secondary teinté rouge (contour, en retrait) :
+         inversion volontaire des poids visuels habituels pour qu'une action destructrice
+         ne soit jamais le choix le plus engageant à l'œil, et éviter une annulation
+         accidentelle — même exigence que la modale de suppression admin déjà existante. -->
     <div class="ec-cancel-actions">
-      <button type="button" class="btn-secondary" id="ecCancelKeepBtn">Garder mon rendez-vous</button>
-      <button type="button" class="btn-primary" id="ecCancelConfirmBtn" style="background:#8A2E2E;">Oui, annuler</button>
+      <button type="button" class="btn-primary" id="ecCancelKeepBtn">Garder mon rendez-vous</button>
+      <button type="button" class="btn-secondary" id="ecCancelConfirmBtn" style="color:#8A2E2E; border-color:#8A2E2E;">Confirmer l'annulation</button>
     </div>
   </div>
 </div>
@@ -15482,10 +15489,29 @@ if ('serviceWorker' in navigator){
   var ecCancelOverlayEl = document.getElementById('ecCancelOverlay');
   var ecCancelErrorEl = document.getElementById('ecCancelError');
   var ecCancelConfirmBtn = document.getElementById('ecCancelConfirmBtn');
+  var ecCancelRecapEl = document.getElementById('ecCancelRecap');
+  // Rappel de la réservation concernée dans la modale de confirmation (date,
+  // heure, prestation, adresse si connue) — même source (ecAppointmentsCache,
+  // déjà chargé par ecLoadAppointments) et même présentation que la modale
+  // "Déplacer mon rendez-vous", jamais une seconde requête réseau.
   function ecOpenCancelModal(bookingId){
     ecCancelBookingId = bookingId;
     if (ecCancelErrorEl){ ecCancelErrorEl.hidden = true; ecCancelErrorEl.textContent = ''; }
     if (ecCancelConfirmBtn) ecCancelConfirmBtn.disabled = false;
+    if (ecCancelRecapEl){
+      var b = ecAppointmentsCache.filter(function(x){ return x.id === bookingId; })[0];
+      if (b){
+        var svcName = (b.services && b.services.name) || 'Service';
+        var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
+        ecCancelRecapEl.innerHTML =
+          '<div class="ec-move-recap-row"><span class="lbl">Date</span><span>' + ecEscape(ecFmtDate(b.date)) + '</span></div>' +
+          '<div class="ec-move-recap-row"><span class="lbl">Heure</span><span>' + ecEscape(ecFmtTime(b.start_time)) + '</span></div>' +
+          '<div class="ec-move-recap-row"><span class="lbl">Prestation</span><span>' + ecEscape(svcName) + '</span></div>' +
+          (addr ? '<div class="ec-move-recap-row"><span class="lbl">Adresse</span><span>' + ecEscape(addr) + '</span></div>' : '');
+      } else {
+        ecCancelRecapEl.innerHTML = '';
+      }
+    }
     if (ecCancelOverlayEl) ecCancelOverlayEl.hidden = false;
   }
   function ecCloseCancelModal(){
@@ -15513,7 +15539,7 @@ if ('serviceWorker' in navigator){
           }
           ecCloseCancelModal();
           ecLoadAppointments();
-          ecShowApptSuccessMessage('Votre rendez-vous a bien été annulé.');
+          ecShowApptSuccessMessage('Votre rendez-vous a bien été annulé. Le créneau est de nouveau disponible.');
         })
         .catch(function(err){
           ecCancelConfirmBtn.disabled = false;
