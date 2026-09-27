@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus</title>
@@ -24,6 +26,45 @@
 <meta name="twitter:title" content="HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus">
 <meta name="twitter:description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
 <meta name="twitter:image" content="https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg">
+<!-- Données structurées Schema.org (JSON-LD) — uniquement des champs vérifiés
+     dans ce dépôt (téléphone/e-mail déjà publiés dans la section Contact,
+     zone déjà annoncée dans la meta description, prestations reprises mot
+     pour mot du texte visible). Volontairement ABSENTS : address (aucune
+     adresse commerciale publique — SIRET/adresse de siège encore marqués "à
+     compléter", voir Mentions légales), priceRange et
+     openingHoursSpecification (HAYEVA n'est pas encore opérationnelle, voir
+     bandeau "Entreprise en cours de création" — les ajouter laisserait
+     croire à une activité déjà lancée). sameAs omis : aucun profil officiel
+     (réseau social, fiche Google) trouvé dans ce dépôt à ce jour. URL
+     provisoire hayeva.netlify.app — à mettre à jour ici en même temps que le
+     canonical/OG ci-dessus une fois hayeva.fr pointé sur ce site (voir
+     rapport SEO). -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HomeAndConstructionBusiness",
+      "name": "HAYEVA",
+      "url": "https://hayeva.netlify.app/",
+      "logo": "https://hayeva.netlify.app/images/brand/hayeva-logo.png",
+      "image": "https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg",
+      "description": "Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.",
+      "telephone": "+33671262302",
+      "email": "julienmartin83510@gmail.com",
+      "areaServed": ["Fréjus", "Var", "Alpes-Maritimes"],
+      "serviceType": ["Dépannage plomberie", "Entretien et dépannage chauffage", "Entretien climatisation"],
+      "founder": { "@type": "Person", "name": "Julien Martin" }
+    },
+    {
+      "@type": "WebSite",
+      "name": "HAYEVA",
+      "url": "https://hayeva.netlify.app/",
+      "inLanguage": "fr-FR"
+    }
+  ]
+}
+</script>
 <link rel="icon" type="image/png" sizes="192x192" href="images/pwa/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="images/pwa/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3531,12 +3572,16 @@ if ('serviceWorker' in navigator){
   .admin-bk-decision-btn[disabled]{ opacity:0.55; cursor:not-allowed; transform:none; }
   .admin-bk-decision-accept{ background:var(--adm-green); color:#fff; }
   .admin-bk-decision-refuse{ background:var(--adm-red); color:#fff; }
-  .admin-bk-modal-propose-toggle{
+  .admin-bk-modal-propose-toggle, .admin-bk-cancel-confirmed-toggle{
     display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700;
     font-size:0.8rem; color:var(--adm-ocean); background:transparent; border:1.5px solid var(--adm-ocean);
     border-radius:999px; padding:8px 16px; cursor:pointer; margin-bottom:6px;
   }
   .admin-bk-modal-propose-toggle:hover{ background:var(--adm-ocean); color:#fff; }
+  /* Teinte rouge distincte (destructif) pour "Annuler ce rendez-vous", même
+     forme que le bouton bleu "Proposer un autre créneau" ci-dessus. */
+  .admin-bk-cancel-confirmed-toggle{ color:var(--adm-red); border-color:var(--adm-red); }
+  .admin-bk-cancel-confirmed-toggle:hover{ background:var(--adm-red); color:#fff; }
   .admin-bk-refuse-form{
     display:flex; flex-direction:column; gap:10px; background:var(--adm-sand); border-radius:12px;
     padding:14px; margin-top:10px; box-sizing:border-box;
@@ -3590,6 +3635,77 @@ if ('serviceWorker' in navigator){
   .admin-push-ios-note ol{ margin:8px 0 0; padding-left:20px; }
   .admin-push-ios-note li{ margin-bottom:4px; }
   .admin-push-unsupported-note{ margin-top:14px; font-size:0.86rem; color:var(--adm-ink-soft); }
+
+  /* ---------- HAYEVA Voice — Simulateur (Phase 1) ----------
+     Palette et cartes réutilisant les jetons --adm-* déjà en place partout
+     ailleurs dans l'admin (mêmes cartes/ombres que le tableau de bord),
+     jamais une charte graphique séparée pour cet écran. */
+  .voice-sim-layout{ display:grid; grid-template-columns:1fr; gap:20px; margin-top:6px; }
+  @media (min-width:900px){ .voice-sim-layout{ grid-template-columns:1.3fr 1fr; align-items:start; } }
+  .voice-sim-chat-card, .voice-sim-state-card{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 20px;
+    box-shadow:var(--adm-shadow-sm);
+  }
+  .voice-sim-chat-header{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .voice-sim-badge-test{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:0.03em; text-transform:uppercase;
+    color:var(--adm-coral-deep); background:var(--adm-coral-soft); border-radius:999px; padding:5px 12px;
+  }
+  .voice-sim-reset-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--adm-ocean);
+    background:transparent; border:1.5px solid var(--adm-ocean); border-radius:999px; padding:7px 14px; cursor:pointer;
+    transition:background .18s, color .18s;
+  }
+  .voice-sim-reset-btn:hover{ background:var(--adm-ocean); color:#fff; }
+  .voice-sim-messages{
+    display:flex; flex-direction:column; gap:10px; max-height:440px; overflow-y:auto; padding:4px 2px 8px; margin-bottom:12px;
+  }
+  .voice-sim-msg{ max-width:84%; padding:10px 13px; border-radius:14px; font-size:0.87rem; line-height:1.5; white-space:pre-wrap; }
+  .voice-sim-msg-label{ display:block; font-size:0.66rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; opacity:0.6; margin-bottom:3px; }
+  .voice-sim-msg-assistant{
+    align-self:flex-start; background:var(--adm-sand); color:var(--adm-ink); border-bottom-left-radius:4px;
+  }
+  .voice-sim-msg-user{
+    align-self:flex-end; background:var(--adm-ocean); color:#fff; border-bottom-right-radius:4px;
+  }
+  .voice-sim-msg-system{
+    align-self:center; background:transparent; color:var(--adm-ink-soft); font-size:0.78rem; font-style:italic; max-width:100%;
+  }
+  .voice-sim-form{ display:flex; gap:8px; }
+  .voice-sim-form input{
+    flex:1; padding:11px 14px; border-radius:10px; border:1px solid var(--adm-line); font-size:0.9rem;
+    background:var(--adm-offwhite); color:var(--adm-ink);
+  }
+  .voice-sim-form input:disabled{ opacity:0.6; }
+  .voice-sim-form button{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem; color:#fff; background:var(--adm-ocean);
+    border:none; border-radius:10px; padding:10px 18px; cursor:pointer; transition:background .18s;
+  }
+  .voice-sim-form button:hover:not(:disabled){ background:var(--adm-ocean-deep); }
+  .voice-sim-form button:disabled{ opacity:0.55; cursor:not-allowed; }
+  .voice-sim-error{ color:var(--adm-red); font-size:0.82rem; margin-top:10px; }
+  .voice-sim-states{ display:flex; flex-direction:column; gap:4px; margin-bottom:20px; }
+  .voice-sim-state-step{
+    display:flex; align-items:center; gap:9px; font-size:0.82rem; color:var(--adm-ink-soft); padding:6px 10px; border-radius:8px;
+    transition:background .2s, color .2s;
+  }
+  .voice-sim-state-dot{ width:8px; height:8px; border-radius:50%; background:var(--adm-line); flex:none; }
+  .voice-sim-state-step.is-done{ color:var(--adm-green); }
+  .voice-sim-state-step.is-done .voice-sim-state-dot{ background:var(--adm-green); }
+  .voice-sim-state-step.is-current{ background:var(--adm-ocean-soft); color:var(--adm-ocean-deep); font-weight:700; }
+  .voice-sim-state-step.is-current .voice-sim-state-dot{ background:var(--adm-ocean); }
+  .voice-sim-state-step.is-escape.is-current{ background:var(--adm-red-soft); color:var(--adm-red); }
+  .voice-sim-state-step.is-escape.is-current .voice-sim-state-dot{ background:var(--adm-red); }
+  .voice-sim-tools{ display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; }
+  .voice-sim-tool-call{
+    font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; font-size:0.74rem; line-height:1.5;
+    background:var(--adm-sand); border-radius:8px; padding:8px 10px; color:var(--adm-ink); word-break:break-word;
+  }
+  .voice-sim-tool-call.is-error{ background:var(--adm-red-soft); color:var(--adm-red); }
+  @media (max-width:480px){
+    .voice-sim-chat-card, .voice-sim-state-card{ padding:14px 16px; }
+    .voice-sim-messages{ max-height:320px; }
+  }
 
   /* ---------- Chiffrage / Devis (outil interne admin) ---------- */
   .qc-type-toggle{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
@@ -4948,11 +5064,18 @@ if ('serviceWorker' in navigator){
 </div>
 <div class="ec-cancel-overlay" id="ecCancelOverlay" hidden>
   <div class="ec-cancel-box" role="dialog" aria-modal="true" aria-labelledby="ecCancelTitle">
-    <p id="ecCancelTitle">Êtes-vous sûr de vouloir annuler ce rendez-vous ?</p>
+    <p id="ecCancelTitle" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.05rem; margin-bottom:10px;">Annuler ce rendez-vous ?</p>
+    <div class="ec-move-recap" id="ecCancelRecap"></div>
+    <p>Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action libérera le créneau.</p>
     <p class="ec-cancel-error" id="ecCancelError" hidden></p>
+    <!-- "Garder mon rendez-vous" en btn-primary (plein, prioritaire visuellement) et
+         "Confirmer l'annulation" en btn-secondary teinté rouge (contour, en retrait) :
+         inversion volontaire des poids visuels habituels pour qu'une action destructrice
+         ne soit jamais le choix le plus engageant à l'œil, et éviter une annulation
+         accidentelle — même exigence que la modale de suppression admin déjà existante. -->
     <div class="ec-cancel-actions">
-      <button type="button" class="btn-secondary" id="ecCancelKeepBtn">Garder mon rendez-vous</button>
-      <button type="button" class="btn-primary" id="ecCancelConfirmBtn" style="background:#8A2E2E;">Oui, annuler</button>
+      <button type="button" class="btn-primary" id="ecCancelKeepBtn">Garder mon rendez-vous</button>
+      <button type="button" class="btn-secondary" id="ecCancelConfirmBtn" style="color:#8A2E2E; border-color:#8A2E2E;">Confirmer l'annulation</button>
     </div>
   </div>
 </div>
@@ -5219,6 +5342,7 @@ if ('serviceWorker' in navigator){
           srcset="images/climatisation/technicien-nettoyage-filtres-terrasse-sm.jpg 480w, images/climatisation/technicien-nettoyage-filtres-terrasse-md.jpg 900w, images/climatisation/technicien-nettoyage-filtres-terrasse-lg.jpg 1600w"
           sizes="(min-width:1024px) 1100px, 100vw"
           alt="Technicien HAYEVA nettoyant les filtres d'une climatisation sur la terrasse d'un client, unité intérieure démontée au sol"
+          width="900" height="600"
           loading="lazy">
         <span class="photo-frame-tag">Intervention réelle HAYEVA</span>
       </figure>
@@ -5229,6 +5353,7 @@ if ('serviceWorker' in navigator){
                srcset="images/climatisation/unite-exterieure-climatisation-apres-sm.jpg 480w, images/climatisation/unite-exterieure-climatisation-apres-md.jpg 900w, images/climatisation/unite-exterieure-climatisation-apres-lg.jpg 1600w"
                sizes="(min-width:760px) 640px, 90vw"
                alt="Unité extérieure de climatisation après entretien : propre, sans poussière ni feuilles"
+               width="900" height="675"
                loading="lazy">
         </div>
         <div class="ba-slider-before">
@@ -5236,6 +5361,7 @@ if ('serviceWorker' in navigator){
                srcset="images/climatisation/unite-exterieure-climatisation-avant-sm.jpg 480w, images/climatisation/unite-exterieure-climatisation-avant-md.jpg 900w, images/climatisation/unite-exterieure-climatisation-avant-lg.jpg 1600w"
                sizes="(min-width:760px) 640px, 90vw"
                alt="La même unité extérieure avant l'entretien : encrassée par les feuilles, la poussière et les toiles d'araignée"
+               width="900" height="675"
                loading="lazy">
         </div>
         <div class="ba-slider-line"></div>
@@ -5253,6 +5379,7 @@ if ('serviceWorker' in navigator){
                  srcset="images/climatisation/technicien-entretien-climatisation-sm.jpg 480w, images/climatisation/technicien-entretien-climatisation-md.jpg 900w"
                  sizes="(min-width:860px) 520px, 92vw"
                  alt="Technicien HAYEVA en train de nettoyer l'échangeur d'une unité intérieure de climatisation très encrassée"
+                 width="675" height="900"
                  loading="lazy">
           </div>
         </div>
@@ -5265,15 +5392,15 @@ if ('serviceWorker' in navigator){
 
       <div class="univers-mosaic">
         <figure class="reveal-on-scroll">
-          <div class="photo-frame"><img src="images/climatisation/climatisation-filtres-encrasses-md.jpg" srcset="images/climatisation/climatisation-filtres-encrasses-sm.jpg 480w, images/climatisation/climatisation-filtres-encrasses-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Filtres de climatisation encrassés avant nettoyage" loading="lazy"></div>
+          <div class="photo-frame"><img src="images/climatisation/climatisation-filtres-encrasses-md.jpg" srcset="images/climatisation/climatisation-filtres-encrasses-sm.jpg 480w, images/climatisation/climatisation-filtres-encrasses-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Filtres de climatisation encrassés avant nettoyage" loading="lazy" width="900" height="675"></div>
           <figcaption>Filtres encrassés</figcaption>
         </figure>
         <figure class="reveal-on-scroll">
-          <div class="photo-frame"><img src="images/climatisation/nettoyage-filtres-climatisation-md.jpg" srcset="images/climatisation/nettoyage-filtres-climatisation-sm.jpg 480w, images/climatisation/nettoyage-filtres-climatisation-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Filtres de climatisation en cours de nettoyage à l'eau" loading="lazy"></div>
+          <div class="photo-frame"><img src="images/climatisation/nettoyage-filtres-climatisation-md.jpg" srcset="images/climatisation/nettoyage-filtres-climatisation-sm.jpg 480w, images/climatisation/nettoyage-filtres-climatisation-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Filtres de climatisation en cours de nettoyage à l'eau" loading="lazy" width="675" height="900"></div>
           <figcaption>Nettoyage en cours</figcaption>
         </figure>
         <figure class="reveal-on-scroll">
-          <div class="photo-frame"><img src="images/climatisation/protection-echangeur-nettoyage-md.jpg" srcset="images/climatisation/protection-echangeur-nettoyage-sm.jpg 480w, images/climatisation/protection-echangeur-nettoyage-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Échangeur protégé par une housse pendant le nettoyage professionnel" loading="lazy"></div>
+          <div class="photo-frame"><img src="images/climatisation/protection-echangeur-nettoyage-md.jpg" srcset="images/climatisation/protection-echangeur-nettoyage-sm.jpg 480w, images/climatisation/protection-echangeur-nettoyage-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Échangeur protégé par une housse pendant le nettoyage professionnel" loading="lazy" width="900" height="675"></div>
           <figcaption>Échangeur protégé</figcaption>
         </figure>
       </div>
@@ -5295,6 +5422,7 @@ if ('serviceWorker' in navigator){
                  srcset="images/chauffage/entretien-chaudiere-ouverte-sm.jpg 480w, images/chauffage/entretien-chaudiere-ouverte-md.jpg 900w, images/chauffage/entretien-chaudiere-ouverte-lg.jpg 1600w"
                  sizes="(min-width:860px) 520px, 92vw"
                  alt="Chaudière ouverte lors d'une intervention HAYEVA, brûleur et échangeur visibles"
+                 width="675" height="900"
                  loading="lazy">
           </div>
         </div>
@@ -5318,15 +5446,15 @@ if ('serviceWorker' in navigator){
 
       <div class="univers-mosaic">
         <figure class="reveal-on-scroll">
-          <div class="photo-frame"><img src="images/plomberie/installation-evier-inox-md.jpg" srcset="images/plomberie/installation-evier-inox-sm.jpg 480w, images/plomberie/installation-evier-inox-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Évier double bac inox neuf installé par HAYEVA" loading="lazy"></div>
+          <div class="photo-frame"><img src="images/plomberie/installation-evier-inox-md.jpg" srcset="images/plomberie/installation-evier-inox-sm.jpg 480w, images/plomberie/installation-evier-inox-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Évier double bac inox neuf installé par HAYEVA" loading="lazy" width="675" height="900"></div>
           <figcaption>Installation évier</figcaption>
         </figure>
         <figure class="reveal-on-scroll">
-          <div class="photo-frame"><img src="images/sanitaire/cabine-douche-vitree-md.jpg" srcset="images/sanitaire/cabine-douche-vitree-sm.jpg 480w, images/sanitaire/cabine-douche-vitree-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Cabine de douche vitrée installée par HAYEVA" loading="lazy"></div>
+          <div class="photo-frame"><img src="images/sanitaire/cabine-douche-vitree-md.jpg" srcset="images/sanitaire/cabine-douche-vitree-sm.jpg 480w, images/sanitaire/cabine-douche-vitree-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Cabine de douche vitrée installée par HAYEVA" loading="lazy" width="675" height="900"></div>
           <figcaption>Cabine de douche</figcaption>
         </figure>
         <figure class="reveal-on-scroll">
-          <div class="photo-frame"><img src="images/sanitaire/installation-baignoire-md.jpg" srcset="images/sanitaire/installation-baignoire-sm.jpg 480w, images/sanitaire/installation-baignoire-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Baignoire neuve installée par HAYEVA" loading="lazy"></div>
+          <div class="photo-frame"><img src="images/sanitaire/installation-baignoire-md.jpg" srcset="images/sanitaire/installation-baignoire-sm.jpg 480w, images/sanitaire/installation-baignoire-md.jpg 900w" sizes="(min-width:760px) 33vw, 45vw" alt="Baignoire neuve installée par HAYEVA" loading="lazy" width="900" height="675"></div>
           <figcaption>Installation baignoire</figcaption>
         </figure>
       </div>
@@ -5338,6 +5466,7 @@ if ('serviceWorker' in navigator){
                  srcset="images/filtration/systeme-filtration-eau-cartouches-sm.jpg 480w, images/filtration/systeme-filtration-eau-cartouches-md.jpg 900w"
                  sizes="(min-width:860px) 520px, 92vw"
                  alt="Système de filtration d'eau à deux cartouches installé par HAYEVA"
+                 width="900" height="675"
                  loading="lazy">
           </div>
         </div>
@@ -6779,6 +6908,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="catalog" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Catalogue</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="voice" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">HAYEVA Voice</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Paramètres</span>
                 </button>
@@ -7083,6 +7215,47 @@ if ('serviceWorker' in navigator){
                   </select>
                 </div>
                 <div id="catalogProductsList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <!-- ============================================================
+                   HAYEVA VOICE — Phase 1 : simulateur texte du futur assistant
+                   téléphonique. Aucun appel réel, aucun fournisseur télécom/
+                   STT/TTS branché (voir supabase/functions/_shared/voice/
+                   providers.ts) — uniquement le moteur conversationnel + les
+                   outils Supabase, testables ici comme un "faux appel" tapé
+                   au clavier. Toute réservation créée ici va dans
+                   voice_test_bookings (table séparée de bookings), jamais
+                   dans la production — voir 0035_voice_assistant_core.sql.
+                   ============================================================ -->
+              <section class="adm-page" id="admPageVoice" data-adm-page="voice" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">HAYEVA Voice — Simulateur</h2>
+                  <p class="adm-page-sub">Testez le moteur de l'assistant téléphonique HAYEVA en tapant comme si vous étiez le client — aucun appel réel, aucun rendez-vous de production créé.</p>
+                </div>
+                <div class="voice-sim-layout">
+                  <div class="voice-sim-chat-card">
+                    <div class="voice-sim-chat-header">
+                      <span class="voice-sim-badge-test">Mode simulation — aucune donnée de production modifiée</span>
+                      <button type="button" class="voice-sim-reset-btn" id="voiceSimResetBtn">↺ Nouvelle simulation</button>
+                    </div>
+                    <div class="voice-sim-messages" id="voiceSimMessages"></div>
+                    <p class="ec-loading" id="voiceSimTyping" hidden>L'assistant réfléchit…</p>
+                    <form class="voice-sim-form" id="voiceSimForm">
+                      <input type="text" id="voiceSimInput" placeholder="Tapez ce que dirait le client…" autocomplete="off" maxlength="600" disabled>
+                      <button type="submit" id="voiceSimSend" disabled>Envoyer</button>
+                    </form>
+                    <p class="voice-sim-error" id="voiceSimError" hidden></p>
+                  </div>
+                  <div class="voice-sim-state-card">
+                    <h3 class="adm-subhead" style="margin-top:0;">État de l'appel</h3>
+                    <div class="voice-sim-states" id="voiceSimStates"></div>
+                    <h3 class="adm-subhead">Actions déclenchées par l'IA</h3>
+                    <div class="voice-sim-tools" id="voiceSimTools">
+                      <p class="ec-row-meta">Aucune action pour le moment.</p>
+                    </div>
+                  </div>
+                </div>
               </section>
 
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
@@ -11709,6 +11882,17 @@ if ('serviceWorker' in navigator){
           '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">Refuser</button>' +
           '<button type="button" class="admin-bk-action-btn admin-bk-propose-btn" data-booking-id="' + b.id + '">Proposer un autre créneau</button>'
           : '') +
+        // "Annuler ce rendez-vous" (CONFIRMED) : action admin dédiée, distincte
+        // du menu déroulant Statut ci-dessous. Passe par admRefuseBooking (déjà
+        // utilisée pour "Refuser la demande" sur une demande PENDING) plutôt que
+        // par une simple sélection "Annulé" dans le menu : enregistre
+        // cancelled_by='admin' + cancelled_at, condition déjà affichée partout
+        // ailleurs dans l'admin ("Annulé par le client" sinon rien) — sans ce
+        // passage, une réservation confirmée annulée via le seul menu déroulant
+        // resterait sans auteur tracé.
+        (b.status === 'CONFIRMED' ?
+          '<button type="button" class="admin-bk-action-btn admin-bk-cancel-confirmed-btn" data-booking-id="' + b.id + '">Annuler ce rendez-vous</button>'
+          : '') +
         '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
         (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">Ajouter à Apple Calendar</button>' : '') +
         (b.status === 'PENDING' ?
@@ -11930,7 +12114,21 @@ if ('serviceWorker' in navigator){
       var refuseBtn = e.target.closest('.admin-bk-refuse-btn');
       if (refuseBtn){
         refuseBtn.disabled = true;
-        admUpdateBookingStatus(refuseBtn.getAttribute('data-booking-id'), 'CANCELLED');
+        // admRefuseBooking (pas admUpdateBookingStatus) : trace cancelled_by='admin'
+        // (voir commentaire sur admin-bk-cancel-confirmed-btn ci-dessous — même
+        // logique, corrige au passage ce bouton qui ne le faisait pas encore).
+        admRefuseBooking(refuseBtn.getAttribute('data-booking-id'), '', function(err){
+          if (err){ refuseBtn.disabled = false; window.alert('Impossible de refuser cette demande.'); }
+        });
+        return;
+      }
+      var cancelConfirmedBtn = e.target.closest('.admin-bk-cancel-confirmed-btn');
+      if (cancelConfirmedBtn){
+        if (!window.confirm('Annuler ce rendez-vous confirmé ? Le client sera automatiquement prévenu par e-mail.')) return;
+        cancelConfirmedBtn.disabled = true;
+        admRefuseBooking(cancelConfirmedBtn.getAttribute('data-booking-id'), '', function(err){
+          if (err){ cancelConfirmedBtn.disabled = false; window.alert('Impossible d\'annuler ce rendez-vous.'); }
+        });
         return;
       }
       var proposeBtn = e.target.closest('.admin-bk-propose-btn');
@@ -12291,11 +12489,30 @@ if ('serviceWorker' in navigator){
           '</div>' +
         '</div>';
     } else {
+      // "Annuler ce rendez-vous" (CONFIRMED) : même formulaire de motif
+      // (.admin-bk-refuse-form/.admin-bk-refuse-reason/.admin-bk-refuse-confirm)
+      // que "Refuser la demande" ci-dessus — les gestionnaires de clic déjà
+      // câblés (admin-bk-refuse-confirm/-cancel, voir plus bas) le repèrent par
+      // classe et fonctionnent donc sans rien dupliquer. Le menu déroulant
+      // Statut reste inchangé juste en dessous pour les autres transitions
+      // (ex. marquer Terminé).
       actionsHtml =
         '<div class="admin-bk-modal-status-row">' +
           '<label for="adminBkModalStatusSelect">Statut</label>' +
           '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
-        '</div>';
+        '</div>' +
+        (b.status === 'CONFIRMED' ?
+          '<button type="button" class="admin-bk-cancel-confirmed-toggle" data-booking-id="' + b.id + '">Annuler ce rendez-vous</button>' +
+          '<div class="admin-bk-refuse-form" data-booking-id="' + b.id + '" hidden>' +
+            '<label>Motif de l\'annulation (facultatif, usage interne — jamais transmis au client)' +
+              '<textarea class="admin-bk-refuse-reason" placeholder="Ex. imprévu technicien, indisponibilité…"></textarea>' +
+            '</label>' +
+            '<div class="admin-bk-propose-form-row">' +
+              '<button type="button" class="admin-bk-refuse-confirm" data-booking-id="' + b.id + '">Confirmer l\'annulation</button>' +
+              '<button type="button" class="admin-bk-refuse-cancel">Annuler</button>' +
+            '</div>' +
+          '</div>'
+          : '');
     }
 
     var quoteCreateHtml = (b.customer_user_id || b.professional_account_id)
@@ -12455,6 +12672,16 @@ if ('serviceWorker' in navigator){
       if (proposeToggleBtn){
         var pform = adminBkModalOverlayEl.querySelector('.admin-bk-propose-form');
         if (pform) pform.hidden = !pform.hidden;
+        return;
+      }
+      // "Annuler ce rendez-vous" (CONFIRMED) : révèle le même formulaire de
+      // motif que "Refuser la demande" (.admin-bk-refuse-form) — sa confirmation
+      // est déjà gérée par les gestionnaires admin-bk-refuse-confirm/-cancel
+      // ci-dessus, communs aux deux cas.
+      var cancelConfirmedToggleBtn = e.target.closest('.admin-bk-cancel-confirmed-toggle');
+      if (cancelConfirmedToggleBtn){
+        var rform = adminBkModalOverlayEl.querySelector('.admin-bk-refuse-form');
+        if (rform) rform.hidden = !rform.hidden;
         return;
       }
       var proposeCancelBtn = e.target.closest('.admin-bk-propose-cancel');
@@ -12933,6 +13160,7 @@ if ('serviceWorker' in navigator){
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
+    if (key === 'voice' && typeof voiceSimInit === 'function') voiceSimInit();
   }
 
   // ============================================================
@@ -14680,6 +14908,163 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // ============================================================
+  // HAYEVA Voice — Simulateur (Phase 1, admin uniquement)
+  // ============================================================
+  // Ne parle qu'à l'Edge Function voice-assistant-simulate (jamais
+  // OpenRouter/Supabase directement, même principe que l'Assistant IA
+  // client) : le jeton de session admin en cours est revérifié côté serveur
+  // avant toute action, jamais une confiance dans le frontend. Aucune clé
+  // ni secret ne transitent jamais par ce module — les réponses de la
+  // fonction ne contiennent que du texte de conversation et des données
+  // métier (créneaux, référence de test).
+  var VOICE_STATE_ORDER = [
+    ['greeting', 'Accueil'], ['identify_need', 'Identifier le besoin'],
+    ['collect_information', 'Collecte des informations'], ['check_availability', 'Vérification des disponibilités'],
+    ['propose_slots', 'Proposition de créneaux'], ['confirmation', 'Confirmation'],
+    ['create_booking', 'Création du rendez-vous'], ['completed', 'Terminé']
+  ];
+  var VOICE_ESCAPE_STATES = { human_transfer: 'Transfert humain', callback_required: 'Rappel nécessaire', failed: 'Échec', cancelled: 'Annulé' };
+  var voiceSimSessionId = null;
+  var voiceSimInFlight = false;
+  var voiceSimInitialized = false;
+
+  function voiceSimAddMessage(role, text){
+    var wrap = document.getElementById('voiceSimMessages');
+    if (!wrap) return;
+    var div = document.createElement('div');
+    div.className = 'voice-sim-msg voice-sim-msg-' + role;
+    var label = document.createElement('span');
+    label.className = 'voice-sim-msg-label';
+    label.textContent = role === 'user' ? 'Client simulé' : (role === 'assistant' ? 'Assistant HAYEVA' : 'Système');
+    div.appendChild(label);
+    div.appendChild(document.createTextNode(text));
+    wrap.appendChild(div);
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function voiceSimRenderStates(currentState){
+    var wrap = document.getElementById('voiceSimStates');
+    if (!wrap) return;
+    var reachedIdx = -1;
+    VOICE_STATE_ORDER.forEach(function(pair, i){ if (pair[0] === currentState) reachedIdx = i; });
+    var html = '';
+    VOICE_STATE_ORDER.forEach(function(pair, i){
+      var cls = 'voice-sim-state-step';
+      if (pair[0] === currentState) cls += ' is-current';
+      else if (reachedIdx >= 0 && i < reachedIdx) cls += ' is-done';
+      html += '<div class="' + cls + '"><span class="voice-sim-state-dot"></span>' + admEscape(pair[1]) + '</div>';
+    });
+    Object.keys(VOICE_ESCAPE_STATES).forEach(function(key){
+      var cls = 'voice-sim-state-step is-escape' + (currentState === key ? ' is-current' : '');
+      html += '<div class="' + cls + '"><span class="voice-sim-state-dot"></span>' + admEscape(VOICE_ESCAPE_STATES[key]) + '</div>';
+    });
+    wrap.innerHTML = html;
+  }
+
+  function voiceSimAddToolEvents(events){
+    var wrap = document.getElementById('voiceSimTools');
+    if (!wrap || !events || !events.length) return;
+    var placeholder = wrap.querySelector('.ec-row-meta');
+    if (placeholder) placeholder.remove();
+    events.forEach(function(ev){
+      if (ev.type === 'tool_call'){
+        var div = document.createElement('div');
+        div.className = 'voice-sim-tool-call';
+        div.textContent = ev.tool_name + '(' + JSON.stringify(ev.tool_args || {}) + ')';
+        wrap.appendChild(div);
+      } else if (ev.type === 'tool_result'){
+        var isErr = ev.tool_result && ev.tool_result.error;
+        var div2 = document.createElement('div');
+        div2.className = 'voice-sim-tool-call' + (isErr ? ' is-error' : '');
+        div2.textContent = '→ ' + JSON.stringify(ev.tool_result || {});
+        wrap.appendChild(div2);
+      }
+    });
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function voiceSimSetBusy(busy){
+    voiceSimInFlight = busy;
+    var input = document.getElementById('voiceSimInput');
+    var sendBtn = document.getElementById('voiceSimSend');
+    var typing = document.getElementById('voiceSimTyping');
+    if (input) input.disabled = busy;
+    if (sendBtn) sendBtn.disabled = busy;
+    if (typing) typing.hidden = !busy;
+  }
+
+  function voiceSimShowError(msg){
+    var el = document.getElementById('voiceSimError');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+
+  function voiceSimStart(){
+    var messages = document.getElementById('voiceSimMessages');
+    var tools = document.getElementById('voiceSimTools');
+    if (messages) messages.innerHTML = '';
+    if (tools) tools.innerHTML = '<p class="ec-row-meta">Aucune action pour le moment.</p>';
+    voiceSimShowError('');
+    voiceSimSessionId = null;
+    voiceSimRenderStates('greeting');
+    voiceSimSetBusy(true);
+    sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: null } }).then(function(res){
+      voiceSimSetBusy(false);
+      var data = res.data;
+      if (res.error || !data || data.status === 'unavailable'){
+        voiceSimShowError('Le simulateur est momentanément indisponible.');
+        return;
+      }
+      voiceSimSessionId = data.session_id;
+      voiceSimAddMessage('assistant', data.reply);
+      voiceSimRenderStates(data.call_state);
+      var input = document.getElementById('voiceSimInput');
+      var sendBtn = document.getElementById('voiceSimSend');
+      if (input){ input.disabled = false; input.focus(); }
+      if (sendBtn) sendBtn.disabled = false;
+    }).catch(function(){
+      voiceSimSetBusy(false);
+      voiceSimShowError('Erreur de connexion au simulateur.');
+    });
+  }
+
+  function voiceSimInit(){
+    if (voiceSimInitialized) return;
+    voiceSimInitialized = true;
+    var form = document.getElementById('voiceSimForm');
+    var resetBtn = document.getElementById('voiceSimResetBtn');
+    if (form){
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        var input = document.getElementById('voiceSimInput');
+        var text = input.value.trim();
+        if (!text || voiceSimInFlight || !voiceSimSessionId) return;
+        voiceSimAddMessage('user', text);
+        input.value = '';
+        voiceSimShowError('');
+        voiceSimSetBusy(true);
+        sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: voiceSimSessionId, message: text } }).then(function(res){
+          voiceSimSetBusy(false);
+          var data = res.data;
+          if (res.error || !data){ voiceSimShowError('Erreur de connexion au simulateur.'); return; }
+          if (data.status === 'session_ended'){ voiceSimShowError('Cette simulation est terminée — lancez-en une nouvelle.'); return; }
+          if (data.status === 'session_cap_reached'){ voiceSimShowError('Limite de messages atteinte pour cette simulation — lancez-en une nouvelle.'); return; }
+          if (data.status !== 'ok'){ voiceSimShowError('Le simulateur est momentanément indisponible.'); return; }
+          voiceSimAddToolEvents(data.events);
+          voiceSimAddMessage('assistant', data.reply);
+          voiceSimRenderStates(data.call_state);
+        }).catch(function(){
+          voiceSimSetBusy(false);
+          voiceSimShowError('Erreur de connexion au simulateur.');
+        });
+      });
+    }
+    if (resetBtn) resetBtn.addEventListener('click', voiceSimStart);
+    voiceSimStart();
+  }
+
   // ---------- Consignes de préparation avant intervention (admin) ----------
   // Voir 0025_prep_instructions.sql : une ligne par catégorie, texte 100%
   // configurable ici, jamais généré par l'IA. "is_default" = repli
@@ -15451,10 +15836,29 @@ if ('serviceWorker' in navigator){
   var ecCancelOverlayEl = document.getElementById('ecCancelOverlay');
   var ecCancelErrorEl = document.getElementById('ecCancelError');
   var ecCancelConfirmBtn = document.getElementById('ecCancelConfirmBtn');
+  var ecCancelRecapEl = document.getElementById('ecCancelRecap');
+  // Rappel de la réservation concernée dans la modale de confirmation (date,
+  // heure, prestation, adresse si connue) — même source (ecAppointmentsCache,
+  // déjà chargé par ecLoadAppointments) et même présentation que la modale
+  // "Déplacer mon rendez-vous", jamais une seconde requête réseau.
   function ecOpenCancelModal(bookingId){
     ecCancelBookingId = bookingId;
     if (ecCancelErrorEl){ ecCancelErrorEl.hidden = true; ecCancelErrorEl.textContent = ''; }
     if (ecCancelConfirmBtn) ecCancelConfirmBtn.disabled = false;
+    if (ecCancelRecapEl){
+      var b = ecAppointmentsCache.filter(function(x){ return x.id === bookingId; })[0];
+      if (b){
+        var svcName = (b.services && b.services.name) || 'Service';
+        var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
+        ecCancelRecapEl.innerHTML =
+          '<div class="ec-move-recap-row"><span class="lbl">Date</span><span>' + ecEscape(ecFmtDate(b.date)) + '</span></div>' +
+          '<div class="ec-move-recap-row"><span class="lbl">Heure</span><span>' + ecEscape(ecFmtTime(b.start_time)) + '</span></div>' +
+          '<div class="ec-move-recap-row"><span class="lbl">Prestation</span><span>' + ecEscape(svcName) + '</span></div>' +
+          (addr ? '<div class="ec-move-recap-row"><span class="lbl">Adresse</span><span>' + ecEscape(addr) + '</span></div>' : '');
+      } else {
+        ecCancelRecapEl.innerHTML = '';
+      }
+    }
     if (ecCancelOverlayEl) ecCancelOverlayEl.hidden = false;
   }
   function ecCloseCancelModal(){
@@ -15482,7 +15886,7 @@ if ('serviceWorker' in navigator){
           }
           ecCloseCancelModal();
           ecLoadAppointments();
-          ecShowApptSuccessMessage('Votre rendez-vous a bien été annulé.');
+          ecShowApptSuccessMessage('Votre rendez-vous a bien été annulé. Le créneau est de nouveau disponible.');
         })
         .catch(function(err){
           ecCancelConfirmBtn.disabled = false;

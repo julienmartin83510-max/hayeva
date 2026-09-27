@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /sudmaintenance.html
 
 Sitemap: https://hayeva.netlify.app/sitemap.xml
