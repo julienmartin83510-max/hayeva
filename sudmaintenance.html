@@ -18362,16 +18362,16 @@ if ('serviceWorker' in navigator){
 
   // ============================================================
   // HAYEVA Voice — conversation vocale temps réel directement dans le
-  // navigateur (WebRTC + OpenAI Realtime API), voir supabase/functions/
-  // voice-realtime-session (jeton éphémère) et voice-realtime-tool
-  // (exécution serveur des outils métier). Le navigateur établit la
-  // connexion audio DIRECTEMENT avec OpenAI via ce jeton éphémère —
-  // OPENAI_API_KEY (le vrai secret) ne quitte jamais notre serveur.
-  // Détection de fin de parole, écoute continue et interruption de
-  // l'assistant (barge-in) sont gérées nativement par la Realtime API
-  // (turn_detection: server_vad côté serveur, voir voice-realtime-session) —
-  // le rôle de ce module est uniquement l'UI et le pont vers nos outils
-  // métier serveur, jamais une réimplémentation de cette logique temps réel.
+  // navigateur, SANS fournisseur payant supplémentaire : reconnaissance et
+  // synthèse vocale NATIVES du navigateur (Web Speech API — SpeechRecognition/
+  // SpeechSynthesis, gratuites, aucune clé), branchées sur le MÊME moteur
+  // métier que le simulateur admin (tools.ts/state-machine.ts) via l'Edge
+  // Function voice-public-chat, qui réutilise OPENROUTER_API_KEY déjà
+  // configurée et déjà utilisée en production par le chatbot texte du site —
+  // aucun nouveau compte, aucune nouvelle facturation. Écoute continue :
+  // la reconnaissance redémarre automatiquement après chaque tour, sans
+  // jamais devoir rappuyer sur le micro. Barge-in : toute nouvelle parole du
+  // client coupe immédiatement la synthèse vocale de l'assistant en cours.
   // ============================================================
   var modeTextBtn = document.getElementById('aiWidgetModeTextBtn');
   var modeVoiceBtn = document.getElementById('aiWidgetModeVoiceBtn');
@@ -18379,13 +18379,12 @@ if ('serviceWorker' in navigator){
   var voiceOrb = document.getElementById('aiWidgetVoiceOrb');
   var voiceStatusEl = document.getElementById('aiWidgetVoiceStatus');
   var voiceErrorEl = document.getElementById('aiWidgetVoiceError');
-  var voiceAudioEl = document.getElementById('aiWidgetVoiceAudio');
   var voiceStartBtn = document.getElementById('aiWidgetVoiceStartBtn');
   var voiceControls = document.getElementById('aiWidgetVoiceControls');
   var voiceMuteBtn = document.getElementById('aiWidgetVoiceMuteBtn');
   var voiceEndBtn = document.getElementById('aiWidgetVoiceEndBtn');
 
-  var voiceState = { pc: null, dc: null, localStream: null, sessionId: null, muted: false, assistantEl: null };
+  var voiceState = { sessionId: null, active: false, muted: false, recognition: null, frenchVoice: null, sending: false };
 
   function voiceSetStatus(text, orbClass){
     if (voiceStatusEl) voiceStatusEl.textContent = text;
@@ -18399,8 +18398,13 @@ if ('serviceWorker' in navigator){
     voiceErrorEl.textContent = msg || '';
     voiceErrorEl.hidden = !msg;
   }
-  function voiceSupported(){
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.RTCPeerConnection);
+  function voiceSttSupported(){
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }
+  function voicePickFrenchVoice(){
+    if (!('speechSynthesis' in window)) return;
+    var voices = window.speechSynthesis.getVoices();
+    voiceState.frenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
   }
 
   function setAiWidgetMode(mode){
@@ -18413,33 +18417,11 @@ if ('serviceWorker' in navigator){
   if (modeTextBtn) modeTextBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
   if (modeVoiceBtn) modeVoiceBtn.addEventListener('click', function(){ setAiWidgetMode('voice'); });
 
-  // Exécution SERVEUR d'un outil demandé par le modèle pendant la session
-  // temps réel — jamais le navigateur lui-même (voir voice-realtime-tool).
-  function voiceExecuteTool(name, toolArgs){
-    var sb = window.sudSupabase;
-    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
-    if (!sb || !sb.configured || !voiceState.sessionId || !clientSessionId) {
-      return Promise.resolve({ error: 'Session indisponible.' });
-    }
-    return sb.client.functions.invoke('voice-realtime-tool', {
-      body: { session_id: voiceState.sessionId, client_session_id: clientSessionId, tool_name: name, tool_args: toolArgs || {} }
-    }).then(function(res){
-      if (res.error || !res.data) return { error: 'Erreur technique.' };
-      return res.data.ok ? (res.data.data || {}) : { error: res.data.error || 'Erreur.' };
-    }).catch(function(){ return { error: 'Erreur technique.' }; });
-  }
-
-  function voiceSendEvent(obj){
-    if (voiceState.dc && voiceState.dc.readyState === 'open') voiceState.dc.send(JSON.stringify(obj));
-  }
-
   // guide_to_booking : jamais de création de RDV depuis ce canal — on amène
   // le client vers le VRAI tunnel de réservation déjà existant sur le site
-  // (window.sudBooking, exactement le même mécanisme que le bouton "Prendre
-  // rendez-vous" de l'assistant texte, voir bookingCtaButton ci-dessus).
+  // (window.sudBooking, même mécanisme que "Prendre rendez-vous" en mode texte).
   function voiceHandleGuideToBooking(result){
-    if (!result || result.error || !window.sudBooking) return;
-    addMessage('assistant', 'Je vous amène vers notre calendrier de réservation pour choisir votre créneau…');
+    if (!result || !window.sudBooking) return;
     var matchId = null;
     if (window.sudBooking.searchScored && result.service_name){
       var scored = window.sudBooking.searchScored(result.service_name) || [];
@@ -18453,48 +18435,109 @@ if ('serviceWorker' in navigator){
     }, 900);
   }
 
-  function voiceHandleDataChannelMessage(ev){
-    var msg;
-    try { msg = JSON.parse(ev.data); } catch(e){ return; }
-    if (msg.type === 'session.created' || msg.type === 'session.updated' || msg.type === 'input_audio_buffer.speech_started'){
-      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
-    } else if (msg.type === 'conversation.item.input_audio_transcription.completed'){
-      if (msg.transcript) addMessage('user', msg.transcript);
-    } else if (msg.type === 'response.created'){
-      voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
-    } else if (msg.type === 'response.audio_transcript.delta'){
-      if (typeof msg.delta === 'string'){
-        if (!voiceState.assistantEl) voiceState.assistantEl = addMessage('assistant', '');
-        voiceState.assistantEl.textContent += msg.delta;
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      }
+  function voiceSpeak(text, onDone){
+    if (!('speechSynthesis' in window) || !text){ if (onDone) onDone(); return; }
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    if (voiceState.frenchVoice) utter.voice = voiceState.frenchVoice;
+    utter.onstart = function(){
       voiceSetStatus('🔊 HAYEVA vous répond…', 'is-speaking');
-    } else if (msg.type === 'response.audio_transcript.done'){
-      voiceState.assistantEl = null;
-    } else if (msg.type === 'response.function_call_arguments.done'){
-      var toolArgs = {};
-      try { toolArgs = JSON.parse(msg.arguments || '{}'); } catch(e){}
-      var toolName = msg.name;
-      var callId = msg.call_id;
-      voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
-      voiceExecuteTool(toolName, toolArgs).then(function(result){
-        voiceSendEvent({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(result || {}) } });
-        voiceSendEvent({ type: 'response.create' });
-        if (toolName === 'guide_to_booking' && result && !result.error) voiceHandleGuideToBooking(result);
-      });
-    } else if (msg.type === 'response.done'){
-      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
-    } else if (msg.type === 'error'){
-      console.error('HAYEVA Voice realtime', msg);
+      if (voiceOrb) voiceOrb.classList.add('is-speaking');
+    };
+    // Le retour à l'écoute doit se produire quoi qu'il arrive à la
+    // synthèse (succès, erreur, ou speak() qui jette une exception
+    // synchrone) — sinon un échec TTS laisserait le micro éteint en
+    // silence, sans que le client comprenne pourquoi la conversation
+    // semble s'être arrêtée.
+    function resumeListening(){
+      if (voiceState.active){
+        voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+        voiceRecognitionRestart();
+      }
+      if (onDone) onDone();
     }
+    utter.onend = resumeListening;
+    utter.onerror = resumeListening;
+    try { window.speechSynthesis.speak(utter); }
+    catch(e){ resumeListening(); }
+  }
+
+  function voiceSendMessage(text){
+    if (voiceState.sending) return;
+    voiceState.sending = true;
+    voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
+    var sb = window.sudSupabase;
+    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    sb.client.functions.invoke('voice-public-chat', {
+      body: { session_id: voiceState.sessionId, client_session_id: clientSessionId, message: text }
+    }).then(function(res){
+      voiceState.sending = false;
+      var data = res.data;
+      if (res.error || !data || data.status !== 'ok'){
+        voiceShowError("L'assistant vocal est momentanément indisponible — utilisez le mode 💬 Écrire.");
+        voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+        return;
+      }
+      addMessage('assistant', data.reply);
+      if (data.guide_to_booking){
+        addMessage('assistant', 'Je vous amène vers notre calendrier de réservation…');
+      }
+      voiceSpeak(data.reply, function(){
+        if (data.guide_to_booking) voiceHandleGuideToBooking(data.guide_to_booking);
+      });
+    }).catch(function(){
+      voiceState.sending = false;
+      voiceShowError("Erreur de connexion — utilisez le mode 💬 Écrire.");
+      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+    });
+  }
+
+  function voiceInitRecognition(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    var rec = new Ctor();
+    rec.lang = 'fr-FR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = function(ev){
+      var final = '';
+      for (var i = ev.resultIndex; i < ev.results.length; i++){
+        if (ev.results[i].isFinal) final += ev.results[i][0].transcript;
+      }
+      // Barge-in : toute parole (même provisoire) coupe la synthèse en cours.
+      if ('speechSynthesis' in window && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+      if (final && final.trim()){
+        addMessage('user', final.trim());
+        voiceSendMessage(final.trim());
+      }
+    };
+    rec.onerror = function(ev){
+      if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+        voiceShowError("Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode 💬 Écrire.");
+        voiceStop();
+      }
+    };
+    rec.onend = function(){
+      // Redémarre automatiquement tant que la conversation est active — le
+      // client ne doit jamais avoir à rappuyer sur le micro entre deux tours.
+      if (voiceState.active && !(window.speechSynthesis && window.speechSynthesis.speaking)){
+        try { rec.start(); } catch(e){ /* déjà démarré */ }
+      }
+    };
+    return rec;
+  }
+  function voiceRecognitionRestart(){
+    if (!voiceState.recognition || !voiceState.active) return;
+    try { voiceState.recognition.start(); } catch(e){ /* déjà démarré */ }
   }
 
   function voiceStop(){
-    if (voiceState.dc){ try { voiceState.dc.close(); } catch(e){} voiceState.dc = null; }
-    if (voiceState.pc){ try { voiceState.pc.close(); } catch(e){} voiceState.pc = null; }
-    if (voiceState.localStream){ voiceState.localStream.getTracks().forEach(function(t){ t.stop(); }); voiceState.localStream = null; }
+    voiceState.active = false;
+    if (voiceState.recognition){ try { voiceState.recognition.stop(); } catch(e){} }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     voiceState.sessionId = null;
-    voiceState.assistantEl = null;
     voiceState.muted = false;
     if (voiceControls) voiceControls.hidden = true;
     if (voiceStartBtn) voiceStartBtn.hidden = false;
@@ -18504,8 +18547,8 @@ if ('serviceWorker' in navigator){
 
   function voiceStart(){
     voiceShowError('');
-    if (!voiceSupported()){
-      voiceShowError("Votre navigateur ne prend pas en charge la conversation vocale ici — utilisez le mode 💬 Écrire.");
+    if (!voiceSttSupported()){
+      voiceShowError("Votre navigateur ne prend pas en charge la conversation vocale ici (essayez Chrome) — utilisez le mode 💬 Écrire.");
       return;
     }
     var sb = window.sudSupabase;
@@ -18515,79 +18558,44 @@ if ('serviceWorker' in navigator){
     voiceSetStatus('Connexion…', 'is-connecting');
     voiceStartBtn.hidden = true;
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
-      voiceState.localStream = stream;
-      return sb.client.functions.invoke('voice-realtime-session', { body: { client_session_id: clientSessionId } }).then(function(sessRes){
-        var sessData = sessRes && sessRes.data;
-        if (!sessData || sessData.status !== 'ok'){
-          throw new Error(sessData && sessData.status === 'quota_reached' ? 'quota' : 'unavailable');
-        }
-        voiceState.sessionId = sessData.session_id;
-
-        var pc = new RTCPeerConnection();
-        voiceState.pc = pc;
-        pc.ontrack = function(ev){
-          if (voiceAudioEl){ voiceAudioEl.srcObject = ev.streams[0]; voiceAudioEl.play().catch(function(){}); }
-        };
-        // Coupure réseau en cours de conversation (Wi-Fi perdu, bascule
-        // 4G/5G, veille du téléphone...) : jamais une session muette qui
-        // semble encore active. On l'arrête proprement et on propose de
-        // relancer d'un seul geste (voiceStartBtn réapparaît via voiceStop),
-        // plutôt qu'une reconnexion automatique silencieuse qui pourrait
-        // reprendre au milieu d'une phrase sans que le client comprenne quoi.
-        pc.oniceconnectionstatechange = function(){
-          if (!voiceState.pc) return;
-          var st = pc.iceConnectionState;
-          if (st === 'disconnected' || st === 'failed' || st === 'closed'){
-            voiceShowError("La connexion vocale a été interrompue — appuyez à nouveau pour reprendre la conversation.");
-            voiceStop();
-          }
-        };
-        stream.getTracks().forEach(function(t){ pc.addTrack(t, stream); });
-
-        var dc = pc.createDataChannel('oai-events');
-        voiceState.dc = dc;
-        dc.addEventListener('message', voiceHandleDataChannelMessage);
-        dc.addEventListener('open', function(){
-          voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
-          if (voiceControls) voiceControls.hidden = false;
-        });
-
-        return pc.createOffer().then(function(offer){
-          return pc.setLocalDescription(offer).then(function(){
-            return fetch('https://api.openai.com/v1/realtime/calls?model=' + encodeURIComponent(sessData.model || 'gpt-realtime-mini'), {
-              method: 'POST',
-              headers: { 'Authorization': 'Bearer ' + sessData.client_secret, 'Content-Type': 'application/sdp' },
-              body: offer.sdp,
-            });
-          });
-        }).then(function(sdpRes){
-          if (!sdpRes.ok) throw new Error('sdp_exchange_failed');
-          return sdpRes.text();
-        }).then(function(answerSdp){
-          return pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-        });
-      });
-    }).catch(function(e){
-      var msg = "La conversation vocale n'a pas pu démarrer — utilisez le mode 💬 Écrire.";
-      if (e && e.name === 'NotAllowedError'){
-        msg = "Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode 💬 Écrire.";
-      } else if (e && e.message === 'quota'){
-        msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode 💬 Écrire.";
+    sb.client.functions.invoke('voice-public-chat', { body: { client_session_id: clientSessionId } }).then(function(res){
+      var data = res.data;
+      if (!data || data.status !== 'ok'){
+        var msg = "L'assistant vocal n'est pas disponible pour le moment — utilisez le mode 💬 Écrire.";
+        if (data && data.status === 'quota_reached') msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode 💬 Écrire.";
+        voiceShowError(msg);
+        voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
+        voiceStartBtn.hidden = false;
+        return;
       }
-      voiceShowError(msg);
-      voiceStop();
+      voiceState.sessionId = data.session_id;
+      voiceState.active = true;
+      addMessage('assistant', data.reply);
+      if (!voiceState.recognition) voiceState.recognition = voiceInitRecognition();
+      voiceSpeak(data.reply, function(){
+        if (voiceControls) voiceControls.hidden = false;
+      });
+    }).catch(function(){
+      voiceShowError("La conversation vocale n'a pas pu démarrer — utilisez le mode 💬 Écrire.");
+      voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
+      voiceStartBtn.hidden = false;
     });
   }
 
+  if ('speechSynthesis' in window){
+    voicePickFrenchVoice();
+    window.speechSynthesis.onvoiceschanged = voicePickFrenchVoice;
+  }
   if (voiceStartBtn) voiceStartBtn.addEventListener('click', voiceStart);
   if (voiceMuteBtn){
     voiceMuteBtn.addEventListener('click', function(){
-      if (!voiceState.localStream) return;
       voiceState.muted = !voiceState.muted;
-      voiceState.localStream.getAudioTracks().forEach(function(t){ t.enabled = !voiceState.muted; });
+      if (voiceState.recognition){
+        try { if (voiceState.muted) voiceState.recognition.stop(); else voiceState.recognition.start(); } catch(e){}
+      }
       voiceMuteBtn.textContent = voiceState.muted ? '🎙️ Réactiver le micro' : '🔇 Couper le micro';
       voiceMuteBtn.classList.toggle('is-muted', voiceState.muted);
+      voiceSetStatus(voiceState.muted ? 'Micro coupé.' : '🎙️ HAYEVA vous écoute…', voiceState.muted ? null : 'is-listening');
     });
   }
   if (voiceEndBtn){
