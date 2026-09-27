@@ -18529,6 +18529,20 @@ if ('serviceWorker' in navigator){
         pc.ontrack = function(ev){
           if (voiceAudioEl){ voiceAudioEl.srcObject = ev.streams[0]; voiceAudioEl.play().catch(function(){}); }
         };
+        // Coupure réseau en cours de conversation (Wi-Fi perdu, bascule
+        // 4G/5G, veille du téléphone...) : jamais une session muette qui
+        // semble encore active. On l'arrête proprement et on propose de
+        // relancer d'un seul geste (voiceStartBtn réapparaît via voiceStop),
+        // plutôt qu'une reconnexion automatique silencieuse qui pourrait
+        // reprendre au milieu d'une phrase sans que le client comprenne quoi.
+        pc.oniceconnectionstatechange = function(){
+          if (!voiceState.pc) return;
+          var st = pc.iceConnectionState;
+          if (st === 'disconnected' || st === 'failed' || st === 'closed'){
+            voiceShowError("La connexion vocale a été interrompue — appuyez à nouveau pour reprendre la conversation.");
+            voiceStop();
+          }
+        };
         stream.getTracks().forEach(function(t){ pc.addTrack(t, stream); });
 
         var dc = pc.createDataChannel('oai-events');
