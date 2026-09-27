@@ -479,9 +479,21 @@ if ('serviceWorker' in navigator){
   main{ transition: opacity .35s ease, transform .35s ease; }
   main.universe-shift{ opacity:.55; transform:translateY(6px); }
 
-  /* ---------- Halos d'ambiance latéraux (bords gauche/droit, selon l'univers) ---------- */
+  /* ---------- Halos d'ambiance latéraux (bords gauche/droit) ----------
+     Visible sur tout le site en permanence (pas seulement dans un univers
+     métier comme avant) : couleur neutre bleu/turquoise par défaut,
+     recolorée automatiquement par les mêmes jetons --edge-c1/--edge-c2 dès
+     qu'un univers (chauffage/plomberie/clim) devient actif.
+     Animation volontairement différente de l'ancienne version (qui faisait
+     défiler le halo verticalement, comme du texte qui remonte/descend) :
+     ici un battement doux (opacité + léger zoom), décalé entre la gauche et
+     la droite pour ne pas être parfaitement synchrone. */
   @property --edge-c1{ syntax:'<color>'; inherits:true; initial-value:transparent; }
   @property --edge-c2{ syntax:'<color>'; inherits:true; initial-value:transparent; }
+  :root{
+    --edge-c1: color-mix(in srgb, var(--sky-accent) 55%, transparent);
+    --edge-c2: color-mix(in srgb, var(--turquoise) 40%, transparent);
+  }
 
   .edge-glow{
     position:fixed;
@@ -489,30 +501,26 @@ if ('serviceWorker' in navigator){
     width:clamp(40px, 7vw, 100px);
     pointer-events:none;
     z-index:1;
-    opacity:0;
-    background-repeat:repeat-y;
-    background-size:100% 640px;
-    transition:opacity 1s ease, --edge-c1 1s ease, --edge-c2 1s ease;
+    opacity:1;
+    background-repeat:no-repeat;
+    transition:--edge-c1 1s ease, --edge-c2 1s ease;
+    transform-origin:center;
   }
   .edge-glow-left{
     left:0;
     background-image:
-      radial-gradient(ellipse 120px 240px at 20% 18%, var(--edge-c1) 0%, transparent 72%),
-      radial-gradient(ellipse 110px 260px at 65% 62%, var(--edge-c2) 0%, transparent 72%);
+      radial-gradient(ellipse 130px 260px at 15% 20%, var(--edge-c1) 0%, transparent 72%),
+      radial-gradient(ellipse 120px 280px at 20% 68%, var(--edge-c2) 0%, transparent 72%);
   }
   .edge-glow-right{
     right:0;
     background-image:
-      radial-gradient(ellipse 120px 250px at 80% 30%, var(--edge-c2) 0%, transparent 72%),
-      radial-gradient(ellipse 105px 230px at 35% 74%, var(--edge-c1) 0%, transparent 72%);
+      radial-gradient(ellipse 130px 270px at 85% 32%, var(--edge-c2) 0%, transparent 72%),
+      radial-gradient(ellipse 115px 250px at 80% 80%, var(--edge-c1) 0%, transparent 72%);
   }
-  :root[data-universe] .edge-glow{ opacity:1; }
 
-  /* Couleurs relevées nettement (opacité quasi doublée, teintes plus
-     contrastées vs le fond de chaque univers) : la version précédente,
-     proche en teinte du fond de sa propre page, était en pratique
-     invisible — l'animation tournait déjà correctement (voir plus bas)
-     mais ne se voyait pas. */
+  /* Teintes par univers : plus marquées/saturées que le halo neutre par
+     défaut, pour rester cohérentes avec la couleur de chaque univers. */
   :root[data-universe="chauffage"]{
     --edge-c1: rgba(203,61,40,0.55);
     --edge-c2: rgba(255,222,214,0.4);
@@ -527,20 +535,21 @@ if ('serviceWorker' in navigator){
   }
 
   @media (prefers-reduced-motion: no-preference){
-    :root[data-universe] .edge-glow{ animation-duration:22s; animation-timing-function:linear; animation-iteration-count:infinite; }
-    :root[data-universe] .edge-glow-right{ animation-duration:26s; animation-direction:reverse; }
-    :root[data-universe="chauffage"] .edge-glow{ animation-name: edge-rise; }
-    :root[data-universe="plomberie"] .edge-glow{ animation-name: edge-fall; }
-    :root[data-universe="clim"] .edge-glow{ animation-name: edge-drift; animation-duration:12s; animation-timing-function:ease-in-out; animation-direction:alternate; }
-    :root[data-universe="clim"] .edge-glow-right{ animation-duration:14s; }
+    .edge-glow{
+      animation-name: edge-pulse;
+      animation-duration:7s;
+      animation-timing-function:ease-in-out;
+      animation-iteration-count:infinite;
+    }
+    .edge-glow-right{ animation-delay:-3.5s; }
   }
-  @keyframes edge-rise{ from{ background-position-y:0; } to{ background-position-y:-640px; } }
-  @keyframes edge-fall{ from{ background-position-y:0; } to{ background-position-y:640px; } }
-  @keyframes edge-drift{ 0%,100%{ background-position-y:0; opacity:.85; } 50%{ background-position-y:24px; opacity:1; } }
+  @keyframes edge-pulse{
+    0%, 100%{ opacity:.55; transform:scale(1); }
+    50%{ opacity:1; transform:scale(1.18); }
+  }
 
   @media (max-width:760px){
-    .edge-glow{ width:clamp(24px, 5vw, 48px); }
-    :root[data-universe] .edge-glow{ opacity:.55; }
+    .edge-glow{ width:clamp(24px, 5vw, 48px); opacity:.7; }
   }
   @media (prefers-reduced-motion: reduce){
     .edge-glow{ animation:none !important; }
@@ -548,6 +557,13 @@ if ('serviceWorker' in navigator){
   }
 
   *{box-sizing:border-box;}
+  /* Empêche tout défilement horizontal sur ordinateur (demande explicite :
+     seul le défilement vertical est souhaité). Un élément décoratif isolé
+     (deco-blob, halo edge-glow...) peut dépasser légèrement la largeur de
+     l'écran sans que ce soit visible ni voulu ; ce filet de sécurité au
+     niveau html/body l'empêche de créer une barre de défilement horizontale,
+     sans changer l'apparence normale de la page. */
+  html, body{ overflow-x:hidden; max-width:100%; }
   a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
     outline:2px solid var(--sky-deep);
     outline-offset:2px;
