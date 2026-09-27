@@ -179,6 +179,15 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     description: "Donne la règle HAYEVA de frais de déplacement (rayon inclus gratuitement autour de Fréjus, tarif au km au-delà). Ne calcule PAS une distance précise pour une adresse donnée en Phase 1 — indique que le montant exact sera confirmé lors de la réservation.",
     parameters: { type: 'object', properties: {}, required: [] },
   },
+  {
+    name: 'guide_to_booking',
+    description: "Une fois le besoin qualifié (prestation identifiée) et suffisamment d'informations recueillies (idéalement nom, téléphone, adresse/ville, et date/créneau souhaité si connus), utilise cet outil pour amener le client vers le vrai calendrier de réservation HAYEVA du site — il choisira lui-même son créneau réel et confirmera sa réservation à cette étape, jamais toi. N'appelle JAMAIS create_booking : cet outil n'existe pas dans ce canal, seul guide_to_booking peut faire progresser une réservation.",
+    parameters: {
+      type: 'object',
+      properties: { service_slug: { type: 'string', description: 'Slug de la prestation identifiée (voir get_service_information)' } },
+      required: ['service_slug'],
+    },
+  },
 ];
 
 // ------------------------------------------------------------
@@ -488,6 +497,38 @@ async function toolGetTravelInformation(ctx: ToolContext): Promise<ToolResult> {
   };
 }
 
+// Utilisé par le canal "HAYEVA Voice navigateur" (assistant vocal
+// temps réel intégré au site, pas le simulateur admin) : jamais de
+// create_booking en production depuis ce canal — on renvoie seulement les
+// informations validées nécessaires pour que le FRONTEND amène le client
+// vers le vrai tunnel de réservation existant (window.sudBooking, déjà
+// utilisé par l'assistant texte) et l'y laisse choisir/confirmer lui-même
+// un créneau réel. N'invente jamais une info non recueillie : les champs
+// non renseignés restent null, jamais devinés.
+async function toolGuideToBooking(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+  const serviceSlug = typeof args.service_slug === 'string' ? args.service_slug.trim() : '';
+  if (!serviceSlug) return { ok: false, error: 'service_slug manquant.' };
+  const { data: service } = await ctx.supabase.from('services').select('slug, name, category, is_active').eq('slug', serviceSlug).maybeSingle();
+  if (!service || !service.is_active) return { ok: false, error: "Cette prestation n'existe pas ou n'est plus active." };
+  return {
+    ok: true,
+    data: {
+      service_slug: service.slug,
+      service_name: service.name,
+      service_category: service.category,
+      recap: {
+        customer_name: ctx.session.customer_name,
+        customer_phone: ctx.session.customer_phone,
+        customer_address: ctx.session.customer_address,
+        customer_city: ctx.session.customer_city,
+        desired_date: ctx.session.desired_date,
+        desired_slot_label: ctx.session.desired_slot_label,
+      },
+      note: 'Le client va être dirigé vers le vrai calendrier de réservation pour choisir et confirmer lui-même son créneau.',
+    },
+  };
+}
+
 const HANDLERS: Record<string, (ctx: ToolContext, args: Record<string, unknown>) => Promise<ToolResult>> = {
   set_call_state: toolSetCallState,
   get_service_information: toolGetServiceInformation,
@@ -501,7 +542,21 @@ const HANDLERS: Record<string, (ctx: ToolContext, args: Record<string, unknown>)
   record_customer_info: toolRecordCustomerInfo,
   get_service_price: toolGetServicePrice,
   get_travel_information: toolGetTravelInformation,
+  guide_to_booking: toolGuideToBooking,
 };
+
+// Sous-ensemble d'outils autorisés pour le canal "HAYEVA Voice navigateur"
+// (voir voice-realtime-tool/index.ts) : jamais create_booking/
+// reschedule_booking/cancel_booking/get_booking/get_customer — ces outils
+// resteraient valides pour le simulateur admin, mais aucune réservation
+// production réelle n'est jamais créée/modifiée/annulée directement par le
+// modèle depuis ce canal public, uniquement via guide_to_booking (qui
+// renvoie la main au vrai tunnel de réservation existant).
+export const REALTIME_ALLOWED_TOOLS = [
+  'set_call_state', 'get_service_information', 'get_available_slots',
+  'create_callback_request', 'record_customer_info', 'get_service_price',
+  'get_travel_information', 'guide_to_booking',
+];
 
 export async function executeTool(name: string, ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const handler = HANDLERS[name];

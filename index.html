@@ -2966,6 +2966,59 @@ if ('serviceWorker' in navigator){
   }
   .ai-widget-send:hover{ filter:brightness(1.08); }
   .ai-widget-send[disabled]{ opacity:0.5; cursor:not-allowed; }
+
+  /* ---------- Assistant Hayeva — mode vocal temps réel (WebRTC) ---------- */
+  .ai-widget-mode-tabs{ display:flex; gap:6px; padding:8px 12px 0; flex:0 0 auto; background:var(--white); }
+  .ai-widget-mode-btn{
+    flex:1 1 0; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--ink-soft);
+    background:var(--sand-deep); border:none; border-radius:999px; padding:7px 10px; cursor:pointer; transition:background .18s, color .18s;
+  }
+  .ai-widget-mode-btn.is-active{ background:var(--sky-deep); color:#fff; }
+  .ai-widget-voice-panel{
+    flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+    padding:20px 18px; background:var(--sand-deep); text-align:center;
+  }
+  .ai-widget-voice-panel[hidden]{ display:none; }
+  .ai-widget-voice-orb{
+    position:relative; width:84px; height:84px; border-radius:50%; background:var(--white); border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:1.8rem; transition:border-color .2s, box-shadow .2s;
+  }
+  .ai-widget-voice-orb.is-listening{ border-color:var(--turquoise); box-shadow:0 0 0 6px rgba(0,0,0,0.03); }
+  .ai-widget-voice-orb.is-listening .ai-widget-voice-wave{ opacity:1; }
+  .ai-widget-voice-orb.is-speaking{ border-color:var(--terracotta); animation:aiVoiceSpeakPulse 1.1s ease-in-out infinite; }
+  .ai-widget-voice-orb.is-connecting{ border-color:var(--sky); animation:aiVoiceConnectSpin 1.4s linear infinite; }
+  @keyframes aiVoiceSpeakPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(197,93,63,0.3); } 50%{ box-shadow:0 0 0 12px rgba(197,93,63,0); } }
+  @keyframes aiVoiceConnectSpin{ 0%{ opacity:0.5; } 50%{ opacity:1; } 100%{ opacity:0.5; } }
+  .ai-widget-voice-orb-icon{ position:relative; z-index:1; }
+  .ai-widget-voice-wave{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:3px; opacity:0; transition:opacity .2s;
+  }
+  .ai-widget-voice-wave span{
+    width:3px; height:10px; border-radius:2px; background:var(--turquoise); animation:aiVoiceWaveBar 0.9s ease-in-out infinite;
+  }
+  .ai-widget-voice-wave span:nth-child(1){ animation-delay:0s; }
+  .ai-widget-voice-wave span:nth-child(2){ animation-delay:.15s; }
+  .ai-widget-voice-wave span:nth-child(3){ animation-delay:.3s; }
+  .ai-widget-voice-wave span:nth-child(4){ animation-delay:.15s; }
+  .ai-widget-voice-wave span:nth-child(5){ animation-delay:0s; }
+  @keyframes aiVoiceWaveBar{ 0%,100%{ height:8px; } 50%{ height:24px; } }
+  .ai-widget-voice-status{ font-size:0.86rem; font-weight:700; color:var(--ink); margin:0; min-height:1.3em; }
+  .ai-widget-voice-error{ font-size:0.8rem; color:var(--terracotta); margin:0; }
+  .ai-widget-voice-start-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.9rem; color:#fff; background:var(--turquoise);
+    border:none; border-radius:999px; padding:12px 24px; cursor:pointer;
+  }
+  .ai-widget-voice-start-btn:hover{ filter:brightness(1.08); }
+  .ai-widget-voice-start-btn[hidden]{ display:none; }
+  .ai-widget-voice-controls{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .ai-widget-voice-ctrl-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--sky-deep); background:var(--white);
+    border:1.5px solid var(--sky-deep); border-radius:999px; padding:8px 14px; cursor:pointer;
+  }
+  .ai-widget-voice-ctrl-btn.is-muted{ background:var(--amber-soft); border-color:var(--amber); color:#7a5200; }
+  .ai-widget-voice-ctrl-end{ color:var(--terracotta); border-color:var(--terracotta); }
+  .ai-widget-voice-ctrl-btn:hover{ filter:brightness(0.97); }
+
   @media (max-width:480px){
     .ai-widget-panel{
       right:10px; left:10px; width:auto; bottom:10px; height:min(520px, calc(100vh - 88px));
@@ -5071,12 +5124,30 @@ if ('serviceWorker' in navigator){
     <span class="ai-widget-header-title" id="aiWidgetTitle">Assistant Hayeva</span>
     <button type="button" class="ai-widget-close" id="aiWidgetClose" aria-label="Fermer">✕</button>
   </div>
+  <div class="ai-widget-mode-tabs" id="aiWidgetModeTabs">
+    <button type="button" class="ai-widget-mode-btn is-active" id="aiWidgetModeTextBtn">💬 Écrire</button>
+    <button type="button" class="ai-widget-mode-btn" id="aiWidgetModeVoiceBtn">🎙️ Parler</button>
+  </div>
   <div class="ai-widget-messages" id="aiWidgetMessages"></div>
   <p class="ai-widget-typing" id="aiWidgetTyping" hidden>Je réfléchis<span class="ai-widget-typing-dots"><span>.</span><span>.</span><span>.</span></span></p>
   <form class="ai-widget-form" id="aiWidgetForm">
     <input type="text" id="aiWidgetInput" placeholder="Décrivez votre problème…" autocomplete="off" maxlength="600">
     <button type="submit" class="ai-widget-send" id="aiWidgetSend" aria-label="Envoyer">➤</button>
   </form>
+  <div class="ai-widget-voice-panel" id="aiWidgetVoicePanel" hidden>
+    <div class="ai-widget-voice-orb" id="aiWidgetVoiceOrb">
+      <span class="ai-widget-voice-wave"><span></span><span></span><span></span><span></span><span></span></span>
+      <span class="ai-widget-voice-orb-icon">🎙️</span>
+    </div>
+    <p class="ai-widget-voice-status" id="aiWidgetVoiceStatus">Parlez à HAYEVA en direct, comme une vraie conversation.</p>
+    <p class="ai-widget-voice-error" id="aiWidgetVoiceError" hidden></p>
+    <audio id="aiWidgetVoiceAudio" autoplay playsinline hidden></audio>
+    <button type="button" class="ai-widget-voice-start-btn" id="aiWidgetVoiceStartBtn">🎙️ Parler à HAYEVA</button>
+    <div class="ai-widget-voice-controls" id="aiWidgetVoiceControls" hidden>
+      <button type="button" class="ai-widget-voice-ctrl-btn" id="aiWidgetVoiceMuteBtn">🔇 Couper le micro</button>
+      <button type="button" class="ai-widget-voice-ctrl-btn ai-widget-voice-ctrl-end" id="aiWidgetVoiceEndBtn">Terminer la conversation</button>
+    </div>
+  </div>
 </div>
 <!-- Fiche détaillée d'un rendez-vous, ouverte depuis un clic sur un bloc du
      planning hebdomadaire Administration (voir admOpenBookingModal). -->
@@ -18203,6 +18274,7 @@ if ('serviceWorker' in navigator){
     panel.hidden = true;
     toggleBtn.hidden = false;
     setCharacterState(null);
+    if (typeof voiceStop === 'function') voiceStop();
   }
   toggleBtn.addEventListener('click', openPanel);
   // .ai-widget-toggle est un <div role="button"> (pas un <button>, pour
@@ -18287,6 +18359,226 @@ if ('serviceWorker' in navigator){
       addMessage('assistant', "Désolé, une erreur est survenue. Réessayez dans un instant.", { safety:false });
     });
   });
+
+  // ============================================================
+  // HAYEVA Voice — conversation vocale temps réel directement dans le
+  // navigateur (WebRTC + OpenAI Realtime API), voir supabase/functions/
+  // voice-realtime-session (jeton éphémère) et voice-realtime-tool
+  // (exécution serveur des outils métier). Le navigateur établit la
+  // connexion audio DIRECTEMENT avec OpenAI via ce jeton éphémère —
+  // OPENAI_API_KEY (le vrai secret) ne quitte jamais notre serveur.
+  // Détection de fin de parole, écoute continue et interruption de
+  // l'assistant (barge-in) sont gérées nativement par la Realtime API
+  // (turn_detection: server_vad côté serveur, voir voice-realtime-session) —
+  // le rôle de ce module est uniquement l'UI et le pont vers nos outils
+  // métier serveur, jamais une réimplémentation de cette logique temps réel.
+  // ============================================================
+  var modeTextBtn = document.getElementById('aiWidgetModeTextBtn');
+  var modeVoiceBtn = document.getElementById('aiWidgetModeVoiceBtn');
+  var voicePanel = document.getElementById('aiWidgetVoicePanel');
+  var voiceOrb = document.getElementById('aiWidgetVoiceOrb');
+  var voiceStatusEl = document.getElementById('aiWidgetVoiceStatus');
+  var voiceErrorEl = document.getElementById('aiWidgetVoiceError');
+  var voiceAudioEl = document.getElementById('aiWidgetVoiceAudio');
+  var voiceStartBtn = document.getElementById('aiWidgetVoiceStartBtn');
+  var voiceControls = document.getElementById('aiWidgetVoiceControls');
+  var voiceMuteBtn = document.getElementById('aiWidgetVoiceMuteBtn');
+  var voiceEndBtn = document.getElementById('aiWidgetVoiceEndBtn');
+
+  var voiceState = { pc: null, dc: null, localStream: null, sessionId: null, muted: false, assistantEl: null };
+
+  function voiceSetStatus(text, orbClass){
+    if (voiceStatusEl) voiceStatusEl.textContent = text;
+    if (voiceOrb){
+      voiceOrb.classList.remove('is-connecting', 'is-listening', 'is-speaking');
+      if (orbClass) voiceOrb.classList.add(orbClass);
+    }
+  }
+  function voiceShowError(msg){
+    if (!voiceErrorEl) return;
+    voiceErrorEl.textContent = msg || '';
+    voiceErrorEl.hidden = !msg;
+  }
+  function voiceSupported(){
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.RTCPeerConnection);
+  }
+
+  function setAiWidgetMode(mode){
+    if (modeTextBtn) modeTextBtn.classList.toggle('is-active', mode === 'text');
+    if (modeVoiceBtn) modeVoiceBtn.classList.toggle('is-active', mode === 'voice');
+    if (form) form.hidden = mode === 'voice';
+    if (voicePanel) voicePanel.hidden = mode !== 'voice';
+    if (mode !== 'voice') voiceStop();
+  }
+  if (modeTextBtn) modeTextBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
+  if (modeVoiceBtn) modeVoiceBtn.addEventListener('click', function(){ setAiWidgetMode('voice'); });
+
+  // Exécution SERVEUR d'un outil demandé par le modèle pendant la session
+  // temps réel — jamais le navigateur lui-même (voir voice-realtime-tool).
+  function voiceExecuteTool(name, toolArgs){
+    var sb = window.sudSupabase;
+    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    if (!sb || !sb.configured || !voiceState.sessionId || !clientSessionId) {
+      return Promise.resolve({ error: 'Session indisponible.' });
+    }
+    return sb.client.functions.invoke('voice-realtime-tool', {
+      body: { session_id: voiceState.sessionId, client_session_id: clientSessionId, tool_name: name, tool_args: toolArgs || {} }
+    }).then(function(res){
+      if (res.error || !res.data) return { error: 'Erreur technique.' };
+      return res.data.ok ? (res.data.data || {}) : { error: res.data.error || 'Erreur.' };
+    }).catch(function(){ return { error: 'Erreur technique.' }; });
+  }
+
+  function voiceSendEvent(obj){
+    if (voiceState.dc && voiceState.dc.readyState === 'open') voiceState.dc.send(JSON.stringify(obj));
+  }
+
+  // guide_to_booking : jamais de création de RDV depuis ce canal — on amène
+  // le client vers le VRAI tunnel de réservation déjà existant sur le site
+  // (window.sudBooking, exactement le même mécanisme que le bouton "Prendre
+  // rendez-vous" de l'assistant texte, voir bookingCtaButton ci-dessus).
+  function voiceHandleGuideToBooking(result){
+    if (!result || result.error || !window.sudBooking) return;
+    addMessage('assistant', 'Je vous amène vers notre calendrier de réservation pour choisir votre créneau…');
+    var matchId = null;
+    if (window.sudBooking.searchScored && result.service_name){
+      var scored = window.sudBooking.searchScored(result.service_name) || [];
+      if (scored.length) matchId = scored[0].service.id;
+    }
+    setTimeout(function(){
+      if (matchId) window.sudBooking.selectService(matchId);
+      var el = document.getElementById('rdv');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+      closePanel();
+    }, 900);
+  }
+
+  function voiceHandleDataChannelMessage(ev){
+    var msg;
+    try { msg = JSON.parse(ev.data); } catch(e){ return; }
+    if (msg.type === 'session.created' || msg.type === 'session.updated' || msg.type === 'input_audio_buffer.speech_started'){
+      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+    } else if (msg.type === 'conversation.item.input_audio_transcription.completed'){
+      if (msg.transcript) addMessage('user', msg.transcript);
+    } else if (msg.type === 'response.created'){
+      voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
+    } else if (msg.type === 'response.audio_transcript.delta'){
+      if (typeof msg.delta === 'string'){
+        if (!voiceState.assistantEl) voiceState.assistantEl = addMessage('assistant', '');
+        voiceState.assistantEl.textContent += msg.delta;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+      voiceSetStatus('🔊 HAYEVA vous répond…', 'is-speaking');
+    } else if (msg.type === 'response.audio_transcript.done'){
+      voiceState.assistantEl = null;
+    } else if (msg.type === 'response.function_call_arguments.done'){
+      var toolArgs = {};
+      try { toolArgs = JSON.parse(msg.arguments || '{}'); } catch(e){}
+      var toolName = msg.name;
+      var callId = msg.call_id;
+      voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
+      voiceExecuteTool(toolName, toolArgs).then(function(result){
+        voiceSendEvent({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(result || {}) } });
+        voiceSendEvent({ type: 'response.create' });
+        if (toolName === 'guide_to_booking' && result && !result.error) voiceHandleGuideToBooking(result);
+      });
+    } else if (msg.type === 'response.done'){
+      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+    } else if (msg.type === 'error'){
+      console.error('HAYEVA Voice realtime', msg);
+    }
+  }
+
+  function voiceStop(){
+    if (voiceState.dc){ try { voiceState.dc.close(); } catch(e){} voiceState.dc = null; }
+    if (voiceState.pc){ try { voiceState.pc.close(); } catch(e){} voiceState.pc = null; }
+    if (voiceState.localStream){ voiceState.localStream.getTracks().forEach(function(t){ t.stop(); }); voiceState.localStream = null; }
+    voiceState.sessionId = null;
+    voiceState.assistantEl = null;
+    voiceState.muted = false;
+    if (voiceControls) voiceControls.hidden = true;
+    if (voiceStartBtn) voiceStartBtn.hidden = false;
+    if (voiceMuteBtn){ voiceMuteBtn.textContent = '🔇 Couper le micro'; voiceMuteBtn.classList.remove('is-muted'); }
+    voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
+  }
+
+  function voiceStart(){
+    voiceShowError('');
+    if (!voiceSupported()){
+      voiceShowError("Votre navigateur ne prend pas en charge la conversation vocale ici — utilisez le mode 💬 Écrire.");
+      return;
+    }
+    var sb = window.sudSupabase;
+    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    if (!sb || !sb.configured || !clientSessionId){ voiceShowError('Service indisponible pour le moment.'); return; }
+
+    voiceSetStatus('Connexion…', 'is-connecting');
+    voiceStartBtn.hidden = true;
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      voiceState.localStream = stream;
+      return sb.client.functions.invoke('voice-realtime-session', { body: { client_session_id: clientSessionId } }).then(function(sessRes){
+        var sessData = sessRes && sessRes.data;
+        if (!sessData || sessData.status !== 'ok'){
+          throw new Error(sessData && sessData.status === 'quota_reached' ? 'quota' : 'unavailable');
+        }
+        voiceState.sessionId = sessData.session_id;
+
+        var pc = new RTCPeerConnection();
+        voiceState.pc = pc;
+        pc.ontrack = function(ev){
+          if (voiceAudioEl){ voiceAudioEl.srcObject = ev.streams[0]; voiceAudioEl.play().catch(function(){}); }
+        };
+        stream.getTracks().forEach(function(t){ pc.addTrack(t, stream); });
+
+        var dc = pc.createDataChannel('oai-events');
+        voiceState.dc = dc;
+        dc.addEventListener('message', voiceHandleDataChannelMessage);
+        dc.addEventListener('open', function(){
+          voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+          if (voiceControls) voiceControls.hidden = false;
+        });
+
+        return pc.createOffer().then(function(offer){
+          return pc.setLocalDescription(offer).then(function(){
+            return fetch('https://api.openai.com/v1/realtime/calls?model=' + encodeURIComponent(sessData.model || 'gpt-realtime-mini'), {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + sessData.client_secret, 'Content-Type': 'application/sdp' },
+              body: offer.sdp,
+            });
+          });
+        }).then(function(sdpRes){
+          if (!sdpRes.ok) throw new Error('sdp_exchange_failed');
+          return sdpRes.text();
+        }).then(function(answerSdp){
+          return pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+        });
+      });
+    }).catch(function(e){
+      var msg = "La conversation vocale n'a pas pu démarrer — utilisez le mode 💬 Écrire.";
+      if (e && e.name === 'NotAllowedError'){
+        msg = "Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode 💬 Écrire.";
+      } else if (e && e.message === 'quota'){
+        msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode 💬 Écrire.";
+      }
+      voiceShowError(msg);
+      voiceStop();
+    });
+  }
+
+  if (voiceStartBtn) voiceStartBtn.addEventListener('click', voiceStart);
+  if (voiceMuteBtn){
+    voiceMuteBtn.addEventListener('click', function(){
+      if (!voiceState.localStream) return;
+      voiceState.muted = !voiceState.muted;
+      voiceState.localStream.getAudioTracks().forEach(function(t){ t.enabled = !voiceState.muted; });
+      voiceMuteBtn.textContent = voiceState.muted ? '🎙️ Réactiver le micro' : '🔇 Couper le micro';
+      voiceMuteBtn.classList.toggle('is-muted', voiceState.muted);
+    });
+  }
+  if (voiceEndBtn){
+    voiceEndBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
+  }
 })();
 </script>
 
