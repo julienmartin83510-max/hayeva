@@ -3624,16 +3624,23 @@ if ('serviceWorker' in navigator){
      Palette et cartes réutilisant les jetons --adm-* déjà en place partout
      ailleurs dans l'admin (mêmes cartes/ombres que le tableau de bord),
      jamais une charte graphique séparée pour cet écran. */
-  .voice-sim-layout{ display:grid; grid-template-columns:1fr; gap:20px; margin-top:6px; }
+  /* Bandeau MODE TEST — bien visible en haut de l'écran entier, toujours
+     présent (jamais discret) : c'est la priorité n°1 du cahier des charges,
+     "je ne veux absolument pas qu'un test crée/modifie/supprime un
+     véritable rendez-vous". */
+  .voice-sim-test-banner{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:0.82rem; letter-spacing:0.02em; text-transform:uppercase;
+    color:#fff; background:var(--adm-red); border-radius:12px; padding:12px 18px; text-align:center; margin-top:10px;
+  }
+  .voice-sim-layout{ display:grid; grid-template-columns:1fr; gap:20px; margin-top:16px; }
   @media (min-width:900px){ .voice-sim-layout{ grid-template-columns:1.3fr 1fr; align-items:start; } }
   .voice-sim-chat-card, .voice-sim-state-card{
     background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 20px;
     box-shadow:var(--adm-shadow-sm);
   }
   .voice-sim-chat-header{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-  .voice-sim-badge-test{
-    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:0.03em; text-transform:uppercase;
-    color:var(--adm-coral-deep); background:var(--adm-coral-soft); border-radius:999px; padding:5px 12px;
+  .voice-sim-chat-label{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--adm-ink-soft);
   }
   .voice-sim-reset-btn{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--adm-ocean);
@@ -3680,12 +3687,21 @@ if ('serviceWorker' in navigator){
   .voice-sim-state-step.is-current .voice-sim-state-dot{ background:var(--adm-ocean); }
   .voice-sim-state-step.is-escape.is-current{ background:var(--adm-red-soft); color:var(--adm-red); }
   .voice-sim-state-step.is-escape.is-current .voice-sim-state-dot{ background:var(--adm-red); }
+  /* Informations comprises — jamais inventées : "Non renseigné" tant que
+     record_customer_info n'a pas reçu cette donnée du client. */
+  .voice-sim-info{ display:flex; flex-direction:column; gap:3px; margin-bottom:20px; font-size:0.82rem; }
+  .voice-sim-info-row{ display:flex; justify-content:space-between; gap:10px; padding:3px 2px; }
+  .voice-sim-info-row .lbl{ color:var(--adm-ink-soft); }
+  .voice-sim-info-row .val{ color:var(--adm-ink); font-weight:600; text-align:right; }
+  .voice-sim-info-row .val.is-empty{ color:var(--adm-ink-soft); font-weight:400; font-style:italic; }
   .voice-sim-tools{ display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; }
   .voice-sim-tool-call{
     font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; font-size:0.74rem; line-height:1.5;
     background:var(--adm-sand); border-radius:8px; padding:8px 10px; color:var(--adm-ink); word-break:break-word;
   }
+  .voice-sim-tool-call .ts{ color:var(--adm-ink-soft); margin-right:6px; }
   .voice-sim-tool-call.is-error{ background:var(--adm-red-soft); color:var(--adm-red); }
+  .voice-sim-tool-call.is-mutating{ border-left:3px solid var(--adm-coral); }
   @media (max-width:480px){
     .voice-sim-chat-card, .voice-sim-state-card{ padding:14px 16px; }
     .voice-sim-messages{ max-height:320px; }
@@ -7217,10 +7233,11 @@ if ('serviceWorker' in navigator){
                   <h2 class="adm-page-title">HAYEVA Voice — Simulateur</h2>
                   <p class="adm-page-sub">Testez le moteur de l'assistant téléphonique HAYEVA en tapant comme si vous étiez le client — aucun appel réel, aucun rendez-vous de production créé.</p>
                 </div>
+                <div class="voice-sim-test-banner">MODE TEST — Aucune action sur les rendez-vous réels</div>
                 <div class="voice-sim-layout">
                   <div class="voice-sim-chat-card">
                     <div class="voice-sim-chat-header">
-                      <span class="voice-sim-badge-test">Mode simulation — aucune donnée de production modifiée</span>
+                      <span class="voice-sim-chat-label">Client ↔ Assistant HAYEVA</span>
                       <button type="button" class="voice-sim-reset-btn" id="voiceSimResetBtn">↺ Nouvelle simulation</button>
                     </div>
                     <div class="voice-sim-messages" id="voiceSimMessages"></div>
@@ -7234,7 +7251,9 @@ if ('serviceWorker' in navigator){
                   <div class="voice-sim-state-card">
                     <h3 class="adm-subhead" style="margin-top:0;">État de l'appel</h3>
                     <div class="voice-sim-states" id="voiceSimStates"></div>
-                    <h3 class="adm-subhead">Actions déclenchées par l'IA</h3>
+                    <h3 class="adm-subhead">Informations comprises</h3>
+                    <div class="voice-sim-info" id="voiceSimInfo"></div>
+                    <h3 class="adm-subhead">Actions HAYEVA Voice</h3>
                     <div class="voice-sim-tools" id="voiceSimTools">
                       <p class="ec-row-meta">Aucune action pour le moment.</p>
                     </div>
@@ -14909,9 +14928,58 @@ if ('serviceWorker' in navigator){
     ['create_booking', 'Création du rendez-vous'], ['completed', 'Terminé']
   ];
   var VOICE_ESCAPE_STATES = { human_transfer: 'Transfert humain', callback_required: 'Rappel nécessaire', failed: 'Échec', cancelled: 'Annulé' };
+  var VOICE_INFO_FIELDS = [
+    ['customer_name', 'Client'], ['customer_phone', 'Téléphone'], ['customer_address', 'Adresse'], ['customer_city', 'Ville'],
+    ['customer_type', 'Type de client'], ['service_category', 'Service'], ['problem_description', 'Problème'],
+    ['urgency_level', "Niveau d'urgence"], ['desired_date', 'Date souhaitée'], ['desired_slot_label', 'Créneau souhaité'],
+  ];
+  var VOICE_INFO_VALUE_LABELS = {
+    customer_type: { particulier: 'Particulier', professionnel: 'Professionnel' },
+    service_category: { plomberie: 'Plomberie', chauffage: 'Chauffage', climatisation: 'Climatisation', autre: 'Autre' },
+    urgency_level: { normale: 'Normale', elevee: 'Élevée', urgence: 'Urgence' },
+  };
+  // Outils qui écriraient un VRAI rendez-vous en dehors de la simulation —
+  // toujours étiquetés [TEST] dans le journal, jamais ambigus avec une
+  // action réelle (voir §1 du cahier des charges).
+  var VOICE_MUTATING_TOOLS = { create_booking: 1, reschedule_booking: 1, cancel_booking: 1 };
   var voiceSimSessionId = null;
   var voiceSimInFlight = false;
   var voiceSimInitialized = false;
+
+  function voiceSimFmtTime(iso){
+    try { return new Date(iso).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+    catch(e){ return ''; }
+  }
+
+  // Libellé lisible d'un événement du journal — jamais une clé/un secret :
+  // les outils serveur n'en renvoient aucun (voir _shared/voice/tools.ts),
+  // ce libellé se contente de résumer ce qu'ils ont déjà renvoyé.
+  function voiceSimEventLabel(ev){
+    var isMutating = ev.tool_name && VOICE_MUTATING_TOOLS[ev.tool_name];
+    if (ev.type === 'tool_call'){
+      return ev.tool_name + (isMutating ? ' [TEST]' : '');
+    }
+    if (ev.type === 'tool_result'){
+      var r = ev.tool_result || {};
+      if (r.error) return 'Échec — ' + r.error;
+      if (ev.tool_name === 'get_available_slots'){
+        var n = (r.slots || []).length;
+        return n ? (n + ' créneau' + (n > 1 ? 'x' : '') + ' retourné' + (n > 1 ? 's' : '')) : 'Aucun créneau disponible';
+      }
+      if (ev.tool_name === 'create_booking' && r.reference) return 'Rendez-vous de test créé (réf. ' + r.reference + ')' + (isMutating ? ' [TEST]' : '');
+      if (ev.tool_name === 'reschedule_booking' && r.reference) return 'Rendez-vous de test déplacé (réf. ' + r.reference + ')' + (isMutating ? ' [TEST]' : '');
+      if (ev.tool_name === 'cancel_booking' && r.reference) return 'Rendez-vous de test annulé (réf. ' + r.reference + ')' + (isMutating ? ' [TEST]' : '');
+      if (ev.tool_name === 'record_customer_info') return 'Informations enregistrées : ' + ((r.recorded || []).join(', ') || '—');
+      return '→ ' + JSON.stringify(r);
+    }
+    if (ev.type === 'state_change'){
+      var label = null;
+      VOICE_STATE_ORDER.forEach(function(p){ if (p[0] === ev.state) label = p[1]; });
+      if (!label) label = VOICE_ESCAPE_STATES[ev.state] || ev.state;
+      return 'Étape : ' + label;
+    }
+    return ev.type;
+  }
 
   function voiceSimAddMessage(role, text){
     var wrap = document.getElementById('voiceSimMessages');
@@ -14952,20 +15020,37 @@ if ('serviceWorker' in navigator){
     var placeholder = wrap.querySelector('.ec-row-meta');
     if (placeholder) placeholder.remove();
     events.forEach(function(ev){
-      if (ev.type === 'tool_call'){
-        var div = document.createElement('div');
-        div.className = 'voice-sim-tool-call';
-        div.textContent = ev.tool_name + '(' + JSON.stringify(ev.tool_args || {}) + ')';
-        wrap.appendChild(div);
-      } else if (ev.type === 'tool_result'){
-        var isErr = ev.tool_result && ev.tool_result.error;
-        var div2 = document.createElement('div');
-        div2.className = 'voice-sim-tool-call' + (isErr ? ' is-error' : '');
-        div2.textContent = '→ ' + JSON.stringify(ev.tool_result || {});
-        wrap.appendChild(div2);
-      }
+      if (ev.type !== 'tool_call' && ev.type !== 'tool_result' && ev.type !== 'state_change') return;
+      var isErr = ev.type === 'tool_result' && ev.tool_result && ev.tool_result.error;
+      var isMutating = ev.tool_name && VOICE_MUTATING_TOOLS[ev.tool_name];
+      var div = document.createElement('div');
+      div.className = 'voice-sim-tool-call' + (isErr ? ' is-error' : '') + (isMutating ? ' is-mutating' : '');
+      var ts = document.createElement('span');
+      ts.className = 'ts';
+      ts.textContent = voiceSimFmtTime(ev.created_at) || '';
+      div.appendChild(ts);
+      div.appendChild(document.createTextNode(voiceSimEventLabel(ev)));
+      wrap.appendChild(div);
     });
     wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  // "Informations comprises" — jamais inventées : un champ non encore
+  // communiqué par le client s'affiche "Non renseigné", jamais deviné.
+  function voiceSimRenderInfo(info){
+    var wrap = document.getElementById('voiceSimInfo');
+    if (!wrap) return;
+    info = info || {};
+    var html = '';
+    VOICE_INFO_FIELDS.forEach(function(pair){
+      var key = pair[0], label = pair[1];
+      var raw = info[key];
+      var valueLabels = VOICE_INFO_VALUE_LABELS[key];
+      var display = raw ? (valueLabels ? (valueLabels[raw] || raw) : raw) : null;
+      html += '<div class="voice-sim-info-row"><span class="lbl">' + admEscape(label) + '</span>' +
+        '<span class="val' + (display ? '' : ' is-empty') + '">' + admEscape(display || 'Non renseigné') + '</span></div>';
+    });
+    wrap.innerHTML = html;
   }
 
   function voiceSimSetBusy(busy){
@@ -14993,6 +15078,7 @@ if ('serviceWorker' in navigator){
     voiceSimShowError('');
     voiceSimSessionId = null;
     voiceSimRenderStates('greeting');
+    voiceSimRenderInfo({});
     voiceSimSetBusy(true);
     sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: null } }).then(function(res){
       voiceSimSetBusy(false);
@@ -15004,6 +15090,7 @@ if ('serviceWorker' in navigator){
       voiceSimSessionId = data.session_id;
       voiceSimAddMessage('assistant', data.reply);
       voiceSimRenderStates(data.call_state);
+      voiceSimRenderInfo(data.info);
       var input = document.getElementById('voiceSimInput');
       var sendBtn = document.getElementById('voiceSimSend');
       if (input){ input.disabled = false; input.focus(); }
@@ -15039,6 +15126,7 @@ if ('serviceWorker' in navigator){
           voiceSimAddToolEvents(data.events);
           voiceSimAddMessage('assistant', data.reply);
           voiceSimRenderStates(data.call_state);
+          voiceSimRenderInfo(data.info);
         }).catch(function(){
           voiceSimSetBusy(false);
           voiceSimShowError('Erreur de connexion au simulateur.');

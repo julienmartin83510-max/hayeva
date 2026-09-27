@@ -55,3 +55,39 @@ export function canTransition(from: CallState, to: CallState): boolean {
 export function isTerminal(state: CallState): boolean {
   return TERMINAL_STATES.includes(state);
 }
+
+// ------------------------------------------------------------
+// Avancement AUTOMATIQUE, dérivé de l'outil réellement exécuté — jamais
+// laissé au seul bon vouloir du modèle. En pratique (observé en test), un
+// modèle occupé à mener la conversation et à appeler des outils métier
+// n'appelle pas toujours fidèlement set_call_state en plus : sans ce filet,
+// l'état affiché en direct dans le simulateur pouvait rester bloqué sur
+// "greeting" pendant tout un appel pourtant bien avancé. shortestPathForward
+// calcule, par un parcours en largeur du même graphe HAPPY_PATH que
+// canTransition (jamais les échappatoires globales ici : celles-ci restent
+// une décision explicite du modèle, jamais déduite d'un outil), la suite
+// d'états à traverser pour atteindre `target` — un seul état à la fois,
+// jamais un saut direct qui contournerait la machine d'état.
+export function shortestPathForward(from: CallState, target: CallState): CallState[] | null {
+  if (from === target) return [];
+  if (TERMINAL_STATES.includes(from)) return null;
+  const queue: CallState[] = [from];
+  const cameFrom = new Map<CallState, CallState>();
+  const visited = new Set<CallState>([from]);
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const next of HAPPY_PATH[cur] || []) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      cameFrom.set(next, cur);
+      if (next === target) {
+        const path: CallState[] = [target];
+        let walk = cur;
+        while (walk !== from) { path.unshift(walk); walk = cameFrom.get(walk)!; }
+        return path;
+      }
+      queue.push(next);
+    }
+  }
+  return null; // pas d'avancée possible vers cette cible depuis l'état courant
+}
