@@ -3745,6 +3745,33 @@ if ('serviceWorker' in navigator){
   .voice-sim-debug-panel .row{ display:flex; justify-content:space-between; padding:2px 0; }
   .voice-sim-debug-panel .row strong{ color:var(--adm-ink); font-weight:700; }
 
+  /* ---------- HAYEVA Voice — Phase 3 : Téléphonie (config + coupe-circuits) ----------
+     Tant que provider est null, le point reste rouge — jamais un vrai
+     appel automatisé ne peut être déclenché sans configuration explicite. */
+  .voice-tel-status-card{
+    display:flex; align-items:center; gap:10px; background:var(--adm-card-bg); border:1px solid var(--adm-line);
+    border-radius:14px; padding:14px 18px; margin:16px 0; box-shadow:var(--adm-shadow-sm);
+  }
+  .voice-tel-status-dot{ width:12px; height:12px; border-radius:50%; background:var(--adm-red); flex:none; }
+  .voice-tel-status-dot.is-connected{ background:var(--adm-green); }
+  .voice-tel-status-label{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:var(--adm-ink); }
+  .voice-tel-mode-badge{
+    margin-left:auto; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.72rem; text-transform:uppercase;
+    letter-spacing:0.03em; padding:5px 12px; border-radius:999px; background:var(--adm-sand); color:var(--adm-ink-soft);
+  }
+  .voice-tel-mode-badge.is-production{ background:var(--adm-green-soft,#e3f6ea); color:var(--adm-green); }
+  .voice-tel-form{ background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 20px; box-shadow:var(--adm-shadow-sm); }
+  .voice-tel-grid{ display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:6px; }
+  @media (min-width:700px){ .voice-tel-grid{ grid-template-columns:1fr 1fr; } }
+  .voice-tel-grid label{ display:flex; flex-direction:column; gap:5px; font-size:0.8rem; font-weight:700; color:var(--adm-ink-soft); }
+  .voice-tel-grid input, .voice-tel-grid select{
+    font-family:inherit; font-size:0.9rem; padding:10px 12px; border-radius:10px; border:1px solid var(--adm-line);
+    background:var(--adm-offwhite); color:var(--adm-ink);
+  }
+  .voice-tel-switches{ display:flex; flex-direction:column; gap:10px; margin-bottom:6px; }
+  .voice-tel-switch{ display:flex; align-items:center; gap:9px; font-size:0.88rem; color:var(--adm-ink); cursor:pointer; }
+  .voice-tel-save-msg{ font-size:0.84rem; color:var(--adm-ink-soft); }
+
   /* ---------- Chiffrage / Devis (outil interne admin) ---------- */
   .qc-type-toggle{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
   .qc-settings-box{
@@ -7268,9 +7295,16 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageVoice" data-adm-page="voice" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">HAYEVA Voice — Simulateur</h2>
-                  <p class="adm-page-sub">Testez le moteur de l'assistant téléphonique HAYEVA en tapant comme si vous étiez le client — aucun appel réel, aucun rendez-vous de production créé.</p>
+                  <h2 class="adm-page-title">HAYEVA Voice</h2>
+                  <p class="adm-page-sub">Assistant téléphonique IA HAYEVA — simulateur, configuration téléphonie et journal des appels.</p>
                 </div>
+                <div class="voice-sim-mode-toggle">
+                  <button type="button" class="voice-sim-mode-btn is-active" id="voiceSectionTabSimBtn">Simulateur</button>
+                  <button type="button" class="voice-sim-mode-btn" id="voiceSectionTabTelBtn">Téléphonie</button>
+                  <button type="button" class="voice-sim-mode-btn" id="voiceSectionTabCallsBtn">Appels</button>
+                </div>
+
+                <div id="voiceSectionSimulateur">
                 <div class="voice-sim-test-banner">MODE TEST — Aucune action sur les rendez-vous réels</div>
                 <div class="voice-sim-mode-toggle">
                   <button type="button" class="voice-sim-mode-btn is-active" id="voiceSimModeTextBtn">⌨️ Test texte</button>
@@ -7307,6 +7341,67 @@ if ('serviceWorker' in navigator){
                       <p class="ec-row-meta">Aucune action pour le moment.</p>
                     </div>
                   </div>
+                </div>
+                </div>
+
+                <div id="voiceSectionTelephonie" hidden>
+                  <div class="voice-tel-status-card">
+                    <span class="voice-tel-status-dot" id="voiceTelStatusDot"></span>
+                    <span class="voice-tel-status-label" id="voiceTelStatusLabel">Chargement…</span>
+                    <span class="voice-tel-mode-badge" id="voiceTelModeBadge"></span>
+                  </div>
+                  <form id="voiceTelForm" class="voice-tel-form">
+                    <div class="voice-tel-grid">
+                      <label>Fournisseur téléphonique
+                        <select id="voiceTelProvider">
+                          <option value="">— Non configuré —</option>
+                          <option value="telnyx">Telnyx</option>
+                          <option value="twilio">Twilio</option>
+                        </select>
+                      </label>
+                      <label>Numéro HAYEVA
+                        <input type="text" id="voiceTelPhoneNumber" placeholder="+33 …">
+                      </label>
+                      <label>Numéro de transfert humain
+                        <input type="text" id="voiceTelTransferNumber" placeholder="+33 …">
+                      </label>
+                      <label>Mode
+                        <select id="voiceTelMode">
+                          <option value="test">🧪 Test</option>
+                          <option value="production">🟢 Production</option>
+                        </select>
+                      </label>
+                    </div>
+                    <h3 class="adm-subhead">Coupe-circuits</h3>
+                    <p class="adm-page-sub" style="margin-top:-8px;">Si HAYEVA Voice est désactivé, aucun nouvel appel automatisé n'est initié — quelle que soit la configuration ci-dessus.</p>
+                    <div class="voice-tel-switches">
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelEnabled"> HAYEVA Voice (général)</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelInbound"> Appels entrants</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelOutbound"> Rappels automatiques (sortants)</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelAiBooking"> Création de RDV par l'IA (production)</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelTransfer"> Transfert humain</label>
+                    </div>
+                    <h3 class="adm-subhead">Limites de dépenses</h3>
+                    <div class="voice-tel-grid">
+                      <label>Appels sortants max / jour
+                        <input type="number" id="voiceTelMaxOutbound" min="0" step="1">
+                      </label>
+                      <label>Durée max d'un appel (min)
+                        <input type="number" id="voiceTelMaxDuration" min="0" step="1">
+                      </label>
+                      <label>Rappels max / jour
+                        <input type="number" id="voiceTelMaxCallbacks" min="0" step="1">
+                      </label>
+                    </div>
+                    <div class="admin-bk-propose-form-row">
+                      <button type="submit" id="voiceTelSaveBtn">Enregistrer</button>
+                      <p class="voice-tel-save-msg" id="voiceTelSaveMsg" hidden></p>
+                    </div>
+                  </form>
+                </div>
+
+                <div id="voiceSectionAppels" hidden>
+                  <p class="ec-row-meta">Aucun appel réel pour le moment — cette liste se remplira automatiquement dès que la téléphonie sera configurée et qu'un premier appel entrant ou sortant aura eu lieu (Phase 4).</p>
                 </div>
               </section>
 
@@ -13212,7 +13307,7 @@ if ('serviceWorker' in navigator){
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
-    if (key === 'voice' && typeof voiceSimInit === 'function') voiceSimInit();
+    if (key === 'voice' && typeof voiceSectionInit === 'function') voiceSectionInit();
   }
 
   // ============================================================
@@ -15390,6 +15485,114 @@ if ('serviceWorker' in navigator){
       window.speechSynthesis.onvoiceschanged = voiceSimPickFrenchVoice;
     }
     voiceSimStart();
+  }
+
+  // ---------- HAYEVA Voice — onglets de section (Simulateur / Téléphonie / Appels) ----------
+  var voiceSectionInitialized = false;
+  var voiceTelInitialized = false;
+
+  function voiceSetSectionTab(tab){
+    var tabs = { sim: 'voiceSectionSimulateur', tel: 'voiceSectionTelephonie', calls: 'voiceSectionAppels' };
+    var btns = { sim: 'voiceSectionTabSimBtn', tel: 'voiceSectionTabTelBtn', calls: 'voiceSectionTabCallsBtn' };
+    Object.keys(tabs).forEach(function(k){
+      var panel = document.getElementById(tabs[k]);
+      var btn = document.getElementById(btns[k]);
+      if (panel) panel.hidden = k !== tab;
+      if (btn) btn.classList.toggle('is-active', k === tab);
+    });
+    if (tab === 'tel') voiceTelLoad();
+  }
+
+  // Config Téléphonie + coupe-circuits — lecture/écriture directes de
+  // voice_telephony_settings (RLS admin uniquement, voir 0037). Tant
+  // qu'aucun provider n'est enregistré, le point reste rouge : aucun secret
+  // fournisseur n'est jamais saisi ici, seulement le nom du fournisseur et
+  // le numéro une fois le compte externe créé par l'administrateur.
+  function voiceTelRenderStatus(row){
+    var dot = document.getElementById('voiceTelStatusDot');
+    var label = document.getElementById('voiceTelStatusLabel');
+    var modeBadge = document.getElementById('voiceTelModeBadge');
+    var connected = !!(row.provider && row.phone_number);
+    if (dot) dot.classList.toggle('is-connected', connected);
+    if (label) label.textContent = connected
+      ? ('🟢 Connecté — ' + row.provider + ' (' + row.phone_number + ')')
+      : '🔴 Non configuré — aucun appel réel possible';
+    if (modeBadge){
+      modeBadge.textContent = row.mode === 'production' ? '🟢 PRODUCTION' : '🧪 TEST';
+      modeBadge.classList.toggle('is-production', row.mode === 'production');
+    }
+  }
+
+  function voiceTelLoad(){
+    var msg = document.getElementById('voiceTelSaveMsg');
+    if (msg) msg.hidden = true;
+    sb.client.from('voice_telephony_settings').select('*').eq('id', true).maybeSingle().then(function(res){
+      if (res.error || !res.data) return;
+      var row = res.data;
+      voiceTelRenderStatus(row);
+      document.getElementById('voiceTelProvider').value = row.provider || '';
+      document.getElementById('voiceTelPhoneNumber').value = row.phone_number || '';
+      document.getElementById('voiceTelTransferNumber').value = row.human_transfer_number || '';
+      document.getElementById('voiceTelMode').value = row.mode || 'test';
+      document.getElementById('voiceTelEnabled').checked = !!row.voice_enabled;
+      document.getElementById('voiceTelInbound').checked = !!row.inbound_enabled;
+      document.getElementById('voiceTelOutbound').checked = !!row.outbound_enabled;
+      document.getElementById('voiceTelAiBooking').checked = !!row.ai_booking_enabled;
+      document.getElementById('voiceTelTransfer').checked = !!row.human_transfer_enabled;
+      document.getElementById('voiceTelMaxOutbound').value = row.max_outbound_calls_per_day == null ? '' : row.max_outbound_calls_per_day;
+      document.getElementById('voiceTelMaxDuration').value = row.max_call_duration_minutes == null ? '' : row.max_call_duration_minutes;
+      document.getElementById('voiceTelMaxCallbacks').value = row.max_callbacks_per_day == null ? '' : row.max_callbacks_per_day;
+    });
+  }
+
+  function voiceTelInit(){
+    if (voiceTelInitialized) return;
+    voiceTelInitialized = true;
+    var form = document.getElementById('voiceTelForm');
+    if (!form) return;
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var saveBtn = document.getElementById('voiceTelSaveBtn');
+      var msg = document.getElementById('voiceTelSaveMsg');
+      var toIntOrNull = function(v){ v = v.trim(); return v === '' ? null : parseInt(v, 10); };
+      var payload = {
+        provider: document.getElementById('voiceTelProvider').value || null,
+        phone_number: document.getElementById('voiceTelPhoneNumber').value.trim() || null,
+        human_transfer_number: document.getElementById('voiceTelTransferNumber').value.trim() || null,
+        mode: document.getElementById('voiceTelMode').value,
+        voice_enabled: document.getElementById('voiceTelEnabled').checked,
+        inbound_enabled: document.getElementById('voiceTelInbound').checked,
+        outbound_enabled: document.getElementById('voiceTelOutbound').checked,
+        ai_booking_enabled: document.getElementById('voiceTelAiBooking').checked,
+        human_transfer_enabled: document.getElementById('voiceTelTransfer').checked,
+        max_outbound_calls_per_day: toIntOrNull(document.getElementById('voiceTelMaxOutbound').value),
+        max_call_duration_minutes: toIntOrNull(document.getElementById('voiceTelMaxDuration').value),
+        max_callbacks_per_day: toIntOrNull(document.getElementById('voiceTelMaxCallbacks').value),
+        updated_at: new Date().toISOString(),
+      };
+      saveBtn.disabled = true;
+      sb.client.from('voice_telephony_settings').update(payload).eq('id', true).select('*').maybeSingle().then(function(res){
+        saveBtn.disabled = false;
+        msg.hidden = false;
+        if (res.error || !res.data){ msg.textContent = "Échec de l'enregistrement."; return; }
+        msg.textContent = 'Enregistré.';
+        voiceTelRenderStatus(res.data);
+      });
+    });
+  }
+
+  function voiceSectionInit(){
+    if (!voiceSectionInitialized){
+      voiceSectionInitialized = true;
+      var simBtn = document.getElementById('voiceSectionTabSimBtn');
+      var telBtn = document.getElementById('voiceSectionTabTelBtn');
+      var callsBtn = document.getElementById('voiceSectionTabCallsBtn');
+      if (simBtn) simBtn.addEventListener('click', function(){ voiceSetSectionTab('sim'); });
+      if (telBtn) telBtn.addEventListener('click', function(){ voiceSetSectionTab('tel'); });
+      if (callsBtn) callsBtn.addEventListener('click', function(){ voiceSetSectionTab('calls'); });
+      voiceTelInit();
+    }
+    voiceSimInit();
   }
 
   // ---------- Consignes de préparation avant intervention (admin) ----------
