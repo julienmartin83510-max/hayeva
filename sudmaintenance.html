@@ -18500,6 +18500,7 @@ if ('serviceWorker' in navigator){
     rec.lang = 'fr-FR';
     rec.continuous = true;
     rec.interimResults = true;
+    rec.onstart = function(){ voiceShowError(''); }; // efface un éventuel message "connexion perdue" dès que l'écoute reprend
     rec.onresult = function(ev){
       var final = '';
       for (var i = ev.resultIndex; i < ev.results.length; i++){
@@ -18516,6 +18517,20 @@ if ('serviceWorker' in navigator){
       if (ev.error === 'no-speech' || ev.error === 'aborted') return;
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
         voiceShowError("Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode 💬 Écrire.");
+        voiceStop();
+        return;
+      }
+      if (ev.error === 'network'){
+        // La reconnaissance vocale de Chrome dépend d'un service distant :
+        // une coupure réseau se manifeste ici, pas seulement sur l'appel à
+        // voice-public-chat. On l'affiche clairement plutôt que de laisser
+        // le micro sembler actif sans jamais rien reconnaître ; onend
+        // relancera automatiquement dès que la connexion revient.
+        voiceShowError('Connexion perdue — la reconnaissance vocale reprendra automatiquement dès que le réseau revient.');
+        return;
+      }
+      if (ev.error === 'audio-capture'){
+        voiceShowError("Aucun microphone détecté — utilisez le mode 💬 Écrire.");
         voiceStop();
       }
     };
