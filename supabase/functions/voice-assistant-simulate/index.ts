@@ -129,6 +129,16 @@ Deno.serve(async (req: Request) => {
     const sessionId = typeof body.session_id === 'string' ? body.session_id : null;
     const rawMessage = typeof body.message === 'string' ? body.message.trim().slice(0, 600) : '';
 
+    // Instrumentation de latence — Phase 2 (§"Latence") : jamais montrée au
+    // client, uniquement dans le panneau DEBUG admin du simulateur. On mesure
+    // ici séparément le temps LLM (somme de tous les appels chat, y compris
+    // les itérations d'outils) et le temps outils (exécution réelle de
+    // executeTool, hors appel LLM) — le reste du total_ms est l'overhead
+    // serveur (DB, sérialisation).
+    const t0 = Date.now();
+    let llmMs = 0;
+    let toolsMs = 0;
+
     const llm = new OpenRouterLLMProvider(OPENROUTER_API_KEY, settings.model_name);
     const selectCols = `id, call_state, message_count, ${INFO_COLUMNS.join(', ')}`;
 
@@ -147,17 +157,19 @@ Deno.serve(async (req: Request) => {
       if (createErr || !created) return json({ status: 'unavailable' }, 200);
       session = created as SessionRow;
 
+      const llmT0 = Date.now();
       const greetingRes = await llm.chat(
         [{ role: 'system', content: buildSystemPrompt() }, { role: 'user', content: '[Début d\'appel — accueille le client.]' }],
         TOOL_SCHEMAS,
       ).catch((e) => { console.error('voice-assistant-simulate: appel LLM échoué (greeting)', e instanceof Error ? e.message : e); return null; });
+      llmMs += Date.now() - llmT0;
       const greeting = greetingRes?.content || "Bonjour, vous êtes en communication avec l'assistant virtuel HAYEVA. Comment puis-je vous aider ?";
 
       const now = new Date().toISOString();
       await supabase.from('voice_call_events').insert({ session_id: session.id, seq: 0, type: 'state_change', state: 'greeting', created_at: now });
       await supabase.from('voice_call_events').insert({ session_id: session.id, seq: 1, type: 'assistant', content: greeting, created_at: now });
 
-      return json({ status: 'ok', session_id: session.id, reply: greeting, call_state: 'greeting', is_test: true, info: extractInfo(session), events: [] }, 200);
+      return json({ status: 'ok', session_id: session.id, reply: greeting, call_state: 'greeting', is_test: true, info: extractInfo(session), events: [], timings: { llm_ms: llmMs, tools_ms: 0, total_ms: Date.now() - t0 } }, 200);
     }
 
     if (!rawMessage) return json({ error: 'invalid_input' }, 400);
@@ -204,8 +216,10 @@ Deno.serve(async (req: Request) => {
 
     for (let iter = 0; iter < MAX_TOOL_ITERATIONS && finalReply === null; iter++) {
       let llmRes;
+      const llmT0 = Date.now();
       try {
         llmRes = await llm.chat(messages, TOOL_SCHEMAS);
+        llmMs += Date.now() - llmT0;
       } catch (e) {
         console.error('voice-assistant-simulate: appel LLM échoué', e instanceof Error ? e.message : e);
         return json({ status: 'unavailable' }, 200);
@@ -244,9 +258,11 @@ Deno.serve(async (req: Request) => {
         // action de mutation dès le premier message d'un appel, quelle que
         // soit la certitude apparente du modèle.
         const isMutatingAction = call.name === 'create_booking' || call.name === 'reschedule_booking' || call.name === 'cancel_booking';
+        const toolT0 = Date.now();
         const result = isMutatingAction && session.message_count === 0
           ? { ok: false as const, error: "Merci de d'abord récapituler la demande au client (prestation, date, heure, adresse) et d'attendre sa confirmation explicite avant d'appeler cet outil." }
           : await executeTool(call.name, ctx, call.arguments);
+        toolsMs += Date.now() - toolT0;
 
         // Étiquette [TEST] visible sur toute action qui écrirait un
         // véritable rendez-vous en production hors simulation — jamais
@@ -323,7 +339,7 @@ Deno.serve(async (req: Request) => {
     if (testBookingId) updatePayload.test_booking_id = testBookingId;
     await supabase.from('voice_call_sessions').update(updatePayload).eq('id', sessionId);
 
-    return json({ status: 'ok', session_id: sessionId, reply: finalReply, call_state: currentState, is_test: true, info: extractInfo(session), events: newEvents }, 200);
+    return json({ status: 'ok', session_id: sessionId, reply: finalReply, call_state: currentState, is_test: true, info: extractInfo(session), events: newEvents, timings: { llm_ms: llmMs, tools_ms: toolsMs, total_ms: Date.now() - t0 } }, 200);
   } catch (e) {
     console.error('voice-assistant-simulate: erreur inattendue', e);
     return json({ status: 'unavailable' }, 200);

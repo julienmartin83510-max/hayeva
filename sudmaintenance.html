@@ -3707,6 +3707,44 @@ if ('serviceWorker' in navigator){
     .voice-sim-messages{ max-height:320px; }
   }
 
+  /* ---------- HAYEVA Voice — Phase 2 : test vocal navigateur ----------
+     Mêmes cartes/jetons que le reste du simulateur ; le mode vocal ne fait
+     qu'ajouter une couche audio (Web Speech API — STT/TTS déjà présents dans
+     tous les navigateurs, aucune clé/fournisseur externe requise pour ce
+     test navigateur) au-dessus du MÊME moteur texte (voice-assistant-simulate),
+     jamais un second assistant. */
+  .voice-sim-mode-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+  .voice-sim-mode-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:var(--adm-ink-soft);
+    background:var(--adm-sand); border:1.5px solid transparent; border-radius:999px; padding:8px 16px; cursor:pointer;
+    transition:background .18s, color .18s;
+  }
+  .voice-sim-mode-btn.is-active{ background:var(--adm-ocean); color:#fff; }
+  .voice-sim-voice-panel{ text-align:center; padding:18px 10px 6px; }
+  .voice-sim-mic-btn{
+    width:76px; height:76px; border-radius:50%; border:none; cursor:pointer; font-size:1.9rem; color:#fff;
+    background:var(--adm-ocean); box-shadow:0 4px 16px rgba(0,0,0,0.15); transition:background .18s, transform .18s;
+  }
+  .voice-sim-mic-btn:hover:not(:disabled){ background:var(--adm-ocean-deep); }
+  .voice-sim-mic-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .voice-sim-mic-btn.is-listening{ background:var(--adm-red); animation:voiceSimPulse 1.4s ease-in-out infinite; }
+  .voice-sim-mic-btn.is-speaking{ background:var(--adm-green); }
+  @keyframes voiceSimPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(219,68,55,0.35); } 50%{ box-shadow:0 0 0 14px rgba(219,68,55,0); } }
+  .voice-sim-voice-status{ margin-top:12px; font-size:0.86rem; font-weight:700; color:var(--adm-ink-soft); min-height:1.3em; }
+  .voice-sim-voice-status.is-listening{ color:var(--adm-red); }
+  .voice-sim-voice-status.is-speaking{ color:var(--adm-green); }
+  .voice-sim-voice-interim{ margin-top:6px; font-size:0.8rem; font-style:italic; color:var(--adm-ink-soft); min-height:1.2em; }
+  .voice-sim-voice-unsupported{
+    background:var(--adm-red-soft); color:var(--adm-red); border-radius:10px; padding:12px 16px; font-size:0.85rem; margin-top:10px;
+  }
+  .voice-sim-debug-toggle{ display:flex; align-items:center; gap:7px; font-size:0.78rem; color:var(--adm-ink-soft); margin:12px 0 0; cursor:pointer; }
+  .voice-sim-debug-panel{
+    margin-top:10px; background:var(--adm-sand); border-radius:10px; padding:10px 12px; font-size:0.76rem;
+    font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; color:var(--adm-ink-soft);
+  }
+  .voice-sim-debug-panel .row{ display:flex; justify-content:space-between; padding:2px 0; }
+  .voice-sim-debug-panel .row strong{ color:var(--adm-ink); font-weight:700; }
+
   /* ---------- Chiffrage / Devis (outil interne admin) ---------- */
   .qc-type-toggle{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
   .qc-settings-box{
@@ -7234,6 +7272,10 @@ if ('serviceWorker' in navigator){
                   <p class="adm-page-sub">Testez le moteur de l'assistant téléphonique HAYEVA en tapant comme si vous étiez le client — aucun appel réel, aucun rendez-vous de production créé.</p>
                 </div>
                 <div class="voice-sim-test-banner">MODE TEST — Aucune action sur les rendez-vous réels</div>
+                <div class="voice-sim-mode-toggle">
+                  <button type="button" class="voice-sim-mode-btn is-active" id="voiceSimModeTextBtn">⌨️ Test texte</button>
+                  <button type="button" class="voice-sim-mode-btn" id="voiceSimModeVoiceBtn">🎙️ Test vocal</button>
+                </div>
                 <div class="voice-sim-layout">
                   <div class="voice-sim-chat-card">
                     <div class="voice-sim-chat-header">
@@ -7247,6 +7289,13 @@ if ('serviceWorker' in navigator){
                       <button type="submit" id="voiceSimSend" disabled>Envoyer</button>
                     </form>
                     <p class="voice-sim-error" id="voiceSimError" hidden></p>
+                    <div class="voice-sim-voice-panel" id="voiceSimVoicePanel" hidden>
+                      <button type="button" class="voice-sim-mic-btn" id="voiceSimMicBtn" title="Démarrer une conversation vocale">🎙️</button>
+                      <p class="voice-sim-voice-status" id="voiceSimVoiceStatus">Appuyez pour démarrer une conversation vocale</p>
+                      <p class="voice-sim-voice-interim" id="voiceSimVoiceInterim"></p>
+                    </div>
+                    <label class="voice-sim-debug-toggle"><input type="checkbox" id="voiceSimDebugToggle"> Mode DEBUG (latences — jamais visible côté client réel)</label>
+                    <div class="voice-sim-debug-panel" id="voiceSimDebugPanel" hidden></div>
                   </div>
                   <div class="voice-sim-state-card">
                     <h3 class="adm-subhead" style="margin-top:0;">État de l'appel</h3>
@@ -15101,39 +15150,245 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // Envoi partagé texte/vocal — le MÊME appel au MÊME moteur
+  // (voice-assistant-simulate) quel que soit le mode d'entrée : la Phase 2
+  // n'ajoute qu'une couche audio au-dessus du moteur texte de la Phase 1,
+  // jamais un second assistant. clientT0 permet au mode vocal de mesurer sa
+  // propre latence réseau+serveur pour le panneau DEBUG.
+  function voiceSimSendMessage(text){
+    voiceSimShowError('');
+    voiceSimSetBusy(true);
+    var clientT0 = Date.now();
+    return sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: voiceSimSessionId, message: text } }).then(function(res){
+      voiceSimSetBusy(false);
+      var data = res.data;
+      if (res.error || !data){ voiceSimShowError('Erreur de connexion au simulateur.'); return null; }
+      if (data.status === 'session_ended'){ voiceSimShowError('Cette simulation est terminée — lancez-en une nouvelle.'); return null; }
+      if (data.status === 'session_cap_reached'){ voiceSimShowError('Limite de messages atteinte pour cette simulation — lancez-en une nouvelle.'); return null; }
+      if (data.status !== 'ok'){ voiceSimShowError('Le simulateur est momentanément indisponible.'); return null; }
+      data._client_round_trip_ms = Date.now() - clientT0;
+      voiceSimAddToolEvents(data.events);
+      voiceSimAddMessage('assistant', data.reply);
+      voiceSimRenderStates(data.call_state);
+      voiceSimRenderInfo(data.info);
+      return data;
+    }).catch(function(){
+      voiceSimSetBusy(false);
+      voiceSimShowError('Erreur de connexion au simulateur.');
+      return null;
+    });
+  }
+
+  // ---------- Phase 2 : test vocal navigateur (Web Speech API) ----------
+  // STT/TTS du NAVIGATEUR uniquement pour ce test admin — aucune clé ni
+  // fournisseur externe : c'est justement l'objectif de la Phase 2, valider
+  // le moteur en conversation vocale AVANT de brancher un vrai fournisseur
+  // téléphonique/STT/TTS (Phase 3+, voir _shared/voice/providers.ts). Le
+  // "barge-in" (coupure de l'assistant si le client recommence à parler)
+  // prépare exactement le même besoin pour le futur téléphone.
+  var voiceSimRecognition = null;
+  var voiceSimVoiceActive = false; // le client a démarré une conversation vocale (peut englober plusieurs tours)
+  var voiceSimFrenchVoice = null;
+  var voiceSimSttStartedAt = 0;
+  var voiceSimLastTimings = null;
+
+  function voiceSimPickFrenchVoice(){
+    if (!('speechSynthesis' in window)) return;
+    var voices = window.speechSynthesis.getVoices();
+    voiceSimFrenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
+  }
+
+  function voiceSimSetVoiceStatus(text, cls){
+    var el = document.getElementById('voiceSimVoiceStatus');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'voice-sim-voice-status' + (cls ? ' ' + cls : '');
+  }
+
+  function voiceSimRenderDebug(data, extra){
+    var panel = document.getElementById('voiceSimDebugPanel');
+    var toggle = document.getElementById('voiceSimDebugToggle');
+    if (!panel || !toggle || !toggle.checked) return;
+    var t = (data && data.timings) || {};
+    var rows = [
+      ['Total serveur', t.total_ms],
+      ['— dont LLM', t.llm_ms],
+      ['— dont outils', t.tools_ms],
+      ['Aller-retour client (réseau+serveur)', data && data._client_round_trip_ms],
+    ];
+    if (extra){
+      rows.push(['Reconnaissance vocale (client)', extra.sttMs]);
+      rows.push(['Démarrage synthèse vocale', extra.ttsStartMs]);
+    }
+    panel.hidden = false;
+    panel.innerHTML = rows.filter(function(r){ return typeof r[1] === 'number'; }).map(function(r){
+      return '<div class="row"><span>' + admEscape(r[0]) + '</span><strong>' + Math.round(r[1]) + ' ms</strong></div>';
+    }).join('') || '<div class="row"><span>Aucune donnée pour ce tour.</span></div>';
+  }
+
+  function voiceSimSpeak(text, onDone){
+    if (!('speechSynthesis' in window)){ if (onDone) onDone(); return; }
+    window.speechSynthesis.cancel(); // coupe toute synthèse en cours (barge-in ou tour précédent)
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    if (voiceSimFrenchVoice) utter.voice = voiceSimFrenchVoice;
+    var t0 = Date.now();
+    var ttsStartMs = null;
+    utter.onstart = function(){
+      ttsStartMs = Date.now() - t0;
+      voiceSimSetVoiceStatus('🔊 HAYEVA Voice parle…', 'is-speaking');
+      var btn = document.getElementById('voiceSimMicBtn');
+      if (btn){ btn.classList.remove('is-listening'); btn.classList.add('is-speaking'); }
+    };
+    utter.onend = function(){
+      if (voiceSimLastTimings) voiceSimRenderDebug(voiceSimLastTimings, { ttsStartMs: ttsStartMs });
+      var btn = document.getElementById('voiceSimMicBtn');
+      if (btn) btn.classList.remove('is-speaking');
+      if (voiceSimVoiceActive){
+        voiceSimSetVoiceStatus('🎙️ HAYEVA Voice écoute…', 'is-listening');
+        if (btn) btn.classList.add('is-listening');
+      } else {
+        voiceSimSetVoiceStatus('Appuyez pour démarrer une conversation vocale', '');
+      }
+      if (onDone) onDone();
+    };
+    utter.onerror = function(){ if (onDone) onDone(); };
+    try { window.speechSynthesis.speak(utter); }
+    catch(e){ voiceSimSetVoiceStatus('Synthèse vocale indisponible — réponse affichée en texte uniquement.', ''); if (onDone) onDone(); }
+  }
+
+  // Traite une phrase finale reconnue : même chemin que le mode texte
+  // (voiceSimSendMessage), puis prononce la réponse. Le micro reste actif en
+  // continu pendant ce tour (barge-in possible dès que l'assistant parle).
+  function voiceSimHandleFinalTranscript(text){
+    if (!text || !text.trim() || voiceSimInFlight) return;
+    document.getElementById('voiceSimVoiceInterim').textContent = '';
+    voiceSimAddMessage('user', text.trim());
+    var sttMs = Date.now() - voiceSimSttStartedAt;
+    voiceSimSendMessage(text.trim()).then(function(data){
+      if (!data) return;
+      voiceSimLastTimings = data;
+      voiceSimRenderDebug(data, { sttMs: sttMs });
+      voiceSimSpeak(data.reply, null);
+    });
+  }
+
+  function voiceSimInitRecognition(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    var rec = new Ctor();
+    rec.lang = 'fr-FR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = function(event){
+      var interim = '', final = '';
+      for (var i = event.resultIndex; i < event.results.length; i++){
+        var transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += transcript;
+        else interim += transcript;
+      }
+      // Barge-in : dès que le client recommence à parler (même un résultat
+      // provisoire), on coupe immédiatement la synthèse en cours plutôt que
+      // d'attendre la phrase complète — exactement le comportement attendu
+      // au téléphone (voir §"BARGE-IN" du cahier des charges).
+      if ((interim || final) && 'speechSynthesis' in window && window.speechSynthesis.speaking){
+        window.speechSynthesis.cancel();
+      }
+      var interimEl = document.getElementById('voiceSimVoiceInterim');
+      if (interimEl) interimEl.textContent = interim;
+      if (final) voiceSimHandleFinalTranscript(final);
+    };
+    rec.onstart = function(){
+      voiceSimSttStartedAt = Date.now();
+      voiceSimSetVoiceStatus('🎙️ HAYEVA Voice écoute…', 'is-listening');
+      var btn = document.getElementById('voiceSimMicBtn');
+      if (btn) btn.classList.add('is-listening');
+    };
+    rec.onerror = function(event){
+      if (event.error === 'no-speech' || event.error === 'aborted') return; // silence normal, onend relance
+      voiceSimShowError('Reconnaissance vocale indisponible (' + event.error + ').');
+    };
+    rec.onend = function(){
+      // "continuous" s'arrête tout de même après un silence prolongé selon
+      // le navigateur — on relance automatiquement tant que le client n'a
+      // pas explicitement arrêté la conversation vocale (bouton micro).
+      if (voiceSimVoiceActive && !window.speechSynthesis.speaking){
+        try { rec.start(); } catch(e){ /* déjà démarré */ }
+      } else if (voiceSimVoiceActive){
+        // laisse la synthèse finir puis relance via utter.onend -> pas ici
+        setTimeout(function(){ if (voiceSimVoiceActive){ try { rec.start(); } catch(e){} } }, 300);
+      }
+    };
+    return rec;
+  }
+
+  function voiceSimStopVoice(){
+    voiceSimVoiceActive = false;
+    if (voiceSimRecognition){ try { voiceSimRecognition.stop(); } catch(e){} }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    var btn = document.getElementById('voiceSimMicBtn');
+    if (btn){ btn.classList.remove('is-listening', 'is-speaking'); }
+    voiceSimSetVoiceStatus('Appuyez pour démarrer une conversation vocale', '');
+    var interimEl = document.getElementById('voiceSimVoiceInterim');
+    if (interimEl) interimEl.textContent = '';
+  }
+
+  function voiceSimStartVoice(){
+    if (!voiceSimRecognition){
+      var panel = document.getElementById('voiceSimVoicePanel');
+      if (panel) panel.insertAdjacentHTML('beforeend', '<p class="voice-sim-voice-unsupported">Reconnaissance vocale non disponible dans ce navigateur — utilisez Chrome/Edge, ou le mode texte.</p>');
+      return;
+    }
+    if (!voiceSimSessionId){ voiceSimShowError('Simulation non prête — réessayez dans un instant.'); return; }
+    voiceSimVoiceActive = true;
+    try { voiceSimRecognition.start(); } catch(e){ /* déjà démarré */ }
+  }
+
+  function voiceSimSetMode(mode){
+    var textBtn = document.getElementById('voiceSimModeTextBtn');
+    var voiceBtn = document.getElementById('voiceSimModeVoiceBtn');
+    var form = document.getElementById('voiceSimForm');
+    var voicePanel = document.getElementById('voiceSimVoicePanel');
+    if (textBtn) textBtn.classList.toggle('is-active', mode === 'text');
+    if (voiceBtn) voiceBtn.classList.toggle('is-active', mode === 'voice');
+    if (form) form.hidden = mode === 'voice';
+    if (voicePanel) voicePanel.hidden = mode !== 'voice';
+    if (mode !== 'voice') voiceSimStopVoice();
+  }
+
   function voiceSimInit(){
     if (voiceSimInitialized) return;
     voiceSimInitialized = true;
     var form = document.getElementById('voiceSimForm');
     var resetBtn = document.getElementById('voiceSimResetBtn');
+    var micBtn = document.getElementById('voiceSimMicBtn');
+    var textModeBtn = document.getElementById('voiceSimModeTextBtn');
+    var voiceModeBtn = document.getElementById('voiceSimModeVoiceBtn');
     if (form){
       form.addEventListener('submit', function(e){
         e.preventDefault();
         var input = document.getElementById('voiceSimInput');
         var text = input.value.trim();
         if (!text || voiceSimInFlight || !voiceSimSessionId) return;
-        voiceSimAddMessage('user', text);
         input.value = '';
-        voiceSimShowError('');
-        voiceSimSetBusy(true);
-        sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: voiceSimSessionId, message: text } }).then(function(res){
-          voiceSimSetBusy(false);
-          var data = res.data;
-          if (res.error || !data){ voiceSimShowError('Erreur de connexion au simulateur.'); return; }
-          if (data.status === 'session_ended'){ voiceSimShowError('Cette simulation est terminée — lancez-en une nouvelle.'); return; }
-          if (data.status === 'session_cap_reached'){ voiceSimShowError('Limite de messages atteinte pour cette simulation — lancez-en une nouvelle.'); return; }
-          if (data.status !== 'ok'){ voiceSimShowError('Le simulateur est momentanément indisponible.'); return; }
-          voiceSimAddToolEvents(data.events);
-          voiceSimAddMessage('assistant', data.reply);
-          voiceSimRenderStates(data.call_state);
-          voiceSimRenderInfo(data.info);
-        }).catch(function(){
-          voiceSimSetBusy(false);
-          voiceSimShowError('Erreur de connexion au simulateur.');
-        });
+        voiceSimAddMessage('user', text);
+        voiceSimSendMessage(text);
       });
     }
-    if (resetBtn) resetBtn.addEventListener('click', voiceSimStart);
+    if (resetBtn) resetBtn.addEventListener('click', function(){ voiceSimStopVoice(); voiceSimStart(); });
+    if (textModeBtn) textModeBtn.addEventListener('click', function(){ voiceSimSetMode('text'); });
+    if (voiceModeBtn) voiceModeBtn.addEventListener('click', function(){ voiceSimSetMode('voice'); });
+    if (micBtn){
+      micBtn.addEventListener('click', function(){
+        if (voiceSimVoiceActive) voiceSimStopVoice();
+        else voiceSimStartVoice();
+      });
+    }
+    voiceSimRecognition = voiceSimInitRecognition();
+    if ('speechSynthesis' in window){
+      voiceSimPickFrenchVoice();
+      window.speechSynthesis.onvoiceschanged = voiceSimPickFrenchVoice;
+    }
     voiceSimStart();
   }
 
