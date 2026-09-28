@@ -414,7 +414,7 @@ if ('serviceWorker' in navigator){
        (plomberie/eau). Ne pas confondre avec :root[data-universe=...]
        ci-dessous, un système de reskin complet de la page par métier,
        plus ancien et indépendant de cette charte d'accents. */
-    --cat-chauffage:#CB3D28;
+    --cat-chauffage:#D67C68;
     --cat-plomberie:#3E86B8;
     --cat-clim-a:#BFE3F2;
     --cat-clim-b:#5FA8CC;
@@ -605,6 +605,22 @@ if ('serviceWorker' in navigator){
      niveau html/body l'empêche de créer une barre de défilement horizontale,
      sans changer l'apparence normale de la page. */
   html, body{ overflow-x:hidden; max-width:100%; }
+  /* CAUSE RÉELLE DU "DÉZOOM NÉCESSAIRE SUR IPHONE" (audit) : ce n'est pas un
+     débordement horizontal (aucun scrollWidth>clientWidth détecté, à aucune
+     largeur, sur aucune page) mais un comportement natif de Safari iOS —
+     tout input/select/textarea dont le font-size calculé est < 16px déclenche
+     un zoom automatique de la page au focus (accessibilité clavier), et
+     Safari ne revient PAS toujours à l'échelle 1 après la perte de focus :
+     l'utilisateur reste "zoomé" et doit pincer pour dézoomer lui-même.
+     17 règles de formulaires du site (booking-form, espace-pro-login-form,
+     ec-form, ecx-search, ecx-assist-form, admin-bk-*, qb-*, qc-*, voice-*...)
+     étaient entre 12.5px et 15.2px. Correctif à la source, à un seul endroit
+     plutôt que dans chacune des 17 règles (risque d'en oublier une future) :
+     16px minimum forcé sur tous les champs sous 900px, sans toucher à la
+     taille desktop/tablette existante. */
+  @media (max-width:900px){
+    input, select, textarea{ font-size:16px !important; }
+  }
   a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
     outline:2px solid var(--sky-deep);
     outline-offset:2px;
