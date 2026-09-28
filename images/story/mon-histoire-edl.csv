@@ -1,0 +1,25 @@
+shot_id,source_file,timeline_start,duration_seconds,timeline_end,transition_in,ratio,notes
+SHOT001,shots/shot-001.mp4,00:00:00.000,6,00:00:06.000,fade_in,16:9,Aerial dawn landscape
+SHOT002,shots/shot-002.mp4,00:00:06.000,8,00:00:14.000,cut,16:9,Old house exterior winter
+SHOT003,shots/shot-003.mp4,00:00:14.000,4,00:00:18.000,cut,16:9,Radiator close-up
+SHOT004,shots/shot-004.mp4,00:00:18.000,4,00:00:22.000,cut,16:9,Window condensation close-up
+SHOT005,shots/shot-005.mp4,00:00:22.000,5,00:00:27.000,cut,16:9,Teen hands wrench pipe (no face)
+SHOT006,shots/shot-006.mp4,00:00:27.000,5,00:00:32.000,cross_dissolve,16:9,Teen from behind (no face)
+SHOT007,shots/shot-007.mp4,00:00:32.000,8,00:00:40.000,cross_dissolve,16:9,Transition still-life tools
+SHOT008,shots/shot-008.mp4,00:00:40.000,4,00:00:44.000,cross_dissolve,16:9,"Three generations A - GRAND-PERE - CHAUFFAGE (text overlay)"
+SHOT009,shots/shot-009.mp4,00:00:44.000,4,00:00:48.000,cross_dissolve,16:9,"Three generations B - PERE - PLOMBERIE (text overlay)"
+SHOT010,shots/shot-010.mp4,00:00:48.000,4,00:00:52.000,cross_dissolve,16:9,"Three generations C - JULIEN - PLOMBERIE CHAUFFAGE CLIMATISATION (text overlay)"
+SHOT011,shots/shot-011.mp4,00:00:52.000,4,00:00:56.000,cut,16:9,"Three generations D - TROIS GENERATIONS / UNE MEME ATTIRANCE (text overlay)"
+SHOT012,shots/shot-012.mp4,00:00:56.000,10,00:01:06.000,cut,16:9,Formation hands on diagrams (no face)
+SHOT013,shots/shot-013.mp4,00:01:06.000,8,00:01:14.000,cut,16:9,Technician practicing repair (back/3-4 no face)
+SHOT014,shots/shot-014.mp4,00:01:14.000,6,00:01:20.000,cut,16:9,Walking to client house with toolbox (no face)
+SHOT015,shots/shot-015.mp4,00:01:20.000,6,00:01:26.000,cut,16:9,Opening toolbox hands only
+SHOT016,shots/shot-016.mp4,00:01:26.000,8,00:01:34.000,cut,16:9,Repair in progress hands/3-4 no face
+SHOT017,shots/shot-017.mp4,00:01:34.000,4,00:01:38.000,continuous,16:9,Le declic A - extreme close-up heating unit
+SHOT018,shots/shot-018.mp4,00:01:38.000,6,00:01:44.000,continuous,16:9,Le declic B - pull back reveals room
+SHOT019,shots/shot-019.mp4,00:01:44.000,6,00:01:50.000,continuous,16:9,Le declic C - reveals whole house subtle overlays
+SHOT020,shots/shot-020.mp4,00:01:50.000,2,00:01:52.000,cut,16:9,Le declic D - final wide house tiny heating unit
+SHOT021,shots/shot-021.mp4,00:01:52.000,8,00:02:00.000,cut,16:9,Desk insulation papers laptop hands only
+SHOT022,shots/shot-022.mp4,00:02:00.000,8,00:02:08.000,cut,16:9,Exterior HAYEVA vehicle golden hour (no face)
+SHOT023,shots/shot-023.mp4,00:02:08.000,8,00:02:16.000,fade_out,16:9,Closing silhouette golden hour (no face)
+END_SCREEN,static/end-screen (built in HTML/CSS - not a video shot),00:02:16.000,4,00:02:20.000,fade_in,16:9,"Logo HAYEVA / tagline / signature / Bienvenue chez HAYEVA - see docs/mon-histoire-production-package.md section 13"
