@@ -447,7 +447,12 @@ if ('serviceWorker' in navigator){
        touches (fonds de carte, icônes, traits), jamais en aplat dominant. */
     --ivory:#FBF7EF;
     --ivory-deep:#F3ECDC;
-    --turquoise:#2FB6A8;
+    /* #1D7B6E (au lieu de #2FB6A8) : trouvé en audit contraste — utilisé
+       comme fond de bouton à texte blanc (bannière cookies "Tout accepter",
+       CTA Espace Client, assistant vocal…), cette teinte ne donnait que
+       2.5:1, très en dessous du minimum WCAG AA (4.5:1) pour un texte de
+       bouton. Toujours turquoise, plus soutenu (~5.1:1 avec du blanc). */
+    --turquoise:#1D7B6E;
     --turquoise-soft:#CFEFEA;
     --amber:#E8A23C;
     --amber-soft:#FBE6C4;
@@ -5521,8 +5526,12 @@ if ('serviceWorker' in navigator){
     display:inline-flex; align-items:center; gap:clamp(3px, 0.5vw, 6px); flex:none;
     height:clamp(30px, 3.6vw, 37px); box-sizing:border-box;
     font-family:"Poppins",sans-serif; font-weight:600; font-size:clamp(0.62rem, 0.68vw, 0.79rem);
-    color:var(--hdr-blue, #1AA6EE); text-decoration:none; padding:0 clamp(5px, 1.2vw, 11px); border-radius:999px;
-    border:1.5px solid var(--hdr-blue, #1AA6EE);
+    /* #0A6E9F (au lieu de var(--hdr-blue)) : trouvé en audit contraste — le
+       bleu clair d'en-tête (#1AA6EE, décoratif ailleurs) ne donnait que
+       2.72:1 sur fond blanc pour ce texte de bouton ("Se déconnecter"),
+       sous le minimum WCAG AA (4.5:1). Même famille de bleu, plus soutenu. */
+    color:#0A6E9F; text-decoration:none; padding:0 clamp(5px, 1.2vw, 11px); border-radius:999px;
+    border:1.5px solid #0A6E9F;
     background:#fff;
     transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
     white-space:nowrap;
