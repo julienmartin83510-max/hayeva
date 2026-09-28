@@ -451,7 +451,15 @@ if ('serviceWorker' in navigator){
     --turquoise-soft:#CFEFEA;
     --amber:#E8A23C;
     --amber-soft:#FBE6C4;
-    --sky-accent:#5AA9D6;
+    /* #205A8F (au lieu de #5AA9D6) : trouvé en audit contraste — ce ton
+       servait à la fois de couleur DÉCORATIVE (halos, blobs, à faible
+       opacity, où la teinte exacte importe peu) et de couleur de TEXTE
+       (badge durée "1h30", "Photo tip", prix "à partir de") — insuffisant
+       comme texte : 2.1:1 sur --sky-accent-soft, 2.6:1 sur blanc (minimum
+       WCAG AA texte normal : 4.5:1). #205A8F conserve la même famille de
+       bleu, reste discret en halo à faible opacity, et atteint ~5.9:1 sur
+       --sky-accent-soft / ~5.2:1 sur blanc. */
+    --sky-accent:#205A8F;
     --sky-accent-soft:#D6ECF7;
     color-scheme: light;
   }
@@ -499,21 +507,39 @@ if ('serviceWorker' in navigator){
     --sky:#E79588;
     --sky-deep:#DD6755;
     --ink:#FBECEA;
-    --ink-soft:#F2C2BB;
+    /* #F8DBD5 (au lieu de #F2C2BB) : trouvé en audit contraste — le texte
+       secondaire (paragraphes, légendes) rendu avec cette teinte sur les
+       fonds --sand/--sand-deep de cet univers ne franchissait pas 4.1:1
+       (minimum WCAG AA texte normal : 4.5:1), aussi discrètement mais
+       partout sur la page tant que l'univers restait actif. Légèrement
+       plus clair, toujours dans la même famille rosée. */
+    --ink-soft:#F8DBD5;
     --line:rgba(251,236,234,0.22);
     --white:#44150D;
     --cat-chauffage:#CB3D28;
   }
   :root[data-universe="plomberie"]{
-    --sand:#5C8699;
-    --sand-deep:#6996A8;
+    /* --sand/--sand-deep assombris (#5C8699→#4A6E80, #6996A8→#44677A) :
+       trouvé en audit contraste — ces deux tons étaient trop clairs pour
+       porter un texte clair de façon fiable (max ~3.2:1 avec du blanc pur,
+       quel que soit --ink-soft) sans être assez clairs non plus pour du
+       texte foncé. --cream/--white restaient déjà corrects, inchangés. */
+    --sand:#4A6E80;
+    --sand-deep:#44677A;
     --cream:#4D7889;
     --terracotta:#EAF2F4;
     --terracotta-deep:#D7E6E9;
     --sky:#A9CED8;
     --sky-deep:#82B3C0;
     --ink:#F8FCFD;
-    --ink-soft:#DAE9EC;
+    /* #F2F8F9 (au lieu de #DAE9EC) : même correctif que chauffage
+       ci-dessus — insuffisant sur les fonds les plus soutenus de cet
+       univers (--cream #4D7889 notamment, ratio observé ~3.9:1). Reste un
+       cas limite sur --sand-deep (bleu-vert moyen, ni assez clair ni assez
+       sombre pour atteindre 4.5:1 avec un texte clair fixe) — accepté en
+       l'état, un vrai correctif exigerait de revoir toute la palette
+       plomberie plutôt qu'un seul jeton. */
+    --ink-soft:#F2F8F9;
     --line:rgba(248,252,253,0.22);
     --white:#1F3E48;
     --cat-plomberie:#EAF2F4;
@@ -530,8 +556,19 @@ if ('serviceWorker' in navigator){
     --terracotta-deep:#434B53;
     --sky:#E4E7E9;
     --sky-deep:#C7CCD0;
-    --ink:#2B3238;
-    --ink-soft:#6B7378;
+    /* --ink/--ink-soft NE sont plus redéfinis ici (audit contraste) :
+       contrairement à chauffage/plomberie (dont le fond devient sombre et a
+       donc besoin d'un texte clair), le fond de l'univers clim reste clair
+       en toute circonstance (--sand/--cream/--white ci-dessus restent
+       blancs/quasi blancs) — les valeurs de base (--ink:#16222C,
+       --ink-soft:#5B6B78, sombres) y sont donc toujours plus lisibles que
+       les teintes claires précédemment définies ici (--ink:#2B3238,
+       --ink-soft:#6B7378), qui produisaient un texte gris sur fond gris à
+       peine distinguable (ratio ~1.2:1) dès que cet univers restait actif
+       en dehors de sa propre section (prix, tarifs, autres univers…).
+       Aucune perte visuelle dans la section clim elle-même : les deux
+       teintes sont très proches, --ink de base est simplement un peu plus
+       sombre donc plus lisible. */
     --line:rgba(43,50,56,0.12);
     --white:#FFFFFF;
   }
@@ -717,7 +754,14 @@ if ('serviceWorker' in navigator){
     background:#0A0A0A; color:#F2E8D6; text-align:center;
     padding:10px 16px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.82rem;
   }
-  .opening-banner p{ margin:0; max-width:900px; margin-inline:auto; line-height:1.4; }
+  /* color:#F2E8D6 explicite : trouvé en audit contraste — sans cette
+     déclaration, la règle globale p{color:var(--ink-soft)} (ligne 697)
+     s'applique directement à ce <p> et l'emporte sur la couleur héritée du
+     parent .opening-banner (une correspondance directe l'emporte toujours
+     sur l'héritage, quelle que soit la spécificité de l'ancêtre) — le texte
+     s'affichait donc en gris moyen (#5B6B78, ratio 3.6:1) sur fond quasi
+     noir (#0A0A0A) au lieu du beige clair prévu (ratio >12:1). */
+  .opening-banner p{ margin:0; max-width:900px; margin-inline:auto; line-height:1.4; color:#F2E8D6; }
   .opening-banner strong{ color:#F0C879; }
 
   /* ---------- Header ----------
@@ -1262,6 +1306,13 @@ if ('serviceWorker' in navigator){
     font-size:0.9rem;
     margin-bottom:8px;
     text-align:center;
+    /* color:var(--ink) explicite (correction revue) : cette étiquette vit
+       dans #besoin, une section qui suit le réskin (fond sombre sous
+       chauffage/plomberie) — --ink suit déjà correctement ce basculement
+       depuis la correction de :root[data-universe="clim"] plus haut ;
+       seule l'absence de déclaration explicite posait problème (elle
+       n'héritait pas de --ink de façon fiable selon le contexte parent). */
+    color:var(--ink);
   }
   .top-search-results{
     margin-top:10px;
@@ -1309,7 +1360,14 @@ if ('serviceWorker' in navigator){
     align-items:center;
     gap:6px;
     margin-left:4px;
-    color:var(--sky-deep);
+    /* color:var(--ink), pas --sky-deep-fixed : correction revue — ce lien
+       vit dans #besoin, une section qui SUIT le réskin (son fond devient
+       sombre sous chauffage/plomberie), contrairement aux autres usages de
+       --sky-deep corrigés ailleurs (Espace Client/Pro, mentions légales),
+       qui eux restent sur fond clair fixe. --ink suit déjà correctement le
+       réskin (texte clair sur fond sombre, foncé sur fond clair) depuis la
+       correction de :root[data-universe="clim"] plus haut. */
+    color:var(--ink);
     font-weight:700;
     text-decoration:none;
     border-bottom:1.5px solid transparent;
@@ -1364,7 +1422,14 @@ if ('serviceWorker' in navigator){
     font-weight:700;
     font-size:0.92rem;
     color:var(--accent-cat, var(--ink-soft));
-    background:var(--cream);
+    /* background:#FFFFFF fixe (au lieu de var(--cream)) : trouvé en audit
+       contraste — ce sélecteur de catégorie (Climatisation/Chauffage/
+       Plomberie) est un contrôle de navigation, pas un contenu d'univers :
+       son texte (--accent-cat) est fixé par bouton et ne suit jamais le
+       thème actif. Avec un fond reskinnable (--cream), le bouton "Plomberie"
+       devenait par exemple illisible (texte bleu sur fond rouge sombre) dès
+       que l'univers Chauffage était actif ailleurs sur la page. */
+    background:#FFFFFF;
     border:1.5px solid var(--line);
     border-radius:999px;
     padding:10px 20px;
@@ -1438,7 +1503,15 @@ if ('serviceWorker' in navigator){
     background-clip:text;
     color:transparent;
   }
-  #tabCta{ background:var(--accent-cat, var(--terracotta)); box-shadow:none; transition:background .3s; }
+  /* color:#fff fixe (au lieu d'hériter var(--white) de .btn-primary) :
+     trouvé en audit contraste — --accent-cat ne suit JAMAIS le thème actif
+     (fixe par onglet, voir plus haut), contrairement à --white qui, lui,
+     suit l'univers actif ailleurs sur la page. Sous plomberie par exemple,
+     --white devient #1F3E48 (bleu-nuit sombre), quasi identique au fond
+     ardoise fixe de l'onglet clim (#24383F) : texte pratiquement invisible
+     (ratio 1.07). Le fond de ce bouton étant toujours sombre, son texte doit
+     toujours rester blanc, indépendamment de l'univers actif. */
+  #tabCta{ background:var(--accent-cat, var(--terracotta)); color:#fff; box-shadow:none; transition:background .3s; }
 
   /* ---------- Booking ---------- */
   .booking-card{
@@ -1791,7 +1864,7 @@ if ('serviceWorker' in navigator){
   .bk-privacy-note{
     font-size:0.78rem; color:var(--ink-soft); line-height:1.5; margin-top:4px;
   }
-  .bk-privacy-note a{ color:var(--sky-deep); }
+  .bk-privacy-note a{ color:var(--sky-deep-fixed); }
   .bk-legal-consent{
     display:flex; flex-direction:column; gap:10px; margin-top:16px;
     padding:14px 16px; background:var(--sand-deep); border:1px solid var(--line); border-radius:12px;
@@ -1801,7 +1874,7 @@ if ('serviceWorker' in navigator){
     display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.86rem; line-height:1.5; color:var(--ink);
   }
   .bk-consent-check input{ margin-top:3px; flex-shrink:0; width:16px; height:16px; }
-  .bk-consent-check a{ color:var(--sky-deep); }
+  .bk-consent-check a{ color:var(--sky-deep-fixed); }
   .booking-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:16px;}
   .booking-nav{
     display:flex;
@@ -1815,7 +1888,7 @@ if ('serviceWorker' in navigator){
   button.btn-primary:disabled{opacity:0.45; cursor:not-allowed; transform:none;}
   .restart-link{
     background:none; border:none; font-family:inherit; font-weight:700;
-    color:var(--sky-deep); cursor:pointer; padding:0; font-size:0.9rem;
+    color:var(--sky-deep-fixed); cursor:pointer; padding:0; font-size:0.9rem;
     text-decoration:underline;
   }
 
@@ -1882,7 +1955,12 @@ if ('serviceWorker' in navigator){
     font-family:"Poppins",sans-serif;
     font-weight:800;
     font-size:1.6rem;
-    color:var(--terracotta);
+    /* color:var(--ink), pas --terracotta : trouvé en audit contraste — sous
+       chauffage, --terracotta ET le fond de cette carte (--sand/--white)
+       deviennent tous deux des rouges soutenus, quasi identiques (ratio
+       2.07). --ink suit correctement le fond (clair/sombre) quel que soit
+       l'univers actif, contrairement à --terracotta ici. */
+    color:var(--ink);
   }
   .multi-price small{ font-size:0.6em; font-weight:700; }
   .multi-card > p{ margin-bottom:14px; }
@@ -1917,7 +1995,9 @@ if ('serviceWorker' in navigator){
     flex-direction:column;
     align-items:center;
     gap:10px;
-    background:var(--cream);
+    /* background:#FFFFFF fixe : même raison que .tab-btn ci-dessus (sélecteur
+       de catégorie, pas contenu d'univers — voir son commentaire). */
+    background:#FFFFFF;
     border:1.5px solid var(--line);
     border-radius:14px;
     padding:20px 26px;
@@ -2245,7 +2325,9 @@ if ('serviceWorker' in navigator){
     font-weight:700;
     text-transform:uppercase;
     letter-spacing:0.06em;
-    color:var(--terracotta);
+    /* color:var(--ink), pas --terracotta : même correctif que .multi-price
+       ci-dessus (rouge sur rouge sous chauffage, ratio 1.31). */
+    color:var(--ink);
     margin-bottom:12px;
   }
   .chips{display:flex; flex-wrap:wrap; gap:9px;}
@@ -2620,7 +2702,7 @@ if ('serviceWorker' in navigator){
   }
   .espace-pro-remember-me input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--sky-deep); cursor:pointer; flex-shrink:0; }
   .espace-pro-login-links{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:0.82rem; }
-  .espace-pro-login-links a{ color:var(--sky-deep); text-decoration:underline; cursor:pointer; }
+  .espace-pro-login-links a{ color:var(--sky-deep-fixed); text-decoration:underline; cursor:pointer; }
   .espace-pro-form-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:480px){ .espace-pro-form-grid-2{ grid-template-columns:1fr; } }
   .espace-pro-form-error{
@@ -5062,7 +5144,7 @@ if ('serviceWorker' in navigator){
     font-weight:700; font-size:0.85em; padding:1px 7px; border-radius:5px;
     border:1px dashed #C9932F;
   }
-  .legal-page a{ color:var(--sky-deep); }
+  .legal-page a{ color:var(--sky-deep-fixed); }
   .legal-retraction-form{
     background:var(--sand-deep); border:1px solid var(--line); border-radius:12px;
     padding:16px 18px; margin-top:14px; font-size:0.88rem; line-height:1.7;
@@ -6548,15 +6630,15 @@ if ('serviceWorker' in navigator){
       </div>
 
       <div class="tab-bar reveal-on-scroll" id="tabBar">
-        <button class="tab-btn is-clim is-active" data-tab="clim" type="button" style="--accent-cat:var(--cat-clim-a);">
+        <button class="tab-btn is-clim is-active" data-tab="clim" type="button" style="--accent-cat:#24383F;">
           <svg viewBox="0 0 30 30" fill="none"><g class="snow-spin" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><g><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(60 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(120 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(180 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(240 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(300 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g></g></svg>
           Climatisation
         </button>
-        <button class="tab-btn" data-tab="chauffage" type="button" style="--accent-cat:var(--cat-chauffage);">
+        <button class="tab-btn" data-tab="chauffage" type="button" style="--accent-cat:#CB3D28;">
           <svg viewBox="0 0 30 30" fill="none"><path class="heatline1" d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="none"/><path class="heatline2" d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.7"/></svg>
           Chauffage
         </button>
-        <button class="tab-btn is-plomberie" data-tab="plomberie" type="button" style="--accent-cat:var(--cat-plomberie);">
+        <button class="tab-btn is-plomberie" data-tab="plomberie" type="button" style="--accent-cat:#205A8F;">
           <svg viewBox="0 0 30 30" fill="none"><path class="idrop" d="M15 4C10 11 6 16.2 6 20.5C6 25.2 10.1 28.5 15 28.5C19.9 28.5 24 25.2 24 20.5C24 16.2 20 11 15 4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/><path d="M11 19c-.3 2.2 1 4 2.8 4.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6" fill="none"/></svg>
           Plomberie
         </button>
@@ -6646,15 +6728,15 @@ if ('serviceWorker' in navigator){
       </div>
 
       <div class="price-logos reveal-on-scroll" id="priceLogos">
-        <button class="price-logo-btn is-clim" data-cat="clim" type="button" style="--accent-cat:var(--cat-clim-a);">
+        <button class="price-logo-btn is-clim" data-cat="clim" type="button" style="--accent-cat:#24383F;">
           <svg viewBox="0 0 30 30" fill="none"><g class="snow-spin" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><g><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(60 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(120 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(180 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(240 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g><g transform="rotate(300 15 15)"><line x1="15" y1="15" x2="15" y2="2"/><line x1="15" y1="8" x2="13" y2="9.8"/><line x1="15" y1="8" x2="17" y2="9.8"/><line x1="15" y1="4.5" x2="13.7" y2="5.7"/><line x1="15" y1="4.5" x2="16.3" y2="5.7"/></g></g></svg>
           <span>Climatisation</span>
         </button>
-        <button class="price-logo-btn" data-cat="chauffage" type="button" style="--accent-cat:var(--cat-chauffage);">
+        <button class="price-logo-btn" data-cat="chauffage" type="button" style="--accent-cat:#CB3D28;">
           <svg viewBox="0 0 30 30" fill="none"><path class="heatline1" d="M15 3C10 9 7 13.5 7 18C7 23.5 10.5 27 15 27C19.5 27 23 23.5 23 18C23 13.5 20 9 15 3Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="none"/><path class="heatline2" d="M15 12C12.5 15 11 17.3 11 19.5C11 22 12.8 23.5 15 23.5C17.2 23.5 19 22 19 19.5C19 17.3 17.5 15 15 12Z" fill="currentColor" opacity="0.7"/></svg>
           <span>Chauffage</span>
         </button>
-        <button class="price-logo-btn is-plomberie" data-cat="plomberie" type="button" style="--accent-cat:var(--cat-plomberie);">
+        <button class="price-logo-btn is-plomberie" data-cat="plomberie" type="button" style="--accent-cat:#205A8F;">
           <svg viewBox="0 0 30 30" fill="none"><path class="idrop" d="M15 4C10 11 6 16.2 6 20.5C6 25.2 10.1 28.5 15 28.5C19.9 28.5 24 25.2 24 20.5C24 16.2 20 11 15 4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/><path d="M11 19c-.3 2.2 1 4 2.8 4.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6" fill="none"/></svg>
           <span>Plomberie</span>
         </button>
@@ -11441,7 +11523,16 @@ if ('serviceWorker' in navigator){
   var tabBullets = document.getElementById('tabBullets');
   var tabCta = document.getElementById('tabCta');
   var rotation = 0;
-  var ACCENT = { clim:'var(--cat-clim-a)', chauffage:'var(--cat-chauffage)', plomberie:'var(--cat-plomberie)' };
+  // clim:'#24383F' (au lieu de var(--cat-clim-a)) : trouvé en audit contraste
+  // — --cat-clim-a est un bleu glacier volontairement très clair (demande
+  // explicite : climatisation reste neutre/pâle, sans couleur vive), pensé
+  // pour un dégradé décoratif, pas pour texte/fond de bouton en aplat (texte
+  // blanc sur #BFE3F2 : ratio 1.36, très en dessous du minimum WCAG AA
+  // 4.5:1). #24383F est la même teinte ardoise déjà utilisée par
+  // .tab-btn.is-clim.is-active / .price-logo-btn.is-active.is-clim pour ce
+  // même problème (contraste ~12:1) — réutilisée ici pour rester cohérent
+  // plutôt que d'inventer une nouvelle teinte.
+  var ACCENT = { clim:'#24383F', chauffage:'var(--cat-chauffage)', plomberie:'var(--cat-plomberie)' };
 
   function renderTab(id){
     var tab = TABS.filter(function(t){ return t.id === id; })[0];
