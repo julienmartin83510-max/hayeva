@@ -5499,6 +5499,14 @@ if ('serviceWorker' in navigator){
     touch-action:pan-y; user-select:none; background:var(--sand-deep);
     max-width:640px; margin-inline:auto;
   }
+  /* Variante pour une photo prise en hauteur (colonne de douche entière, du
+     plafond au sol) : le ratio 4/3 par défaut, pensé pour des photos en
+     largeur (unité extérieure de climatisation), recadrait sévèrement le
+     haut/bas et coupait la barre de douche. 9/16 correspond au ratio réel
+     des photos (1242×2208) : plus aucun recadrage, juste une mise à l'échelle
+     — et une largeur max réduite pour ne pas obtenir un encart démesurément
+     haut sur desktop. */
+  .ba-slider-portrait{ aspect-ratio:9/16; max-width:360px; }
   .ba-slider-after, .ba-slider-before{ position:absolute; inset:0; }
   .ba-slider-after img, .ba-slider-before img{
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;
@@ -6393,7 +6401,7 @@ if ('serviceWorker' in navigator){
         </figure>
       </div>
 
-      <div class="ba-slider reveal-on-scroll" data-ba-slider>
+      <div class="ba-slider ba-slider-portrait reveal-on-scroll" data-ba-slider>
         <div class="ba-slider-after">
           <img src="images/sanitaire/colonne-douche-apres-md.jpg"
                srcset="images/sanitaire/colonne-douche-apres-sm.jpg 480w, images/sanitaire/colonne-douche-apres-md.jpg 900w, images/sanitaire/colonne-douche-apres-lg.jpg 1600w"
