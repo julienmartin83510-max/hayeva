@@ -4147,6 +4147,23 @@ if ('serviceWorker' in navigator){
      nouvelle couleur inventée. */
 
   .ecx-app{ padding-bottom:0; }
+  /* Garantit que l'ancre sticky de l'assistant flottant (.ecx-assist-anchor)
+     est toujours épinglée au bas VISUEL de l'écran, même quand le contenu
+     réel au-dessus est plus court que la fenêtre (ex. tableau de bord Pro
+     avec peu de cartes) : position:sticky ne peut s'épingler qu'à la
+     position où l'élément se trouverait naturellement dans le flux, donc
+     sans ceci, sur un écran court, le bouton restait juste après le
+     contenu au lieu d'être plaqué en bas (bug réel détecté en test
+     Playwright desktop). Patron "sticky footer" flexbox standard :
+     min-height garantit une colonne au moins aussi haute que l'écran,
+     margin-top:auto pousse l'ancre tout en bas SANS étirer .pro-shell
+     (qui doit garder sa propre hauteur de carte, pas remplir l'écran). */
+  #espaceProDashboard, #espaceClientDashboard{ display:flex; flex-direction:column; min-height:100dvh; }
+  #espaceProDashboard > .ecx-assist-anchor{ margin-top:auto; }
+  /* Côté Client, .ecx-bottomnav précède .ecx-assist-anchor dans le flux :
+     pousser LE PREMIER des deux suffit, l'ancre de l'assistant suit
+     immédiatement au même niveau (bas de l'écran), sans double marge. */
+  #espaceClientDashboard > .ecx-bottomnav{ margin-top:auto; }
   .ecx-app.has-bottomnav{ padding-bottom:86px; } /* place pour la nav fixe, safe-area incluse */
 
   /* Icônes vectorielles — une seule famille graphique (voir ecxIcon(), JS) :
@@ -4208,7 +4225,7 @@ if ('serviceWorker' in navigator){
     position:sticky; left:0; right:0; bottom:0; height:0; z-index:9100; pointer-events:none;
   }
   .ecx-assist-btn{
-    position:absolute; right:16px; bottom:calc(86px + 14px); pointer-events:auto;
+    position:absolute; right:16px; bottom:calc(86px + env(safe-area-inset-bottom, 0px) + 14px); pointer-events:auto;
     width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
     background:var(--sky-deep); color:#fff; display:flex; align-items:center; justify-content:center;
     box-shadow:0 10px 24px -8px rgba(16,27,46,0.4); transition:transform .18s ease, box-shadow .18s ease;
@@ -4220,7 +4237,7 @@ if ('serviceWorker' in navigator){
   [data-ecx-assist-role="professionnel"] .ecx-assist-btn{ bottom:24px; }
 
   .ecx-assist-callout{
-    position:absolute; right:74px; bottom:calc(86px + 8px); pointer-events:auto;
+    position:absolute; right:74px; bottom:calc(86px + env(safe-area-inset-bottom, 0px) + 8px); pointer-events:auto;
     max-width:200px; background:#fff; border:1px solid var(--line); border-radius:14px;
     padding:10px 12px; box-shadow:0 10px 24px -10px rgba(16,27,46,0.3);
     font-family:"Poppins",sans-serif; font-size:0.78rem; font-weight:600; color:var(--ink);
@@ -4287,8 +4304,43 @@ if ('serviceWorker' in navigator){
   }
   .ecx-assist-send svg{ width:18px; height:18px; }
   .ecx-assist-send[disabled]{ opacity:0.5; cursor:not-allowed; }
+
+  .ecx-assist-modetabs{ flex:0 0 auto; display:flex; gap:6px; padding:10px 14px 0; }
+  .ecx-assist-modebtn{
+    flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:6px;
+    border:1px solid var(--line); background:var(--sand); border-radius:10px; padding:9px 10px;
+    font-family:"Poppins",sans-serif; font-size:0.82rem; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  }
+  .ecx-assist-modebtn .ecx-svg-icon{ width:16px; height:16px; }
+  .ecx-assist-modebtn.is-active{ background:var(--sky-deep); color:#fff; border-color:var(--sky-deep); }
+
+  .ecx-assist-voice{ flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px 20px; text-align:center; }
+  .ecx-assist-voice[hidden]{ display:none; }
+  .ecx-assist-voice-orb{
+    width:88px; height:88px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center; justify-content:center;
+    color:var(--sky-deep); transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .ecx-assist-voice-orb .ecx-svg-icon{ width:34px; height:34px; }
+  .ecx-assist-voice-orb.is-listening{ border-color:var(--turquoise); box-shadow:0 0 0 6px rgba(0,0,0,0.03); }
+  .ecx-assist-voice-orb.is-speaking{ border-color:var(--terracotta); animation:ecxVoiceSpeakPulse 1.1s ease-in-out infinite; }
+  .ecx-assist-voice-orb.is-connecting{ border-color:var(--sky); animation:ecxVoiceConnectSpin 1.4s linear infinite; }
+  @keyframes ecxVoiceSpeakPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
+  @keyframes ecxVoiceConnectSpin{ 0%{ opacity:0.5; } 50%{ opacity:1; } 100%{ opacity:0.5; } }
+  .ecx-assist-voice-status{ font-size:0.86rem; font-weight:700; color:var(--ink); margin:0; min-height:1.3em; }
+  .ecx-assist-voice-error{ font-size:0.8rem; color:var(--terracotta); margin:0; }
+  .ecx-assist-voice-startbtn{
+    border:none; border-radius:999px; background:var(--terracotta); color:#fff; padding:12px 22px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem; cursor:pointer;
+  }
+  .ecx-assist-voice-startbtn[hidden]{ display:none; }
+  .ecx-assist-voice-controls{ display:flex; flex-direction:column; gap:8px; width:100%; max-width:260px; }
+  .ecx-assist-voice-ctrlbtn{
+    border:1px solid var(--line); background:#fff; border-radius:999px; padding:10px 16px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--ink); cursor:pointer;
+  }
+  .ecx-assist-voice-ctrlend{ background:var(--sand); color:var(--terracotta); border-color:transparent; }
   @media (prefers-reduced-motion: reduce){
-    .ecx-assist-callout, .ecx-assist-card{ animation:none !important; }
+    .ecx-assist-callout, .ecx-assist-card, .ecx-assist-voice-orb{ animation:none !important; }
   }
 
   /* ---------- Barre de recherche + catégories (Accueil) ---------- */
@@ -7350,38 +7402,65 @@ if ('serviceWorker' in navigator){
               <div id="proSettingsPanel"><p class="ec-loading">Chargement…</p></div>
             </section>
           </div>
+        </div>
 
-          <div class="ecx-assist-anchor" data-ecx-assist-role="professionnel">
-            <div class="ecx-assist-callout" id="ecxAssistCalloutPro" hidden>
-              <span>Besoin d'aide ?</span>
-              <button type="button" class="ecx-assist-callout-close" id="ecxAssistCalloutClosePro" aria-label="Masquer">
+        <!-- Assistant flottant Pro : SIBLING de .pro-shell (jamais un
+             enfant), qui est display:flex en ligne (sidebar + contenu) —
+             un enfant de plus y devient un 3e élément flex et casse tout
+             calcul de position (bug réel détecté en test Playwright
+             desktop : le bouton se retrouvait hors écran). Ici, en flux de
+             bloc normal dans #espaceProDashboard, l'ancre position:sticky
+             s'épingle correctement au bas de #espacePro.is-open (le vrai
+             conteneur défilant, voir .ecx-bottomnav plus haut). -->
+        <div class="ecx-assist-anchor" data-ecx-assist-role="professionnel">
+          <div class="ecx-assist-callout" id="ecxAssistCalloutPro" hidden>
+            <span>Besoin d'aide ?</span>
+            <button type="button" class="ecx-assist-callout-close" id="ecxAssistCalloutClosePro" aria-label="Masquer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </div>
+          <button type="button" class="ecx-assist-btn" id="ecxAssistBtnPro" aria-haspopup="dialog" aria-label="Ouvrir l'assistant Hayeva">
+            <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+          </button>
+        </div>
+        <div class="ecx-assist-sheet" id="ecxAssistSheetPro" hidden role="dialog" aria-modal="true" aria-labelledby="ecxAssistTitlePro">
+          <div class="ecx-assist-card">
+            <div class="ecx-assist-head">
+              <div class="ecx-assist-head-txt">
+                <p class="ecx-assist-head-title" id="ecxAssistTitlePro">Assistant Hayeva</p>
+                <p class="ecx-assist-head-sub" id="ecxAssistSubPro">Comment puis-je vous aider ?</p>
+              </div>
+              <button type="button" class="ecx-assist-close" id="ecxAssistClosePro" aria-label="Fermer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
             </div>
-            <button type="button" class="ecx-assist-btn" id="ecxAssistBtnPro" aria-haspopup="dialog" aria-label="Ouvrir l'assistant Hayeva">
-              <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
-            </button>
-          </div>
-          <div class="ecx-assist-sheet" id="ecxAssistSheetPro" hidden role="dialog" aria-modal="true" aria-labelledby="ecxAssistTitlePro">
-            <div class="ecx-assist-card">
-              <div class="ecx-assist-head">
-                <div class="ecx-assist-head-txt">
-                  <p class="ecx-assist-head-title" id="ecxAssistTitlePro">Assistant Hayeva</p>
-                  <p class="ecx-assist-head-sub" id="ecxAssistSubPro">Comment puis-je vous aider ?</p>
-                </div>
-                <button type="button" class="ecx-assist-close" id="ecxAssistClosePro" aria-label="Fermer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </button>
+            <div class="ecx-assist-modetabs" id="ecxAssistModeTabsPro">
+              <button type="button" class="ecx-assist-modebtn is-active" id="ecxAssistModeTextPro">Écrire</button>
+              <button type="button" class="ecx-assist-modebtn" id="ecxAssistModeVoicePro">
+                <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></span>
+                Parler
+              </button>
+            </div>
+            <div class="ecx-assist-chips" id="ecxAssistChipsPro"></div>
+            <div class="ecx-assist-msgs" id="ecxAssistMsgsPro"></div>
+            <p class="ecx-assist-typing" id="ecxAssistTypingPro" hidden>L'assistant écrit…</p>
+            <form class="ecx-assist-form" id="ecxAssistFormPro">
+              <input type="text" id="ecxAssistInputPro" placeholder="Écrivez votre question…" autocomplete="off" maxlength="600">
+              <button type="submit" class="ecx-assist-send" id="ecxAssistSendPro" aria-label="Envoyer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              </button>
+            </form>
+            <div class="ecx-assist-voice" id="ecxAssistVoicePro" hidden>
+              <div class="ecx-assist-voice-orb" id="ecxAssistVoiceOrbPro">
+                <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></span>
               </div>
-              <div class="ecx-assist-chips" id="ecxAssistChipsPro"></div>
-              <div class="ecx-assist-msgs" id="ecxAssistMsgsPro"></div>
-              <p class="ecx-assist-typing" id="ecxAssistTypingPro" hidden>L'assistant écrit…</p>
-              <form class="ecx-assist-form" id="ecxAssistFormPro">
-                <input type="text" id="ecxAssistInputPro" placeholder="Écrivez votre question…" autocomplete="off" maxlength="600">
-                <button type="submit" class="ecx-assist-send" id="ecxAssistSendPro" aria-label="Envoyer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                </button>
-              </form>
+              <p class="ecx-assist-voice-status" id="ecxAssistVoiceStatusPro">Parlez à HAYEVA en direct, comme une vraie conversation.</p>
+              <p class="ecx-assist-voice-error" id="ecxAssistVoiceErrorPro" hidden></p>
+              <button type="button" class="ecx-assist-voice-startbtn" id="ecxAssistVoiceStartPro">Activer le microphone</button>
+              <div class="ecx-assist-voice-controls" id="ecxAssistVoiceControlsPro" hidden>
+                <button type="button" class="ecx-assist-voice-ctrlbtn" id="ecxAssistVoiceMutePro">Couper le micro</button>
+                <button type="button" class="ecx-assist-voice-ctrlbtn ecx-assist-voice-ctrlend" id="ecxAssistVoiceEndPro">Terminer la conversation</button>
+              </div>
             </div>
           </div>
         </div>
@@ -8127,6 +8206,13 @@ if ('serviceWorker' in navigator){
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
             </div>
+            <div class="ecx-assist-modetabs" id="ecxAssistModeTabsClient">
+              <button type="button" class="ecx-assist-modebtn is-active" id="ecxAssistModeTextClient">Écrire</button>
+              <button type="button" class="ecx-assist-modebtn" id="ecxAssistModeVoiceClient">
+                <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></span>
+                Parler
+              </button>
+            </div>
             <div class="ecx-assist-chips" id="ecxAssistChipsClient"></div>
             <div class="ecx-assist-msgs" id="ecxAssistMsgsClient"></div>
             <p class="ecx-assist-typing" id="ecxAssistTypingClient" hidden>L'assistant écrit…</p>
@@ -8136,6 +8222,18 @@ if ('serviceWorker' in navigator){
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
               </button>
             </form>
+            <div class="ecx-assist-voice" id="ecxAssistVoiceClient" hidden>
+              <div class="ecx-assist-voice-orb" id="ecxAssistVoiceOrbClient">
+                <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></span>
+              </div>
+              <p class="ecx-assist-voice-status" id="ecxAssistVoiceStatusClient">Parlez à HAYEVA en direct, comme une vraie conversation.</p>
+              <p class="ecx-assist-voice-error" id="ecxAssistVoiceErrorClient" hidden></p>
+              <button type="button" class="ecx-assist-voice-startbtn" id="ecxAssistVoiceStartClient">Activer le microphone</button>
+              <div class="ecx-assist-voice-controls" id="ecxAssistVoiceControlsClient" hidden>
+                <button type="button" class="ecx-assist-voice-ctrlbtn" id="ecxAssistVoiceMuteClient">Couper le micro</button>
+                <button type="button" class="ecx-assist-voice-ctrlbtn ecx-assist-voice-ctrlend" id="ecxAssistVoiceEndClient">Terminer la conversation</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -17501,12 +17599,43 @@ if ('serviceWorker' in navigator){
         return sb.client.from('customer_addresses').update({ is_default:true }).eq('id', id);
       });
   }
+  // Même principe que ecMakeDefaultAddress ci-dessus, pour is_billing —
+  // exclusivité maintenue côté application, pas de contrainte SQL.
+  function ecMakeBillingAddress(id){
+    return sb.client.from('customer_addresses').update({ is_billing:false })
+      .eq('customer_user_id', ecUser.id).eq('is_billing', true)
+      .then(function(){
+        if (!id) return Promise.resolve();
+        return sb.client.from('customer_addresses').update({ is_billing:true }).eq('id', id);
+      });
+  }
   function ecLoadAddresses(){
     var panel = document.getElementById('ecPanelAddresses');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
     ecFetchAddresses().then(function(rows){
       var editingId = null;
+      var defaultAddr = rows.filter(function(r){ return r.is_default; })[0] || null;
+      var billingAddr = rows.filter(function(r){ return r.is_billing; })[0] || null;
       var html = '<p class="ec-section-title">Mes adresses</p><p class="ec-section-sub">Utilisées pour préremplir vos futures réservations.</p>';
+
+      html += '<p class="ec-section-title" style="margin-top:8px;">Adresse principale</p>';
+      if (defaultAddr){
+        html += '<div class="ecx-home-card"><span class="ecx-home-card-visual">' + ecxIcon('house') + '</span>' +
+          '<div class="ecx-home-card-body"><p class="ecx-home-card-title">' + ecEscape(defaultAddr.label) + '</p>' +
+          '<p class="ecx-home-card-meta">' + ecEscape(defaultAddr.address) + (defaultAddr.postal_code ? ', ' + ecEscape(defaultAddr.postal_code) : '') + (defaultAddr.city ? ' ' + ecEscape(defaultAddr.city) : '') + '</p></div></div>';
+      } else {
+        html += '<div class="ec-empty"><strong>Aucune adresse principale</strong>Ajoutez une adresse ci-dessous puis définissez-la comme principale.</div>';
+      }
+
+      html += '<p class="ec-section-title" style="margin-top:20px;">Adresse de facturation</p><p class="ec-section-sub">Utilisée pour vos factures HAYEVA.</p>';
+      html += '<label class="ec-form-full" style="display:flex; flex-direction:row; align-items:center; gap:8px; margin:6px 0 10px;">' +
+        '<input type="checkbox" id="ecAddrBillingSame" style="width:auto;"' + (billingAddr ? '' : ' checked') + '> Identique à l\'adresse principale</label>';
+      html += '<div id="ecAddrBillingPicker"' + (billingAddr ? '' : ' hidden') + '>' +
+        '<select id="ecAddrBillingSelect" style="width:100%; padding:11px 14px; border:1px solid var(--line); border-radius:10px; font-size:0.9rem;">' +
+        rows.map(function(r){ return '<option value="' + r.id + '"' + (billingAddr && billingAddr.id === r.id ? ' selected' : '') + '>' + ecEscape(r.label) + ' — ' + ecEscape(r.address) + '</option>'; }).join('') +
+        '</select></div>';
+
+      html += '<p class="ec-section-title" style="margin-top:24px;">Adresses d\'intervention</p><p class="ec-section-sub">Là où nos techniciens interviennent — ajoutez, modifiez ou définissez l\'adresse principale.</p>';
       html += '<form class="ec-form" id="ecAddrForm">' +
         '<label>Libellé (facultatif)<input type="text" id="ecAddrLabel" placeholder="Ex. Maison principale, Appartement, Bureau…"></label>' +
         '<label>Adresse<input type="text" id="ecAddrAddress" placeholder="12 rue des Pins" required></label>' +
@@ -17522,7 +17651,7 @@ if ('serviceWorker' in navigator){
         rows.forEach(function(a){
           html += '<div class="ecx-home-card"><span class="ecx-home-card-visual">' + ecxIcon('house') + '</span>' +
             '<div class="ecx-home-card-body">' +
-              '<p class="ecx-home-card-title">' + ecEscape(a.label) + (a.is_default ? ' <span class="ec-badge ec-badge-completed">Par défaut</span>' : '') + '</p>' +
+              '<p class="ecx-home-card-title">' + ecEscape(a.label) + (a.is_default ? ' <span class="ec-badge ec-badge-completed">Principale</span>' : '') + (a.is_billing ? ' <span class="ec-badge">Facturation</span>' : '') + '</p>' +
               '<p class="ecx-home-card-meta">' + ecEscape(a.address) + (a.postal_code ? ', ' + ecEscape(a.postal_code) : '') + (a.city ? ' ' + ecEscape(a.city) : '') + '</p>' +
             '</div><div style="display:flex; gap:8px; flex:0 0 auto; flex-wrap:wrap;">' +
             '<button type="button" class="ec-row-del" data-addr-edit="' + a.id + '">Modifier</button>' +
@@ -17534,6 +17663,25 @@ if ('serviceWorker' in navigator){
       var form = document.getElementById('ecAddrForm');
       var submitBtn = document.getElementById('ecAddrSubmit');
       var cancelEditBtn = document.getElementById('ecAddrCancelEdit');
+
+      var billingSameChk = document.getElementById('ecAddrBillingSame');
+      var billingPicker = document.getElementById('ecAddrBillingPicker');
+      var billingSelect = document.getElementById('ecAddrBillingSelect');
+      if (billingSameChk){
+        billingSameChk.addEventListener('change', function(){
+          billingPicker.hidden = billingSameChk.checked;
+          if (billingSameChk.checked){
+            ecMakeBillingAddress(null).then(function(){ ecLoaded.addresses = false; ecLoadAddresses(); });
+          } else if (billingSelect && billingSelect.value){
+            ecMakeBillingAddress(billingSelect.value).then(function(){ ecLoaded.addresses = false; ecLoadAddresses(); });
+          }
+        });
+      }
+      if (billingSelect){
+        billingSelect.addEventListener('change', function(){
+          ecMakeBillingAddress(billingSelect.value).then(function(){ ecLoaded.addresses = false; ecLoadAddresses(); });
+        });
+      }
 
       function stopEdit(){
         editingId = null;
@@ -18727,6 +18875,212 @@ if ('serviceWorker' in navigator){
 
 <script>
 // ============================================================
+// Moteur vocal HAYEVA partagé — reconnaissance/synthèse NATIVES du
+// navigateur (Web Speech API, gratuites, aucune clé), branchées sur
+// l'Edge Function voice-public-chat (même moteur métier que le simulateur
+// admin : tools.ts/state-machine.ts). UNE SEULE factory JS, instanciée par
+// le widget public ET par l'assistant flottant des Espaces Client/Pro —
+// jamais un second moteur vocal indépendant. `cfg.customerType` est la
+// seule chose qui varie ; voice-public-chat adapte déjà son prompt système
+// selon cette valeur (voir buildVoiceInstructions côté serveur).
+// ============================================================
+function ecxCreateVoiceEngine(cfg){
+  var state = { sessionId: null, active: false, muted: false, recognition: null, frenchVoice: null, sending: false };
+  var IDLE_STATUS = cfg.idleStatusText || 'Parlez à HAYEVA en direct, comme une vraie conversation.';
+
+  function setStatus(text, orbClass){
+    if (cfg.statusEl) cfg.statusEl.textContent = text;
+    if (cfg.orbEl){
+      cfg.orbEl.classList.remove('is-connecting', 'is-listening', 'is-speaking');
+      if (orbClass) cfg.orbEl.classList.add(orbClass);
+    }
+  }
+  function showError(msg){
+    if (!cfg.errorEl) return;
+    cfg.errorEl.textContent = msg || '';
+    cfg.errorEl.hidden = !msg;
+  }
+  function sttSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+  function pickFrenchVoice(){
+    if (!('speechSynthesis' in window)) return;
+    var voices = window.speechSynthesis.getVoices();
+    state.frenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
+  }
+
+  function speak(text, onDone){
+    if (!('speechSynthesis' in window) || !text){ if (onDone) onDone(); return; }
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    if (state.frenchVoice) utter.voice = state.frenchVoice;
+    utter.onstart = function(){ setStatus('HAYEVA vous répond…', 'is-speaking'); };
+    // Le retour à l'écoute doit se produire quoi qu'il arrive à la synthèse
+    // (succès, erreur, ou speak() qui jette une exception synchrone) — sinon
+    // un échec TTS laisserait le micro éteint en silence.
+    function resumeListening(){
+      if (state.active){ setStatus('HAYEVA vous écoute…', 'is-listening'); recognitionRestart(); }
+      if (onDone) onDone();
+    }
+    utter.onend = resumeListening;
+    utter.onerror = resumeListening;
+    try { window.speechSynthesis.speak(utter); }
+    catch(e){ resumeListening(); }
+  }
+
+  function sendMessage(text){
+    if (state.sending) return;
+    state.sending = true;
+    setStatus('HAYEVA réfléchit…', 'is-connecting');
+    var sb = window.sudSupabase;
+    var clientSessionId = cfg.getClientSessionId ? cfg.getClientSessionId() : (window.sudGetSessionId ? window.sudGetSessionId() : null);
+    sb.client.functions.invoke('voice-public-chat', {
+      body: { session_id: state.sessionId, client_session_id: clientSessionId, message: text, customer_type: cfg.customerType }
+    }).then(function(res){
+      state.sending = false;
+      var data = res.data;
+      if (res.error || !data || data.status !== 'ok'){
+        showError("L'assistant vocal est momentanément indisponible — utilisez le mode texte.");
+        setStatus('HAYEVA vous écoute…', 'is-listening');
+        return;
+      }
+      cfg.addMessage('assistant', data.reply);
+      if (data.guide_to_booking){
+        cfg.addMessage('assistant', 'Je vous amène vers notre calendrier de réservation…');
+      }
+      speak(data.reply, function(){
+        if (data.guide_to_booking && cfg.onGuideToBooking) cfg.onGuideToBooking(data.guide_to_booking);
+      });
+    }).catch(function(){
+      state.sending = false;
+      showError('Erreur de connexion — utilisez le mode texte.');
+      setStatus('HAYEVA vous écoute…', 'is-listening');
+    });
+  }
+
+  function initRecognition(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    var rec = new Ctor();
+    rec.lang = 'fr-FR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onstart = function(){ showError(''); };
+    rec.onresult = function(ev){
+      var final = '';
+      for (var i = ev.resultIndex; i < ev.results.length; i++){
+        if (ev.results[i].isFinal) final += ev.results[i][0].transcript;
+      }
+      if ('speechSynthesis' in window && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+      if (final && final.trim()){
+        cfg.addMessage('user', final.trim());
+        sendMessage(final.trim());
+      }
+    };
+    rec.onerror = function(ev){
+      if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+        showError("Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode texte.");
+        stop();
+        return;
+      }
+      if (ev.error === 'network'){
+        showError('Connexion perdue — la reconnaissance vocale reprendra automatiquement dès que le réseau revient.');
+        return;
+      }
+      if (ev.error === 'audio-capture'){
+        showError('Aucun microphone détecté — utilisez le mode texte.');
+        stop();
+      }
+    };
+    rec.onend = function(){
+      if (state.active && !(window.speechSynthesis && window.speechSynthesis.speaking)){
+        try { rec.start(); } catch(e){ /* déjà démarré */ }
+      }
+    };
+    return rec;
+  }
+  function recognitionRestart(){
+    if (!state.recognition || !state.active) return;
+    try { state.recognition.start(); } catch(e){ /* déjà démarré */ }
+  }
+
+  function stop(){
+    state.active = false;
+    if (state.recognition){ try { state.recognition.stop(); } catch(e){} }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    state.sessionId = null;
+    state.muted = false;
+    if (cfg.controlsEl) cfg.controlsEl.hidden = true;
+    if (cfg.startBtn) cfg.startBtn.hidden = false;
+    if (cfg.muteBtn){ cfg.muteBtn.textContent = 'Couper le micro'; cfg.muteBtn.classList.remove('is-muted'); }
+    setStatus(IDLE_STATUS, null);
+  }
+
+  function start(){
+    showError('');
+    if (!sttSupported()){
+      showError("Votre navigateur ne prend pas en charge la conversation vocale ici (essayez Chrome) — utilisez le mode texte.");
+      return;
+    }
+    var sb = window.sudSupabase;
+    var clientSessionId = cfg.getClientSessionId ? cfg.getClientSessionId() : (window.sudGetSessionId ? window.sudGetSessionId() : null);
+    if (!sb || !sb.configured || !clientSessionId){ showError('Service indisponible pour le moment.'); return; }
+
+    setStatus('Connexion…', 'is-connecting');
+    if (cfg.startBtn) cfg.startBtn.hidden = true;
+
+    sb.client.functions.invoke('voice-public-chat', { body: { client_session_id: clientSessionId, customer_type: cfg.customerType } }).then(function(res){
+      var data = res.data;
+      if (!data || data.status !== 'ok'){
+        var msg = "L'assistant vocal n'est pas disponible pour le moment — utilisez le mode texte.";
+        if (data && data.status === 'quota_reached') msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode texte.";
+        showError(msg);
+        setStatus(IDLE_STATUS, null);
+        if (cfg.startBtn) cfg.startBtn.hidden = false;
+        return;
+      }
+      state.sessionId = data.session_id;
+      state.active = true;
+      cfg.addMessage('assistant', data.reply);
+      if (!state.recognition) state.recognition = initRecognition();
+      speak(data.reply, function(){
+        if (cfg.controlsEl) cfg.controlsEl.hidden = false;
+      });
+    }).catch(function(){
+      showError("La conversation vocale n'a pas pu démarrer — utilisez le mode texte.");
+      setStatus(IDLE_STATUS, null);
+      if (cfg.startBtn) cfg.startBtn.hidden = false;
+    });
+  }
+
+  function toggleMute(){
+    state.muted = !state.muted;
+    if (state.recognition){
+      try { if (state.muted) state.recognition.stop(); else state.recognition.start(); } catch(e){}
+    }
+    if (cfg.muteBtn){
+      cfg.muteBtn.textContent = state.muted ? 'Réactiver le micro' : 'Couper le micro';
+      cfg.muteBtn.classList.toggle('is-muted', state.muted);
+    }
+    setStatus(state.muted ? 'Micro coupé.' : 'HAYEVA vous écoute…', state.muted ? null : 'is-listening');
+  }
+
+  if ('speechSynthesis' in window){
+    pickFrenchVoice();
+    var prevHandler = window.speechSynthesis.onvoiceschanged;
+    window.speechSynthesis.onvoiceschanged = function(){ pickFrenchVoice(); if (prevHandler) prevHandler(); };
+  }
+
+  return {
+    start: start, stop: stop, toggleMute: toggleMute,
+    isActive: function(){ return state.active; },
+    sttSupported: sttSupported
+  };
+}
+</script>
+
+<script>
+// ============================================================
 // Assistant Hayeva — widget flottant public (voir 0023_ai_assistant.sql).
 // N'appelle jamais l'API IA directement : uniquement l'Edge Function
 // ai-assistant via sb.client.functions.invoke(). Le prix n'est JAMAIS
@@ -19085,61 +19439,19 @@ if ('serviceWorker' in navigator){
   });
 
   // ============================================================
-  // HAYEVA Voice — conversation vocale temps réel directement dans le
-  // navigateur, SANS fournisseur payant supplémentaire : reconnaissance et
-  // synthèse vocale NATIVES du navigateur (Web Speech API — SpeechRecognition/
-  // SpeechSynthesis, gratuites, aucune clé), branchées sur le MÊME moteur
-  // métier que le simulateur admin (tools.ts/state-machine.ts) via l'Edge
-  // Function voice-public-chat, qui réutilise OPENROUTER_API_KEY déjà
-  // configurée et déjà utilisée en production par le chatbot texte du site —
-  // aucun nouveau compte, aucune nouvelle facturation. Écoute continue :
-  // la reconnaissance redémarre automatiquement après chaque tour, sans
-  // jamais devoir rappuyer sur le micro. Barge-in : toute nouvelle parole du
-  // client coupe immédiatement la synthèse vocale de l'assistant en cours.
+  // HAYEVA Voice — conversation vocale, moteur PARTAGÉ (voir
+  // ecxCreateVoiceEngine plus haut) : ce widget public n'implémente plus sa
+  // propre logique vocale, il instancie la même factory que l'assistant
+  // flottant des Espaces Client/Pro. Écoute continue et barge-in restent
+  // gérés à l'intérieur de la factory.
   // ============================================================
   var modeTextBtn = document.getElementById('aiWidgetModeTextBtn');
   var modeVoiceBtn = document.getElementById('aiWidgetModeVoiceBtn');
   var voicePanel = document.getElementById('aiWidgetVoicePanel');
-  var voiceOrb = document.getElementById('aiWidgetVoiceOrb');
-  var voiceStatusEl = document.getElementById('aiWidgetVoiceStatus');
-  var voiceErrorEl = document.getElementById('aiWidgetVoiceError');
   var voiceStartBtn = document.getElementById('aiWidgetVoiceStartBtn');
   var voiceControls = document.getElementById('aiWidgetVoiceControls');
   var voiceMuteBtn = document.getElementById('aiWidgetVoiceMuteBtn');
   var voiceEndBtn = document.getElementById('aiWidgetVoiceEndBtn');
-
-  var voiceState = { sessionId: null, active: false, muted: false, recognition: null, frenchVoice: null, sending: false };
-
-  function voiceSetStatus(text, orbClass){
-    if (voiceStatusEl) voiceStatusEl.textContent = text;
-    if (voiceOrb){
-      voiceOrb.classList.remove('is-connecting', 'is-listening', 'is-speaking');
-      if (orbClass) voiceOrb.classList.add(orbClass);
-    }
-  }
-  function voiceShowError(msg){
-    if (!voiceErrorEl) return;
-    voiceErrorEl.textContent = msg || '';
-    voiceErrorEl.hidden = !msg;
-  }
-  function voiceSttSupported(){
-    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  }
-  function voicePickFrenchVoice(){
-    if (!('speechSynthesis' in window)) return;
-    var voices = window.speechSynthesis.getVoices();
-    voiceState.frenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
-  }
-
-  function setAiWidgetMode(mode){
-    if (modeTextBtn) modeTextBtn.classList.toggle('is-active', mode === 'text');
-    if (modeVoiceBtn) modeVoiceBtn.classList.toggle('is-active', mode === 'voice');
-    if (form) form.hidden = mode === 'voice';
-    if (voicePanel) voicePanel.hidden = mode !== 'voice';
-    if (mode !== 'voice') voiceStop();
-  }
-  if (modeTextBtn) modeTextBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
-  if (modeVoiceBtn) modeVoiceBtn.addEventListener('click', function(){ setAiWidgetMode('voice'); });
 
   // guide_to_booking : jamais de création de RDV depuis ce canal — on amène
   // le client vers le VRAI tunnel de réservation déjà existant sur le site
@@ -19159,184 +19471,31 @@ if ('serviceWorker' in navigator){
     }, 900);
   }
 
-  function voiceSpeak(text, onDone){
-    if (!('speechSynthesis' in window) || !text){ if (onDone) onDone(); return; }
-    window.speechSynthesis.cancel();
-    var utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'fr-FR';
-    if (voiceState.frenchVoice) utter.voice = voiceState.frenchVoice;
-    utter.onstart = function(){
-      voiceSetStatus('🔊 HAYEVA vous répond…', 'is-speaking');
-      if (voiceOrb) voiceOrb.classList.add('is-speaking');
-    };
-    // Le retour à l'écoute doit se produire quoi qu'il arrive à la
-    // synthèse (succès, erreur, ou speak() qui jette une exception
-    // synchrone) — sinon un échec TTS laisserait le micro éteint en
-    // silence, sans que le client comprenne pourquoi la conversation
-    // semble s'être arrêtée.
-    function resumeListening(){
-      if (voiceState.active){
-        voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
-        voiceRecognitionRestart();
-      }
-      if (onDone) onDone();
-    }
-    utter.onend = resumeListening;
-    utter.onerror = resumeListening;
-    try { window.speechSynthesis.speak(utter); }
-    catch(e){ resumeListening(); }
-  }
+  var voiceEngine = ecxCreateVoiceEngine({
+    customerType: 'particulier',
+    statusEl: document.getElementById('aiWidgetVoiceStatus'),
+    errorEl: document.getElementById('aiWidgetVoiceError'),
+    orbEl: document.getElementById('aiWidgetVoiceOrb'),
+    startBtn: voiceStartBtn,
+    controlsEl: voiceControls,
+    muteBtn: voiceMuteBtn,
+    addMessage: addMessage,
+    onGuideToBooking: voiceHandleGuideToBooking,
+    getClientSessionId: function(){ return window.sudGetSessionId ? window.sudGetSessionId() : null; }
+  });
 
-  function voiceSendMessage(text){
-    if (voiceState.sending) return;
-    voiceState.sending = true;
-    voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
-    var sb = window.sudSupabase;
-    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
-    sb.client.functions.invoke('voice-public-chat', {
-      body: { session_id: voiceState.sessionId, client_session_id: clientSessionId, message: text }
-    }).then(function(res){
-      voiceState.sending = false;
-      var data = res.data;
-      if (res.error || !data || data.status !== 'ok'){
-        voiceShowError("L'assistant vocal est momentanément indisponible — utilisez le mode 💬 Écrire.");
-        voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
-        return;
-      }
-      addMessage('assistant', data.reply);
-      if (data.guide_to_booking){
-        addMessage('assistant', 'Je vous amène vers notre calendrier de réservation…');
-      }
-      voiceSpeak(data.reply, function(){
-        if (data.guide_to_booking) voiceHandleGuideToBooking(data.guide_to_booking);
-      });
-    }).catch(function(){
-      voiceState.sending = false;
-      voiceShowError("Erreur de connexion — utilisez le mode 💬 Écrire.");
-      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
-    });
+  function setAiWidgetMode(mode){
+    if (modeTextBtn) modeTextBtn.classList.toggle('is-active', mode === 'text');
+    if (modeVoiceBtn) modeVoiceBtn.classList.toggle('is-active', mode === 'voice');
+    if (form) form.hidden = mode === 'voice';
+    if (voicePanel) voicePanel.hidden = mode !== 'voice';
+    if (mode !== 'voice') voiceEngine.stop();
   }
+  if (modeTextBtn) modeTextBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
+  if (modeVoiceBtn) modeVoiceBtn.addEventListener('click', function(){ setAiWidgetMode('voice'); });
 
-  function voiceInitRecognition(){
-    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Ctor) return null;
-    var rec = new Ctor();
-    rec.lang = 'fr-FR';
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onstart = function(){ voiceShowError(''); }; // efface un éventuel message "connexion perdue" dès que l'écoute reprend
-    rec.onresult = function(ev){
-      var final = '';
-      for (var i = ev.resultIndex; i < ev.results.length; i++){
-        if (ev.results[i].isFinal) final += ev.results[i][0].transcript;
-      }
-      // Barge-in : toute parole (même provisoire) coupe la synthèse en cours.
-      if ('speechSynthesis' in window && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-      if (final && final.trim()){
-        addMessage('user', final.trim());
-        voiceSendMessage(final.trim());
-      }
-    };
-    rec.onerror = function(ev){
-      if (ev.error === 'no-speech' || ev.error === 'aborted') return;
-      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
-        voiceShowError("Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode 💬 Écrire.");
-        voiceStop();
-        return;
-      }
-      if (ev.error === 'network'){
-        // La reconnaissance vocale de Chrome dépend d'un service distant :
-        // une coupure réseau se manifeste ici, pas seulement sur l'appel à
-        // voice-public-chat. On l'affiche clairement plutôt que de laisser
-        // le micro sembler actif sans jamais rien reconnaître ; onend
-        // relancera automatiquement dès que la connexion revient.
-        voiceShowError('Connexion perdue — la reconnaissance vocale reprendra automatiquement dès que le réseau revient.');
-        return;
-      }
-      if (ev.error === 'audio-capture'){
-        voiceShowError("Aucun microphone détecté — utilisez le mode 💬 Écrire.");
-        voiceStop();
-      }
-    };
-    rec.onend = function(){
-      // Redémarre automatiquement tant que la conversation est active — le
-      // client ne doit jamais avoir à rappuyer sur le micro entre deux tours.
-      if (voiceState.active && !(window.speechSynthesis && window.speechSynthesis.speaking)){
-        try { rec.start(); } catch(e){ /* déjà démarré */ }
-      }
-    };
-    return rec;
-  }
-  function voiceRecognitionRestart(){
-    if (!voiceState.recognition || !voiceState.active) return;
-    try { voiceState.recognition.start(); } catch(e){ /* déjà démarré */ }
-  }
-
-  function voiceStop(){
-    voiceState.active = false;
-    if (voiceState.recognition){ try { voiceState.recognition.stop(); } catch(e){} }
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    voiceState.sessionId = null;
-    voiceState.muted = false;
-    if (voiceControls) voiceControls.hidden = true;
-    if (voiceStartBtn) voiceStartBtn.hidden = false;
-    if (voiceMuteBtn){ voiceMuteBtn.textContent = '🔇 Couper le micro'; voiceMuteBtn.classList.remove('is-muted'); }
-    voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
-  }
-
-  function voiceStart(){
-    voiceShowError('');
-    if (!voiceSttSupported()){
-      voiceShowError("Votre navigateur ne prend pas en charge la conversation vocale ici (essayez Chrome) — utilisez le mode 💬 Écrire.");
-      return;
-    }
-    var sb = window.sudSupabase;
-    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
-    if (!sb || !sb.configured || !clientSessionId){ voiceShowError('Service indisponible pour le moment.'); return; }
-
-    voiceSetStatus('Connexion…', 'is-connecting');
-    voiceStartBtn.hidden = true;
-
-    sb.client.functions.invoke('voice-public-chat', { body: { client_session_id: clientSessionId } }).then(function(res){
-      var data = res.data;
-      if (!data || data.status !== 'ok'){
-        var msg = "L'assistant vocal n'est pas disponible pour le moment — utilisez le mode 💬 Écrire.";
-        if (data && data.status === 'quota_reached') msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode 💬 Écrire.";
-        voiceShowError(msg);
-        voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
-        voiceStartBtn.hidden = false;
-        return;
-      }
-      voiceState.sessionId = data.session_id;
-      voiceState.active = true;
-      addMessage('assistant', data.reply);
-      if (!voiceState.recognition) voiceState.recognition = voiceInitRecognition();
-      voiceSpeak(data.reply, function(){
-        if (voiceControls) voiceControls.hidden = false;
-      });
-    }).catch(function(){
-      voiceShowError("La conversation vocale n'a pas pu démarrer — utilisez le mode 💬 Écrire.");
-      voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
-      voiceStartBtn.hidden = false;
-    });
-  }
-
-  if ('speechSynthesis' in window){
-    voicePickFrenchVoice();
-    window.speechSynthesis.onvoiceschanged = voicePickFrenchVoice;
-  }
-  if (voiceStartBtn) voiceStartBtn.addEventListener('click', voiceStart);
-  if (voiceMuteBtn){
-    voiceMuteBtn.addEventListener('click', function(){
-      voiceState.muted = !voiceState.muted;
-      if (voiceState.recognition){
-        try { if (voiceState.muted) voiceState.recognition.stop(); else voiceState.recognition.start(); } catch(e){}
-      }
-      voiceMuteBtn.textContent = voiceState.muted ? '🎙️ Réactiver le micro' : '🔇 Couper le micro';
-      voiceMuteBtn.classList.toggle('is-muted', voiceState.muted);
-      voiceSetStatus(voiceState.muted ? 'Micro coupé.' : '🎙️ HAYEVA vous écoute…', voiceState.muted ? null : 'is-listening');
-    });
-  }
+  if (voiceStartBtn) voiceStartBtn.addEventListener('click', voiceEngine.start);
+  if (voiceMuteBtn) voiceMuteBtn.addEventListener('click', voiceEngine.toggleMute);
   if (voiceEndBtn){
     voiceEndBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
   }
@@ -19433,16 +19592,72 @@ if ('serviceWorker' in navigator){
       scrollMsgsToBottom();
     }
 
+    // ---------- Mode vocal — même moteur partagé que le widget public
+    // (ecxCreateVoiceEngine, voir plus haut) : jamais un second moteur.
+    // Seul customer_type change entre les instances particulier/pro. ----------
+    var modeTextBtn = document.getElementById('ecxAssistModeText' + suffix);
+    var modeVoiceBtn = document.getElementById('ecxAssistModeVoice' + suffix);
+    var voicePanel = document.getElementById('ecxAssistVoice' + suffix);
+    var voiceStartBtn = document.getElementById('ecxAssistVoiceStart' + suffix);
+    var voiceControls = document.getElementById('ecxAssistVoiceControls' + suffix);
+    var voiceMuteBtn = document.getElementById('ecxAssistVoiceMute' + suffix);
+    var voiceEndBtn = document.getElementById('ecxAssistVoiceEnd' + suffix);
+    var voiceEngine = (typeof ecxCreateVoiceEngine === 'function') ? ecxCreateVoiceEngine({
+      customerType: role,
+      statusEl: document.getElementById('ecxAssistVoiceStatus' + suffix),
+      errorEl: document.getElementById('ecxAssistVoiceError' + suffix),
+      orbEl: document.getElementById('ecxAssistVoiceOrb' + suffix),
+      startBtn: voiceStartBtn,
+      controlsEl: voiceControls,
+      muteBtn: voiceMuteBtn,
+      addMessage: addMsg,
+      onGuideToBooking: function(result){
+        if (!result || !window.sudBooking) return;
+        var matchId = null;
+        if (window.sudBooking.searchScored && result.service_name){
+          var scored = window.sudBooking.searchScored(result.service_name) || [];
+          if (scored.length) matchId = scored[0].service.id;
+        }
+        setTimeout(function(){
+          closeSheet();
+          if (matchId) window.sudBooking.selectService(matchId);
+          if (role === 'particulier') {
+            var tab = document.querySelector('#espaceClient [data-ecx-section="services"]');
+            if (tab) tab.click();
+          }
+        }, 900);
+      },
+      getClientSessionId: function(){ return window.sudGetSessionId ? window.sudGetSessionId() : null; }
+    }) : null;
+
+    function setMode(mode){
+      if (modeTextBtn) modeTextBtn.classList.toggle('is-active', mode === 'text');
+      if (modeVoiceBtn) modeVoiceBtn.classList.toggle('is-active', mode === 'voice');
+      if (form) form.hidden = mode === 'voice';
+      if (chipsEl) chipsEl.hidden = mode === 'voice';
+      if (voicePanel) voicePanel.hidden = mode !== 'voice';
+      if (mode !== 'voice' && voiceEngine) voiceEngine.stop();
+    }
+    if (modeTextBtn) modeTextBtn.addEventListener('click', function(){ setMode('text'); });
+    if (modeVoiceBtn) modeVoiceBtn.addEventListener('click', function(){ setMode('voice'); });
+    if (voiceStartBtn && voiceEngine) voiceStartBtn.addEventListener('click', voiceEngine.start);
+    if (voiceMuteBtn && voiceEngine) voiceMuteBtn.addEventListener('click', voiceEngine.toggleMute);
+    if (voiceEndBtn) voiceEndBtn.addEventListener('click', function(){ setMode('text'); });
+
     function openSheet(){
       sheet.hidden = false;
       renderChips();
+      setMode('text');
       if (calloutEl) calloutEl.hidden = true;
       if (!msgsEl.childElementCount){
         addMsg('assistant', "Bonjour, je suis l'assistant Hayeva. " + currentSectionCopy().sub);
       }
       setTimeout(function(){ if (input) input.focus(); }, 50);
     }
-    function closeSheet(){ sheet.hidden = true; }
+    function closeSheet(){
+      sheet.hidden = true;
+      if (voiceEngine) voiceEngine.stop();
+    }
 
     btn.addEventListener('click', openSheet);
     if (closeBtn) closeBtn.addEventListener('click', closeSheet);
