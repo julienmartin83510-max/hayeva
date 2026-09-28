@@ -3200,30 +3200,31 @@ if ('serviceWorker' in navigator){
 
   @media (max-width:880px){
     .adm-shell{ flex-direction:column; border-radius:18px; }
-    .adm-sidebar{
-      flex-direction:row; align-items:center; gap:10px; padding:10px; overflow-x:auto;
-      -webkit-overflow-scrolling:touch; position:sticky; top:0; z-index:6;
-    }
-    .adm-sidebar-brand{ display:none; }
-    .adm-sidebar-nav{ flex-direction:row; gap:6px; flex:1 1 auto; }
-    .adm-nav-btn{
-      flex-direction:column; gap:3px; flex:0 0 auto; min-width:64px; min-height:52px;
-      align-items:center; justify-content:center; padding:8px 10px; text-align:center;
-    }
-    .adm-nav-btn.is-active::before{ left:10px; right:10px; top:auto; bottom:2px; height:3px; width:auto; }
-    .adm-nav-label{ font-size:0.6rem; line-height:1.15; }
-    .adm-nav-icon{ font-size:1.15rem; }
-    .adm-nav-badge{ position:absolute; top:4px; right:8px; }
-    .adm-main{ padding:22px 16px 40px; }
+    /* Bandeau horizontal remplacé par .hv-bottomnav (voir plus haut) — 12
+       pages ne rentraient de toute façon jamais sur une largeur de
+       téléphone, il fallait swiper pour trouver une fonction. */
+    .adm-sidebar{ display:none; }
+    .adm-main{ padding:18px 16px 28px; }
   }
 
   /* ---------- Tableau de bord ---------- */
+  /* Grille compacte, 2 colonnes dès les plus petits écrans (320px) — ne
+     retombe plus à 1 colonne sous 460px (c'était le bug : ça forçait une
+     pile de cartes plein-écran sur QUASIMENT tous les téléphones, y
+     compris les plus courants 375-430px). Le padding/la taille de police
+     sont eux-mêmes réduits sous 480px pour qu'une carte ne serve plus
+     qu'à afficher un chiffre sur toute sa hauteur. */
   .adm-stats-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:26px; }
-  @media (max-width:900px){ .adm-stats-grid{ grid-template-columns:repeat(2,1fr); } }
-  @media (max-width:460px){ .adm-stats-grid{ grid-template-columns:1fr; } }
+  @media (max-width:900px){ .adm-stats-grid{ grid-template-columns:repeat(2,1fr); gap:10px; } }
   .adm-stat-card{
     background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 18px 16px;
     display:flex; flex-direction:column; gap:6px; box-shadow:var(--adm-shadow-sm); position:relative; overflow:hidden;
+  }
+  @media (max-width:480px){
+    .adm-stat-card{ padding:12px 12px 10px; border-radius:14px; gap:2px; }
+    .adm-stat-icon{ font-size:1rem; }
+    .adm-stat-value{ font-size:1.3rem; }
+    .adm-stat-label{ font-size:0.72rem; }
   }
   .adm-stat-card::after{
     content:''; position:absolute; right:-18px; top:-18px; width:72px; height:72px; border-radius:50%;
@@ -3948,6 +3949,9 @@ if ('serviceWorker' in navigator){
     overflow:hidden; box-shadow:var(--pro-shadow); border:1px solid var(--pro-line); position:relative; isolation:isolate;
     margin-top:22px;
   }
+  /* Masqué pour un compte admin (voir initAdminPanel) — sans cette règle,
+     display:flex ci-dessus l'emporterait sur [hidden] du user-agent. */
+  .pro-shell[hidden]{ display:none; }
   @media (prefers-color-scheme: dark){
     .pro-shell{
       --pro-offwhite:#111826; --pro-card-bg:#1A2333; --pro-sand:#1E2A3D;
@@ -3999,14 +4003,22 @@ if ('serviceWorker' in navigator){
      arrivant sur le tableau de bord), jamais caché dans un menu qu'il faut
      chercher. */
   .pro-page-head-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-  .pro-site-link{
-    font-family:"Poppins",sans-serif; font-weight:800; font-size:1.05rem; color:#fff;
-    background:var(--pro-ocean); border:1px solid var(--pro-ocean); border-radius:999px; padding:16px 30px;
-    cursor:pointer; white-space:nowrap; flex:0 0 auto;
-    transition:transform .15s ease, filter .18s ease; box-shadow:0 10px 24px -10px rgba(44,111,179,0.6);
+  /* Composant "Voir le site ↗" PARTAGÉ entre Admin/Pro/Client (une seule
+     classe .hv-site-link, définie une fois — voir juste ci-dessous — jamais
+     redéfinie par espace). Remplace l'ancien .pro-site-link/.ec-site-link
+     plein-largeur/pleine-couleur (16px 30px de padding, texte 1.05rem) :
+     bouton secondaire compact demandé explicitement, jamais plus la
+     première chose qui saute aux yeux sur le tableau de bord. */
+  .hv-site-link{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:#16222C;
+    background:#fff; border:1px solid rgba(22,34,44,0.16); border-radius:999px; padding:7px 14px;
+    cursor:pointer; white-space:nowrap; flex:0 0 auto; text-decoration:none;
+    transition:background .15s ease, border-color .15s ease, transform .15s ease;
   }
-  .pro-site-link:hover{ filter:brightness(1.08); transform:translateY(-1px); }
-  .pro-site-link:active{ transform:scale(0.96); }
+  .hv-site-link:hover{ background:rgba(22,34,44,0.05); border-color:rgba(22,34,44,0.28); }
+  .hv-site-link:active{ transform:scale(0.96); }
+  .hv-site-link-arrow{ font-size:0.9em; line-height:1; }
   .pro-sidebar-logout-btn{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:rgba(255,255,255,0.82);
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); border-radius:12px; padding:10px 14px;
@@ -4028,32 +4040,26 @@ if ('serviceWorker' in navigator){
 
   @media (max-width:880px){
     .pro-shell{ flex-direction:column; border-radius:18px; }
-    .pro-sidebar{
-      flex-direction:row; align-items:center; gap:8px; padding:10px; overflow-x:auto;
-      -webkit-overflow-scrolling:touch; position:sticky; top:0; z-index:6;
-    }
-    .pro-sidebar-brand{ display:none; }
-    .pro-sidebar-nav{ flex-direction:row; gap:6px; flex:1 1 auto; }
-    .pro-nav-btn{
-      flex-direction:column; gap:3px; flex:0 0 auto; width:auto; min-width:60px; min-height:52px;
-      align-items:center; justify-content:center; padding:8px 8px; text-align:center;
-    }
-    .pro-nav-btn.is-active::before{ left:10px; right:10px; top:auto; bottom:2px; height:3px; width:auto; }
-    .pro-nav-label{ font-size:0.58rem; line-height:1.15; }
-    .pro-nav-icon{ font-size:1.1rem; }
-    .pro-sidebar-logout-btn{ flex:0 0 auto; padding:8px 10px; font-size:0; width:38px; }
-    .pro-sidebar-logout-btn::before{ content:'⏻'; font-size:1rem; }
-    .pro-site-link{ width:100%; text-align:center; }
-    .pro-main{ padding:20px 14px 38px; }
+    /* Bandeau horizontal remplacé par .hv-bottomnav (voir plus haut) — même
+       correctif que .adm-sidebar juste au-dessus : 7 pages qui swipaient
+       déjà mal, et le seul bouton "Se déconnecter" du site vivait ici (voir
+       #proMoreLogoutBtn dans le sheet "Plus", qui le délègue). */
+    .pro-sidebar{ display:none; }
+    .pro-main{ padding:18px 14px 28px; }
   }
 
   .pro-stats-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:22px; }
-  @media (max-width:900px){ .pro-stats-grid{ grid-template-columns:repeat(2,1fr); } }
-  @media (max-width:460px){ .pro-stats-grid{ grid-template-columns:1fr; } }
+  @media (max-width:900px){ .pro-stats-grid{ grid-template-columns:repeat(2,1fr); gap:10px; } }
   .pro-stat-card{
     background:var(--pro-card-bg); border:1px solid var(--pro-line); border-radius:16px; padding:16px 16px 14px;
     display:flex; flex-direction:column; gap:6px; box-shadow:var(--pro-shadow-sm); position:relative; overflow:hidden;
     transition:transform .18s ease, box-shadow .18s ease;
+  }
+  @media (max-width:480px){
+    .pro-stat-card{ padding:12px 12px 10px; border-radius:14px; gap:2px; }
+    .pro-stat-icon{ font-size:1rem; }
+    .pro-stat-value{ font-size:1.25rem; }
+    .pro-stat-label{ font-size:0.7rem; }
   }
   .pro-stat-card:hover{ transform:translateY(-3px); box-shadow:var(--pro-shadow); }
   .pro-stat-card::after{
@@ -4118,15 +4124,8 @@ if ('serviceWorker' in navigator){
     margin:0; font-size:1.75rem; font-weight:800; color:#000;
     text-shadow:0 1px 3px rgba(255,255,255,0.55);
   }
-  .ec-site-link{
-    font-family:"Poppins",sans-serif; font-weight:800; font-size:1.05rem; color:#fff;
-    background:var(--sky-deep); border:1px solid var(--sky-deep); border-radius:999px; padding:16px 30px;
-    cursor:pointer; white-space:nowrap; flex:0 0 auto;
-    transition:transform .15s ease, filter .18s ease; box-shadow:0 10px 24px -10px rgba(44,74,102,0.6);
-  }
-  .ec-site-link:hover{ filter:brightness(1.1); transform:translateY(-1px); }
-  .ec-site-link:active{ transform:scale(0.96); }
-  @media (max-width:480px){ .ec-site-link{ width:100%; text-align:center; } }
+  /* .ec-site-link retiré : remplacé par .hv-site-link, composant partagé
+     Admin/Pro/Client (voir sa définition, section Espace Pro ci-dessus). */
 
   .ec-home-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:10px; }
   @media (max-width:760px){ .ec-home-grid{ grid-template-columns:1fr 1fr; } }
@@ -4172,6 +4171,15 @@ if ('serviceWorker' in navigator){
      (qui doit garder sa propre hauteur de carte, pas remplir l'écran). */
   #espaceProDashboard, #espaceClientDashboard{ display:flex; flex-direction:column; min-height:100dvh; }
   #espaceProDashboard > .ecx-assist-anchor{ margin-top:auto; }
+  /* Bug réel détecté en audit : cette astuce (pousser l'ancre — hauteur 0 —
+     vers le bas via margin-top:auto quand le contenu est court) poussait
+     AUSSI #espaceProAdminPanel, son frère suivant dans le DOM, créant un
+     immense vide au-dessus du tableau de bord admin (dont .pro-shell est
+     maintenant masqué, voir initAdminPanel — plus rien avant l'ancre pour
+     "absorber" cet espace). Neutralisée uniquement quand le panneau admin
+     est affiché ; le comportement Pro/Client (contenu court + ancre
+     poussée en bas) reste inchangé. */
+  #espaceProDashboard:has(> #espaceProAdminPanel:not([hidden])) > .ecx-assist-anchor{ margin-top:0; }
   /* Côté Client, .ecx-bottomnav précède .ecx-assist-anchor dans le flux :
      pousser LE PREMIER des deux suffit, l'ancre de l'assistant suit
      immédiatement au même niveau (bas de l'écran), sans double marge. */
@@ -4224,6 +4232,75 @@ if ('serviceWorker' in navigator){
   .ecx-bottomnav-item:active{ opacity:0.7; }
   @media (min-width:900px){ .ecx-bottomnav{ display:none !important; } .ecx-app.has-bottomnav{ padding-bottom:0; } }
 
+  /* ---------- Navigation basse PARTAGÉE Admin/Pro (.hv-bottomnav) ----------
+     Remplace le bandeau horizontal .adm-sidebar/.pro-sidebar "façon onglets
+     à faire défiler" sous 880px (12 pages admin, 7 pages pro — ça ne rentre
+     jamais et il faut swiper pour trouver une fonction). Même mécanique et
+     mêmes contraintes que .ecx-bottomnav ci-dessus (position:sticky, pas
+     fixed, safe-area-inset-bottom) : SIBLING de .adm-shell/.pro-shell,
+     jamais un enfant (voir les commentaires à leur usage en HTML). Caché
+     par défaut, affiché uniquement sous 880px (seuil où .adm-sidebar/
+     .pro-sidebar bascule en bandeau) — jamais les deux navigations en même
+     temps. */
+  .hv-bottomnav{
+    display:none; position:sticky; left:0; right:0; bottom:0; z-index:400;
+    background:rgba(255,255,255,0.92); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+    border-top:1px solid rgba(22,34,44,0.12);
+    box-shadow:0 -6px 18px -16px rgba(16,27,36,0.28);
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-radius:0 0 18px 18px;
+  }
+  @media (max-width:880px){ .hv-bottomnav{ display:flex; } }
+  /* [hidden] doit rester prioritaire même sous 880px (ex. #proBottomNav
+     masqué pour un compte admin, voir initAdminPanel) — sans cette règle,
+     la déclaration display:flex ci-dessus (origine "auteur") l'emporterait
+     sur le display:none du user-agent pour [hidden] (même piège que le
+     placeholder Switch 2 de la campagne de lancement). */
+  .hv-bottomnav[hidden]{ display:none !important; }
+  .hv-bottomnav-item{
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    background:none; border:none; padding:6px 2px; cursor:pointer; color:#5B6B78;
+    font-family:"Poppins",sans-serif; font-size:0.65rem; font-weight:700; min-height:48px;
+    border-radius:12px; transition:color .2s ease;
+  }
+  .hv-bn-icon{ display:flex; align-items:center; justify-content:center; width:22px; height:22px; }
+  .hv-bn-icon svg{ width:100%; height:100%; stroke:currentColor; fill:none; stroke-width:1.75; transition:stroke-width .2s ease; }
+  .hv-bottomnav-item.is-active{ color:var(--terracotta,#E85A12); }
+  .hv-bottomnav-item.is-active .hv-bn-icon svg{ stroke-width:2.1; }
+  .hv-bottomnav-item:active{ opacity:0.7; }
+
+  /* Menu "Plus" — même sheet bas d'écran que l'assistant (.ecx-assist-sheet),
+     classes dédiées pour rester indépendant de son contenu. */
+  .hv-more-sheet{
+    position:fixed; inset:0; z-index:9250; display:flex; align-items:flex-end; justify-content:center;
+    background:rgba(16,27,46,0.32);
+  }
+  .hv-more-sheet[hidden]{ display:none; }
+  .hv-more-card{
+    width:100%; max-width:460px; max-height:min(78vh, 640px); background:#fff; border-radius:20px 20px 0 0;
+    display:flex; flex-direction:column; overflow:hidden; animation:ecxAssistSheetIn .22s ease;
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  @media (min-width:900px){
+    .hv-more-sheet{ align-items:center; }
+    .hv-more-card{ border-radius:20px; max-height:min(70vh, 600px); box-shadow:0 24px 60px -20px rgba(16,27,46,0.45); }
+  }
+  .hv-more-head{ flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:16px 16px 12px; border-bottom:1px solid rgba(22,34,44,0.1); }
+  .hv-more-title{ flex:1 1 auto; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.98rem; color:#16222C; margin:0; }
+  .hv-more-close{
+    flex:0 0 auto; width:32px; height:32px; border-radius:50%; border:none; background:#F3F1EC;
+    color:#16222C; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .hv-more-close svg{ width:16px; height:16px; }
+  .hv-more-list{ flex:1 1 auto; overflow-y:auto; padding:8px; display:flex; flex-direction:column; }
+  .hv-more-item{
+    text-align:left; background:none; border:none; padding:14px 12px; font-family:"Poppins",sans-serif;
+    font-weight:600; font-size:0.92rem; color:#16222C; cursor:pointer; border-radius:12px;
+    min-height:48px;
+  }
+  .hv-more-item:active{ background:#F3F1EC; }
+  .hv-more-item-danger{ color:#C1503B; border-top:1px solid rgba(22,34,44,0.1); margin-top:6px; padding-top:16px; }
+
   /* ---------- Assistant flottant Espace Client / Espace Pro ----------
      Même contrainte que .ecx-bottomnav : les conteneurs #espaceClient et
      #espacePro sont eux-mêmes position:fixed + overflow-y:auto (le vrai
@@ -4246,7 +4323,13 @@ if ('serviceWorker' in navigator){
   .ecx-assist-btn:active{ transform:scale(0.96); }
   .ecx-assist-btn .ecx-svg-icon{ width:24px; height:24px; }
   @media (min-width:900px){ .ecx-assist-btn{ bottom:24px; } }
-  [data-ecx-assist-role="professionnel"] .ecx-assist-btn{ bottom:24px; }
+  /* Pro/Admin ont désormais leur propre .hv-bottomnav sous 880px (avant,
+     l'Espace Pro n'avait AUCUNE navigation basse, d'où ce bottom:24px fixe
+     — sans le limiter au desktop, le bouton assistant se serait retrouvé
+     PAR-DESSUS la nouvelle barre de navigation). En dessous de 900px, la
+     règle par défaut ci-dessus (bottom:calc(86px + safe-area + 14px))
+     s'applique donc aussi côté "professionnel". */
+  @media (min-width:900px){ [data-ecx-assist-role="professionnel"] .ecx-assist-btn{ bottom:24px; } }
 
   .ecx-assist-callout{
     position:absolute; right:74px; bottom:calc(86px + env(safe-area-inset-bottom, 0px) + 8px); pointer-events:auto;
@@ -4263,7 +4346,7 @@ if ('serviceWorker' in navigator){
   }
   .ecx-assist-callout-close svg{ width:12px; height:12px; }
   @media (min-width:900px){ .ecx-assist-callout{ bottom:82px; } }
-  [data-ecx-assist-role="professionnel"] .ecx-assist-callout{ bottom:82px; }
+  @media (min-width:900px){ [data-ecx-assist-role="professionnel"] .ecx-assist-callout{ bottom:82px; } }
 
   .ecx-assist-sheet{
     position:fixed; inset:0; z-index:9300; display:flex; align-items:flex-end; justify-content:center;
@@ -4786,92 +4869,6 @@ if ('serviceWorker' in navigator){
     font-size:0.85rem;
     color:var(--ink-soft);
     margin-top:2px;
-  }
-
-  /* ---------- Lecteur "Mon histoire en vidéo" ----------
-     Overlay plein écran dédié, fond noir cinématographique (distinct de
-     #legalOverlay/#founderBioOverlay). Contrôles minimalistes, jamais
-     l'interface native du navigateur (aucun attribut "controls" sur
-     <video> : tout est piloté par nos propres boutons). */
-  .story-video-overlay{
-    position:fixed; inset:0; z-index:10090; background:#0A0E14;
-    display:flex; align-items:center; justify-content:center;
-    padding-top:env(safe-area-inset-top, 0px); padding-bottom:env(safe-area-inset-bottom, 0px);
-  }
-  .story-video-overlay[hidden]{ display:none; }
-  .story-video-close{
-    position:absolute; top:calc(16px + env(safe-area-inset-top, 0px)); right:16px; z-index:2;
-    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.25);
-    background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .story-video-close:hover{ background:rgba(255,255,255,0.18); }
-  .story-video-close svg{ width:18px; height:18px; }
-  .story-video-stage{
-    position:relative; width:100%; max-width:960px; aspect-ratio:16/9; margin:0 16px;
-    display:flex; align-items:center; justify-content:center; background:#000; border-radius:10px; overflow:hidden;
-  }
-  @media (max-width:640px){
-    .story-video-stage{ max-width:100%; margin:0; border-radius:0; aspect-ratio:9/16; max-height:100dvh; }
-  }
-  .story-video-stage video{ width:100%; height:100%; object-fit:contain; background:#000; }
-  .story-video-unavailable{
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-    color:#fff; text-align:center; padding:24px;
-  }
-  .story-video-unavailable p{ margin:0; font-family:"Poppins",sans-serif; }
-  .story-video-unavailable p:first-child{ font-weight:800; font-size:1.15rem; }
-  .story-video-unavailable-sub{ opacity:0.75; font-size:0.9rem; }
-  /* .btn-hero-secondary dépend des jetons --hl-* scopés à .hero (voir plus
-     haut) : hors de ce contexte, var(--hl-navy) est indéfinie et le bouton
-     hérite silencieusement du blanc ambiant (texte invisible, bug réel
-     détecté en test). Couleurs explicites ici, jamais un jeton scopé. */
-  .story-video-unavailable .btn-hero-secondary{ background:#fff; color:#12213D; border-color:transparent; }
-  .story-video-playbtn{
-    position:absolute; width:72px; height:72px; border-radius:50%; border:none;
-    background:rgba(255,255,255,0.92); color:var(--sky-deep); cursor:pointer;
-    display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px -10px rgba(0,0,0,0.5);
-    transition:transform .18s ease;
-  }
-  .story-video-playbtn:hover{ transform:scale(1.06); }
-  .story-video-playbtn svg{ width:30px; height:30px; margin-left:3px; }
-  .story-video-controls{
-    position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; gap:12px;
-    padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
-    background:linear-gradient(to top, rgba(0,0,0,0.65), transparent);
-  }
-  .story-video-ctrl{
-    width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.12); color:#fff;
-    cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
-  }
-  .story-video-ctrl:hover{ background:rgba(255,255,255,0.22); }
-  .story-video-ctrl svg{ width:18px; height:18px; }
-  .story-video-cc{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.72rem; }
-  .story-video-cc.is-off{ opacity:0.5; }
-  .story-video-progress{
-    flex:1 1 auto; height:5px; border-radius:999px; background:rgba(255,255,255,0.22); cursor:pointer; position:relative;
-  }
-  .story-video-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--terracotta); border-radius:999px; }
-  .story-video-end{
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
-    background:rgba(10,14,20,0.94); padding:24px; text-align:center;
-  }
-  .story-video-end-logo{ width:64px; height:auto; }
-  .story-video-end-brand{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.1rem; letter-spacing:0.08em; color:#fff; margin:2px 0 0; }
-  .story-video-end-tagline{ font-size:0.78rem; letter-spacing:0.04em; color:rgba(255,255,255,0.65); margin:0; }
-  .story-video-end-signature{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.9rem; color:#fff; margin:10px 0 0; }
-  .story-video-end-signature span{ display:block; font-weight:500; font-size:0.76rem; color:rgba(255,255,255,0.65); margin-top:2px; }
-  .story-video-end-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; color:#fff; margin:6px 0 0; }
-  .story-video-end-ctas{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; margin-top:6px; }
-  .story-video-end-link{
-    background:none; border:none; color:#fff; text-decoration:underline; font-weight:700; cursor:pointer; font-size:0.9rem;
-  }
-  /* Même correctif que .story-video-unavailable ci-dessus : .btn-hero-primary/
-     -secondary dépendent des jetons --hl-* scopés à .hero, indéfinis ici. */
-  .story-video-end .btn-hero-primary{ background:linear-gradient(135deg, #E85A12 0%, #C94400 100%); }
-  .story-video-end .btn-hero-secondary{ background:#fff; color:#12213D; border-color:transparent; }
-  @media (prefers-reduced-motion: reduce){
-    .story-video-playbtn, .story-video-ctrl{ transition:none !important; }
   }
 
   /* Contact band — deliberately fixed dark navy, independent of light/dark theme */
@@ -6045,12 +6042,8 @@ if ('serviceWorker' in navigator){
         <div class="hero-story-actions">
           <a href="#" class="hero-founder-link" id="founderBioOpenBtn1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
-            Lire mon histoire
+            Mon histoire ✍🏽
           </a>
-          <button type="button" class="hero-founder-link hero-story-video-btn" data-story-video-open>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5Z"/></svg>
-            Voir mon histoire en vidéo
-          </button>
         </div>
       </div>
 
@@ -6075,12 +6068,8 @@ if ('serviceWorker' in navigator){
         <div class="hero-story-actions">
           <a href="#" class="hero-founder-link" id="founderBioOpenBtn2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
-            Lire mon histoire
+            Mon histoire ✍🏽
           </a>
-          <button type="button" class="hero-founder-link hero-story-video-btn" data-story-video-open>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5Z"/></svg>
-            Voir mon histoire en vidéo
-          </button>
         </div>
       </div>
     </div>
@@ -7679,7 +7668,7 @@ if ('serviceWorker' in navigator){
                     <p class="pro-eyebrow">Tableau de bord</p>
                     <h2 class="pro-page-title">Bonjour THE BIG BOSS</h2>
                   </div>
-                  <button type="button" class="pro-site-link" id="espaceProGoToSiteBtn">Voir le site HAYEVA</button>
+                  <button type="button" class="hv-site-link" id="espaceProGoToSiteBtn">Voir le site<span class="hv-site-link-arrow" aria-hidden="true">↗</span></button>
                 </div>
                 <p class="pro-page-sub">Vue d'ensemble de vos logements et rendez-vous HAYEVA.</p>
               </div>
@@ -7775,6 +7764,48 @@ if ('serviceWorker' in navigator){
               </div>
               <div id="proSettingsPanel"><p class="ec-loading">Chargement…</p></div>
             </section>
+          </div>
+        </div>
+
+        <!-- Navigation basse mobile — SIBLING de .pro-shell (jamais un
+             enfant), pour la même raison que l'assistant flottant juste en
+             dessous (.pro-shell est display:flex en ligne sur desktop, un
+             enfant de plus y casserait la mise en page). Remplace le
+             bandeau horizontal .pro-sidebar cassé sous 880px. -->
+        <nav class="hv-bottomnav" id="proBottomNav" aria-label="Navigation Espace Professionnel (mobile)">
+          <button type="button" class="hv-bottomnav-item is-active" data-hv-nav="dashboard" aria-current="page">
+            <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/></svg></span>Accueil
+          </button>
+          <button type="button" class="hv-bottomnav-item" data-hv-nav="rendezvous">
+            <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>RDV
+          </button>
+          <button type="button" class="hv-bottomnav-item" data-hv-nav="devis">
+            <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>Devis
+          </button>
+          <button type="button" class="hv-bottomnav-item" data-hv-nav="factures">
+            <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 2h11l5 5v15H4Z"/><path d="M15 2v5h5"/><path d="M9 13h6M9 17h6"/></svg></span>Factures
+          </button>
+          <button type="button" class="hv-bottomnav-item" data-hv-more="pro">
+            <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>Plus
+          </button>
+        </nav>
+
+        <!-- Menu "Plus" (pages secondaires Pro) — voir son équivalent admin
+             (#admMoreSheet) pour le détail des classes .hv-more-*. -->
+        <div class="hv-more-sheet" id="proMoreSheet" hidden role="dialog" aria-modal="true" aria-label="Plus de fonctions">
+          <div class="hv-more-card">
+            <div class="hv-more-head">
+              <p class="hv-more-title">Plus</p>
+              <button type="button" class="hv-more-close" id="proMoreCloseBtn" aria-label="Fermer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="hv-more-list">
+              <button type="button" class="hv-more-item" data-hv-nav="logements">Logements</button>
+              <button type="button" class="hv-more-item" data-hv-nav="rapports">Rapports</button>
+              <button type="button" class="hv-more-item" data-hv-nav="parametres">Paramètres</button>
+              <button type="button" class="hv-more-item hv-more-item-danger" id="proMoreLogoutBtn">Se déconnecter</button>
+            </div>
           </div>
         </div>
 
@@ -7897,35 +7928,44 @@ if ('serviceWorker' in navigator){
 
               <section class="adm-page" id="admPageDashboard" data-adm-page="dashboard">
                 <div class="adm-page-head">
-                  <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">Tableau de bord</h2>
+                  <div class="pro-page-head-top">
+                    <div>
+                      <p class="adm-eyebrow">Tableau de bord</p>
+                      <h2 class="adm-page-title">Bonjour THE BIG BOSS</h2>
+                    </div>
+                    <button type="button" class="hv-site-link" id="espaceAdminGoToSiteBtn">Voir le site<span class="hv-site-link-arrow" aria-hidden="true">↗</span></button>
+                  </div>
                   <p class="adm-page-sub">Vue d'ensemble de l'activité HAYEVA.</p>
                 </div>
                 <div class="adm-stats-grid">
                   <div class="adm-stat-card adm-stat-ocean">
                     <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatToday">—</span>
-                    <span class="adm-stat-label">Rendez-vous aujourd'hui</span>
+                    <span class="adm-stat-label">RDV aujourd'hui</span>
                   </div>
                   <div class="adm-stat-card adm-stat-coral">
                     <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatNew">—</span>
-                    <span class="adm-stat-label">Demandes récentes</span>
+                    <span class="adm-stat-label">Demandes</span>
                   </div>
                   <div class="adm-stat-card adm-stat-turquoise">
                     <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatWeek">—</span>
-                    <span class="adm-stat-label">Rendez-vous cette semaine</span>
+                    <span class="adm-stat-label">RDV à venir</span>
                   </div>
                   <div class="adm-stat-card adm-stat-sand">
                     <span class="adm-stat-icon" aria-hidden="true"></span>
                     <span class="adm-stat-value" id="admStatQuotes">—</span>
-                    <span class="adm-stat-label">Devis en attente</span>
+                    <span class="adm-stat-label">Devis</span>
                   </div>
                 </div>
+                <p class="adm-subhead" id="admNextApptHeading" hidden>Prochain rendez-vous</p>
+                <div id="admNextApptCard"></div>
+                <p class="adm-subhead">Actions rapides</p>
                 <div class="adm-quicklinks">
-                  <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">Ouvrir le planning</button>
-                  <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">Voir les dernières demandes</button>
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">Planning</button>
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">Demandes récentes</button>
+                  <button type="button" class="adm-quicklink-btn" data-adm-goto="quotes">Devis</button>
                 </div>
               </section>
 
@@ -8414,6 +8454,59 @@ if ('serviceWorker' in navigator){
                 <div id="aiSettingsPanel"><p class="ec-loading">Chargement…</p></div>
               </section>
 
+            </div>
+          </div>
+
+          <!-- Navigation basse mobile — SIBLING de .adm-shell, jamais un
+               enfant : .adm-shell est display:flex en ligne (sidebar +
+               contenu) sur desktop, un enfant de plus y deviendrait un 3e
+               élément flex et casserait la mise en page (même piège déjà
+               documenté pour l'assistant flottant Pro, voir son commentaire
+               "SIBLING de .pro-shell" plus bas). Remplace le bandeau
+               horizontal .adm-sidebar cassé sous 880px (voir sa règle
+               "display:none" dans le même @media). Même composant partagé
+               .hv-bottomnav que côté Pro, mêmes 4 entrées principales +
+               "Plus" pour les 8 pages secondaires. -->
+          <nav class="hv-bottomnav" id="admBottomNav" aria-label="Navigation Administration (mobile)">
+            <button type="button" class="hv-bottomnav-item is-active" data-hv-nav="dashboard" aria-current="page">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/></svg></span>Accueil
+            </button>
+            <button type="button" class="hv-bottomnav-item" data-hv-nav="planning">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>Planning
+            </button>
+            <button type="button" class="hv-bottomnav-item" data-hv-nav="requests">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H7l-3 3z"/></svg></span>Demandes
+            </button>
+            <button type="button" class="hv-bottomnav-item" data-hv-nav="quotes">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>Devis
+            </button>
+            <button type="button" class="hv-bottomnav-item" data-hv-more="admin">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>Plus
+            </button>
+          </nav>
+
+          <!-- Menu "Plus" (pages secondaires admin) — même sheet bas de
+               page que l'assistant HAYEVA (.ecx-assist-sheet), classes
+               dédiées .hv-more-* pour rester indépendant de son contenu. -->
+          <div class="hv-more-sheet" id="admMoreSheet" hidden role="dialog" aria-modal="true" aria-label="Plus de fonctions">
+            <div class="hv-more-card">
+              <div class="hv-more-head">
+                <p class="hv-more-title">Plus</p>
+                <button type="button" class="hv-more-close" id="admMoreCloseBtn" aria-label="Fermer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <div class="hv-more-list">
+                <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
+                <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
+                <button type="button" class="hv-more-item" data-hv-nav="launch-campaign">Jeu de lancement</button>
+                <button type="button" class="hv-more-item" data-hv-nav="stats">Statistiques</button>
+                <button type="button" class="hv-more-item" data-hv-nav="pricing">Chiffrage</button>
+                <button type="button" class="hv-more-item" data-hv-nav="catalog">Catalogue</button>
+                <button type="button" class="hv-more-item" data-hv-nav="voice">HAYEVA Voice</button>
+                <button type="button" class="hv-more-item" data-hv-nav="settings">Paramètres</button>
+                <button type="button" class="hv-more-item hv-more-item-danger" id="admMoreLogoutBtn">Se déconnecter</button>
+              </div>
             </div>
           </div>
         </div>
@@ -9356,225 +9449,6 @@ if ('serviceWorker' in navigator){
     end.setHours(23,59,59,999);
     return CONFIG.active && now >= start && now <= end;
   };
-})();
-</script>
-
-<!-- ============================================================
-     LECTEUR "MON HISTOIRE EN VIDÉO" — overlay plein écran dédié, distinct
-     de #founderBioOverlay (le texte autobiographique n'est JAMAIS remplacé,
-     seulement complété par cette adaptation cinématographique). Lazy :
-     aucune source vidéo n'est chargée avant ouverture (preload="none",
-     src posé en JS à l'ouverture). Aucune fausse vidéo n'est livrée ici :
-     si les fichiers définitifs (voir docs/mon-histoire-assets-manquants.md)
-     ne sont pas encore déposés, l'état "Vidéo bientôt disponible" s'affiche
-     proprement au lieu d'un lecteur cassé. ============================================================ -->
-<div class="story-video-overlay" id="storyVideoOverlay" hidden role="dialog" aria-modal="true" aria-label="Mon histoire en vidéo">
-  <button type="button" class="story-video-close" id="storyVideoClose" aria-label="Fermer la vidéo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-  </button>
-  <div class="story-video-stage" id="storyVideoStage">
-    <video id="storyVideoEl" playsinline preload="none" poster="images/story/posters/mon-histoire-poster.jpg">
-      <track id="storyVideoTrack" kind="subtitles" src="images/story/subtitles/mon-histoire.fr.vtt" srclang="fr" label="Français" default>
-    </video>
-    <div class="story-video-unavailable" id="storyVideoUnavailable" hidden>
-      <p>Vidéo bientôt disponible.</p>
-      <p class="story-video-unavailable-sub">En attendant, découvrez le récit complet.</p>
-      <button type="button" class="btn-hero-secondary" id="storyVideoUnavailableBioBtn">Lire mon histoire</button>
-    </div>
-    <button type="button" class="story-video-playbtn" id="storyVideoPlayBtn" aria-label="Lecture">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
-    </button>
-    <div class="story-video-controls" id="storyVideoControls" hidden>
-      <button type="button" class="story-video-ctrl" id="storyVideoToggle" aria-label="Lecture / pause">
-        <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
-        <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
-      </button>
-      <div class="story-video-progress" id="storyVideoProgress" role="slider" aria-label="Progression" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
-        <div class="story-video-progress-fill" id="storyVideoProgressFill"></div>
-      </div>
-      <button type="button" class="story-video-ctrl" id="storyVideoMute" aria-label="Couper / rétablir le son">
-        <svg class="icon-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M16 8a5 5 0 0 1 0 8"/></svg>
-        <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><line x1="16" y1="9" x2="21" y2="15"/><line x1="21" y1="9" x2="16" y2="15"/></svg>
-      </button>
-      <button type="button" class="story-video-ctrl story-video-cc" id="storyVideoCC" aria-label="Afficher / masquer les sous-titres" aria-pressed="true">CC</button>
-    </div>
-    <div class="story-video-end" id="storyVideoEnd" hidden>
-      <img src="images/brand/hayeva-logo.png" alt="HAYEVA" class="story-video-end-logo">
-      <p class="story-video-end-brand">HAYEVA</p>
-      <p class="story-video-end-tagline">Plomberie • Chauffage • Climatisation</p>
-      <p class="story-video-end-signature">Julien Martin<span>Fondateur de HAYEVA</span></p>
-      <p class="story-video-end-title">Bienvenue chez HAYEVA.</p>
-      <div class="story-video-end-ctas">
-        <a href="#besoin" class="btn-hero-primary" id="storyVideoCtaServices">Découvrir nos services</a>
-        <a href="#rdv" class="btn-hero-secondary" id="storyVideoCtaBooking">Prendre rendez-vous</a>
-        <button type="button" class="story-video-end-link" id="storyVideoCtaFullBio">Lire mon histoire</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  var overlay = document.getElementById('storyVideoOverlay');
-  if (!overlay) return;
-  var video = document.getElementById('storyVideoEl');
-  var stage = document.getElementById('storyVideoStage');
-  var playBtn = document.getElementById('storyVideoPlayBtn');
-  var controls = document.getElementById('storyVideoControls');
-  var toggleBtn = document.getElementById('storyVideoToggle');
-  var progress = document.getElementById('storyVideoProgress');
-  var progressFill = document.getElementById('storyVideoProgressFill');
-  var muteBtn = document.getElementById('storyVideoMute');
-  var ccBtn = document.getElementById('storyVideoCC');
-  var endScreen = document.getElementById('storyVideoEnd');
-  var unavailable = document.getElementById('storyVideoUnavailable');
-  var closeBtn = document.getElementById('storyVideoClose');
-  var milestonesFired = {};
-  var started = false;
-  var sourceSet = false;
-
-  function track(eventType){ if (window.sudTrack) window.sudTrack(eventType, 'accueil'); }
-
-  function pickSrc(){
-    var vertical = window.matchMedia('(max-width:640px)').matches;
-    return vertical ? 'images/story/master/mon-histoire-9x16.mp4' : 'images/story/master/mon-histoire-16x9.mp4';
-  }
-
-  function resetState(){
-    playBtn.hidden = false;
-    controls.hidden = true;
-    endScreen.hidden = true;
-    unavailable.hidden = true;
-    video.hidden = false;
-    started = false;
-    milestonesFired = {};
-    progressFill.style.width = '0%';
-    var toggleIcons = toggleBtn.querySelectorAll('svg');
-    toggleIcons[0].hidden = false; toggleIcons[1].hidden = true;
-  }
-
-  function openStoryVideo(){
-    overlay.hidden = false;
-    document.body.style.overflow = 'hidden';
-    resetState();
-    if (!sourceSet){
-      video.src = pickSrc();
-      sourceSet = true;
-    }
-    track('story_video_opened');
-    setTimeout(function(){ closeBtn.focus(); }, 50);
-  }
-  function closeStoryVideo(){
-    overlay.hidden = true;
-    document.body.style.overflow = '';
-    video.pause();
-    track('story_video_closed');
-  }
-
-  video.addEventListener('error', function(){
-    playBtn.hidden = true;
-    controls.hidden = true;
-    video.hidden = true;
-    unavailable.hidden = false;
-  });
-
-  playBtn.addEventListener('click', function(){
-    video.play().catch(function(){});
-  });
-  video.addEventListener('play', function(){
-    playBtn.hidden = true;
-    controls.hidden = false;
-    if (!started){ started = true; track('story_video_started'); }
-    var toggleIcons = toggleBtn.querySelectorAll('svg');
-    toggleIcons[0].hidden = true; toggleIcons[1].hidden = false;
-  });
-  video.addEventListener('pause', function(){
-    var toggleIcons = toggleBtn.querySelectorAll('svg');
-    toggleIcons[0].hidden = false; toggleIcons[1].hidden = true;
-  });
-  toggleBtn.addEventListener('click', function(){
-    if (video.paused) video.play().catch(function(){}); else video.pause();
-  });
-
-  video.addEventListener('timeupdate', function(){
-    if (!video.duration) return;
-    var pct = (video.currentTime / video.duration) * 100;
-    progressFill.style.width = pct + '%';
-    progress.setAttribute('aria-valuenow', Math.round(pct));
-    [25, 50, 75].forEach(function(m){
-      if (pct >= m && !milestonesFired[m]){
-        milestonesFired[m] = true;
-        track('story_video_' + m);
-      }
-    });
-  });
-  progress.addEventListener('click', function(e){
-    if (!video.duration) return;
-    var rect = progress.getBoundingClientRect();
-    var ratio = (e.clientX - rect.left) / rect.width;
-    video.currentTime = ratio * video.duration;
-  });
-
-  muteBtn.addEventListener('click', function(){
-    video.muted = !video.muted;
-    var icons = muteBtn.querySelectorAll('svg');
-    icons[0].hidden = video.muted; icons[1].hidden = !video.muted;
-  });
-  ccBtn.addEventListener('click', function(){
-    var track0 = video.textTracks[0];
-    if (!track0) return;
-    var showing = track0.mode === 'showing';
-    track0.mode = showing ? 'hidden' : 'showing';
-    ccBtn.setAttribute('aria-pressed', showing ? 'false' : 'true');
-    ccBtn.classList.toggle('is-off', showing);
-  });
-
-  video.addEventListener('ended', function(){
-    controls.hidden = true;
-    endScreen.hidden = false;
-    track('story_video_completed');
-  });
-
-  function goToAnchorAfterClose(anchorId){
-    closeStoryVideo();
-    setTimeout(function(){
-      var el = document.getElementById(anchorId);
-      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
-    }, 200);
-  }
-  document.getElementById('storyVideoCtaServices').addEventListener('click', function(e){
-    e.preventDefault();
-    track('story_video_services_clicked');
-    goToAnchorAfterClose('besoin');
-  });
-  document.getElementById('storyVideoCtaBooking').addEventListener('click', function(e){
-    e.preventDefault();
-    track('story_video_booking_clicked');
-    goToAnchorAfterClose('rdv');
-  });
-  document.getElementById('storyVideoCtaFullBio').addEventListener('click', function(){
-    closeStoryVideo();
-    setTimeout(function(){ if (window.sudOpenFounderBio) window.sudOpenFounderBio(); }, 200);
-  });
-  var unavailableBioBtn = document.getElementById('storyVideoUnavailableBioBtn');
-  if (unavailableBioBtn) unavailableBioBtn.addEventListener('click', function(){
-    closeStoryVideo();
-    setTimeout(function(){ if (window.sudOpenFounderBio) window.sudOpenFounderBio(); }, 200);
-  });
-
-  closeBtn.addEventListener('click', closeStoryVideo);
-  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeStoryVideo(); });
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && !overlay.hidden) closeStoryVideo();
-    if (e.key === ' ' && !overlay.hidden && document.activeElement !== progress){
-      e.preventDefault();
-      if (video.paused) video.play().catch(function(){}); else video.pause();
-    }
-  });
-
-  document.querySelectorAll('[data-story-video-open]').forEach(function(btn){
-    btn.addEventListener('click', function(e){ e.preventDefault(); openStoryVideo(); });
-  });
 })();
 </script>
 
@@ -12143,6 +12017,7 @@ if ('serviceWorker' in navigator){
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    if (typeof hvSyncBottomNav === 'function') hvSyncBottomNav(document.getElementById('proBottomNav'), key, HV_PRO_PRIMARY);
     if (key === 'logements') proLoadProperties();
     if (key === 'parametres') proLoadSettings();
   }
@@ -12154,6 +12029,70 @@ if ('serviceWorker' in navigator){
       proShowPage(btn.getAttribute('data-pro-page'));
     });
   }
+
+  // ============================================================
+  // ---------- Navigation basse PARTAGÉE Admin/Pro (.hv-bottomnav) ----------
+  // Un seul mécanisme pour les deux espaces : la page "Plus" appelle
+  // toujours admShowPage()/proShowPage() (jamais une logique dupliquée), la
+  // sheet "Plus" se ferme après sélection. hvSyncBottomNav() est aussi
+  // appelée depuis admShowPage()/proShowPage() elles-mêmes pour rester
+  // sync même quand la page change par un autre chemin (ex. data-adm-goto
+  // du tableau de bord).
+  // ============================================================
+  var HV_PRO_PRIMARY = ['dashboard', 'rendezvous', 'devis', 'factures'];
+
+  function hvSyncBottomNav(navEl, key, primaryKeys){
+    if (!navEl) return;
+    Array.prototype.forEach.call(navEl.querySelectorAll('.hv-bottomnav-item'), function(btn){
+      var navKey = btn.getAttribute('data-hv-nav');
+      var active = navKey ? (navKey === key) : (primaryKeys.indexOf(key) === -1);
+      btn.classList.toggle('is-active', active);
+    });
+  }
+
+  function hvWireBottomNav(navId, sheetId, closeBtnId, logoutBtnId, showPageFn){
+    var navEl = document.getElementById(navId);
+    var sheetEl = document.getElementById(sheetId);
+    function closeSheet(){ if (sheetEl) sheetEl.hidden = true; }
+    if (navEl){
+      navEl.addEventListener('click', function(e){
+        var moreBtn = e.target.closest('[data-hv-more]');
+        if (moreBtn){ if (sheetEl) sheetEl.hidden = false; return; }
+        var btn = e.target.closest('[data-hv-nav]');
+        if (!btn) return;
+        showPageFn(btn.getAttribute('data-hv-nav'));
+      });
+    }
+    if (sheetEl){
+      sheetEl.addEventListener('click', function(e){
+        if (e.target === sheetEl){ closeSheet(); return; }
+        var item = e.target.closest('.hv-more-item[data-hv-nav]');
+        if (!item) return;
+        showPageFn(item.getAttribute('data-hv-nav'));
+        closeSheet();
+      });
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && !sheetEl.hidden) closeSheet();
+      });
+    }
+    var closeBtn = document.getElementById(closeBtnId);
+    if (closeBtn) closeBtn.addEventListener('click', closeSheet);
+    var logoutBtn = document.getElementById(logoutBtnId);
+    if (logoutBtn){
+      logoutBtn.addEventListener('click', function(){
+        closeSheet();
+        var realLogout = document.getElementById('espaceProLogoutBtn');
+        if (realLogout) realLogout.click();
+      });
+    }
+  }
+  hvWireBottomNav('proBottomNav', 'proMoreSheet', 'proMoreCloseBtn', 'proMoreLogoutBtn', proShowPage);
+  // hvSyncBottomNav/hvWireBottomNav exposés : admShowPage() vit dans une
+  // IIFE totalement séparée (script Administration, plus bas dans le
+  // fichier) et ne peut pas voir ces fonctions autrement — même
+  // contrainte que les nombreux autres window.sudXxx de ce fichier.
+  window.hvSyncBottomNav = hvSyncBottomNav;
+  window.hvWireBottomNav = hvWireBottomNav;
   document.addEventListener('click', function(e){
     var goto = e.target.closest('[data-pro-goto]');
     if (!goto) return;
@@ -13153,6 +13092,16 @@ if ('serviceWorker' in navigator){
   // (ecHomeGoToSiteBtn). La session Supabase (localStorage) n'est pas touchée.
   if (goToSiteBtn){
     goToSiteBtn.addEventListener('click', function(){
+      if (window.sudCloseEspace) window.sudCloseEspace('espacePro');
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+  }
+  // Même bouton, même comportement, côté tableau de bord Administration
+  // (espacePro héberge aussi le panneau admin — un seul écran plein écran
+  // à fermer, voir espaceProGoToSiteBtn juste au-dessus).
+  var adminGoToSiteBtn = document.getElementById('espaceAdminGoToSiteBtn');
+  if (adminGoToSiteBtn){
+    adminGoToSiteBtn.addEventListener('click', function(){
       if (window.sudCloseEspace) window.sudCloseEspace('espacePro');
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     });
@@ -14814,6 +14763,7 @@ if ('serviceWorker' in navigator){
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    if (window.hvSyncBottomNav) window.hvSyncBottomNav(document.getElementById('admBottomNav'), key, ['dashboard', 'planning', 'requests', 'quotes']);
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
@@ -15060,6 +15010,10 @@ if ('serviceWorker' in navigator){
       admShowPage(btn.getAttribute('data-adm-page'));
     });
   }
+  // Navigation basse mobile (.hv-bottomnav/"Plus") : câblée ici, dans la
+  // même IIFE qu'admShowPage — window.hvWireBottomNav est défini par le
+  // script Espace Pro, exécuté avant celui-ci dans le document.
+  if (window.hvWireBottomNav) window.hvWireBottomNav('admBottomNav', 'admMoreSheet', 'admMoreCloseBtn', 'admMoreLogoutBtn', admShowPage);
   // Raccourcis "Ouvrir le planning" / "Voir les dernières demandes" du
   // Tableau de bord — mêmes cibles que la sidebar, juste un autre point
   // d'entrée.
@@ -15100,6 +15054,53 @@ if ('serviceWorker' in navigator){
     if (elNew) elNew.textContent = String(newCount);
     if (elWeek) elWeek.textContent = String(weekCount);
     if (elQuotes) elQuotes.textContent = String(quotesPendingCount);
+
+    admRenderNextAppt();
+  }
+
+  // "Prochain rendez-vous" du tableau de bord admin — même donnée que les
+  // cartes ci-dessus (adminBookingsCache), aucune requête supplémentaire.
+  // Reprend le style .ec-next-appt déjà partagé Pro/Client (voir commentaire
+  // "Composants ec-* volontairement réutilisés" sur .pro-info-row).
+  function admExtractCity(addr){
+    if (!addr) return '';
+    var parts = addr.split(',');
+    return parts[parts.length - 1].trim();
+  }
+  function admRenderNextAppt(){
+    var cardEl = document.getElementById('admNextApptCard');
+    var headingEl = document.getElementById('admNextApptHeading');
+    if (!cardEl || !adminBookingsCache) return;
+    var now = new Date();
+    var todayIso = admIsoDate(now);
+    var nowHm = (now.getHours() < 10 ? '0' : '') + now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+    var upcoming = adminBookingsCache.rows.filter(function(b){
+      if (b.status === 'CANCELLED') return false;
+      if (b.date > todayIso) return true;
+      if (b.date === todayIso) return admFmtTime(b.start_time) >= nowHm;
+      return false;
+    }).slice().sort(function(a, b){
+      var da = a.date + 'T' + (a.start_time || '00:00');
+      var db = b.date + 'T' + (b.start_time || '00:00');
+      return da < db ? -1 : (da > db ? 1 : 0);
+    });
+    if (!upcoming.length){
+      cardEl.innerHTML = '';
+      if (headingEl) headingEl.hidden = true;
+      return;
+    }
+    if (headingEl) headingEl.hidden = false;
+    var b = upcoming[0];
+    var contact = admContactFor(b, adminBookingsCache.profiles);
+    var svcName = (b.services && b.services.name) || 'Intervention';
+    var city = admExtractCity(contact.address);
+    cardEl.innerHTML = '<div class="ec-next-appt">' +
+      '<p class="ec-eyebrow">' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</p>' +
+      '<h3>' + admEscape(contact.name) + ' — ' + admEscape(svcName) + '</h3>' +
+      '<div class="ec-next-appt-meta">' +
+        (city ? '<span>' + admEscape(city) + '</span>' : '') +
+        admStatusBadgeHtml(b.status) +
+      '</div></div>';
   }
 
   // ---------- Devis : liste en lecture, réutilise la fiche détaillée du
@@ -16332,7 +16333,17 @@ if ('serviceWorker' in navigator){
   function initAdminPanel(role){
     var panel = document.getElementById('espaceProAdminPanel');
     if (!panel) return;
+    // Un compte admin n'est jamais aussi un client conciergerie/mobil-home :
+    // masquer .pro-shell (son propre "Bonjour THE BIG BOSS", ses logements
+    // toujours à 0, sa propre navigation basse) pour ne montrer que le
+    // panneau Administration — avant ce correctif, les deux dashboards et
+    // leurs deux barres de navigation basse s'empilaient sur la même page
+    // (bug UX réel détecté en audit, jamais un choix voulu).
+    var proShellEl = document.querySelector('.pro-shell');
+    var proBottomNavEl = document.getElementById('proBottomNav');
     if (role === 'admin'){
+      if (proShellEl) proShellEl.hidden = true;
+      if (proBottomNavEl) proBottomNavEl.hidden = true;
       panel.hidden = false;
       admShowPage('dashboard');
       admLoadAccounts();
@@ -16346,6 +16357,8 @@ if ('serviceWorker' in navigator){
       if (typeof admLoadMarginRules === 'function') admLoadMarginRules();
       if (typeof admLoadCatalogProducts === 'function') admLoadCatalogProducts();
     } else {
+      if (proShellEl) proShellEl.hidden = false;
+      if (proBottomNavEl) proBottomNavEl.hidden = false;
       panel.hidden = true;
       admTeardownBkRealtime();
       admTeardownStatsRealtime();
@@ -18044,7 +18057,7 @@ if ('serviceWorker' in navigator){
         var firstName = profile && profile.first_name ? profile.first_name.trim() : '';
         var html = '<div class="ec-home-head">' +
           '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) : 'Bonjour') + '</p>' +
-          '<button type="button" class="ec-site-link" id="ecHomeGoToSiteBtn">Voir le site HAYEVA</button>' +
+          '<button type="button" class="hv-site-link" id="ecHomeGoToSiteBtn">Voir le site<span class="hv-site-link-arrow" aria-hidden="true">↗</span></button>' +
         '</div>' +
         '<p class="ec-section-sub" style="margin-top:-10px;">Que pouvons-nous faire pour votre logement ?</p>' +
         '<div class="ecx-search" id="ecxHomeSearch">' + ecxIcon('search', 'ecx-search-icon') + '<input type="text" id="ecxHomeSearchInput" placeholder="De quoi avez-vous besoin ?" aria-label="Rechercher une prestation" readonly></div>' +
