@@ -1092,14 +1092,17 @@ if ('serviceWorker' in navigator){
     flex-wrap:wrap;
   }
   .trustline .dot{width:5px;height:5px;border-radius:50%;background:var(--hl-blue); flex:none;}
+  .hero-story-actions{
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px 22px; margin-top:18px;
+  }
   .hero-founder-link{
     display:inline-flex; align-items:center; gap:9px;
-    margin-top:18px;
     font-size:1.05rem; font-weight:800;
     color:var(--hl-orange, var(--terracotta));
     text-decoration:none;
     border-bottom:2px solid transparent;
     transition:border-color .2s ease, color .2s ease;
+    background:none; padding:0; cursor:pointer; font-family:inherit;
   }
   .hero-founder-link:hover{ border-color:currentColor; }
   .hero-founder-link svg{ width:22px; height:22px; flex:none; }
@@ -4776,6 +4779,88 @@ if ('serviceWorker' in navigator){
     margin-top:2px;
   }
 
+  /* ---------- Lecteur "Mon histoire en vidéo" ----------
+     Overlay plein écran dédié, fond noir cinématographique (distinct de
+     #legalOverlay/#founderBioOverlay). Contrôles minimalistes, jamais
+     l'interface native du navigateur (aucun attribut "controls" sur
+     <video> : tout est piloté par nos propres boutons). */
+  .story-video-overlay{
+    position:fixed; inset:0; z-index:10090; background:#0A0E14;
+    display:flex; align-items:center; justify-content:center;
+    padding-top:env(safe-area-inset-top, 0px); padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  .story-video-overlay[hidden]{ display:none; }
+  .story-video-close{
+    position:absolute; top:calc(16px + env(safe-area-inset-top, 0px)); right:16px; z-index:2;
+    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .story-video-close:hover{ background:rgba(255,255,255,0.18); }
+  .story-video-close svg{ width:18px; height:18px; }
+  .story-video-stage{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9; margin:0 16px;
+    display:flex; align-items:center; justify-content:center; background:#000; border-radius:10px; overflow:hidden;
+  }
+  @media (max-width:640px){
+    .story-video-stage{ max-width:100%; margin:0; border-radius:0; aspect-ratio:9/16; max-height:100dvh; }
+  }
+  .story-video-stage video{ width:100%; height:100%; object-fit:contain; background:#000; }
+  .story-video-unavailable{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    color:#fff; text-align:center; padding:24px;
+  }
+  .story-video-unavailable p{ margin:0; font-family:"Poppins",sans-serif; }
+  .story-video-unavailable p:first-child{ font-weight:800; font-size:1.15rem; }
+  .story-video-unavailable-sub{ opacity:0.75; font-size:0.9rem; }
+  /* .btn-hero-secondary dépend des jetons --hl-* scopés à .hero (voir plus
+     haut) : hors de ce contexte, var(--hl-navy) est indéfinie et le bouton
+     hérite silencieusement du blanc ambiant (texte invisible, bug réel
+     détecté en test). Couleurs explicites ici, jamais un jeton scopé. */
+  .story-video-unavailable .btn-hero-secondary{ background:#fff; color:#12213D; border-color:transparent; }
+  .story-video-playbtn{
+    position:absolute; width:72px; height:72px; border-radius:50%; border:none;
+    background:rgba(255,255,255,0.92); color:var(--sky-deep); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px -10px rgba(0,0,0,0.5);
+    transition:transform .18s ease;
+  }
+  .story-video-playbtn:hover{ transform:scale(1.06); }
+  .story-video-playbtn svg{ width:30px; height:30px; margin-left:3px; }
+  .story-video-controls{
+    position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; gap:12px;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+  }
+  .story-video-ctrl{
+    width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.12); color:#fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .story-video-ctrl:hover{ background:rgba(255,255,255,0.22); }
+  .story-video-ctrl svg{ width:18px; height:18px; }
+  .story-video-cc{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.72rem; }
+  .story-video-cc.is-off{ opacity:0.5; }
+  .story-video-progress{
+    flex:1 1 auto; height:5px; border-radius:999px; background:rgba(255,255,255,0.22); cursor:pointer; position:relative;
+  }
+  .story-video-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--terracotta); border-radius:999px; }
+  .story-video-end{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    background:rgba(10,14,20,0.94); padding:24px; text-align:center;
+  }
+  .story-video-end-logo{ width:64px; height:auto; }
+  .story-video-end-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; color:#fff; margin:0; }
+  .story-video-end-ctas{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; margin-top:6px; }
+  .story-video-end-link{
+    background:none; border:none; color:#fff; text-decoration:underline; font-weight:700; cursor:pointer; font-size:0.9rem;
+  }
+  /* Même correctif que .story-video-unavailable ci-dessus : .btn-hero-primary/
+     -secondary dépendent des jetons --hl-* scopés à .hero, indéfinis ici. */
+  .story-video-end .btn-hero-primary{ background:linear-gradient(135deg, #E85A12 0%, #C94400 100%); }
+  .story-video-end .btn-hero-secondary{ background:#fff; color:#12213D; border-color:transparent; }
+  @media (prefers-reduced-motion: reduce){
+    .story-video-playbtn, .story-video-ctrl{ transition:none !important; }
+  }
+
   /* Contact band — deliberately fixed dark navy, independent of light/dark theme */
   #contact{background:var(--navy-fixed);}
   .contact-band{
@@ -5793,10 +5878,16 @@ if ('serviceWorker' in navigator){
           <span>Intervention rapide</span><span class="dot"></span>
           <span>Basés à Fréjus</span>
         </div>
-        <a href="#" class="hero-founder-link" id="founderBioOpenBtn1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
-          Mon histoire
-        </a>
+        <div class="hero-story-actions">
+          <a href="#" class="hero-founder-link" id="founderBioOpenBtn1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
+            Lire mon histoire
+          </a>
+          <button type="button" class="hero-founder-link hero-story-video-btn" data-story-video-open>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5Z"/></svg>
+            Voir mon histoire en vidéo
+          </button>
+        </div>
       </div>
 
       <div data-audience="pro" hidden>
@@ -5817,10 +5908,16 @@ if ('serviceWorker' in navigator){
           <span>Compte-rendu numérique</span><span class="dot"></span>
           <span>Basés à Fréjus</span>
         </div>
-        <a href="#" class="hero-founder-link" id="founderBioOpenBtn2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
-          Mon histoire
-        </a>
+        <div class="hero-story-actions">
+          <a href="#" class="hero-founder-link" id="founderBioOpenBtn2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
+            Lire mon histoire
+          </a>
+          <button type="button" class="hero-founder-link hero-story-video-btn" data-story-video-open>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5Z"/></svg>
+            Voir mon histoire en vidéo
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -8683,6 +8780,226 @@ if ('serviceWorker' in navigator){
   ['founderBioOpenBtn1','founderBioOpenBtn2'].forEach(function(id){
     var btn = document.getElementById(id);
     if (btn) btn.addEventListener('click', function(e){ e.preventDefault(); openFounderBio(); });
+  });
+  // Exposé pour le lecteur vidéo "Mon Histoire" (bouton "Lire mon histoire
+  // complète" sur l'écran de fin) — jamais une seconde implémentation de
+  // cet overlay.
+  window.sudOpenFounderBio = openFounderBio;
+})();
+</script>
+
+<!-- ============================================================
+     LECTEUR "MON HISTOIRE EN VIDÉO" — overlay plein écran dédié, distinct
+     de #founderBioOverlay (le texte autobiographique n'est JAMAIS remplacé,
+     seulement complété par cette adaptation cinématographique). Lazy :
+     aucune source vidéo n'est chargée avant ouverture (preload="none",
+     src posé en JS à l'ouverture). Aucune fausse vidéo n'est livrée ici :
+     si les fichiers définitifs (voir docs/mon-histoire-assets-manquants.md)
+     ne sont pas encore déposés, l'état "Vidéo bientôt disponible" s'affiche
+     proprement au lieu d'un lecteur cassé. ============================================================ -->
+<div class="story-video-overlay" id="storyVideoOverlay" hidden role="dialog" aria-modal="true" aria-label="Mon histoire en vidéo">
+  <button type="button" class="story-video-close" id="storyVideoClose" aria-label="Fermer la vidéo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+  </button>
+  <div class="story-video-stage" id="storyVideoStage">
+    <video id="storyVideoEl" playsinline preload="none" poster="images/story/mon-histoire-poster.jpg">
+      <track id="storyVideoTrack" kind="subtitles" src="images/story/mon-histoire.fr.vtt" srclang="fr" label="Français" default>
+    </video>
+    <div class="story-video-unavailable" id="storyVideoUnavailable" hidden>
+      <p>Vidéo bientôt disponible.</p>
+      <p class="story-video-unavailable-sub">En attendant, découvrez le récit complet.</p>
+      <button type="button" class="btn-hero-secondary" id="storyVideoUnavailableBioBtn">Lire mon histoire</button>
+    </div>
+    <button type="button" class="story-video-playbtn" id="storyVideoPlayBtn" aria-label="Lecture">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
+    </button>
+    <div class="story-video-controls" id="storyVideoControls" hidden>
+      <button type="button" class="story-video-ctrl" id="storyVideoToggle" aria-label="Lecture / pause">
+        <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
+        <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+      <div class="story-video-progress" id="storyVideoProgress" role="slider" aria-label="Progression" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+        <div class="story-video-progress-fill" id="storyVideoProgressFill"></div>
+      </div>
+      <button type="button" class="story-video-ctrl" id="storyVideoMute" aria-label="Couper / rétablir le son">
+        <svg class="icon-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M16 8a5 5 0 0 1 0 8"/></svg>
+        <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><line x1="16" y1="9" x2="21" y2="15"/><line x1="21" y1="9" x2="16" y2="15"/></svg>
+      </button>
+      <button type="button" class="story-video-ctrl story-video-cc" id="storyVideoCC" aria-label="Afficher / masquer les sous-titres" aria-pressed="true">CC</button>
+    </div>
+    <div class="story-video-end" id="storyVideoEnd" hidden>
+      <img src="images/brand/hayeva-logo.png" alt="HAYEVA" class="story-video-end-logo">
+      <p class="story-video-end-title">Bienvenue chez HAYEVA</p>
+      <div class="story-video-end-ctas">
+        <a href="#besoin" class="btn-hero-primary" id="storyVideoCtaServices">Découvrir nos services</a>
+        <a href="#rdv" class="btn-hero-secondary" id="storyVideoCtaBooking">Prendre rendez-vous</a>
+        <button type="button" class="story-video-end-link" id="storyVideoCtaFullBio">Lire mon histoire complète</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var overlay = document.getElementById('storyVideoOverlay');
+  if (!overlay) return;
+  var video = document.getElementById('storyVideoEl');
+  var stage = document.getElementById('storyVideoStage');
+  var playBtn = document.getElementById('storyVideoPlayBtn');
+  var controls = document.getElementById('storyVideoControls');
+  var toggleBtn = document.getElementById('storyVideoToggle');
+  var progress = document.getElementById('storyVideoProgress');
+  var progressFill = document.getElementById('storyVideoProgressFill');
+  var muteBtn = document.getElementById('storyVideoMute');
+  var ccBtn = document.getElementById('storyVideoCC');
+  var endScreen = document.getElementById('storyVideoEnd');
+  var unavailable = document.getElementById('storyVideoUnavailable');
+  var closeBtn = document.getElementById('storyVideoClose');
+  var milestonesFired = {};
+  var started = false;
+  var sourceSet = false;
+
+  function track(eventType){ if (window.sudTrack) window.sudTrack(eventType, 'accueil'); }
+
+  function pickSrc(){
+    var vertical = window.matchMedia('(max-width:640px)').matches;
+    return vertical ? 'images/story/mon-histoire-9x16.mp4' : 'images/story/mon-histoire-16x9.mp4';
+  }
+
+  function resetState(){
+    playBtn.hidden = false;
+    controls.hidden = true;
+    endScreen.hidden = true;
+    unavailable.hidden = true;
+    video.hidden = false;
+    started = false;
+    milestonesFired = {};
+    progressFill.style.width = '0%';
+    var toggleIcons = toggleBtn.querySelectorAll('svg');
+    toggleIcons[0].hidden = false; toggleIcons[1].hidden = true;
+  }
+
+  function openStoryVideo(){
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    resetState();
+    if (!sourceSet){
+      video.src = pickSrc();
+      sourceSet = true;
+    }
+    track('story_video_opened');
+    setTimeout(function(){ closeBtn.focus(); }, 50);
+  }
+  function closeStoryVideo(){
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+    video.pause();
+    track('story_video_closed');
+  }
+
+  video.addEventListener('error', function(){
+    playBtn.hidden = true;
+    controls.hidden = true;
+    video.hidden = true;
+    unavailable.hidden = false;
+  });
+
+  playBtn.addEventListener('click', function(){
+    video.play().catch(function(){});
+  });
+  video.addEventListener('play', function(){
+    playBtn.hidden = true;
+    controls.hidden = false;
+    if (!started){ started = true; track('story_video_started'); }
+    var toggleIcons = toggleBtn.querySelectorAll('svg');
+    toggleIcons[0].hidden = true; toggleIcons[1].hidden = false;
+  });
+  video.addEventListener('pause', function(){
+    var toggleIcons = toggleBtn.querySelectorAll('svg');
+    toggleIcons[0].hidden = false; toggleIcons[1].hidden = true;
+  });
+  toggleBtn.addEventListener('click', function(){
+    if (video.paused) video.play().catch(function(){}); else video.pause();
+  });
+
+  video.addEventListener('timeupdate', function(){
+    if (!video.duration) return;
+    var pct = (video.currentTime / video.duration) * 100;
+    progressFill.style.width = pct + '%';
+    progress.setAttribute('aria-valuenow', Math.round(pct));
+    [25, 50, 75].forEach(function(m){
+      if (pct >= m && !milestonesFired[m]){
+        milestonesFired[m] = true;
+        track('story_video_' + m);
+      }
+    });
+  });
+  progress.addEventListener('click', function(e){
+    if (!video.duration) return;
+    var rect = progress.getBoundingClientRect();
+    var ratio = (e.clientX - rect.left) / rect.width;
+    video.currentTime = ratio * video.duration;
+  });
+
+  muteBtn.addEventListener('click', function(){
+    video.muted = !video.muted;
+    var icons = muteBtn.querySelectorAll('svg');
+    icons[0].hidden = video.muted; icons[1].hidden = !video.muted;
+  });
+  ccBtn.addEventListener('click', function(){
+    var track0 = video.textTracks[0];
+    if (!track0) return;
+    var showing = track0.mode === 'showing';
+    track0.mode = showing ? 'hidden' : 'showing';
+    ccBtn.setAttribute('aria-pressed', showing ? 'false' : 'true');
+    ccBtn.classList.toggle('is-off', showing);
+  });
+
+  video.addEventListener('ended', function(){
+    controls.hidden = true;
+    endScreen.hidden = false;
+    track('story_video_completed');
+  });
+
+  function goToAnchorAfterClose(anchorId){
+    closeStoryVideo();
+    setTimeout(function(){
+      var el = document.getElementById(anchorId);
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 200);
+  }
+  document.getElementById('storyVideoCtaServices').addEventListener('click', function(e){
+    e.preventDefault();
+    track('story_video_services_clicked');
+    goToAnchorAfterClose('besoin');
+  });
+  document.getElementById('storyVideoCtaBooking').addEventListener('click', function(e){
+    e.preventDefault();
+    track('story_video_booking_clicked');
+    goToAnchorAfterClose('rdv');
+  });
+  document.getElementById('storyVideoCtaFullBio').addEventListener('click', function(){
+    closeStoryVideo();
+    setTimeout(function(){ if (window.sudOpenFounderBio) window.sudOpenFounderBio(); }, 200);
+  });
+  var unavailableBioBtn = document.getElementById('storyVideoUnavailableBioBtn');
+  if (unavailableBioBtn) unavailableBioBtn.addEventListener('click', function(){
+    closeStoryVideo();
+    setTimeout(function(){ if (window.sudOpenFounderBio) window.sudOpenFounderBio(); }, 200);
+  });
+
+  closeBtn.addEventListener('click', closeStoryVideo);
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeStoryVideo(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && !overlay.hidden) closeStoryVideo();
+    if (e.key === ' ' && !overlay.hidden && document.activeElement !== progress){
+      e.preventDefault();
+      if (video.paused) video.play().catch(function(){}); else video.pause();
+    }
+  });
+
+  document.querySelectorAll('[data-story-video-open]').forEach(function(btn){
+    btn.addEventListener('click', function(e){ e.preventDefault(); openStoryVideo(); });
   });
 })();
 </script>
