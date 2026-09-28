@@ -356,7 +356,7 @@ couvre jamais.
 
 ## 10. Sous-titres
 
-- Fichier `images/story/mon-histoire.fr.vtt`, synchronisé phrase par phrase
+- Fichier `images/story/subtitles/mon-histoire.fr.vtt`, synchronisé phrase par phrase
   sur le script du §1.
 - Actifs par défaut à l'ouverture du lecteur (déjà le comportement du
   player existant : `<track ... default>`).
@@ -409,12 +409,12 @@ complète, inchangée).
 
 | Fichier | Emplacement exact | Format / ratio | Utilisation par le player |
 |---|---|---|---|
-| Vidéo principale | `images/story/mon-histoire-16x9.mp4` | MP4 H.264, 16:9, ~2:00–2:20 | Source vidéo desktop/tablette (`>640px`) |
-| Vidéo verticale | `images/story/mon-histoire-9x16.mp4` | MP4 H.264, 9:16, ~2:00–2:20 | Source vidéo mobile (`≤640px`) |
-| Affiche | `images/story/mon-histoire-poster.jpg` | JPG, 1920×1080, <300 Ko | Attribut `poster` du lecteur (premier visuel avant lecture) |
-| Sous-titres | `images/story/mon-histoire.fr.vtt` | WebVTT | `<track>` du lecteur, actif par défaut |
-| Teaser 30s | `images/story/mon-histoire-teaser-30s.mp4` | MP4 H.264 | Usage réseaux sociaux (hors player actuel) |
-| Teaser 15s | `images/story/mon-histoire-teaser-15s.mp4` | MP4 H.264 | Usage réseaux sociaux (hors player actuel) |
+| Vidéo principale | `images/story/master/mon-histoire-16x9.mp4` | MP4 H.264, 16:9, ~2:00–2:20 | Source vidéo desktop/tablette (`>640px`) |
+| Vidéo verticale | `images/story/master/mon-histoire-9x16.mp4` | MP4 H.264, 9:16, ~2:00–2:20 | Source vidéo mobile (`≤640px`) |
+| Affiche | `images/story/posters/mon-histoire-poster.jpg` | JPG, 1920×1080, <300 Ko | Attribut `poster` du lecteur (premier visuel avant lecture) |
+| Sous-titres | `images/story/subtitles/mon-histoire.fr.vtt` | WebVTT | `<track>` du lecteur, actif par défaut |
+| Teaser 30s | `images/story/teasers/mon-histoire-teaser-30s.mp4` | MP4 H.264 | Usage réseaux sociaux (hors player actuel) |
+| Teaser 15s | `images/story/teasers/mon-histoire-teaser-15s.mp4` | MP4 H.264 | Usage réseaux sociaux (hors player actuel) |
 
 Le lecteur choisit automatiquement 16x9 ou 9x16 selon la largeur d'écran au
 moment de l'ouverture (voir audit technique dans le message de livraison).

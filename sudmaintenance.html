@@ -8806,8 +8806,8 @@ if ('serviceWorker' in navigator){
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
   </button>
   <div class="story-video-stage" id="storyVideoStage">
-    <video id="storyVideoEl" playsinline preload="none" poster="images/story/mon-histoire-poster.jpg">
-      <track id="storyVideoTrack" kind="subtitles" src="images/story/mon-histoire.fr.vtt" srclang="fr" label="Français" default>
+    <video id="storyVideoEl" playsinline preload="none" poster="images/story/posters/mon-histoire-poster.jpg">
+      <track id="storyVideoTrack" kind="subtitles" src="images/story/subtitles/mon-histoire.fr.vtt" srclang="fr" label="Français" default>
     </video>
     <div class="story-video-unavailable" id="storyVideoUnavailable" hidden>
       <p>Vidéo bientôt disponible.</p>
@@ -8870,7 +8870,7 @@ if ('serviceWorker' in navigator){
 
   function pickSrc(){
     var vertical = window.matchMedia('(max-width:640px)').matches;
-    return vertical ? 'images/story/mon-histoire-9x16.mp4' : 'images/story/mon-histoire-16x9.mp4';
+    return vertical ? 'images/story/master/mon-histoire-9x16.mp4' : 'images/story/master/mon-histoire-16x9.mp4';
   }
 
   function resetState(){
