@@ -2988,6 +2988,12 @@ if ('serviceWorker' in navigator){
     background:transparent; color:var(--sky-deep); border:1.5px solid var(--sky-deep);
   }
   .ai-widget-cta-btn-secondary:hover{ background:var(--sky-deep); color:#fff; filter:none; }
+  .hv-human-cta-phone-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .hv-human-cta-phone-input{
+    flex:1 1 160px; min-width:0; font-family:inherit; font-size:0.85rem; padding:8px 12px;
+    border-radius:999px; border:1.5px solid var(--line); background:var(--white); color:var(--ink);
+  }
+  .hv-human-cta-sent{ font-size:0.82rem; color:var(--ink-soft); font-style:italic; }
   .ai-widget-typing{
     padding:4px 16px 10px; font-size:0.78rem; color:var(--ink-soft); font-style:italic; flex:0 0 auto;
   }
@@ -14708,11 +14714,11 @@ if ('serviceWorker' in navigator){
     }).then(function(sub){
       if (sub){
         btn.textContent = 'Désactiver les notifications';
-        statusEl.textContent = 'Activées';
+        statusEl.textContent = admIsIOS() ? '✓ Autorisées — cet iPhone est enregistré' : '✓ Autorisées sur cet appareil';
         statusEl.className = 'admin-push-status is-on';
       } else {
         btn.textContent = 'Activer les notifications';
-        statusEl.textContent = 'Désactivées';
+        statusEl.textContent = '⚠ Non activées sur cet appareil';
         statusEl.className = 'admin-push-status is-off';
       }
     }).catch(function(){});
@@ -20351,6 +20357,69 @@ function ecxCreateVoiceEngine(cfg){
     });
   }
 
+  // "Demander à être rappelé(e)" — CTA affichée UNIQUEMENT quand l'IA ne
+  // peut/doit pas traiter seule la demande (réponse de sécurité gaz/incendie,
+  // ou assistant indisponible/saturé) : jamais à chaque message, pour ne
+  // jamais noyer l'admin d'alertes. Définie avant le "return" ci-dessous (qui
+  // ne concerne que CE widget public) et exposée sur window pour être
+  // réutilisée telle quelle par l'assistant de l'Espace Client/Pro (widget
+  // ecx-assist, portée JS distincte) — même patron que window.hvWireBottomNav
+  // ailleurs sur ce fichier.
+  window.hvBuildHumanEscalationCta = function(container, opts){
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-widget-cta';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-widget-cta-btn ai-widget-cta-btn-secondary';
+    btn.textContent = '📞 Demander à être rappelé(e)';
+    btn.addEventListener('click', function(){
+      wrap.innerHTML = '';
+      var row = document.createElement('div');
+      row.className = 'hv-human-cta-phone-row';
+      var phoneInput = document.createElement('input');
+      phoneInput.type = 'tel';
+      phoneInput.placeholder = 'Votre numéro de téléphone';
+      phoneInput.className = 'hv-human-cta-phone-input';
+      var sendBtn2 = document.createElement('button');
+      sendBtn2.type = 'button';
+      sendBtn2.className = 'ai-widget-cta-btn';
+      sendBtn2.textContent = 'Envoyer ma demande';
+      sendBtn2.addEventListener('click', function(){
+        var phone = phoneInput.value.trim();
+        if (!phone){ phoneInput.focus(); return; }
+        sendBtn2.disabled = true;
+        phoneInput.disabled = true;
+        sendBtn2.textContent = 'Envoi…';
+        var sb = window.sudSupabase;
+        if (!sb || !sb.configured){ wrap.innerHTML = ''; wrap.appendChild(document.createTextNode("Indisponible pour le moment — appelez-nous directement.")); return; }
+        sb.client.functions.invoke('ai-request-human', {
+          body: {
+            session_id: opts.sessionId,
+            conversation_id: opts.getConversationId ? opts.getConversationId() : null,
+            customer_type: opts.customerType || 'particulier',
+            contact_phone: phone,
+            reason: opts.reason
+          }
+        }).then(function(){
+          wrap.innerHTML = '';
+          var ok = document.createElement('p');
+          ok.className = 'hv-human-cta-sent';
+          ok.textContent = '✅ Votre demande a bien été transmise à HAYEVA — vous serez recontacté(e) rapidement.';
+          wrap.appendChild(ok);
+        }).catch(function(){
+          sendBtn2.disabled = false;
+          phoneInput.disabled = false;
+          sendBtn2.textContent = 'Envoyer ma demande';
+        });
+      });
+      row.appendChild(phoneInput);
+      row.appendChild(sendBtn2);
+      wrap.appendChild(row);
+    });
+    wrap.appendChild(btn);
+    container.appendChild(wrap);
+  };
+
   var toggleBtn = document.getElementById('aiWidgetToggle');
   var panel = document.getElementById('aiWidgetPanel');
   var closeBtn = document.getElementById('aiWidgetClose');
@@ -20647,16 +20716,22 @@ function ecxCreateVoiceEngine(cfg){
       if (res.error || !data || data.status === 'unavailable'){
         setCharacterState(null);
         addMessage('assistant', "Désolé, l'assistant est momentanément indisponible. N'hésitez pas à nous appeler ou à prendre rendez-vous directement.", { safety:false });
+        window.hvBuildHumanEscalationCta(messagesEl, { sessionId: sessionId, getConversationId: function(){ return conversationId; }, customerType: 'particulier', reason: 'unavailable' });
+        scrollToBottom();
         return;
       }
       if (data.status === 'daily_cap_reached' || data.status === 'session_cap_reached'){
         setCharacterState(null);
         addMessage('assistant', "L'assistant a atteint sa limite d'échanges pour le moment. Vous pouvez nous contacter directement ou prendre rendez-vous ci-dessous.", { safety:false });
+        window.hvBuildHumanEscalationCta(messagesEl, { sessionId: sessionId, getConversationId: function(){ return conversationId; }, customerType: 'particulier', reason: data.status });
+        scrollToBottom();
         return;
       }
       if (data.status === 'rate_limited'){
         setCharacterState(null);
         addMessage('assistant', "L'assistant est très sollicité à l'instant — réessayez dans une minute, ou contactez-nous directement.", { safety:false });
+        window.hvBuildHumanEscalationCta(messagesEl, { sessionId: sessionId, getConversationId: function(){ return conversationId; }, customerType: 'particulier', reason: 'rate_limited' });
+        scrollToBottom();
         return;
       }
       if (data.status === 'message_too_long'){
@@ -20667,6 +20742,10 @@ function ecxCreateVoiceEngine(cfg){
       if (data.status === 'ok' && data.reply){
         conversationId = data.conversation_id || conversationId;
         addMessage('assistant', data.reply, { safety: !!data.is_safety_reply });
+        if (data.is_safety_reply){
+          window.hvBuildHumanEscalationCta(messagesEl, { sessionId: sessionId, getConversationId: function(){ return conversationId; }, customerType: 'particulier', reason: 'safety' });
+          scrollToBottom();
+        }
         var ctaShown = !data.is_safety_reply && tryShowBookingCta(text);
         if (!data.is_safety_reply) tryShowTravelFeeCta(data.reply, text);
         // "Parole" pendant l'apparition de la réponse, puis "succès" bref si
@@ -20943,6 +21022,10 @@ function ecxCreateVoiceEngine(cfg){
         var data = res.data;
         if (res.error || !data || data.status === 'unavailable' || data.status === 'daily_cap_reached' || data.status === 'session_cap_reached' || data.status === 'rate_limited'){
           addMsg('assistant', "Désolé, l'assistant est momentanément indisponible. Vous pouvez nous contacter directement au 06 71 26 23 02.");
+          if (window.hvBuildHumanEscalationCta){
+            window.hvBuildHumanEscalationCta(msgsEl, { sessionId: sessionId, getConversationId: function(){ return conversationId; }, customerType: role, reason: (data && data.status) || 'unavailable' });
+            scrollMsgsToBottom();
+          }
           return;
         }
         if (data.status === 'message_too_long'){
@@ -20952,6 +21035,10 @@ function ecxCreateVoiceEngine(cfg){
         if (data.status === 'ok' && data.reply){
           conversationId = data.conversation_id || conversationId;
           addMsg('assistant', data.reply);
+          if (data.is_safety_reply && window.hvBuildHumanEscalationCta){
+            window.hvBuildHumanEscalationCta(msgsEl, { sessionId: sessionId, getConversationId: function(){ return conversationId; }, customerType: role, reason: 'safety' });
+            scrollMsgsToBottom();
+          }
         }
       }).catch(function(){
         typingEl.hidden = true;
