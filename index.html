@@ -5569,6 +5569,125 @@ if ('serviceWorker' in navigator){
   @media (max-width:600px){
     .lightbox-close{ top:-46px; right:0; }
   }
+
+  /* ---------- Campagne "Grand jeu de lancement HAYEVA" ----------
+     Section autonome entre le hero et #besoin, entièrement pilotée par
+     window.HAYEVA_LAUNCH_CAMPAIGN (voir le <script> juste après son HTML) :
+     dates, noms/valeurs des lots et activation se modifient à un seul
+     endroit, jamais en dur ici. N'utilise aucun nouveau parcours de
+     réservation : le CTA pointe vers #rdv, le parcours existant. */
+  .launch-campaign{
+    position:relative;
+    overflow:hidden;
+    padding-block:64px;
+    background:linear-gradient(160deg, var(--sky-deep) 0%, var(--ink) 100%);
+    color:#fff;
+  }
+  .lc-particle{
+    position:absolute;
+    border-radius:50%;
+    pointer-events:none;
+    background:radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%);
+    opacity:0.35;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .lc-particle{ animation:lcParticleFloat 9s ease-in-out infinite; }
+  }
+  @keyframes lcParticleFloat{
+    0%, 100%{ transform:translateY(0) scale(1); opacity:0.25; }
+    50%{ transform:translateY(-18px) scale(1.15); opacity:0.55; }
+  }
+  .lc-inner{ position:relative; z-index:1; max-width:1080px; margin-inline:auto; padding-inline:20px; text-align:center; }
+  .lc-eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:0.78rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:#FFD9B8; font-weight:700; margin-bottom:14px;
+  }
+  .lc-title{
+    font-family:'Poppins',sans-serif; font-weight:800;
+    font-size:clamp(1.7rem, 4vw, 2.6rem);
+    letter-spacing:0.01em; margin:0 0 8px;
+    background:linear-gradient(90deg, #fff 0%, #FFD9B8 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .lc-subtitle{ font-size:1.05rem; color:rgba(255,255,255,0.85); margin:0 0 22px; }
+  .lc-period{
+    display:inline-block; font-weight:700; letter-spacing:0.05em;
+    font-size:0.9rem; padding:8px 20px; border-radius:999px;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(232,90,18,0.55);
+    color:#FFD9B8; margin-bottom:22px;
+  }
+  .lc-intro{ max-width:640px; margin:0 auto 40px; font-size:1.02rem; line-height:1.6; color:rgba(255,255,255,0.9); }
+  .lc-cards{
+    display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px;
+    text-align:left; margin-bottom:40px;
+  }
+  @media (max-width:900px){ .lc-cards{ grid-template-columns:1fr; } }
+  .lc-card{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:16px; padding:22px;
+    display:flex; flex-direction:column; gap:12px;
+    backdrop-filter:blur(6px);
+  }
+  .lc-card-tag{
+    align-self:flex-start; font-size:0.7rem; font-weight:700; letter-spacing:0.08em;
+    text-transform:uppercase; padding:4px 12px; border-radius:999px;
+  }
+  .lc-card-tag--grand{ background:var(--terracotta); color:#fff; }
+  .lc-card-tag--hayeva{ background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.3); }
+  .lc-card-visual{
+    width:100%; aspect-ratio:4/3; border-radius:12px;
+    background:linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+    border:1px dashed rgba(255,255,255,0.25);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; position:relative;
+  }
+  .lc-card-visual img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .lc-card-visual-placeholder{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; padding:16px; text-align:center; color:rgba(255,255,255,0.65);
+  }
+  .lc-card-visual-placeholder svg{ width:52px; height:52px; opacity:0.7; }
+  .lc-card-visual-placeholder span{ font-size:0.74rem; line-height:1.4; }
+  .lc-card-name{ font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; margin:0; }
+  .lc-card-desc{ font-size:0.92rem; color:rgba(255,255,255,0.8); line-height:1.5; margin:0; }
+  .lc-draw{
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+    font-family:'Poppins',sans-serif; font-weight:700;
+    font-size:clamp(1rem, 2.4vw, 1.35rem);
+    padding:16px 24px; border-radius:14px; margin-bottom:28px;
+    background:linear-gradient(90deg, rgba(232,90,18,0.22), rgba(44,74,102,0.22));
+    border:1px solid rgba(232,90,18,0.5);
+    letter-spacing:0.03em;
+  }
+  .lc-cta-row{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:14px; }
+  .lc-terms-link{
+    display:block; margin-top:18px; font-size:0.85rem;
+    color:rgba(255,255,255,0.65); text-decoration:underline; text-underline-offset:3px;
+  }
+  .lc-terms-link:hover{ color:#fff; }
+  .launch-campaign[hidden]{ display:none; }
+
+  /* Badge "Offre de lancement" dans la zone de réservation (#rdv) */
+  .rdv-launch-badge{
+    display:flex; align-items:flex-start; gap:12px;
+    max-width:640px; margin:16px auto 0;
+    padding:14px 18px; border-radius:12px;
+    background:linear-gradient(135deg, rgba(232,90,18,0.08), rgba(44,74,102,0.08));
+    border:1px solid rgba(232,90,18,0.35);
+    text-align:left;
+  }
+  .rdv-launch-badge[hidden]{ display:none; }
+  .rdv-launch-badge-icon{
+    flex-shrink:0; width:34px; height:34px; border-radius:50%;
+    background:var(--terracotta); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .rdv-launch-badge-icon svg{ width:18px; height:18px; }
+  .rdv-launch-badge strong{ display:block; font-size:0.82rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--terracotta-deep); margin-bottom:3px; }
+  .rdv-launch-badge span{ font-size:0.9rem; color:var(--ink-soft); line-height:1.4; }
 </style>
 
 <div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
@@ -5923,6 +6042,80 @@ if ('serviceWorker' in navigator){
           </button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       CAMPAGNE "GRAND JEU DE LANCEMENT HAYEVA" — entièrement pilotée par
+       window.HAYEVA_LAUNCH_CAMPAIGN (script juste après cette section) :
+       dates, lots et activation se modifient à un seul endroit. Aucun
+       second parcours de réservation : le CTA renvoie vers #rdv (parcours
+       existant). Aucun tirage n'est effectué côté navigateur ; ce bloc est
+       uniquement informatif. */ -->
+  <section class="launch-campaign section-relative" id="campagneLancement">
+    <span class="lc-particle" style="width:6px; height:6px; top:12%; left:8%;"></span>
+    <span class="lc-particle" style="width:4px; height:4px; top:24%; left:88%; animation-delay:-2s;"></span>
+    <span class="lc-particle" style="width:5px; height:5px; top:68%; left:14%; animation-delay:-4s;"></span>
+    <span class="lc-particle" style="width:7px; height:7px; top:78%; left:92%; animation-delay:-1s;"></span>
+    <span class="lc-particle" style="width:4px; height:4px; top:40%; left:50%; animation-delay:-6s;"></span>
+    <span class="lc-particle" style="width:5px; height:5px; top:8%; left:60%; animation-delay:-3s;"></span>
+    <div class="lc-inner">
+      <p class="lc-eyebrow">Lancement HAYEVA</p>
+      <h2 class="lc-title">GRAND JEU DE LANCEMENT HAYEVA</h2>
+      <p class="lc-subtitle">Pour fêter le lancement de HAYEVA</p>
+      <p class="lc-period" id="lcPeriod">DU 1ER NOVEMBRE AU 1ER DÉCEMBRE 2026</p>
+      <p class="lc-intro">Pour célébrer l'ouverture de HAYEVA, toute réservation éligible effectuée pendant la période de lancement permet de participer gratuitement au tirage au sort.</p>
+
+      <div class="lc-cards">
+        <div class="lc-card">
+          <span class="lc-card-tag lc-card-tag--grand">Grand lot</span>
+          <div class="lc-card-visual">
+            <img src="images/campaign/nintendo-switch-2.png" alt="Nintendo Switch 2 — visuel produit officiel"
+                 id="lcSwitchImg"
+                 onerror="this.hidden=true; var ph=this.nextElementSibling; if(ph) ph.hidden=false;">
+            <div class="lc-card-visual-placeholder" id="lcSwitchPlaceholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="4"/><circle cx="7.5" cy="12" r="1.6"/><circle cx="16.5" cy="10" r="1"/><circle cx="16.5" cy="14" r="1"/></svg>
+              <span>Visuel produit officiel à venir<br>(photo Nintendo Switch 2 licenciée)</span>
+            </div>
+          </div>
+          <h3 class="lc-card-name">Nintendo Switch 2</h3>
+          <p class="lc-card-desc">Le grand lot du jeu de lancement HAYEVA.</p>
+        </div>
+
+        <div class="lc-card">
+          <span class="lc-card-tag lc-card-tag--hayeva">Lot HAYEVA</span>
+          <div class="lc-card-visual">
+            <div class="lc-card-visual-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6Z"/><path d="M9 12l2 2 4-4"/></svg>
+              <span>Avantage entretien HAYEVA</span>
+            </div>
+          </div>
+          <h3 class="lc-card-name">Entretien HAYEVA offert pendant 1 an</h3>
+          <p class="lc-card-desc">Conditions précises détaillées dans le règlement du jeu.</p>
+        </div>
+
+        <div class="lc-card">
+          <span class="lc-card-tag lc-card-tag--hayeva">Lot HAYEVA</span>
+          <div class="lc-card-visual">
+            <div class="lc-card-visual-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0-1.4 0L4.3 15.3a1 1 0 0 0 0 1.4l3 3a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4Z"/><path d="M9 9l6 6"/></svg>
+              <span>Intervention HAYEVA offerte</span>
+            </div>
+          </div>
+          <h3 class="lc-card-name">Intervention HAYEVA offerte</h3>
+          <p class="lc-card-desc" id="lcInterventionDesc">Valeur maximale précisée dans le règlement du jeu.</p>
+        </div>
+      </div>
+
+      <p class="lc-draw" id="lcDraw">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 2v4M16 2v4"/></svg>
+        TIRAGE AU SORT — 23 DÉCEMBRE 2026
+      </p>
+
+      <div class="lc-cta-row">
+        <a class="btn-hero-primary" href="#rdv">Je prends rendez-vous</a>
+      </div>
+      <a href="#" class="lc-terms-link" id="lcTermsOpenBtn">Voir les conditions du jeu</a>
     </div>
   </section>
 
@@ -6780,6 +6973,15 @@ if ('serviceWorker' in navigator){
         <p class="eyebrow">Réservation en ligne</p>
         <h2>Prenez rendez-vous en quelques clics.</h2>
         <p>Choisissez votre prestation, une date et un horaire, puis envoyez votre demande. Nous vous confirmons la disponibilité du créneau par retour rapide.</p>
+        <div class="rdv-launch-badge" id="rdvLaunchBadge">
+          <span class="rdv-launch-badge-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6Z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <span>
+            <strong>Offre de lancement</strong>
+            Votre réservation peut vous permettre de participer au tirage au sort du 23 décembre.
+          </span>
+        </div>
       </div>
 
       <div class="booking-card">
@@ -8789,6 +8991,140 @@ if ('serviceWorker' in navigator){
   // complète" sur l'écran de fin) — jamais une seconde implémentation de
   // cet overlay.
   window.sudOpenFounderBio = openFounderBio;
+})();
+</script>
+
+<!-- ============================================================
+     OVERLAY "CONDITIONS DU JEU" — calqué sur #founderBioOverlay (mêmes
+     classes .legal-overlay*). Le texte ci-dessous est un résumé indicatif,
+     pas un règlement juridique définitif : il annonce explicitement que le
+     règlement complet sera publié avant le début du jeu. Ouvert depuis le
+     lien discret "Voir les conditions du jeu" de la section campagne.
+     ============================================================ -->
+<div class="legal-overlay" id="lcTermsOverlay" hidden>
+  <div class="legal-overlay-inner">
+    <div class="legal-overlay-topbar">
+      <span class="legal-overlay-brand">HAYEVA — Conditions du jeu</span>
+      <button type="button" class="legal-overlay-close" id="lcTermsOverlayClose" aria-label="Fermer">✕</button>
+    </div>
+    <div class="legal-overlay-content">
+      <article class="founder-bio-card">
+        <h2>Grand jeu de lancement HAYEVA</h2>
+        <p><strong>Le règlement complet et définitif de ce jeu sera publié avant le début de la période de lancement.</strong> Les éléments ci-dessous sont indicatifs et pourront être précisés ou ajustés dans ce règlement.</p>
+
+        <h4>Organisateur</h4>
+        <p>Jeu organisé par HAYEVA, à l'occasion du lancement de son activité.</p>
+
+        <h4>Période de participation</h4>
+        <p id="lcTermsPeriod">Du 1ᵉʳ novembre au 1ᵉʳ décembre 2026.</p>
+
+        <h4>Modalités de participation</h4>
+        <p>Toute réservation éligible effectuée pendant la période de lancement permet de participer gratuitement au tirage au sort. Les critères précis d'éligibilité (types de prestations concernées, zone géographique, etc.) seront détaillés dans le règlement complet.</p>
+
+        <h4>Dotations</h4>
+        <p>Une Nintendo Switch 2 (grand lot), un an d'entretien HAYEVA offert, et une intervention HAYEVA offerte (dans la limite d'une valeur maximale qui sera précisée dans le règlement).</p>
+
+        <h4>Tirage au sort</h4>
+        <p id="lcTermsDraw">Le tirage au sort aura lieu le 23 décembre 2026, parmi les participants éligibles. Le ou les gagnants seront contactés directement par HAYEVA selon les coordonnées communiquées lors de leur réservation.</p>
+
+        <h4>Données personnelles</h4>
+        <p>Aucune donnée supplémentaire à celle nécessaire à votre réservation n'est collectée pour ce jeu. Les modalités définitives de traitement des données seront précisées dans le règlement complet, conformément à la <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a> de HAYEVA.</p>
+      </article>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ========================================================================
+     CONFIGURATION DE LA CAMPAGNE — seul endroit à modifier pour changer les
+     dates, les lots ou activer/désactiver l'opération. Tout le texte
+     affiché (section d'accueil, badge réservation, modale conditions) est
+     recalculé automatiquement à partir de cet objet.
+     - active : true/false — bascule d'affichage globale de la campagne.
+     - startDate / endDate / drawDate : format 'AAAA-MM-JJ'.
+     - prizes[].maxValueLabel : texte libre affiché pour le lot
+       "Intervention HAYEVA offerte" (ex. "dans la limite de 150 €").
+     ======================================================================== */
+  window.HAYEVA_LAUNCH_CAMPAIGN = window.HAYEVA_LAUNCH_CAMPAIGN || {
+    active: true,
+    startDate: '2026-11-01',
+    endDate: '2026-12-01',
+    drawDate: '2026-12-23',
+    interventionMaxValueLabel: 'dans la limite d\'une valeur maximale précisée dans le règlement du jeu'
+  };
+  var CONFIG = window.HAYEVA_LAUNCH_CAMPAIGN;
+
+  var MONTHS_FR = ['JANVIER','FÉVRIER','MARS','AVRIL','MAI','JUIN','JUILLET','AOÛT','SEPTEMBRE','OCTOBRE','NOVEMBRE','DÉCEMBRE'];
+  function parseIsoDate(iso){
+    var parts = (iso || '').split('-').map(Number);
+    return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+  }
+  function dayLabel(d, upper){
+    var n = d.getDate();
+    var suffix = (n === 1) ? (upper ? '1ER' : '1ᵉʳ') : String(n);
+    return suffix;
+  }
+  function periodLabel(upper){
+    var start = parseIsoDate(CONFIG.startDate);
+    var end = parseIsoDate(CONFIG.endDate);
+    var months = upper ? MONTHS_FR : MONTHS_FR.map(function(m){ return m.toLowerCase(); });
+    var startStr = dayLabel(start, upper) + ' ' + months[start.getMonth()];
+    var endStr = dayLabel(end, upper) + ' ' + months[end.getMonth()] + ' ' + end.getFullYear();
+    return (upper ? 'DU ' : 'Du ') + startStr + (upper ? ' AU ' : ' au ') + endStr + '.';
+  }
+  function drawLabel(upper){
+    var d = parseIsoDate(CONFIG.drawDate);
+    var months = upper ? MONTHS_FR : MONTHS_FR.map(function(m){ return m.toLowerCase(); });
+    return dayLabel(d, upper) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  var section = document.getElementById('campagneLancement');
+  var badge = document.getElementById('rdvLaunchBadge');
+  if (!CONFIG.active){
+    if (section) section.hidden = true;
+    if (badge) badge.hidden = true;
+    return;
+  }
+
+  var periodEl = document.getElementById('lcPeriod');
+  if (periodEl) periodEl.textContent = periodLabel(true).replace(/\.$/, '');
+  var drawEl = document.getElementById('lcDraw');
+  if (drawEl){
+    var icon = drawEl.querySelector('svg');
+    drawEl.textContent = 'TIRAGE AU SORT — ' + drawLabel(true);
+    if (icon) drawEl.insertBefore(icon, drawEl.firstChild);
+  }
+  var interventionDesc = document.getElementById('lcInterventionDesc');
+  if (interventionDesc) interventionDesc.textContent = 'Intervention offerte, ' + CONFIG.interventionMaxValueLabel + '.';
+
+  var termsPeriodEl = document.getElementById('lcTermsPeriod');
+  if (termsPeriodEl) termsPeriodEl.textContent = periodLabel(false);
+  var termsDrawEl = document.getElementById('lcTermsDraw');
+  if (termsDrawEl) termsDrawEl.textContent = 'Le tirage au sort aura lieu le ' + drawLabel(false) + ', parmi les participants éligibles. Le ou les gagnants seront contactés directement par HAYEVA selon les coordonnées communiquées lors de leur réservation.';
+
+  var overlay = document.getElementById('lcTermsOverlay');
+  function openTerms(e){
+    if (e) e.preventDefault();
+    if (!overlay) return;
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    var contentEl = overlay.querySelector('.legal-overlay-content');
+    if (contentEl) contentEl.scrollTop = 0;
+  }
+  function closeTerms(){
+    if (!overlay) return;
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+  }
+  var openBtn = document.getElementById('lcTermsOpenBtn');
+  if (openBtn) openBtn.addEventListener('click', openTerms);
+  var closeBtn = document.getElementById('lcTermsOverlayClose');
+  if (closeBtn) closeBtn.addEventListener('click', closeTerms);
+  if (overlay){
+    overlay.addEventListener('click', function(e){ if (e.target === overlay) closeTerms(); });
+  }
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && overlay && !overlay.hidden) closeTerms(); });
 })();
 </script>
 
