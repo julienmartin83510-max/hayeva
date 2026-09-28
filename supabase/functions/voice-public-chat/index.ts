@@ -73,13 +73,18 @@ function extractInfo(row: SessionRow): Record<string, string | null> {
 // canaux vocaux navigateur (celui-ci et le futur WebRTC/OpenAI) doivent
 // rester alignés sur les mêmes règles métier si les deux sont un jour
 // actifs, mais rien n'empêche l'un d'évoluer sans l'autre.
-function buildVoiceInstructions(): string {
+function buildVoiceInstructions(customerType: 'particulier' | 'professionnel' = 'particulier'): string {
   const nowParis = new Date().toLocaleString('fr-FR', {
     timeZone: 'Europe/Paris', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
+  const contextLine = customerType === 'professionnel'
+    ? "Ce visiteur est un CLIENT PROFESSIONNEL (conciergerie, location saisonnière, gestion de plusieurs logements) — adapte tes questions à ce contexte (quel logement/adresse est concerné, gestion multi-biens) plutôt qu'à un particulier isolé."
+    : "Ce visiteur est un PARTICULIER — adapte tes questions à son propre logement.";
   return `Tu es l'assistant vocal HAYEVA, intégré directement au site web hayeva.fr (plomberie, chauffage, climatisation, Fréjus). Le visiteur te PARLE depuis son navigateur — ce n'est pas un appel téléphonique.
 
 DATE ET HEURE ACTUELLES (Europe/Paris) : ${nowParis}. Utilise-la pour toute expression relative ("demain", "cette semaine"...).
+
+${contextLine}
 
 RÈGLES STRICTES :
 - Annonce-toi comme un assistant virtuel/IA dès ta première phrase, jamais un humain.
@@ -106,6 +111,7 @@ Deno.serve(async (req: Request) => {
     const clientSessionId = typeof body.client_session_id === 'string' ? body.client_session_id.trim().slice(0, 100) : '';
     const sessionId = typeof body.session_id === 'string' ? body.session_id : null;
     const rawMessage = typeof body.message === 'string' ? body.message.trim().slice(0, 600) : '';
+    const requestedCustomerType: 'particulier' | 'professionnel' = body.customer_type === 'professionnel' ? 'professionnel' : 'particulier';
     if (!clientSessionId) return json({ error: 'invalid_input' }, 400);
 
     const { data: settings } = await supabase
@@ -138,7 +144,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: created, error: createErr } = await supabase
         .from('voice_call_sessions')
-        .insert({ is_test: false, channel: 'realtime_browser', call_state: 'greeting', client_session_id: clientSessionId })
+        .insert({ is_test: false, channel: 'realtime_browser', call_state: 'greeting', client_session_id: clientSessionId, customer_type: requestedCustomerType })
         .select(selectCols)
         .single();
       if (createErr || !created) return json({ status: 'unavailable' }, 200);
@@ -151,7 +157,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const greetingRes = await llm.chat(
-        [{ role: 'system', content: buildVoiceInstructions() }, { role: 'user', content: "[Début de conversation — accueille le visiteur.]" }],
+        [{ role: 'system', content: buildVoiceInstructions(requestedCustomerType) }, { role: 'user', content: "[Début de conversation — accueille le visiteur.]" }],
         PUBLIC_TOOL_SCHEMAS,
       ).catch((e) => { console.error('voice-public-chat: appel LLM échoué (greeting)', e instanceof Error ? e.message : e); return null; });
       const greeting = greetingRes?.content || "Bonjour, je suis l'assistant virtuel HAYEVA. Comment puis-je vous aider ?";
@@ -183,7 +189,8 @@ Deno.serve(async (req: Request) => {
       .order('seq', { ascending: true });
     seq = (historyRows && historyRows.length ? historyRows[historyRows.length - 1].seq : -1) + 1;
 
-    const messages: ChatMessage[] = [{ role: 'system', content: buildVoiceInstructions() }];
+    const sessionCustomerType: 'particulier' | 'professionnel' = session.customer_type === 'professionnel' ? 'professionnel' : 'particulier';
+    const messages: ChatMessage[] = [{ role: 'system', content: buildVoiceInstructions(sessionCustomerType) }];
     for (const row of historyRows || []) {
       if (row.type === 'user') messages.push({ role: 'user', content: row.content });
       else if (row.type === 'assistant') messages.push({ role: 'assistant', content: row.content });
