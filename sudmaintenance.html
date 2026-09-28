@@ -4195,6 +4195,102 @@ if ('serviceWorker' in navigator){
   .ecx-bottomnav-item:active{ opacity:0.7; }
   @media (min-width:900px){ .ecx-bottomnav{ display:none !important; } .ecx-app.has-bottomnav{ padding-bottom:0; } }
 
+  /* ---------- Assistant flottant Espace Client / Espace Pro ----------
+     Même contrainte que .ecx-bottomnav : les conteneurs #espaceClient et
+     #espacePro sont eux-mêmes position:fixed + overflow-y:auto (le vrai
+     défilement), donc jamais de position:fixed imbriqué ici (même bug
+     WebKit). L'ancre est position:sticky, hauteur nulle, épinglée au bas
+     du conteneur défilant ; le bouton est positionné en absolu À
+     L'INTÉRIEUR de cette ancre, ce qui reste correct sur iOS Safari. Un
+     seul composant JS partagé (voir ecxInitAssistant) instancié deux fois
+     (rôle particulier / professionnel) : jamais deux assistants distincts. */
+  .ecx-assist-anchor{
+    position:sticky; left:0; right:0; bottom:0; height:0; z-index:9100; pointer-events:none;
+  }
+  .ecx-assist-btn{
+    position:absolute; right:16px; bottom:calc(86px + 14px); pointer-events:auto;
+    width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
+    background:var(--sky-deep); color:#fff; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 24px -8px rgba(16,27,46,0.4); transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .ecx-assist-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 28px -8px rgba(16,27,46,0.48); }
+  .ecx-assist-btn:active{ transform:scale(0.96); }
+  .ecx-assist-btn .ecx-svg-icon{ width:24px; height:24px; }
+  @media (min-width:900px){ .ecx-assist-btn{ bottom:24px; } }
+  [data-ecx-assist-role="professionnel"] .ecx-assist-btn{ bottom:24px; }
+
+  .ecx-assist-callout{
+    position:absolute; right:74px; bottom:calc(86px + 8px); pointer-events:auto;
+    max-width:200px; background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:10px 12px; box-shadow:0 10px 24px -10px rgba(16,27,46,0.3);
+    font-family:"Poppins",sans-serif; font-size:0.78rem; font-weight:600; color:var(--ink);
+    display:flex; align-items:center; gap:8px; animation:ecxAssistIn .25s ease;
+  }
+  @keyframes ecxAssistIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .ecx-assist-callout[hidden]{ display:none; }
+  .ecx-assist-callout-close{
+    flex:0 0 auto; width:20px; height:20px; border-radius:50%; border:none; background:var(--sand);
+    color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .ecx-assist-callout-close svg{ width:12px; height:12px; }
+  @media (min-width:900px){ .ecx-assist-callout{ bottom:82px; } }
+  [data-ecx-assist-role="professionnel"] .ecx-assist-callout{ bottom:82px; }
+
+  .ecx-assist-sheet{
+    position:fixed; inset:0; z-index:9300; display:flex; align-items:flex-end; justify-content:center;
+    background:rgba(16,27,46,0.32);
+  }
+  .ecx-assist-sheet[hidden]{ display:none; }
+  .ecx-assist-card{
+    width:100%; max-width:460px; max-height:min(78vh, 640px); background:#fff; border-radius:20px 20px 0 0;
+    display:flex; flex-direction:column; overflow:hidden; animation:ecxAssistSheetIn .22s ease;
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  @media (min-width:900px){
+    .ecx-assist-sheet{ align-items:center; }
+    .ecx-assist-card{ border-radius:20px; max-height:min(70vh, 600px); box-shadow:0 24px 60px -20px rgba(16,27,46,0.45); }
+  }
+  @keyframes ecxAssistSheetIn{ from{ opacity:0; transform:translateY(24px); } to{ opacity:1; transform:none; } }
+  .ecx-assist-head{
+    flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:16px 16px 12px; border-bottom:1px solid var(--line);
+  }
+  .ecx-assist-head-txt{ flex:1 1 auto; min-width:0; }
+  .ecx-assist-head-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.98rem; color:var(--ink); margin:0; }
+  .ecx-assist-head-sub{ font-size:0.78rem; color:var(--ink-soft); margin:2px 0 0; }
+  .ecx-assist-close{
+    flex:0 0 auto; width:32px; height:32px; border-radius:50%; border:none; background:var(--sand);
+    color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .ecx-assist-close svg{ width:16px; height:16px; }
+  .ecx-assist-chips{
+    flex:0 0 auto; display:flex; gap:8px; padding:10px 14px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  .ecx-assist-chip{
+    flex:0 0 auto; border:1px solid var(--line); background:var(--sand); border-radius:999px; padding:8px 14px;
+    font-family:"Poppins",sans-serif; font-size:0.78rem; font-weight:700; color:var(--sky-deep); cursor:pointer; white-space:nowrap;
+  }
+  .ecx-assist-chip:active{ opacity:0.7; }
+  .ecx-assist-msgs{ flex:1 1 auto; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+  .ecx-assist-msg{ max-width:84%; padding:10px 13px; border-radius:14px; font-size:0.88rem; line-height:1.4; }
+  .ecx-assist-msg-assistant{ align-self:flex-start; background:var(--sand); color:var(--ink); border-bottom-left-radius:4px; }
+  .ecx-assist-msg-user{ align-self:flex-end; background:var(--sky-deep); color:#fff; border-bottom-right-radius:4px; }
+  .ecx-assist-typing{ align-self:flex-start; font-size:0.82rem; color:var(--ink-soft); padding:0 4px; }
+  .ecx-assist-typing[hidden]{ display:none; }
+  .ecx-assist-form{ flex:0 0 auto; display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line); }
+  .ecx-assist-form input{
+    flex:1 1 auto; border:1px solid var(--line); border-radius:999px; padding:11px 16px; font-size:0.9rem; min-width:0;
+  }
+  .ecx-assist-form input:focus{ outline:none; border-color:var(--sky); }
+  .ecx-assist-send{
+    flex:0 0 auto; width:42px; height:42px; border-radius:50%; border:none; background:var(--terracotta); color:#fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .ecx-assist-send svg{ width:18px; height:18px; }
+  .ecx-assist-send[disabled]{ opacity:0.5; cursor:not-allowed; }
+  @media (prefers-reduced-motion: reduce){
+    .ecx-assist-callout, .ecx-assist-card{ animation:none !important; }
+  }
+
   /* ---------- Barre de recherche + catégories (Accueil) ---------- */
   .ecx-search{
     display:flex; align-items:center; gap:10px; background:var(--sand-deep); border:1.5px solid var(--line);
@@ -7254,6 +7350,40 @@ if ('serviceWorker' in navigator){
               <div id="proSettingsPanel"><p class="ec-loading">Chargement…</p></div>
             </section>
           </div>
+
+          <div class="ecx-assist-anchor" data-ecx-assist-role="professionnel">
+            <div class="ecx-assist-callout" id="ecxAssistCalloutPro" hidden>
+              <span>Besoin d'aide ?</span>
+              <button type="button" class="ecx-assist-callout-close" id="ecxAssistCalloutClosePro" aria-label="Masquer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <button type="button" class="ecx-assist-btn" id="ecxAssistBtnPro" aria-haspopup="dialog" aria-label="Ouvrir l'assistant Hayeva">
+              <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+            </button>
+          </div>
+          <div class="ecx-assist-sheet" id="ecxAssistSheetPro" hidden role="dialog" aria-modal="true" aria-labelledby="ecxAssistTitlePro">
+            <div class="ecx-assist-card">
+              <div class="ecx-assist-head">
+                <div class="ecx-assist-head-txt">
+                  <p class="ecx-assist-head-title" id="ecxAssistTitlePro">Assistant Hayeva</p>
+                  <p class="ecx-assist-head-sub" id="ecxAssistSubPro">Comment puis-je vous aider ?</p>
+                </div>
+                <button type="button" class="ecx-assist-close" id="ecxAssistClosePro" aria-label="Fermer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <div class="ecx-assist-chips" id="ecxAssistChipsPro"></div>
+              <div class="ecx-assist-msgs" id="ecxAssistMsgsPro"></div>
+              <p class="ecx-assist-typing" id="ecxAssistTypingPro" hidden>L'assistant écrit…</p>
+              <form class="ecx-assist-form" id="ecxAssistFormPro">
+                <input type="text" id="ecxAssistInputPro" placeholder="Écrivez votre question…" autocomplete="off" maxlength="600">
+                <button type="submit" class="ecx-assist-send" id="ecxAssistSendPro" aria-label="Envoyer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
         <!-- Visible uniquement pour profiles.global_role = 'admin' (voir
@@ -7974,6 +8104,40 @@ if ('serviceWorker' in navigator){
             <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>Profil
           </button>
         </nav>
+
+        <div class="ecx-assist-anchor" data-ecx-assist-role="particulier">
+          <div class="ecx-assist-callout" id="ecxAssistCalloutClient" hidden>
+            <span>Besoin d'aide ?</span>
+            <button type="button" class="ecx-assist-callout-close" id="ecxAssistCalloutCloseClient" aria-label="Masquer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </div>
+          <button type="button" class="ecx-assist-btn" id="ecxAssistBtnClient" aria-haspopup="dialog" aria-label="Ouvrir l'assistant Hayeva">
+            <span class="ecx-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+          </button>
+        </div>
+        <div class="ecx-assist-sheet" id="ecxAssistSheetClient" hidden role="dialog" aria-modal="true" aria-labelledby="ecxAssistTitleClient">
+          <div class="ecx-assist-card">
+            <div class="ecx-assist-head">
+              <div class="ecx-assist-head-txt">
+                <p class="ecx-assist-head-title" id="ecxAssistTitleClient">Assistant Hayeva</p>
+                <p class="ecx-assist-head-sub" id="ecxAssistSubClient">Comment puis-je vous aider ?</p>
+              </div>
+              <button type="button" class="ecx-assist-close" id="ecxAssistCloseClient" aria-label="Fermer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="ecx-assist-chips" id="ecxAssistChipsClient"></div>
+            <div class="ecx-assist-msgs" id="ecxAssistMsgsClient"></div>
+            <p class="ecx-assist-typing" id="ecxAssistTypingClient" hidden>L'assistant écrit…</p>
+            <form class="ecx-assist-form" id="ecxAssistFormClient">
+              <input type="text" id="ecxAssistInputClient" placeholder="Écrivez votre question…" autocomplete="off" maxlength="600">
+              <button type="submit" class="ecx-assist-send" id="ecxAssistSendClient" aria-label="Envoyer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -16305,7 +16469,10 @@ if ('serviceWorker' in navigator){
     wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
     mapPin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
     messageCircle: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
-    logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
+    logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+    mic: '<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/>'
   };
   function ecxIcon(name, extraClass){
     var path = ECX_ICON_PATHS[name];
@@ -19173,6 +19340,198 @@ if ('serviceWorker' in navigator){
   if (voiceEndBtn){
     voiceEndBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
   }
+})();
+</script>
+
+<script>
+// ============================================================
+// Assistant Hayeva — bouton flottant partagé Espace Client / Espace Pro.
+// Un seul composant JS (ecxInitAssistant), instancié deux fois avec un
+// paramètre `role` différent : JAMAIS deux assistants indépendants. Les
+// deux instances appellent la MÊME Edge Function ai-assistant que le
+// widget public (voir plus haut) — seul customer_type change, et
+// ai-assistant/index.ts adapte déjà son prompt système selon cette valeur
+// (voir "const customerType = body.customer_type === 'professionnel' ...").
+// Jamais de position:fixed pour le bouton/l'ancre : #espaceClient et
+// #espacePro sont eux-mêmes position:fixed + overflow-y:auto (voir
+// .ecx-bottomnav plus haut pour le même correctif position:sticky).
+// ============================================================
+(function(){
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  var SECTION_COPY = {
+    particulier: {
+      home: { sub: "Comment puis-je vous aider aujourd'hui ?", chips: ['Prendre rendez-vous', 'Choisir une prestation', 'Mes rendez-vous', "J'ai un problème"] },
+      services: { sub: 'Je peux vous aider à choisir la bonne prestation.', chips: ['Quelle prestation choisir ?', 'Voir les tarifs', 'Prendre rendez-vous'] },
+      appointments: { sub: 'Une question sur vos rendez-vous ?', chips: ['Modifier un rendez-vous', 'Annuler un rendez-vous', 'Prendre rendez-vous'] },
+      interventions: { sub: 'Je peux vous renseigner sur vos interventions.', chips: ['Suivre une intervention', "J'ai un problème"] },
+      quotes: { sub: 'Une question sur un devis ?', chips: ['Comprendre mon devis', 'Prendre rendez-vous'] },
+      invoices: { sub: 'Je peux vous aider à retrouver une facture.', chips: ['Retrouver une facture', "J'ai un problème"] },
+      documents: { sub: 'Je peux vous aider à retrouver un document.', chips: ['Retrouver un document', 'Mes rendez-vous'] },
+      addresses: { sub: 'Une question sur vos adresses ?', chips: ['Ajouter une adresse', "J'ai un problème"] },
+      profile: { sub: 'Une question sur votre profil ?', chips: ['Modifier mes informations', 'Mes documents'] },
+      _default: { sub: 'Comment puis-je vous aider ?', chips: ['Prendre rendez-vous', 'Choisir une prestation', 'Mes rendez-vous', 'Mes documents', "J'ai un problème"] }
+    },
+    professionnel: {
+      dashboard: { sub: 'Comment puis-je vous aider aujourd’hui ?', chips: ['Trouver un logement', 'Demander un devis', 'Suivre une intervention', "J'ai un problème"] },
+      logements: { sub: 'Une question sur vos logements ?', chips: ['Ajouter un logement', 'Trouver un logement'] },
+      rendezvous: { sub: 'Une question sur vos rendez-vous ?', chips: ['Modifier un rendez-vous', 'Suivre une intervention'] },
+      rapports: { sub: 'Je peux vous aider à retrouver un rapport.', chips: ['Retrouver un rapport', "J'ai un problème"] },
+      factures: { sub: 'Je peux vous aider à retrouver une facture.', chips: ['Retrouver une facture', "J'ai un problème"] },
+      devis: { sub: 'Une question sur une demande de devis ?', chips: ['Demander un devis', 'Suivre une demande'] },
+      parametres: { sub: 'Une question sur votre compte professionnel ?', chips: ['Modifier mes informations', "J'ai un problème"] },
+      _default: { sub: 'Comment puis-je vous aider ?', chips: ['Trouver un logement', 'Demander un devis', 'Suivre une intervention', "J'ai un problème"] }
+    }
+  };
+
+  function ecxInitAssistant(cfg){
+    var suffix = cfg.suffix;
+    var role = cfg.role;
+    var btn = document.getElementById('ecxAssistBtn' + suffix);
+    var sheet = document.getElementById('ecxAssistSheet' + suffix);
+    var closeBtn = document.getElementById('ecxAssistClose' + suffix);
+    var subEl = document.getElementById('ecxAssistSub' + suffix);
+    var chipsEl = document.getElementById('ecxAssistChips' + suffix);
+    var msgsEl = document.getElementById('ecxAssistMsgs' + suffix);
+    var typingEl = document.getElementById('ecxAssistTyping' + suffix);
+    var form = document.getElementById('ecxAssistForm' + suffix);
+    var input = document.getElementById('ecxAssistInput' + suffix);
+    var sendBtn = document.getElementById('ecxAssistSend' + suffix);
+    var calloutEl = document.getElementById('ecxAssistCallout' + suffix);
+    var calloutCloseBtn = document.getElementById('ecxAssistCalloutClose' + suffix);
+    if (!btn || !sheet || !form) return;
+
+    var conversationId = null;
+    var requestInFlight = false;
+    var lastScrollY = 0;
+
+    function currentSectionCopy(){
+      var section = cfg.getSection ? (cfg.getSection() || '_default') : '_default';
+      var table = SECTION_COPY[role] || SECTION_COPY.particulier;
+      return table[section] || table._default;
+    }
+
+    function renderChips(){
+      var copy = currentSectionCopy();
+      if (subEl) subEl.textContent = copy.sub;
+      chipsEl.innerHTML = copy.chips.map(function(label){
+        return '<button type="button" class="ecx-assist-chip">' + escapeHtml(label) + '</button>';
+      }).join('');
+    }
+
+    function scrollMsgsToBottom(){ msgsEl.scrollTop = msgsEl.scrollHeight; }
+
+    function addMsg(msgRole, text){
+      var div = document.createElement('div');
+      div.className = 'ecx-assist-msg ecx-assist-msg-' + msgRole;
+      div.textContent = text;
+      msgsEl.appendChild(div);
+      scrollMsgsToBottom();
+    }
+
+    function openSheet(){
+      sheet.hidden = false;
+      renderChips();
+      if (calloutEl) calloutEl.hidden = true;
+      if (!msgsEl.childElementCount){
+        addMsg('assistant', "Bonjour, je suis l'assistant Hayeva. " + currentSectionCopy().sub);
+      }
+      setTimeout(function(){ if (input) input.focus(); }, 50);
+    }
+    function closeSheet(){ sheet.hidden = true; }
+
+    btn.addEventListener('click', openSheet);
+    if (closeBtn) closeBtn.addEventListener('click', closeSheet);
+    sheet.addEventListener('click', function(e){ if (e.target === sheet) closeSheet(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+
+    chipsEl.addEventListener('click', function(e){
+      var chip = e.target.closest ? e.target.closest('.ecx-assist-chip') : null;
+      if (!chip) return;
+      sendMessage(chip.textContent);
+    });
+
+    function sendMessage(text){
+      text = String(text || '').trim();
+      var sb = window.sudSupabase;
+      if (!text || requestInFlight || !sb || !sb.configured) return;
+      var sessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+      if (!sessionId) return;
+      addMsg('user', text);
+      if (input) input.value = '';
+      requestInFlight = true;
+      if (sendBtn) sendBtn.disabled = true;
+      typingEl.hidden = false;
+      sb.client.functions.invoke('ai-assistant', {
+        body: { session_id: sessionId, message: text, conversation_id: conversationId, customer_type: role }
+      }).then(function(res){
+        typingEl.hidden = true;
+        requestInFlight = false;
+        if (sendBtn) sendBtn.disabled = false;
+        var data = res.data;
+        if (res.error || !data || data.status === 'unavailable' || data.status === 'daily_cap_reached' || data.status === 'session_cap_reached' || data.status === 'rate_limited'){
+          addMsg('assistant', "Désolé, l'assistant est momentanément indisponible. Vous pouvez nous contacter directement au 06 71 26 23 02.");
+          return;
+        }
+        if (data.status === 'message_too_long'){
+          addMsg('assistant', 'Votre message est un peu long — pourriez-vous le reformuler plus brièvement ?');
+          return;
+        }
+        if (data.status === 'ok' && data.reply){
+          conversationId = data.conversation_id || conversationId;
+          addMsg('assistant', data.reply);
+        }
+      }).catch(function(){
+        typingEl.hidden = true;
+        requestInFlight = false;
+        if (sendBtn) sendBtn.disabled = false;
+        addMsg('assistant', 'Désolé, une erreur est survenue. Réessayez dans un instant.');
+      });
+    }
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      sendMessage(input ? input.value : '');
+    });
+
+    // Bulle "Besoin d'aide ?" — discrète, une seule fois par session, jamais
+    // une pop-up intrusive (même principe que .ai-widget-invite public).
+    var DISMISS_KEY = 'sud_ecx_assist_invite_dismissed_' + role;
+    if (calloutEl){
+      var dismissed = false;
+      try { dismissed = sessionStorage.getItem(DISMISS_KEY) === '1'; } catch(e){}
+      if (!dismissed){
+        setTimeout(function(){ if (sheet.hidden) calloutEl.hidden = false; }, 5000);
+        setTimeout(function(){ calloutEl.hidden = true; }, 12000);
+      }
+      if (calloutCloseBtn){
+        calloutCloseBtn.addEventListener('click', function(e){
+          e.stopPropagation();
+          calloutEl.hidden = true;
+          try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch(err){}
+        });
+      }
+    }
+  }
+
+  ecxInitAssistant({
+    role: 'particulier', suffix: 'Client',
+    getSection: function(){
+      var active = document.querySelector('#espaceClient .ecx-bottomnav-item.is-active');
+      return active ? active.getAttribute('data-ecx-section') : 'home';
+    }
+  });
+  ecxInitAssistant({
+    role: 'professionnel', suffix: 'Pro',
+    getSection: function(){
+      var active = document.querySelector('#espacePro .pro-nav-btn.is-active');
+      return active ? active.getAttribute('data-pro-page') : 'dashboard';
+    }
+  });
 })();
 </script>
 
