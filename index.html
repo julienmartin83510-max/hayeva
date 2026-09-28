@@ -5681,6 +5681,7 @@ if ('serviceWorker' in navigator){
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:8px; padding:16px; text-align:center; color:rgba(255,255,255,0.65);
   }
+  .lc-card-visual-placeholder[hidden]{ display:none; }
   .lc-card-visual-placeholder svg{ width:52px; height:52px; opacity:0.7; }
   .lc-card-visual-placeholder span{ font-size:0.74rem; line-height:1.4; }
   .lc-card-name{ font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; margin:0; }
@@ -6130,10 +6131,10 @@ if ('serviceWorker' in navigator){
         <div class="lc-card lc-card--hero">
           <span class="lc-card-tag lc-card-tag--grand">Lot n°1 — Grand lot</span>
           <div class="lc-card-visual lc-card-visual--hero">
-            <img src="/assets/contest/nintendo-switch-2.png" alt="Nintendo Switch 2 — visuel produit officiel"
+            <img src="images/campaign/nintendo-switch-2.jpg" alt="Nintendo Switch 2 — visuel produit officiel"
                  id="lcSwitchImg"
                  onerror="this.hidden=true; var ph=this.nextElementSibling; if(ph) ph.hidden=false;">
-            <div class="lc-card-visual-placeholder" id="lcSwitchPlaceholder">
+            <div class="lc-card-visual-placeholder" id="lcSwitchPlaceholder" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="4"/><circle cx="7.5" cy="12" r="1.6"/><circle cx="16.5" cy="10" r="1"/><circle cx="16.5" cy="14" r="1"/></svg>
               <span>Visuel produit officiel à venir<br>(image Nintendo Switch 2 sous licence)</span>
             </div>
