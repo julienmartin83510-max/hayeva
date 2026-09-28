@@ -5618,7 +5618,8 @@ if ('serviceWorker' in navigator){
     border:1px solid rgba(232,90,18,0.55);
     color:#FFD9B8; margin-bottom:22px;
   }
-  .lc-intro{ max-width:640px; margin:0 auto 40px; font-size:1.02rem; line-height:1.6; color:rgba(255,255,255,0.9); }
+  .lc-intro{ max-width:640px; margin:0 auto 16px; font-size:1.02rem; line-height:1.6; color:rgba(255,255,255,0.9); }
+  .lc-intro-note{ font-size:0.88rem; color:rgba(255,255,255,0.65); margin-bottom:40px; }
   .lc-cards{
     display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px;
     text-align:left; margin-bottom:40px;
@@ -6064,7 +6065,8 @@ if ('serviceWorker' in navigator){
       <h2 class="lc-title">GRAND JEU DE LANCEMENT HAYEVA</h2>
       <p class="lc-subtitle">Pour fêter le lancement de HAYEVA</p>
       <p class="lc-period" id="lcPeriod">DU 1ER NOVEMBRE AU 1ER DÉCEMBRE 2026</p>
-      <p class="lc-intro">Pour célébrer l'ouverture de HAYEVA, toute réservation éligible effectuée pendant la période de lancement permet de participer gratuitement au tirage au sort.</p>
+      <p class="lc-intro">Pour toute prestation éligible réservée entre le 1er novembre et le 1er décembre 2026 inclus et effectivement réalisée, une participation au tirage au sort de lancement HAYEVA est attribuée selon les conditions du règlement.</p>
+      <p class="lc-intro lc-intro-note">Une réservation annulée par le client, non honorée ou ne donnant finalement lieu à aucune prestation éligible ne permet pas de participer au tirage.</p>
 
       <div class="lc-cards">
         <div class="lc-card">
@@ -6115,7 +6117,7 @@ if ('serviceWorker' in navigator){
       <div class="lc-cta-row">
         <a class="btn-hero-primary" href="#rdv">Je prends rendez-vous</a>
       </div>
-      <a href="#" class="lc-terms-link" id="lcTermsOpenBtn">Voir les conditions du jeu</a>
+      <a href="#" class="lc-terms-link" id="lcTermsOpenBtn">Voir le règlement complet</a>
     </div>
   </section>
 
@@ -7801,6 +7803,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="quotes" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Devis</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="launch-campaign" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Jeu de lancement</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="stats" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Statistiques</span>
                 </button>
@@ -7937,6 +7942,43 @@ if ('serviceWorker' in navigator){
                 <h3 class="adm-subhead" style="margin-top:28px;">Devis chiffrés</h3>
                 <p class="adm-page-sub" style="margin-top:-8px;">Devis avec options et pièces jointes envoyés aux clients. Pour en créer un, ouvrez une demande de devis ci-dessus et cliquez « Créer un devis chiffré ».</p>
                 <div id="adminPricedQuotesList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <!-- "Jeu de lancement" — lecture seule : chaque participation est créée
+                   et fait évoluer son statut automatiquement côté Supabase (triggers,
+                   migration 0041), jamais modifiable depuis cette page. Le tirage
+                   lui-même n'est pas déclenché ici (préparé uniquement, demande
+                   explicite). -->
+              <section class="adm-page" id="admPageLaunchCampaign" data-adm-page="launch-campaign" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">Jeu de lancement</h2>
+                  <p class="adm-page-sub">Participations au tirage au sort du 23 décembre 2026. Une participation ne devient éligible (« Validée ») que lorsque la prestation correspondante est marquée « Terminé » dans le planning.</p>
+                </div>
+                <div class="adm-stats-grid">
+                  <div class="adm-stat-card adm-stat-sand">
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
+                    <span class="adm-stat-value" id="lcAdmStatPending">—</span>
+                    <span class="adm-stat-label">En attente</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-turquoise">
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
+                    <span class="adm-stat-value" id="lcAdmStatValidated">—</span>
+                    <span class="adm-stat-label">Validées</span>
+                  </div>
+                  <div class="adm-stat-card adm-stat-coral">
+                    <span class="adm-stat-icon" aria-hidden="true"></span>
+                    <span class="adm-stat-value" id="lcAdmStatCancelled">—</span>
+                    <span class="adm-stat-label">Annulées</span>
+                  </div>
+                </div>
+                <div class="admin-bk-filters" id="lcAdmFilters" role="group" aria-label="Filtrer par statut de participation">
+                  <button type="button" class="gallery-filter-btn is-active" data-lc-filter="ALL">Toutes</button>
+                  <button type="button" class="gallery-filter-btn" data-lc-filter="PENDING">En attente</button>
+                  <button type="button" class="gallery-filter-btn" data-lc-filter="VALIDATED">Validées</button>
+                  <button type="button" class="gallery-filter-btn" data-lc-filter="CANCELLED">Annulées</button>
+                </div>
+                <div id="lcAdmList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageStats" data-adm-page="stats" hidden>
@@ -9019,7 +9061,8 @@ if ('serviceWorker' in navigator){
         <p id="lcTermsPeriod">Du 1ᵉʳ novembre au 1ᵉʳ décembre 2026.</p>
 
         <h4>Modalités de participation</h4>
-        <p>Toute réservation éligible effectuée pendant la période de lancement permet de participer gratuitement au tirage au sort. Les critères précis d'éligibilité (types de prestations concernées, zone géographique, etc.) seront détaillés dans le règlement complet.</p>
+        <p>Pour toute prestation éligible réservée pendant la période de lancement et effectivement réalisée, une participation au tirage au sort est attribuée. Une simple réservation ne suffit pas à elle seule : la participation reste en attente tant que la prestation n'a pas réellement été effectuée, et n'est validée qu'une fois celle-ci réalisée.</p>
+        <p>Une réservation annulée par le client, non honorée, ou ne donnant finalement lieu à aucune prestation éligible, ne permet pas de participer au tirage. Si HAYEVA annule elle-même le rendez-vous, la participation potentielle du client n'est pas automatiquement supprimée et son dossier est traité selon les conditions définitives du règlement. Les critères précis d'éligibilité (types de prestations concernées, zone géographique, etc.) seront détaillés dans le règlement complet.</p>
 
         <h4>Dotations</h4>
         <p>Une Nintendo Switch 2 (grand lot), un an d'entretien HAYEVA offert, et une intervention HAYEVA offerte (dans la limite d'une valeur maximale qui sera précisée dans le règlement).</p>
@@ -14588,6 +14631,7 @@ if ('serviceWorker' in navigator){
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
     if (key === 'voice' && typeof voiceSectionInit === 'function') voiceSectionInit();
+    if (key === 'launch-campaign' && typeof admLoadLaunchCampaign === 'function') admLoadLaunchCampaign();
   }
 
   // ============================================================
@@ -14903,6 +14947,164 @@ if ('serviceWorker' in navigator){
       var row = e.target.closest('.admin-account-row');
       if (!row) return;
       admOpenBookingModal(row.getAttribute('data-booking-id'));
+    });
+  }
+
+  // ============================================================
+  // ---------- "Jeu de lancement" : participations au tirage au sort ----------
+  // Lecture seule : chaque ligne vient de launch_campaign_entries (créée et
+  // maintenue à jour uniquement par les triggers Supabase de la migration
+  // 0041 — voir launch_campaign_on_booking_insert/_status_change). Cette
+  // page ne fait AUCUNE écriture, elle affiche simplement l'état réel
+  // côté serveur pour que l'admin comprenne immédiatement pourquoi une
+  // participation est ou n'est pas éligible.
+  // ============================================================
+  var lcAdminCache = null;
+  var lcAdminFilter = 'ALL';
+
+  var LC_INVALID_REASON_LABEL = {
+    cancelled_by_customer: 'Annulée par le client',
+    no_show: 'Non présenté(e)',
+    duplicate_participant: 'Doublon — ce participant a déjà une participation'
+  };
+
+  function lcStatusBadgeHtml(status){
+    var map = {
+      PENDING: ['adm-badge-pending', 'En attente'],
+      VALIDATED: ['adm-badge-confirmed', 'Validée'],
+      CANCELLED: ['adm-badge-cancelled', 'Annulée']
+    };
+    var conf = map[status];
+    if (!conf) return '';
+    return ' <span class="adm-badge ' + conf[0] + '">' + conf[1] + '</span>';
+  }
+
+  function admLoadLaunchCampaign(){
+    var listEl = document.getElementById('lcAdmList');
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    sb.client.from('launch_campaign_entries')
+      .select('id, status, invalid_reason, hayeva_cancelled_at, participant_key, created_at, booking_id, bookings(id, reference, date, start_time, status, created_at, guest_name, guest_email, guest_phone, customer_user_id, professional_account_id, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city))')
+      .order('created_at', { ascending:false })
+      .limit(1000)
+      .then(function(res){
+        if (res.error){
+          console.error('admLoadLaunchCampaign: échec de la requête Supabase (table launch_campaign_entries)', res.error);
+          listEl.innerHTML = '<p class="admin-accounts-hint">Impossible de charger les participations pour le moment.</p>';
+          return;
+        }
+        var rows = res.data || [];
+        var custIds = rows
+          .map(function(r){ return r.bookings && r.bookings.customer_user_id; })
+          .filter(function(id, i, arr){ return id && arr.indexOf(id) === i; });
+
+        function withProfiles(profileMap){
+          lcAdminCache = { rows: rows, profiles: profileMap };
+          lcRenderStats();
+          lcRenderList();
+        }
+
+        if (!custIds.length){ withProfiles({}); return; }
+        Promise.all([
+          sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
+          sb.client.from('profiles').select('user_id,email').in('user_id', custIds)
+        ]).then(function(res2){
+          var cp = res2[0].data || [];
+          var pf = res2[1].data || [];
+          var map = {};
+          cp.forEach(function(r){
+            map[r.user_id] = map[r.user_id] || {};
+            map[r.user_id].first_name = r.first_name;
+            map[r.user_id].last_name = r.last_name;
+            map[r.user_id].phone = r.phone;
+          });
+          pf.forEach(function(r){
+            map[r.user_id] = map[r.user_id] || {};
+            map[r.user_id].email = r.email;
+          });
+          withProfiles(map);
+        });
+      })
+      .catch(function(err){
+        console.error('admLoadLaunchCampaign: exception', err);
+        listEl.innerHTML = '<p class="admin-accounts-hint">Impossible de charger les participations pour le moment.</p>';
+      });
+  }
+
+  function lcRenderStats(){
+    if (!lcAdminCache) return;
+    var counts = { PENDING:0, VALIDATED:0, CANCELLED:0 };
+    lcAdminCache.rows.forEach(function(r){ if (counts[r.status] != null) counts[r.status]++; });
+    var elP = document.getElementById('lcAdmStatPending');
+    var elV = document.getElementById('lcAdmStatValidated');
+    var elC = document.getElementById('lcAdmStatCancelled');
+    if (elP) elP.textContent = String(counts.PENDING);
+    if (elV) elV.textContent = String(counts.VALIDATED);
+    if (elC) elC.textContent = String(counts.CANCELLED);
+  }
+
+  function lcRenderList(){
+    var listEl = document.getElementById('lcAdmList');
+    if (!listEl || !lcAdminCache) return;
+    var rows = lcAdminCache.rows.filter(function(r){
+      return lcAdminFilter === 'ALL' || r.status === lcAdminFilter;
+    });
+    if (!rows.length){
+      listEl.innerHTML = '<p class="admin-accounts-hint">Aucune participation' + (lcAdminFilter === 'ALL' ? '' : ' pour ce statut') + ' pour le moment.</p>';
+      return;
+    }
+    var html = '<div class="admin-accounts-list">';
+    rows.forEach(function(r){
+      var b = r.bookings;
+      if (!b){
+        html += '<div class="admin-account-row"><div class="admin-account-row-summary">' +
+          '<span class="admin-account-row-name">Réservation supprimée</span>' + lcStatusBadgeHtml(r.status) +
+          '</div></div>';
+        return;
+      }
+      var contact = admContactFor(b, lcAdminCache.profiles);
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var reasonLabel = r.invalid_reason ? LC_INVALID_REASON_LABEL[r.invalid_reason] || r.invalid_reason : '';
+      var hayevaNote = r.hayeva_cancelled_at
+        ? '<p class="admin-bk-modal-note">Rendez-vous annulé par HAYEVA le ' + admFmtDateTime(r.hayeva_cancelled_at) + ' — dossier à traiter/reporter, droit potentiel conservé.</p>'
+        : '';
+      html += '<div class="admin-account-row" data-booking-id="' + admEscape(b.id) + '">' +
+        '<div class="admin-account-row-summary">' +
+          '<span class="admin-account-row-name">' + admEscape(contact.name) + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(svcName) + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(b.reference) + '</span>' +
+          lcStatusBadgeHtml(r.status) +
+        '</div>' +
+        '<div class="admin-account-row-summary" style="margin-top:4px;">' +
+          '<span class="admin-account-row-detail">Réservé le ' + admFmtDateTime(b.created_at) + '</span>' +
+          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">RDV le ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+          (reasonLabel ? '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">Motif : ' + admEscape(reasonLabel) + '</span>' : '') +
+        '</div>' +
+        hayevaNote +
+      '</div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  var lcAdmListEl = document.getElementById('lcAdmList');
+  if (lcAdmListEl){
+    lcAdmListEl.addEventListener('click', function(e){
+      var row = e.target.closest('.admin-account-row');
+      if (!row || !row.getAttribute('data-booking-id')) return;
+      admOpenBookingModal(row.getAttribute('data-booking-id'));
+    });
+  }
+  var lcAdmFiltersEl = document.getElementById('lcAdmFilters');
+  if (lcAdmFiltersEl){
+    lcAdmFiltersEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-lc-filter]');
+      if (!btn) return;
+      lcAdminFilter = btn.getAttribute('data-lc-filter');
+      Array.prototype.forEach.call(lcAdmFiltersEl.querySelectorAll('[data-lc-filter]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      lcRenderList();
     });
   }
 
