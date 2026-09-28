@@ -2706,7 +2706,8 @@ if ('serviceWorker' in navigator){
     border:1px solid var(--line); background:var(--sand-deep); color:var(--ink); text-decoration:none; font-size:0.82rem;
   }
   .ec-quote-option-title{ margin:0 0 4px; font-size:1.02rem; }
-  .ec-quote-selected-tag{ color:var(--turquoise); font-size:0.8rem; font-weight:700; }
+  .ec-quote-selected-tag{ color:var(--turquoise); font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:3px; }
+  .ec-quote-selected-tag .ecx-svg-icon{ width:14px; height:14px; }
   .ec-quote-option-ref{ font-size:0.8rem; color:var(--ink-soft); margin:0 0 6px; }
   .ec-quote-option-desc{ font-size:0.88rem; color:var(--ink); margin:0 0 12px; }
   .ec-quote-price-rows{ display:flex; flex-direction:column; gap:4px; margin-bottom:14px; }
@@ -4147,6 +4148,13 @@ if ('serviceWorker' in navigator){
 
   .ecx-app{ padding-bottom:0; }
   .ecx-app.has-bottomnav{ padding-bottom:86px; } /* place pour la nav fixe, safe-area incluse */
+
+  /* Icônes vectorielles — une seule famille graphique (voir ecxIcon(), JS) :
+     trait fin monochrome, jamais d'emoji/police d'icônes mélangés. La
+     TAILLE se règle sur le conteneur (largeur/hauteur), jamais sur le SVG
+     lui-même — un seul point de vérité pour l'épaisseur de trait. */
+  .ecx-svg-icon{ display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .ecx-svg-icon svg{ width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
   /* La navigation basse REMPLACE le bandeau d'onglets historique en dessous
      de 900px (jamais les deux à la fois) ; au-delà, #ecTabs redevient la
      sidebar existante (voir @media 900px plus haut) et la nav basse est
@@ -4155,23 +4163,36 @@ if ('serviceWorker' in navigator){
   #ecTabs{ display:none; }
   @media (min-width:900px){ #ecTabs{ display:flex; } }
 
-  /* ---------- Navigation basse (mobile/tablette) ---------- */
+  /* ---------- Navigation basse (mobile/tablette) ----------
+     position:sticky, PAS fixed : #espaceClient.is-open (voir plus haut,
+     "plein écran superposé") est LUI-MÊME position:fixed + overflow-y:auto —
+     c'est ce conteneur, pas <body>, qui défile réellement. Un élément
+     position:fixed imbriqué dans un conteneur à défilement personnalisé
+     défile AVEC ce conteneur sur iOS Safari au lieu de rester épinglé à
+     l'écran (bug WebKit bien connu, confirmé en test réel sur iPhone :
+     la barre "descendait" avec le contenu). position:sticky + bottom:0
+     s'épingle correctement au bord du bon conteneur défilant quel que soit
+     le navigateur, sans ce défaut — c'est le correctif standard pour ce cas
+     précis, pas une préférence esthétique. */
   .ecx-bottomnav{
-    position:fixed; left:0; right:0; bottom:0; z-index:400; display:none;
-    background:var(--white); border-top:1px solid var(--line);
-    box-shadow:0 -8px 24px -18px rgba(16,27,36,0.35);
+    position:sticky; left:0; right:0; bottom:0; z-index:400; display:none;
+    background:rgba(255,255,255,0.92); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);
+    box-shadow:0 -6px 18px -16px rgba(16,27,36,0.28);
     padding:8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
   }
   .ecx-bottomnav.is-visible{ display:flex; }
   .ecx-bottomnav-item{
-    flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:3px;
-    background:none; border:none; padding:6px 2px; cursor:pointer; color:var(--ink-soft);
-    font-family:"Poppins",sans-serif; font-size:0.68rem; font-weight:700; min-height:44px;
-    border-radius:12px; transition:color .15s ease;
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    background:none; border:none; padding:6px 2px; cursor:pointer; color:var(--sky-deep);
+    font-family:"Poppins",sans-serif; font-size:0.68rem; font-weight:700; min-height:48px;
+    border-radius:12px; transition:color .2s ease;
   }
-  .ecx-bottomnav-item .ecx-bn-icon{ font-size:1.28rem; line-height:1; }
+  .ecx-bottomnav-item .ecx-bn-icon{ display:flex; align-items:center; justify-content:center; width:23px; height:23px; }
+  .ecx-bottomnav-item .ecx-bn-icon svg{ width:100%; height:100%; stroke:currentColor; fill:none; stroke-width:1.75; transition:stroke-width .2s ease; }
   .ecx-bottomnav-item.is-active{ color:var(--terracotta); }
-  .ecx-bottomnav-item:active{ transform:scale(0.94); }
+  .ecx-bottomnav-item.is-active .ecx-bn-icon svg{ stroke-width:2.1; }
+  .ecx-bottomnav-item:active{ opacity:0.7; }
   @media (min-width:900px){ .ecx-bottomnav{ display:none !important; } .ecx-app.has-bottomnav{ padding-bottom:0; } }
 
   /* ---------- Barre de recherche + catégories (Accueil) ---------- */
@@ -4184,7 +4205,7 @@ if ('serviceWorker' in navigator){
     flex:1 1 auto; border:none; background:none; font-family:inherit; font-size:0.92rem; color:var(--ink); min-width:0;
   }
   .ecx-search input:focus{ outline:none; }
-  .ecx-search-icon{ font-size:1rem; opacity:0.6; flex:0 0 auto; }
+  .ecx-search-icon{ width:19px; height:19px; opacity:0.55; flex:0 0 auto; }
 
   .ecx-cats{ display:flex; gap:10px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:8px; scrollbar-width:none; }
   .ecx-cats::-webkit-scrollbar{ display:none; }
@@ -4194,7 +4215,7 @@ if ('serviceWorker' in navigator){
     color:var(--ink); cursor:pointer; white-space:nowrap; transition:border-color .15s ease, background .15s ease;
     min-height:44px;
   }
-  .ecx-cat-chip .ecx-cat-emoji{ font-size:1.05rem; }
+  .ecx-cat-chip .ecx-cat-emoji{ width:18px; height:18px; }
   .ecx-cat-chip:hover{ border-color:var(--sky); }
   .ecx-cat-chip.is-active{ background:var(--ink); border-color:var(--ink); color:#fff; }
 
@@ -4231,9 +4252,10 @@ if ('serviceWorker' in navigator){
   .ecx-svc-grid .ecx-svc-card{ flex:none; width:auto; }
   .ecx-svc-card:hover{ transform:translateY(-2px); box-shadow:0 16px 32px -18px rgba(16,27,36,0.45); }
   .ecx-svc-card-visual{
-    height:104px; display:flex; align-items:center; justify-content:center; font-size:2.4rem;
+    height:104px; display:flex; align-items:center; justify-content:center;
     background:linear-gradient(135deg, var(--sand-deep) 0%, var(--ivory) 100%);
   }
+  .ecx-svc-card-visual .ecx-svg-icon{ width:38px; height:38px; color:var(--ink); }
   .ecx-svc-card-visual.ecx-cat-clim{ background:linear-gradient(135deg, var(--cat-clim-a) 0%, var(--cat-clim-b) 100%); }
   .ecx-svc-card-visual.ecx-cat-chauffage{ background:linear-gradient(135deg, #F7D9CE 0%, var(--cat-chauffage) 100%); }
   .ecx-svc-card-visual.ecx-cat-plomberie{ background:linear-gradient(135deg, #DCEEF9 0%, var(--cat-plomberie) 100%); }
@@ -4255,9 +4277,11 @@ if ('serviceWorker' in navigator){
   .ecx-filter-row::-webkit-scrollbar{ display:none; }
   .ecx-filter-pill{
     flex:0 0 auto; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:var(--ink-soft);
-    background:var(--sand-deep); border:none; border-radius:999px; padding:9px 16px; cursor:pointer; min-height:40px;
+    background:var(--sand-deep); border:none; border-radius:999px; padding:9px 16px; cursor:pointer; min-height:44px;
   }
   .ecx-filter-pill.is-active{ background:var(--ink); color:#fff; }
+  .ecx-subnav{ margin-bottom:16px; }
+  @media (min-width:900px){ .ecx-subnav{ display:none; } }
 
   /* ---------- Profil : carte centrale + tuiles logements/équipements ---------- */
   .ecx-profile-hero{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:28px 20px; }
@@ -4275,15 +4299,16 @@ if ('serviceWorker' in navigator){
     box-shadow:0 10px 24px -20px rgba(16,27,36,0.35); transition:transform .15s ease;
   }
   .ecx-profile-tile:hover{ transform:translateY(-2px); }
-  .ecx-profile-tile .ecx-tile-icon{ font-size:1.7rem; }
+  .ecx-profile-tile .ecx-tile-icon{ width:28px; height:28px; color:var(--sky-deep); }
   .ecx-profile-tile .ecx-tile-label{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem; color:var(--ink); }
   .ecx-option-list{ display:flex; flex-direction:column; }
   .ecx-option-row{
     display:flex; align-items:center; gap:12px; padding:15px 4px; border-bottom:1px solid var(--line);
     background:none; border-left:none; border-right:none; border-top:none; width:100%; text-align:left; cursor:pointer;
-    font-family:inherit; font-size:0.9rem; color:var(--ink); min-height:44px;
+    font-family:inherit; font-size:0.9rem; color:var(--ink); min-height:44px; text-decoration:none;
   }
-  .ecx-option-row .ecx-opt-icon{ font-size:1.1rem; flex:0 0 auto; width:26px; }
+  .ecx-option-row .ecx-opt-icon{ width:20px; height:20px; flex:0 0 auto; color:var(--sky-deep); }
+  .ecx-option-row.is-danger .ecx-opt-icon{ color:var(--terracotta-deep); }
   .ecx-option-row .ecx-opt-label{ flex:1 1 auto; }
   .ecx-option-row .ecx-opt-arrow{ color:var(--ink-soft); }
   .ecx-option-row.is-danger{ color:var(--terracotta-deep); }
@@ -4293,7 +4318,8 @@ if ('serviceWorker' in navigator){
     display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--white); border:1px solid var(--line);
     border-radius:20px; padding:16px 18px; margin-bottom:12px; box-shadow:0 8px 22px -20px rgba(16,27,36,0.4);
   }
-  .ecx-home-card-visual{ width:52px; height:52px; border-radius:14px; background:var(--sand-deep); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex:0 0 auto; }
+  .ecx-home-card-visual{ width:52px; height:52px; border-radius:14px; background:var(--sand-deep); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .ecx-home-card-visual .ecx-svg-icon{ width:24px; height:24px; color:var(--sky-deep); }
   .ecx-home-card-body{ flex:1 1 auto; min-width:0; }
   .ecx-home-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.94rem; color:var(--ink); margin:0 0 2px; }
   .ecx-home-card-meta{ font-size:0.8rem; color:var(--ink-soft); margin:0; }
@@ -4301,7 +4327,7 @@ if ('serviceWorker' in navigator){
     display:flex; align-items:center; gap:14px; background:var(--white); border:1px solid var(--line);
     border-radius:18px; padding:14px 16px; margin-bottom:10px;
   }
-  .ecx-equip-card .ecx-equip-emoji{ font-size:1.6rem; flex:0 0 auto; }
+  .ecx-equip-card .ecx-equip-emoji{ width:26px; height:26px; flex:0 0 auto; color:var(--sky-deep); }
   .ecx-equip-card-body{ flex:1 1 auto; }
   .ecx-equip-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem; color:var(--ink); margin:0 0 2px; }
   .ecx-equip-card-meta{ font-size:0.78rem; color:var(--ink-soft); margin:0; }
@@ -7932,11 +7958,21 @@ if ('serviceWorker' in navigator){
         </div>
 
         <nav class="ecx-bottomnav is-visible" id="ecxBottomNav" aria-label="Navigation Espace Client">
-          <button type="button" class="ecx-bottomnav-item is-active" data-ecx-section="home"><span class="ecx-bn-icon" aria-hidden="true">🏠</span>Accueil</button>
-          <button type="button" class="ecx-bottomnav-item" data-ecx-section="services"><span class="ecx-bn-icon" aria-hidden="true">🛠️</span>Prestations</button>
-          <button type="button" class="ecx-bottomnav-item" data-ecx-section="appointments"><span class="ecx-bn-icon" aria-hidden="true">📅</span>Rendez-vous</button>
-          <button type="button" class="ecx-bottomnav-item" data-ecx-section="documents"><span class="ecx-bn-icon" aria-hidden="true">📄</span>Documents</button>
-          <button type="button" class="ecx-bottomnav-item" data-ecx-section="profile"><span class="ecx-bn-icon" aria-hidden="true">👤</span>Profil</button>
+          <button type="button" class="ecx-bottomnav-item is-active" data-ecx-section="home" aria-current="page" aria-label="Accueil">
+            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/></svg></span>Accueil
+          </button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="services" aria-label="Prestations">
+            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/></svg></span>Prestations
+          </button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="appointments" aria-label="Rendez-vous">
+            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>Rendez-vous
+          </button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="documents" aria-label="Documents">
+            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>Documents
+          </button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="profile" aria-label="Profil">
+            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>Profil
+          </button>
         </nav>
       </div>
 
@@ -16247,6 +16283,37 @@ if ('serviceWorker' in navigator){
       return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
     });
   }
+
+  // Icônes vectorielles (une seule famille graphique, style Lucide : trait
+  // fin monochrome, coins arrondis) — remplace TOUS les emojis de l'Espace
+  // Client. Jamais de mélange emoji/SVG/police d'icônes : chaque usage
+  // passe par ecxIcon(name), jamais un caractère Unicode saisi en dur.
+  var ECX_ICON_PATHS = {
+    house: '<path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/>',
+    wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+    fileText: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    fileCheck: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m9 15 2 2 4-4"/>',
+    user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    droplet: '<path d="M12 2.69s5 5.44 5 9.31a5 5 0 0 1-10 0c0-3.87 5-9.31 5-9.31z"/>',
+    flame: '<path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c0-1.5-1-2.5-1-2.5s2 1.5 2 5a5 5 0 0 1-10 0c0-4 3-6 5-9.5z"/>',
+    snowflake: '<line x1="12" y1="2" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="19.1" y2="4.9"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+    checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>',
+    check: '<polyline points="20 6 9 17 4 12"/>',
+    wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+    mapPin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    messageCircle: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
+  };
+  function ecxIcon(name, extraClass){
+    var path = ECX_ICON_PATHS[name];
+    if (!path) return '';
+    return '<span class="ecx-svg-icon' + (extraClass ? ' ' + extraClass : '') + '" aria-hidden="true"><svg viewBox="0 0 24 24">' + path + '</svg></span>';
+  }
+  var ECX_CATEGORY_ICON = { clim:'snowflake', chauffage:'flame', plomberie:'droplet', multi:'grid', devis:'fileCheck', pro:'checkCircle' };
+  var ECX_EQUIPMENT_ICON = { climatisation:'snowflake', chaudiere_gaz:'flame', chaudiere_fioul:'flame', chauffe_eau:'droplet', pac:'wind', autre:'wrench' };
   function ecFmtDate(d){
     if (!d) return '';
     var parts = String(d).slice(0,10).split('-');
@@ -16302,11 +16369,33 @@ if ('serviceWorker' in navigator){
   };
   var ECX_DEFAULT_TAB_FOR_SECTION = { home:'home', services:'services', appointments:'appointments', documents:'quotes', profile:'profile' };
 
+  // Sous-navigation par pastilles, mobile uniquement (masquée ≥900px via
+  // .ecx-subnav en CSS — la sidebar y affiche déjà les 10 onglets) : sans
+  // elle, "Mes factures"/"Mes documents"/"Mes interventions" deviendraient
+  // injoignables sur mobile une fois #ecTabs masqué en dessous de 900px.
+  var ECX_COMPOSITE_GROUPS = {
+    documents: [['quotes', 'Devis'], ['invoices', 'Factures'], ['documents', 'Rapports']],
+    appointments: [['appointments', 'Rendez-vous'], ['interventions', 'Interventions']]
+  };
+  function ecxCompositeSubNavHtml(activeTab){
+    var section = ECX_SECTION_FOR_TAB[activeTab];
+    var group = ECX_COMPOSITE_GROUPS[section];
+    if (!group) return '';
+    return '<div class="ecx-filter-row ecx-subnav">' + group.map(function(pair){
+      return '<button type="button" class="ecx-filter-pill' + (pair[0] === activeTab ? ' is-active' : '') + '" data-ecx-subnav="' + pair[0] + '">' + ecEscape(pair[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+
   function ecxSyncBottomNav(tab){
     var section = ECX_SECTION_FOR_TAB[tab] || tab;
     var items = document.querySelectorAll('#ecxBottomNav .ecx-bottomnav-item');
     for (var i = 0; i < items.length; i++){
-      items[i].classList.toggle('is-active', items[i].getAttribute('data-ecx-section') === section);
+      var isActive = items[i].getAttribute('data-ecx-section') === section;
+      items[i].classList.toggle('is-active', isActive);
+      // aria-current="page" plutôt qu'une simple couleur pour indiquer
+      // l'onglet actif (voir §"ACCESSIBILITÉ" — jamais uniquement la couleur).
+      if (isActive) items[i].setAttribute('aria-current', 'page');
+      else items[i].removeAttribute('aria-current');
     }
   }
 
@@ -16400,6 +16489,13 @@ if ('serviceWorker' in navigator){
       ecShowTab(ECX_DEFAULT_TAB_FOR_SECTION[section] || section);
     });
   }
+  var ecPanelsEl = document.querySelector('.ec-panels');
+  if (ecPanelsEl){
+    ecPanelsEl.addEventListener('click', function(e){
+      var btn = e.target.closest ? e.target.closest('[data-ecx-subnav]') : null;
+      if (btn) ecShowTab(btn.getAttribute('data-ecx-subnav'));
+    });
+  }
 
   // "Prestations" (marketplace) — lit le catalogue déjà chargé par le
   // module de réservation public (window.sudBooking, voir ses ajouts
@@ -16417,10 +16513,10 @@ if ('serviceWorker' in navigator){
   }
   function ecxServiceCardHtml(s){
     var cat = window.sudBooking && window.sudBooking.serviceCategory ? window.sudBooking.serviceCategory(s.id) : '';
-    var emoji = { clim:'❄️', chauffage:'🔥', plomberie:'💧', multi:'🛠️', devis:'📝', pro:'✅' }[cat] || '🔧';
+    var iconName = ECX_CATEGORY_ICON[cat] || 'wrench';
     var priceLine = window.sudBooking ? window.sudBooking.priceLine(s) : s.price;
     return '<div class="ecx-svc-card" data-svc-id="' + ecEscape(s.id) + '">' +
-      '<div class="ecx-svc-card-visual ecx-cat-' + ecEscape(cat || 'multi') + '" aria-hidden="true">' + emoji + '</div>' +
+      '<div class="ecx-svc-card-visual ecx-cat-' + ecEscape(cat || 'multi') + '">' + ecxIcon(iconName) + '</div>' +
       '<div class="ecx-svc-card-body">' +
         '<p class="ecx-svc-card-title">' + ecEscape(s.title) + '</p>' +
         '<p class="ecx-svc-card-desc">' + ecEscape(s.desc || '') + '</p>' +
@@ -16452,7 +16548,7 @@ if ('serviceWorker' in navigator){
     if (!window.sudBooking){ panel.innerHTML = ecErrorBlock(); return; }
     var cats = window.sudBooking.categoriesList();
     var html = '<p class="ec-section-title">Nos prestations</p><p class="ec-section-sub">Plomberie, chauffage, climatisation — trouvez la bonne intervention en quelques secondes.</p>' +
-      '<div class="ecx-search"><span class="ecx-search-icon" aria-hidden="true">🔍</span><input type="text" id="ecxSvcSearchInput" placeholder="Rechercher une prestation"></div>' +
+      '<div class="ecx-search">' + ecxIcon('search', 'ecx-search-icon') + '<input type="text" id="ecxSvcSearchInput" placeholder="Rechercher une prestation" aria-label="Rechercher une prestation"></div>' +
       '<div class="ecx-filter-row" id="ecxSvcFilters">' +
         '<button type="button" class="ecx-filter-pill is-active" data-cat="all">Tout</button>' +
         cats.map(function(c){ return '<button type="button" class="ecx-filter-pill" data-cat="' + ecEscape(c.id) + '">' + ecEscape(c.label) + '</button>'; }).join('') +
@@ -16509,16 +16605,16 @@ if ('serviceWorker' in navigator){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var firstName = profile && profile.first_name ? profile.first_name.trim() : '';
         var html = '<div class="ec-home-head">' +
-          '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) + ' 👋' : 'Bonjour 👋') + '</p>' +
+          '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) : 'Bonjour') + '</p>' +
           '<button type="button" class="ec-site-link" id="ecHomeGoToSiteBtn">Voir le site HAYEVA</button>' +
         '</div>' +
         '<p class="ec-section-sub" style="margin-top:-10px;">Que pouvons-nous faire pour votre logement ?</p>' +
-        '<div class="ecx-search" id="ecxHomeSearch"><span class="ecx-search-icon" aria-hidden="true">🔍</span><input type="text" id="ecxHomeSearchInput" placeholder="De quoi avez-vous besoin ?" readonly></div>' +
+        '<div class="ecx-search" id="ecxHomeSearch">' + ecxIcon('search', 'ecx-search-icon') + '<input type="text" id="ecxHomeSearchInput" placeholder="De quoi avez-vous besoin ?" aria-label="Rechercher une prestation" readonly></div>' +
         '<div class="ecx-cats" id="ecxHomeCats">' +
-          '<button type="button" class="ecx-cat-chip" data-cat="plomberie"><span class="ecx-cat-emoji">💧</span>Plomberie</button>' +
-          '<button type="button" class="ecx-cat-chip" data-cat="chauffage"><span class="ecx-cat-emoji">🔥</span>Chauffage</button>' +
-          '<button type="button" class="ecx-cat-chip" data-cat="clim"><span class="ecx-cat-emoji">❄️</span>Climatisation</button>' +
-          '<button type="button" class="ecx-cat-chip" data-cat="multi"><span class="ecx-cat-emoji">🛠️</span>Multi-services</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="plomberie">' + ecxIcon('droplet', 'ecx-cat-emoji') + 'Plomberie</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="chauffage">' + ecxIcon('flame', 'ecx-cat-emoji') + 'Chauffage</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="clim">' + ecxIcon('snowflake', 'ecx-cat-emoji') + 'Climatisation</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="multi">' + ecxIcon('grid', 'ecx-cat-emoji') + 'Multi-services</button>' +
         '</div>';
         var b = res.data && res.data[0];
         if (b){
@@ -16639,10 +16735,10 @@ if ('serviceWorker' in navigator){
         var rows = res.data || [];
         ecAppointmentsCache = rows;
         if (!rows.length){
-          panel.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
+          panel.innerHTML = ecxCompositeSubNavHtml('appointments') + '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
           return;
         }
-        var html = '<p class="ec-section-title">Mes rendez-vous</p><p class="ec-section-sub">Historique complet, du plus récent au plus ancien.</p><div class="ec-list">';
+        var html = ecxCompositeSubNavHtml('appointments') + '<p class="ec-section-title">Mes rendez-vous</p><p class="ec-section-sub">Retrouvez et gérez vos interventions.</p><div class="ec-list">';
         rows.forEach(function(b){
           var svcName = (b.services && b.services.name) || 'Service';
           var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
@@ -16942,10 +17038,10 @@ if ('serviceWorker' in navigator){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var rows = res.data || [];
         if (!rows.length){
-          panel.innerHTML = '<div class="ec-empty"><strong>Aucune intervention enregistrée</strong>Les comptes-rendus de vos interventions apparaîtront ici après chaque rendez-vous.</div>';
+          panel.innerHTML = ecxCompositeSubNavHtml('interventions') + '<div class="ec-empty"><strong>Aucune intervention enregistrée</strong>Les comptes-rendus de vos interventions apparaîtront ici après chaque rendez-vous.</div>';
           return;
         }
-        var html = '<p class="ec-section-title">Mes interventions</p><p class="ec-section-sub">Comptes-rendus techniques réalisés à votre domicile.</p><div class="ec-list">';
+        var html = ecxCompositeSubNavHtml('interventions') + '<p class="ec-section-title">Mes interventions</p><p class="ec-section-sub">Comptes-rendus techniques réalisés à votre domicile.</p><div class="ec-list">';
         rows.forEach(function(iv){
           var svcName = (iv.bookings && iv.bookings.services && iv.bookings.services.name) || 'Intervention';
           var when = iv.performed_at ? new Date(iv.performed_at).toLocaleDateString('fr-FR') : (iv.bookings ? ecFmtDate(iv.bookings.date) : '');
@@ -16990,7 +17086,6 @@ if ('serviceWorker' in navigator){
         '<label class="ec-form-full">Notes<input type="text" id="ecEquipNotes" placeholder="Facultatif"></label>' +
         '<button type="submit" class="btn-primary ec-form-full">Ajouter cet équipement</button>' +
       '</form>';
-      var EC_EQUIPMENT_EMOJI = { climatisation:'❄️', chaudiere_gaz:'🔥', chaudiere_fioul:'🔥', chauffe_eau:'🚿', pac:'♨️', autre:'🔧' };
       if (!rows.length){
         html += '<div class="ec-empty"><strong>Aucun équipement renseigné</strong>Ajoutez votre climatiseur, chaudière ou chauffe-eau ci-dessus.</div>';
       } else {
@@ -16999,7 +17094,7 @@ if ('serviceWorker' in navigator){
           if (eq.installed_at) eqMeta.push('Installé le ' + ecFmtDate(eq.installed_at));
           if (eq.last_service_at) eqMeta.push('Dernier entretien le ' + ecFmtDate(eq.last_service_at));
           if (eq.notes) eqMeta.push(ecEscape(eq.notes));
-          html += '<div class="ecx-equip-card"><span class="ecx-equip-emoji" aria-hidden="true">' + (EC_EQUIPMENT_EMOJI[eq.equipment_type] || '🔧') + '</span>' +
+          html += '<div class="ecx-equip-card">' + ecxIcon(ECX_EQUIPMENT_ICON[eq.equipment_type] || 'wrench', 'ecx-equip-emoji') +
             '<div class="ecx-equip-card-body">' +
               '<p class="ecx-equip-card-title">' + ecEscape(EC_EQUIPMENT_LABEL[eq.equipment_type] || eq.equipment_type) + (eq.brand ? ' — ' + ecEscape(eq.brand) : '') + (eq.model ? ' ' + ecEscape(eq.model) : '') + '</p>' +
               (eqMeta.length ? '<p class="ecx-equip-card-meta">' + eqMeta.join(' · ') + '</p>' : '') +
@@ -17048,10 +17143,10 @@ if ('serviceWorker' in navigator){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var rows = res.data || [];
         if (!rows.length){
-          panel.innerHTML = '<div class="ec-empty"><strong>Aucun devis pour le moment</strong>Vos demandes de devis apparaîtront ici.</div>';
+          panel.innerHTML = ecxCompositeSubNavHtml('quotes') + '<div class="ec-empty"><strong>Aucun devis pour le moment</strong>Vos demandes de devis apparaîtront ici.</div>';
           return;
         }
-        var html = '<p class="ec-section-title">Mes devis</p><div class="ec-list">';
+        var html = ecxCompositeSubNavHtml('quotes') + '<p class="ec-section-title">Documents</p><p class="ec-section-sub">Vos devis, factures et rapports.</p><div class="ec-list">';
         rows.forEach(function(q){
           var showTotal = q.status === 'ACCEPTED' || q.selected_option_id;
           html += '<div class="ec-row ec-quote-list-row" data-quote-id="' + q.id + '"><div class="ec-row-info">' +
@@ -17118,7 +17213,7 @@ if ('serviceWorker' in navigator){
         });
         html += '</div>';
       }
-      html += '<h4 class="ec-quote-option-title">' + ecEscape(opt.label) + (isSelected ? ' <span class="ec-quote-selected-tag">✓ Sélectionnée</span>' : '') + '</h4>';
+      html += '<h4 class="ec-quote-option-title">' + ecEscape(opt.label) + (isSelected ? ' <span class="ec-quote-selected-tag">' + ecxIcon('check') + ' Sélectionnée</span>' : '') + '</h4>';
       if (opt.reference) html += '<p class="ec-quote-option-ref">Référence : ' + ecEscape(opt.reference) + '</p>';
       if (opt.description) html += '<p class="ec-quote-option-desc">' + ecEscape(opt.description) + '</p>';
       html += '<div class="ec-quote-price-rows">' +
@@ -17199,10 +17294,10 @@ if ('serviceWorker' in navigator){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var rows = res.data || [];
         if (!rows.length){
-          panel.innerHTML = '<div class="ec-empty"><strong>Aucune facture pour le moment</strong>Vos factures apparaîtront ici après une intervention facturée.</div>';
+          panel.innerHTML = ecxCompositeSubNavHtml('invoices') + '<div class="ec-empty"><strong>Aucune facture pour le moment</strong>Vos factures apparaîtront ici après une intervention facturée.</div>';
           return;
         }
-        var html = '<p class="ec-section-title">Mes factures</p><div class="ec-list">';
+        var html = ecxCompositeSubNavHtml('invoices') + '<p class="ec-section-title">Documents</p><p class="ec-section-sub">Vos devis, factures et rapports.</p><div class="ec-list">';
         rows.forEach(function(inv){
           html += '<div class="ec-row"><div class="ec-row-info">' +
             '<span class="ec-row-title">Facture ' + ecEscape(inv.reference) + '</span>' +
@@ -17216,7 +17311,7 @@ if ('serviceWorker' in navigator){
 
   function ecLoadDocuments(){
     var panel = document.getElementById('ecPanelDocuments');
-    panel.innerHTML = '<div class="ec-empty"><strong>Aucun document pour le moment</strong>Cette fonctionnalité arrive prochainement : vous pourrez retrouver ici vos comptes-rendus et pièces jointes.</div>';
+    panel.innerHTML = ecxCompositeSubNavHtml('documents') + '<p class="ec-section-title">Documents</p><p class="ec-section-sub">Vos devis, factures et rapports.</p><div class="ec-empty"><strong>Aucun rapport pour le moment</strong>Cette fonctionnalité arrive prochainement : vous pourrez retrouver ici vos comptes-rendus et pièces jointes.</div>';
   }
 
   function ecFetchAddresses(){
@@ -17258,7 +17353,7 @@ if ('serviceWorker' in navigator){
         html += '<div class="ec-empty"><strong>Aucune adresse enregistrée</strong>Ajoutez votre adresse pour accélérer vos prochaines réservations.</div>';
       } else {
         rows.forEach(function(a){
-          html += '<div class="ecx-home-card"><span class="ecx-home-card-visual" aria-hidden="true">🏠</span>' +
+          html += '<div class="ecx-home-card"><span class="ecx-home-card-visual">' + ecxIcon('house') + '</span>' +
             '<div class="ecx-home-card-body">' +
               '<p class="ecx-home-card-title">' + ecEscape(a.label) + (a.is_default ? ' <span class="ec-badge ec-badge-completed">Par défaut</span>' : '') + '</p>' +
               '<p class="ecx-home-card-meta">' + ecEscape(a.address) + (a.postal_code ? ', ' + ecEscape(a.postal_code) : '') + (a.city ? ' ' + ecEscape(a.city) : '') + '</p>' +
@@ -17363,14 +17458,14 @@ if ('serviceWorker' in navigator){
         '<p class="ecx-profile-tag">Client HAYEVA</p>' +
       '</div>' +
       '<div class="ecx-profile-tiles">' +
-        '<div class="ecx-profile-tile" data-ec-goto="addresses"><span class="ecx-tile-icon" aria-hidden="true">🏠</span><span class="ecx-tile-label">Mes logements</span></div>' +
-        '<div class="ecx-profile-tile" data-ec-goto="equipment"><span class="ecx-tile-icon" aria-hidden="true">🔧</span><span class="ecx-tile-label">Mes équipements</span></div>' +
+        '<div class="ecx-profile-tile" data-ec-goto="addresses" role="button" tabindex="0" aria-label="Mes logements">' + ecxIcon('house', 'ecx-tile-icon') + '<span class="ecx-tile-label">Mes logements</span></div>' +
+        '<div class="ecx-profile-tile" data-ec-goto="equipment" role="button" tabindex="0" aria-label="Mes équipements">' + ecxIcon('wrench', 'ecx-tile-icon') + '<span class="ecx-tile-label">Mes équipements</span></div>' +
       '</div>' +
       '<div class="ecx-option-list ecx-card ecx-card-flat" style="padding:6px 14px;">' +
-        '<button type="button" class="ecx-option-row" data-scroll-to="ecProfileForm"><span class="ecx-opt-icon" aria-hidden="true">👤</span><span class="ecx-opt-label">Informations personnelles</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
-        '<button type="button" class="ecx-option-row" data-ec-goto="addresses"><span class="ecx-opt-icon" aria-hidden="true">📍</span><span class="ecx-opt-label">Mes adresses</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
-        '<a class="ecx-option-row" href="tel:+33671262302"><span class="ecx-opt-icon" aria-hidden="true">💬</span><span class="ecx-opt-label">Aide — 06 71 26 23 02</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></a>' +
-        '<button type="button" class="ecx-option-row is-danger" id="ecProfileLogoutBtn"><span class="ecx-opt-icon" aria-hidden="true">🚪</span><span class="ecx-opt-label">Déconnexion</span></button>' +
+        '<button type="button" class="ecx-option-row" data-scroll-to="ecProfileForm">' + ecxIcon('user', 'ecx-opt-icon') + '<span class="ecx-opt-label">Informations personnelles</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="addresses">' + ecxIcon('mapPin', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mes adresses</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<a class="ecx-option-row" href="tel:+33671262302">' + ecxIcon('messageCircle', 'ecx-opt-icon') + '<span class="ecx-opt-label">Aide — 06 71 26 23 02</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></a>' +
+        '<button type="button" class="ecx-option-row is-danger" id="ecProfileLogoutBtn">' + ecxIcon('logOut', 'ecx-opt-icon') + '<span class="ecx-opt-label">Déconnexion</span></button>' +
       '</div>' +
       '<p class="ec-section-title" style="margin-top:24px;">Informations personnelles</p><p class="ec-section-sub">Modifiables à tout moment.</p>';
       html += '<form class="ec-form" id="ecProfileForm">' +
@@ -17384,6 +17479,9 @@ if ('serviceWorker' in navigator){
       panel.innerHTML = html;
       Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(el){
         el.addEventListener('click', function(){ ecShowTab(el.getAttribute('data-ec-goto')); });
+        el.addEventListener('keydown', function(e){
+          if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); ecShowTab(el.getAttribute('data-ec-goto')); }
+        });
       });
       var scrollBtn = panel.querySelector('[data-scroll-to]');
       if (scrollBtn){
