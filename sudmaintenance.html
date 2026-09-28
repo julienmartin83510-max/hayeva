@@ -2982,6 +2982,59 @@ if ('serviceWorker' in navigator){
   }
   .ai-widget-send:hover{ filter:brightness(1.08); }
   .ai-widget-send[disabled]{ opacity:0.5; cursor:not-allowed; }
+
+  /* ---------- Assistant Hayeva — mode vocal temps réel (WebRTC) ---------- */
+  .ai-widget-mode-tabs{ display:flex; gap:6px; padding:8px 12px 0; flex:0 0 auto; background:var(--white); }
+  .ai-widget-mode-btn{
+    flex:1 1 0; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--ink-soft);
+    background:var(--sand-deep); border:none; border-radius:999px; padding:7px 10px; cursor:pointer; transition:background .18s, color .18s;
+  }
+  .ai-widget-mode-btn.is-active{ background:var(--sky-deep); color:#fff; }
+  .ai-widget-voice-panel{
+    flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+    padding:20px 18px; background:var(--sand-deep); text-align:center;
+  }
+  .ai-widget-voice-panel[hidden]{ display:none; }
+  .ai-widget-voice-orb{
+    position:relative; width:84px; height:84px; border-radius:50%; background:var(--white); border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:1.8rem; transition:border-color .2s, box-shadow .2s;
+  }
+  .ai-widget-voice-orb.is-listening{ border-color:var(--turquoise); box-shadow:0 0 0 6px rgba(0,0,0,0.03); }
+  .ai-widget-voice-orb.is-listening .ai-widget-voice-wave{ opacity:1; }
+  .ai-widget-voice-orb.is-speaking{ border-color:var(--terracotta); animation:aiVoiceSpeakPulse 1.1s ease-in-out infinite; }
+  .ai-widget-voice-orb.is-connecting{ border-color:var(--sky); animation:aiVoiceConnectSpin 1.4s linear infinite; }
+  @keyframes aiVoiceSpeakPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(197,93,63,0.3); } 50%{ box-shadow:0 0 0 12px rgba(197,93,63,0); } }
+  @keyframes aiVoiceConnectSpin{ 0%{ opacity:0.5; } 50%{ opacity:1; } 100%{ opacity:0.5; } }
+  .ai-widget-voice-orb-icon{ position:relative; z-index:1; }
+  .ai-widget-voice-wave{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:3px; opacity:0; transition:opacity .2s;
+  }
+  .ai-widget-voice-wave span{
+    width:3px; height:10px; border-radius:2px; background:var(--turquoise); animation:aiVoiceWaveBar 0.9s ease-in-out infinite;
+  }
+  .ai-widget-voice-wave span:nth-child(1){ animation-delay:0s; }
+  .ai-widget-voice-wave span:nth-child(2){ animation-delay:.15s; }
+  .ai-widget-voice-wave span:nth-child(3){ animation-delay:.3s; }
+  .ai-widget-voice-wave span:nth-child(4){ animation-delay:.15s; }
+  .ai-widget-voice-wave span:nth-child(5){ animation-delay:0s; }
+  @keyframes aiVoiceWaveBar{ 0%,100%{ height:8px; } 50%{ height:24px; } }
+  .ai-widget-voice-status{ font-size:0.86rem; font-weight:700; color:var(--ink); margin:0; min-height:1.3em; }
+  .ai-widget-voice-error{ font-size:0.8rem; color:var(--terracotta); margin:0; }
+  .ai-widget-voice-start-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.9rem; color:#fff; background:var(--turquoise);
+    border:none; border-radius:999px; padding:12px 24px; cursor:pointer;
+  }
+  .ai-widget-voice-start-btn:hover{ filter:brightness(1.08); }
+  .ai-widget-voice-start-btn[hidden]{ display:none; }
+  .ai-widget-voice-controls{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .ai-widget-voice-ctrl-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--sky-deep); background:var(--white);
+    border:1.5px solid var(--sky-deep); border-radius:999px; padding:8px 14px; cursor:pointer;
+  }
+  .ai-widget-voice-ctrl-btn.is-muted{ background:var(--amber-soft); border-color:var(--amber); color:#7a5200; }
+  .ai-widget-voice-ctrl-end{ color:var(--terracotta); border-color:var(--terracotta); }
+  .ai-widget-voice-ctrl-btn:hover{ filter:brightness(0.97); }
+
   @media (max-width:480px){
     .ai-widget-panel{
       right:10px; left:10px; width:auto; bottom:10px; height:min(520px, calc(100vh - 88px));
@@ -3640,16 +3693,23 @@ if ('serviceWorker' in navigator){
      Palette et cartes réutilisant les jetons --adm-* déjà en place partout
      ailleurs dans l'admin (mêmes cartes/ombres que le tableau de bord),
      jamais une charte graphique séparée pour cet écran. */
-  .voice-sim-layout{ display:grid; grid-template-columns:1fr; gap:20px; margin-top:6px; }
+  /* Bandeau MODE TEST — bien visible en haut de l'écran entier, toujours
+     présent (jamais discret) : c'est la priorité n°1 du cahier des charges,
+     "je ne veux absolument pas qu'un test crée/modifie/supprime un
+     véritable rendez-vous". */
+  .voice-sim-test-banner{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:0.82rem; letter-spacing:0.02em; text-transform:uppercase;
+    color:#fff; background:var(--adm-red); border-radius:12px; padding:12px 18px; text-align:center; margin-top:10px;
+  }
+  .voice-sim-layout{ display:grid; grid-template-columns:1fr; gap:20px; margin-top:16px; }
   @media (min-width:900px){ .voice-sim-layout{ grid-template-columns:1.3fr 1fr; align-items:start; } }
   .voice-sim-chat-card, .voice-sim-state-card{
     background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 20px;
     box-shadow:var(--adm-shadow-sm);
   }
   .voice-sim-chat-header{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-  .voice-sim-badge-test{
-    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:0.03em; text-transform:uppercase;
-    color:var(--adm-coral-deep); background:var(--adm-coral-soft); border-radius:999px; padding:5px 12px;
+  .voice-sim-chat-label{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--adm-ink-soft);
   }
   .voice-sim-reset-btn{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--adm-ocean);
@@ -3696,16 +3756,90 @@ if ('serviceWorker' in navigator){
   .voice-sim-state-step.is-current .voice-sim-state-dot{ background:var(--adm-ocean); }
   .voice-sim-state-step.is-escape.is-current{ background:var(--adm-red-soft); color:var(--adm-red); }
   .voice-sim-state-step.is-escape.is-current .voice-sim-state-dot{ background:var(--adm-red); }
+  /* Informations comprises — jamais inventées : "Non renseigné" tant que
+     record_customer_info n'a pas reçu cette donnée du client. */
+  .voice-sim-info{ display:flex; flex-direction:column; gap:3px; margin-bottom:20px; font-size:0.82rem; }
+  .voice-sim-info-row{ display:flex; justify-content:space-between; gap:10px; padding:3px 2px; }
+  .voice-sim-info-row .lbl{ color:var(--adm-ink-soft); }
+  .voice-sim-info-row .val{ color:var(--adm-ink); font-weight:600; text-align:right; }
+  .voice-sim-info-row .val.is-empty{ color:var(--adm-ink-soft); font-weight:400; font-style:italic; }
   .voice-sim-tools{ display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; }
   .voice-sim-tool-call{
     font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; font-size:0.74rem; line-height:1.5;
     background:var(--adm-sand); border-radius:8px; padding:8px 10px; color:var(--adm-ink); word-break:break-word;
   }
+  .voice-sim-tool-call .ts{ color:var(--adm-ink-soft); margin-right:6px; }
   .voice-sim-tool-call.is-error{ background:var(--adm-red-soft); color:var(--adm-red); }
+  .voice-sim-tool-call.is-mutating{ border-left:3px solid var(--adm-coral); }
   @media (max-width:480px){
     .voice-sim-chat-card, .voice-sim-state-card{ padding:14px 16px; }
     .voice-sim-messages{ max-height:320px; }
   }
+
+  /* ---------- HAYEVA Voice — Phase 2 : test vocal navigateur ----------
+     Mêmes cartes/jetons que le reste du simulateur ; le mode vocal ne fait
+     qu'ajouter une couche audio (Web Speech API — STT/TTS déjà présents dans
+     tous les navigateurs, aucune clé/fournisseur externe requise pour ce
+     test navigateur) au-dessus du MÊME moteur texte (voice-assistant-simulate),
+     jamais un second assistant. */
+  .voice-sim-mode-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+  .voice-sim-mode-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:var(--adm-ink-soft);
+    background:var(--adm-sand); border:1.5px solid transparent; border-radius:999px; padding:8px 16px; cursor:pointer;
+    transition:background .18s, color .18s;
+  }
+  .voice-sim-mode-btn.is-active{ background:var(--adm-ocean); color:#fff; }
+  .voice-sim-voice-panel{ text-align:center; padding:18px 10px 6px; }
+  .voice-sim-mic-btn{
+    width:76px; height:76px; border-radius:50%; border:none; cursor:pointer; font-size:1.9rem; color:#fff;
+    background:var(--adm-ocean); box-shadow:0 4px 16px rgba(0,0,0,0.15); transition:background .18s, transform .18s;
+  }
+  .voice-sim-mic-btn:hover:not(:disabled){ background:var(--adm-ocean-deep); }
+  .voice-sim-mic-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .voice-sim-mic-btn.is-listening{ background:var(--adm-red); animation:voiceSimPulse 1.4s ease-in-out infinite; }
+  .voice-sim-mic-btn.is-speaking{ background:var(--adm-green); }
+  @keyframes voiceSimPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(219,68,55,0.35); } 50%{ box-shadow:0 0 0 14px rgba(219,68,55,0); } }
+  .voice-sim-voice-status{ margin-top:12px; font-size:0.86rem; font-weight:700; color:var(--adm-ink-soft); min-height:1.3em; }
+  .voice-sim-voice-status.is-listening{ color:var(--adm-red); }
+  .voice-sim-voice-status.is-speaking{ color:var(--adm-green); }
+  .voice-sim-voice-interim{ margin-top:6px; font-size:0.8rem; font-style:italic; color:var(--adm-ink-soft); min-height:1.2em; }
+  .voice-sim-voice-unsupported{
+    background:var(--adm-red-soft); color:var(--adm-red); border-radius:10px; padding:12px 16px; font-size:0.85rem; margin-top:10px;
+  }
+  .voice-sim-debug-toggle{ display:flex; align-items:center; gap:7px; font-size:0.78rem; color:var(--adm-ink-soft); margin:12px 0 0; cursor:pointer; }
+  .voice-sim-debug-panel{
+    margin-top:10px; background:var(--adm-sand); border-radius:10px; padding:10px 12px; font-size:0.76rem;
+    font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; color:var(--adm-ink-soft);
+  }
+  .voice-sim-debug-panel .row{ display:flex; justify-content:space-between; padding:2px 0; }
+  .voice-sim-debug-panel .row strong{ color:var(--adm-ink); font-weight:700; }
+
+  /* ---------- HAYEVA Voice — Phase 3 : Téléphonie (config + coupe-circuits) ----------
+     Tant que provider est null, le point reste rouge — jamais un vrai
+     appel automatisé ne peut être déclenché sans configuration explicite. */
+  .voice-tel-status-card{
+    display:flex; align-items:center; gap:10px; background:var(--adm-card-bg); border:1px solid var(--adm-line);
+    border-radius:14px; padding:14px 18px; margin:16px 0; box-shadow:var(--adm-shadow-sm);
+  }
+  .voice-tel-status-dot{ width:12px; height:12px; border-radius:50%; background:var(--adm-red); flex:none; }
+  .voice-tel-status-dot.is-connected{ background:var(--adm-green); }
+  .voice-tel-status-label{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:var(--adm-ink); }
+  .voice-tel-mode-badge{
+    margin-left:auto; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.72rem; text-transform:uppercase;
+    letter-spacing:0.03em; padding:5px 12px; border-radius:999px; background:var(--adm-sand); color:var(--adm-ink-soft);
+  }
+  .voice-tel-mode-badge.is-production{ background:var(--adm-green-soft,#e3f6ea); color:var(--adm-green); }
+  .voice-tel-form{ background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:18px 20px; box-shadow:var(--adm-shadow-sm); }
+  .voice-tel-grid{ display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:6px; }
+  @media (min-width:700px){ .voice-tel-grid{ grid-template-columns:1fr 1fr; } }
+  .voice-tel-grid label{ display:flex; flex-direction:column; gap:5px; font-size:0.8rem; font-weight:700; color:var(--adm-ink-soft); }
+  .voice-tel-grid input, .voice-tel-grid select{
+    font-family:inherit; font-size:0.9rem; padding:10px 12px; border-radius:10px; border:1px solid var(--adm-line);
+    background:var(--adm-offwhite); color:var(--adm-ink);
+  }
+  .voice-tel-switches{ display:flex; flex-direction:column; gap:10px; margin-bottom:6px; }
+  .voice-tel-switch{ display:flex; align-items:center; gap:9px; font-size:0.88rem; color:var(--adm-ink); cursor:pointer; }
+  .voice-tel-save-msg{ font-size:0.84rem; color:var(--adm-ink-soft); }
 
   /* ---------- Chiffrage / Devis (outil interne admin) ---------- */
   .qc-type-toggle{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
@@ -3996,6 +4130,218 @@ if ('serviceWorker' in navigator){
   .ec-form-full{ grid-column:1 / -1; }
   .ec-section-title{ font-size:1.02rem; font-weight:700; margin-bottom:4px; }
   .ec-section-sub{ font-size:0.82rem; color:var(--ink-soft); margin-bottom:18px; }
+
+  /* ============================================================
+     ESPACE CLIENT — refonte "application" (ecx-*)
+     ============================================================
+     Namespace ENTIÈREMENT séparé de .ec-* : .ec-* est un vocabulaire de
+     classes partagé avec l'Espace Pro et re-thémé par l'Espace Admin
+     (#espaceProAdminPanel .ec-*, voir plus haut) — le réutiliser ou le
+     renommer casserait ces deux autres écrans. Tout ce qui est nouveau ici
+     (navigation basse, recherche, catégories, cartes prestations/logement/
+     équipement, carte profil) vit sous ecx- et n'est câblé QUE depuis le
+     nouveau JS de la refonte, jamais lu par l'admin ou l'espace pro.
+     Palette et rayons repris tels quels de la charte existante (--terracotta,
+     --sky-deep, --turquoise, --amber, --ivory, --ink, --line) — aucune
+     nouvelle couleur inventée. */
+
+  .ecx-app{ padding-bottom:0; }
+  .ecx-app.has-bottomnav{ padding-bottom:86px; } /* place pour la nav fixe, safe-area incluse */
+  /* La navigation basse REMPLACE le bandeau d'onglets historique en dessous
+     de 900px (jamais les deux à la fois) ; au-delà, #ecTabs redevient la
+     sidebar existante (voir @media 900px plus haut) et la nav basse est
+     masquée (.ecx-bottomnav{display:none !important} déjà posé plus bas) —
+     même architecture de navigation qu'avant, seule sa présentation change. */
+  #ecTabs{ display:none; }
+  @media (min-width:900px){ #ecTabs{ display:flex; } }
+
+  /* ---------- Navigation basse (mobile/tablette) ---------- */
+  .ecx-bottomnav{
+    position:fixed; left:0; right:0; bottom:0; z-index:400; display:none;
+    background:var(--white); border-top:1px solid var(--line);
+    box-shadow:0 -8px 24px -18px rgba(16,27,36,0.35);
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  .ecx-bottomnav.is-visible{ display:flex; }
+  .ecx-bottomnav-item{
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; padding:6px 2px; cursor:pointer; color:var(--ink-soft);
+    font-family:"Poppins",sans-serif; font-size:0.68rem; font-weight:700; min-height:44px;
+    border-radius:12px; transition:color .15s ease;
+  }
+  .ecx-bottomnav-item .ecx-bn-icon{ font-size:1.28rem; line-height:1; }
+  .ecx-bottomnav-item.is-active{ color:var(--terracotta); }
+  .ecx-bottomnav-item:active{ transform:scale(0.94); }
+  @media (min-width:900px){ .ecx-bottomnav{ display:none !important; } .ecx-app.has-bottomnav{ padding-bottom:0; } }
+
+  /* ---------- Barre de recherche + catégories (Accueil) ---------- */
+  .ecx-search{
+    display:flex; align-items:center; gap:10px; background:var(--sand-deep); border:1.5px solid var(--line);
+    border-radius:999px; padding:14px 20px; margin-bottom:18px; cursor:pointer; transition:border-color .15s ease;
+  }
+  .ecx-search:hover, .ecx-search:focus-within{ border-color:var(--sky); }
+  .ecx-search input{
+    flex:1 1 auto; border:none; background:none; font-family:inherit; font-size:0.92rem; color:var(--ink); min-width:0;
+  }
+  .ecx-search input:focus{ outline:none; }
+  .ecx-search-icon{ font-size:1rem; opacity:0.6; flex:0 0 auto; }
+
+  .ecx-cats{ display:flex; gap:10px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:8px; scrollbar-width:none; }
+  .ecx-cats::-webkit-scrollbar{ display:none; }
+  .ecx-cat-chip{
+    flex:0 0 auto; display:flex; align-items:center; gap:8px; background:var(--white); border:1.5px solid var(--line);
+    border-radius:999px; padding:10px 16px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem;
+    color:var(--ink); cursor:pointer; white-space:nowrap; transition:border-color .15s ease, background .15s ease;
+    min-height:44px;
+  }
+  .ecx-cat-chip .ecx-cat-emoji{ font-size:1.05rem; }
+  .ecx-cat-chip:hover{ border-color:var(--sky); }
+  .ecx-cat-chip.is-active{ background:var(--ink); border-color:var(--ink); color:#fff; }
+
+  /* ---------- Cartes premium génériques ---------- */
+  .ecx-card{
+    background:var(--white); border:1px solid var(--line); border-radius:22px; padding:20px 22px;
+    box-shadow:0 10px 28px -22px rgba(16,27,36,0.4); margin-bottom:16px;
+  }
+  .ecx-card-flat{ box-shadow:none; }
+  .ecx-promo-card{
+    background:linear-gradient(135deg, var(--ivory) 0%, var(--ivory-deep) 100%); border:1px solid var(--line);
+    border-radius:22px; padding:22px 24px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px;
+  }
+  .ecx-promo-card h3{ font-size:1.05rem; margin:0; color:var(--ink); }
+  .ecx-promo-card p{ font-size:0.86rem; color:var(--ink-soft); margin:0; line-height:1.5; }
+  .ecx-promo-cta{
+    align-self:flex-start; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.84rem; color:#fff;
+    background:var(--turquoise); border:none; border-radius:999px; padding:10px 20px; cursor:pointer; margin-top:4px;
+    min-height:44px;
+  }
+  .ecx-promo-cta:hover{ filter:brightness(1.06); }
+
+  /* ---------- Cartes prestation (populaires + marketplace) ---------- */
+  .ecx-svc-scroll{ display:flex; gap:14px; overflow-x:auto; padding:2px 2px 16px; margin-bottom:6px; scrollbar-width:none; }
+  .ecx-svc-scroll::-webkit-scrollbar{ display:none; }
+  .ecx-svc-grid{ display:grid; grid-template-columns:1fr; gap:14px; }
+  @media (min-width:640px){ .ecx-svc-grid{ grid-template-columns:1fr 1fr; } }
+  @media (min-width:1000px){ .ecx-svc-grid{ grid-template-columns:1fr 1fr 1fr; } }
+  .ecx-svc-card{
+    flex:0 0 78%; background:var(--white); border:1px solid var(--line); border-radius:20px; overflow:hidden;
+    box-shadow:0 10px 26px -20px rgba(16,27,36,0.4); display:flex; flex-direction:column; transition:transform .18s ease, box-shadow .18s ease;
+  }
+  @media (min-width:520px){ .ecx-svc-card{ flex-basis:320px; } }
+  .ecx-svc-grid .ecx-svc-card{ flex:none; width:auto; }
+  .ecx-svc-card:hover{ transform:translateY(-2px); box-shadow:0 16px 32px -18px rgba(16,27,36,0.45); }
+  .ecx-svc-card-visual{
+    height:104px; display:flex; align-items:center; justify-content:center; font-size:2.4rem;
+    background:linear-gradient(135deg, var(--sand-deep) 0%, var(--ivory) 100%);
+  }
+  .ecx-svc-card-visual.ecx-cat-clim{ background:linear-gradient(135deg, var(--cat-clim-a) 0%, var(--cat-clim-b) 100%); }
+  .ecx-svc-card-visual.ecx-cat-chauffage{ background:linear-gradient(135deg, #F7D9CE 0%, var(--cat-chauffage) 100%); }
+  .ecx-svc-card-visual.ecx-cat-plomberie{ background:linear-gradient(135deg, #DCEEF9 0%, var(--cat-plomberie) 100%); }
+  .ecx-svc-card-visual.ecx-cat-multi, .ecx-svc-card-visual.ecx-cat-devis, .ecx-svc-card-visual.ecx-cat-pro{ background:linear-gradient(135deg, var(--turquoise-soft) 0%, var(--turquoise) 100%); }
+  .ecx-svc-card-body{ padding:16px 18px 18px; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; }
+  .ecx-svc-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.95rem; color:var(--ink); margin:0; }
+  .ecx-svc-card-desc{ font-size:0.8rem; color:var(--ink-soft); margin:0; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .ecx-svc-card-meta{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
+  .ecx-svc-card-price{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.88rem; color:var(--ink); }
+  .ecx-svc-card-duration{ font-size:0.74rem; color:var(--ink-soft); }
+  .ecx-svc-card-cta{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:#fff; background:var(--terracotta);
+    border:none; border-radius:999px; padding:9px 18px; cursor:pointer; margin-top:8px; min-height:40px;
+  }
+  .ecx-svc-card-cta:hover{ filter:brightness(1.08); }
+
+  /* ---------- Recherche/filtres page Prestations ---------- */
+  .ecx-filter-row{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:6px; scrollbar-width:none; }
+  .ecx-filter-row::-webkit-scrollbar{ display:none; }
+  .ecx-filter-pill{
+    flex:0 0 auto; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; color:var(--ink-soft);
+    background:var(--sand-deep); border:none; border-radius:999px; padding:9px 16px; cursor:pointer; min-height:40px;
+  }
+  .ecx-filter-pill.is-active{ background:var(--ink); color:#fff; }
+
+  /* ---------- Profil : carte centrale + tuiles logements/équipements ---------- */
+  .ecx-profile-hero{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:28px 20px; }
+  .ecx-profile-avatar{
+    width:76px; height:76px; border-radius:50%; background:var(--sky-deep); color:#fff; display:flex;
+    align-items:center; justify-content:center; font-family:"Poppins",sans-serif; font-weight:800; font-size:1.6rem;
+    margin-bottom:6px;
+  }
+  .ecx-profile-name{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.15rem; color:var(--ink); margin:0; }
+  .ecx-profile-tag{ font-size:0.8rem; color:var(--ink-soft); margin:0; }
+  .ecx-profile-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:18px 0 22px; }
+  .ecx-profile-tile{
+    background:var(--white); border:1px solid var(--line); border-radius:20px; padding:20px 16px; text-align:center;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px; min-height:44px;
+    box-shadow:0 10px 24px -20px rgba(16,27,36,0.35); transition:transform .15s ease;
+  }
+  .ecx-profile-tile:hover{ transform:translateY(-2px); }
+  .ecx-profile-tile .ecx-tile-icon{ font-size:1.7rem; }
+  .ecx-profile-tile .ecx-tile-label{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem; color:var(--ink); }
+  .ecx-option-list{ display:flex; flex-direction:column; }
+  .ecx-option-row{
+    display:flex; align-items:center; gap:12px; padding:15px 4px; border-bottom:1px solid var(--line);
+    background:none; border-left:none; border-right:none; border-top:none; width:100%; text-align:left; cursor:pointer;
+    font-family:inherit; font-size:0.9rem; color:var(--ink); min-height:44px;
+  }
+  .ecx-option-row .ecx-opt-icon{ font-size:1.1rem; flex:0 0 auto; width:26px; }
+  .ecx-option-row .ecx-opt-label{ flex:1 1 auto; }
+  .ecx-option-row .ecx-opt-arrow{ color:var(--ink-soft); }
+  .ecx-option-row.is-danger{ color:var(--terracotta-deep); }
+
+  /* ---------- Cartes logement / équipement ---------- */
+  .ecx-home-card{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--white); border:1px solid var(--line);
+    border-radius:20px; padding:16px 18px; margin-bottom:12px; box-shadow:0 8px 22px -20px rgba(16,27,36,0.4);
+  }
+  .ecx-home-card-visual{ width:52px; height:52px; border-radius:14px; background:var(--sand-deep); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex:0 0 auto; }
+  .ecx-home-card-body{ flex:1 1 auto; min-width:0; }
+  .ecx-home-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.94rem; color:var(--ink); margin:0 0 2px; }
+  .ecx-home-card-meta{ font-size:0.8rem; color:var(--ink-soft); margin:0; }
+  .ecx-equip-card{
+    display:flex; align-items:center; gap:14px; background:var(--white); border:1px solid var(--line);
+    border-radius:18px; padding:14px 16px; margin-bottom:10px;
+  }
+  .ecx-equip-card .ecx-equip-emoji{ font-size:1.6rem; flex:0 0 auto; }
+  .ecx-equip-card-body{ flex:1 1 auto; }
+  .ecx-equip-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem; color:var(--ink); margin:0 0 2px; }
+  .ecx-equip-card-meta{ font-size:0.78rem; color:var(--ink-soft); margin:0; }
+
+  /* ---------- Documents : segmented control ---------- */
+  .ecx-doc-card{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:14px; background:var(--white);
+    border:1px solid var(--line); border-radius:18px; padding:16px 18px; margin-bottom:12px;
+    box-shadow:0 8px 22px -20px rgba(16,27,36,0.35);
+  }
+  .ecx-doc-card-eyebrow{ font-size:0.68rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 4px; }
+  .ecx-doc-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:var(--ink); margin:0 0 4px; }
+  .ecx-doc-card-meta{ font-size:0.8rem; color:var(--ink-soft); margin:0; }
+  .ecx-doc-card-price{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1rem; color:var(--ink); white-space:nowrap; }
+  .ecx-doc-card-actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .ecx-doc-card-actions button{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--sky-deep); background:var(--sand-deep);
+    border:none; border-radius:999px; padding:8px 14px; cursor:pointer; min-height:38px;
+  }
+  .ecx-doc-card-actions button.is-primary{ background:var(--terracotta); color:#fff; }
+
+  /* ---------- Skeleton loaders ---------- */
+  .ecx-skeleton{ display:flex; flex-direction:column; gap:12px; }
+  .ecx-skel-line{
+    height:16px; border-radius:8px; background:linear-gradient(90deg, var(--sand-deep) 25%, var(--line) 37%, var(--sand-deep) 63%);
+    background-size:400% 100%; animation:ecxShimmer 1.4s ease infinite;
+  }
+  .ecx-skel-card{ height:88px; border-radius:20px; background:linear-gradient(90deg, var(--sand-deep) 25%, var(--line) 37%, var(--sand-deep) 63%); background-size:400% 100%; animation:ecxShimmer 1.4s ease infinite; }
+  @keyframes ecxShimmer{ 0%{ background-position:100% 0; } 100%{ background-position:-100% 0; } }
+  @media (prefers-reduced-motion: reduce){ .ecx-skel-line, .ecx-skel-card{ animation:none; } }
+
+  /* ---------- Section headers réutilisables ---------- */
+  .ecx-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:22px 0 12px; }
+  .ecx-section-head h3{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.02rem; color:var(--ink); margin:0; }
+  .ecx-section-head .ecx-section-link{ font-size:0.8rem; font-weight:700; color:var(--sky-deep); background:none; border:none; cursor:pointer; }
+
+  @media (max-width:480px){
+    .ecx-card, .ecx-promo-card{ padding:18px 16px; border-radius:18px; }
+    .ecx-profile-tiles{ gap:10px; }
+  }
 
   /* FAQ — section volontairement plus claire (ivoire) pour casser la
      succession de sections bleu nuit, quel que soit le thème clair/sombre
@@ -5006,12 +5352,30 @@ if ('serviceWorker' in navigator){
     <span class="ai-widget-header-title" id="aiWidgetTitle">Assistant Hayeva</span>
     <button type="button" class="ai-widget-close" id="aiWidgetClose" aria-label="Fermer">✕</button>
   </div>
+  <div class="ai-widget-mode-tabs" id="aiWidgetModeTabs">
+    <button type="button" class="ai-widget-mode-btn is-active" id="aiWidgetModeTextBtn">💬 Écrire</button>
+    <button type="button" class="ai-widget-mode-btn" id="aiWidgetModeVoiceBtn">🎙️ Parler</button>
+  </div>
   <div class="ai-widget-messages" id="aiWidgetMessages"></div>
   <p class="ai-widget-typing" id="aiWidgetTyping" hidden>Je réfléchis<span class="ai-widget-typing-dots"><span>.</span><span>.</span><span>.</span></span></p>
   <form class="ai-widget-form" id="aiWidgetForm">
     <input type="text" id="aiWidgetInput" placeholder="Décrivez votre problème…" autocomplete="off" maxlength="600">
     <button type="submit" class="ai-widget-send" id="aiWidgetSend" aria-label="Envoyer">➤</button>
   </form>
+  <div class="ai-widget-voice-panel" id="aiWidgetVoicePanel" hidden>
+    <div class="ai-widget-voice-orb" id="aiWidgetVoiceOrb">
+      <span class="ai-widget-voice-wave"><span></span><span></span><span></span><span></span><span></span></span>
+      <span class="ai-widget-voice-orb-icon">🎙️</span>
+    </div>
+    <p class="ai-widget-voice-status" id="aiWidgetVoiceStatus">Parlez à HAYEVA en direct, comme une vraie conversation.</p>
+    <p class="ai-widget-voice-error" id="aiWidgetVoiceError" hidden></p>
+    <audio id="aiWidgetVoiceAudio" autoplay playsinline hidden></audio>
+    <button type="button" class="ai-widget-voice-start-btn" id="aiWidgetVoiceStartBtn">🎙️ Parler à HAYEVA</button>
+    <div class="ai-widget-voice-controls" id="aiWidgetVoiceControls" hidden>
+      <button type="button" class="ai-widget-voice-ctrl-btn" id="aiWidgetVoiceMuteBtn">🔇 Couper le micro</button>
+      <button type="button" class="ai-widget-voice-ctrl-btn ai-widget-voice-ctrl-end" id="aiWidgetVoiceEndBtn">Terminer la conversation</button>
+    </div>
+  </div>
 </div>
 <!-- Fiche détaillée d'un rendez-vous, ouverte depuis un clic sur un bloc du
      planning hebdomadaire Administration (voir admOpenBookingModal). -->
@@ -7230,13 +7594,25 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPageVoice" data-adm-page="voice" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">HAYEVA Voice — Simulateur</h2>
-                  <p class="adm-page-sub">Testez le moteur de l'assistant téléphonique HAYEVA en tapant comme si vous étiez le client — aucun appel réel, aucun rendez-vous de production créé.</p>
+                  <h2 class="adm-page-title">HAYEVA Voice</h2>
+                  <p class="adm-page-sub">Assistant téléphonique IA HAYEVA — simulateur, configuration téléphonie et journal des appels.</p>
+                </div>
+                <div class="voice-sim-mode-toggle">
+                  <button type="button" class="voice-sim-mode-btn is-active" id="voiceSectionTabSimBtn">Simulateur</button>
+                  <button type="button" class="voice-sim-mode-btn" id="voiceSectionTabTelBtn">Téléphonie</button>
+                  <button type="button" class="voice-sim-mode-btn" id="voiceSectionTabCallsBtn">Appels</button>
+                </div>
+
+                <div id="voiceSectionSimulateur">
+                <div class="voice-sim-test-banner">MODE TEST — Aucune action sur les rendez-vous réels</div>
+                <div class="voice-sim-mode-toggle">
+                  <button type="button" class="voice-sim-mode-btn is-active" id="voiceSimModeTextBtn">⌨️ Test texte</button>
+                  <button type="button" class="voice-sim-mode-btn" id="voiceSimModeVoiceBtn">🎙️ Test vocal</button>
                 </div>
                 <div class="voice-sim-layout">
                   <div class="voice-sim-chat-card">
                     <div class="voice-sim-chat-header">
-                      <span class="voice-sim-badge-test">Mode simulation — aucune donnée de production modifiée</span>
+                      <span class="voice-sim-chat-label">Client ↔ Assistant HAYEVA</span>
                       <button type="button" class="voice-sim-reset-btn" id="voiceSimResetBtn">↺ Nouvelle simulation</button>
                     </div>
                     <div class="voice-sim-messages" id="voiceSimMessages"></div>
@@ -7246,15 +7622,85 @@ if ('serviceWorker' in navigator){
                       <button type="submit" id="voiceSimSend" disabled>Envoyer</button>
                     </form>
                     <p class="voice-sim-error" id="voiceSimError" hidden></p>
+                    <div class="voice-sim-voice-panel" id="voiceSimVoicePanel" hidden>
+                      <button type="button" class="voice-sim-mic-btn" id="voiceSimMicBtn" title="Démarrer une conversation vocale">🎙️</button>
+                      <p class="voice-sim-voice-status" id="voiceSimVoiceStatus">Appuyez pour démarrer une conversation vocale</p>
+                      <p class="voice-sim-voice-interim" id="voiceSimVoiceInterim"></p>
+                    </div>
+                    <label class="voice-sim-debug-toggle"><input type="checkbox" id="voiceSimDebugToggle"> Mode DEBUG (latences — jamais visible côté client réel)</label>
+                    <div class="voice-sim-debug-panel" id="voiceSimDebugPanel" hidden></div>
                   </div>
                   <div class="voice-sim-state-card">
                     <h3 class="adm-subhead" style="margin-top:0;">État de l'appel</h3>
                     <div class="voice-sim-states" id="voiceSimStates"></div>
-                    <h3 class="adm-subhead">Actions déclenchées par l'IA</h3>
+                    <h3 class="adm-subhead">Informations comprises</h3>
+                    <div class="voice-sim-info" id="voiceSimInfo"></div>
+                    <h3 class="adm-subhead">Actions HAYEVA Voice</h3>
                     <div class="voice-sim-tools" id="voiceSimTools">
                       <p class="ec-row-meta">Aucune action pour le moment.</p>
                     </div>
                   </div>
+                </div>
+                </div>
+
+                <div id="voiceSectionTelephonie" hidden>
+                  <div class="voice-tel-status-card">
+                    <span class="voice-tel-status-dot" id="voiceTelStatusDot"></span>
+                    <span class="voice-tel-status-label" id="voiceTelStatusLabel">Chargement…</span>
+                    <span class="voice-tel-mode-badge" id="voiceTelModeBadge"></span>
+                  </div>
+                  <form id="voiceTelForm" class="voice-tel-form">
+                    <div class="voice-tel-grid">
+                      <label>Fournisseur téléphonique
+                        <select id="voiceTelProvider">
+                          <option value="">— Non configuré —</option>
+                          <option value="telnyx">Telnyx</option>
+                          <option value="twilio">Twilio</option>
+                        </select>
+                      </label>
+                      <label>Numéro HAYEVA
+                        <input type="text" id="voiceTelPhoneNumber" placeholder="+33 …">
+                      </label>
+                      <label>Numéro de transfert humain
+                        <input type="text" id="voiceTelTransferNumber" placeholder="+33 …">
+                      </label>
+                      <label>Mode
+                        <select id="voiceTelMode">
+                          <option value="test">🧪 Test</option>
+                          <option value="production">🟢 Production</option>
+                        </select>
+                      </label>
+                    </div>
+                    <h3 class="adm-subhead">Coupe-circuits</h3>
+                    <p class="adm-page-sub" style="margin-top:-8px;">Si HAYEVA Voice est désactivé, aucun nouvel appel automatisé n'est initié — quelle que soit la configuration ci-dessus.</p>
+                    <div class="voice-tel-switches">
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelEnabled"> HAYEVA Voice (général)</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelInbound"> Appels entrants</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelOutbound"> Rappels automatiques (sortants)</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelAiBooking"> Création de RDV par l'IA (production)</label>
+                      <label class="voice-tel-switch"><input type="checkbox" id="voiceTelTransfer"> Transfert humain</label>
+                    </div>
+                    <h3 class="adm-subhead">Limites de dépenses</h3>
+                    <div class="voice-tel-grid">
+                      <label>Appels sortants max / jour
+                        <input type="number" id="voiceTelMaxOutbound" min="0" step="1">
+                      </label>
+                      <label>Durée max d'un appel (min)
+                        <input type="number" id="voiceTelMaxDuration" min="0" step="1">
+                      </label>
+                      <label>Rappels max / jour
+                        <input type="number" id="voiceTelMaxCallbacks" min="0" step="1">
+                      </label>
+                    </div>
+                    <div class="admin-bk-propose-form-row">
+                      <button type="submit" id="voiceTelSaveBtn">Enregistrer</button>
+                      <p class="voice-tel-save-msg" id="voiceTelSaveMsg" hidden></p>
+                    </div>
+                  </form>
+                </div>
+
+                <div id="voiceSectionAppels" hidden>
+                  <p class="ec-row-meta">Aucun appel réel pour le moment — cette liste se remplira automatiquement dès que la téléphonie sera configurée et qu'un premier appel entrant ou sortant aura eu lieu (Phase 4).</p>
                 </div>
               </section>
 
@@ -7449,7 +7895,7 @@ if ('serviceWorker' in navigator){
         </div>
       </div>
 
-      <div id="espaceClientDashboard" hidden>
+      <div id="espaceClientDashboard" class="ecx-app has-bottomnav" hidden>
         <div class="espace-pro-dash-banner">
           <span id="espaceClientBannerText">Espace client</span>
           <div class="espace-dash-banner-actions">
@@ -7460,6 +7906,7 @@ if ('serviceWorker' in navigator){
         <div class="ec-dash-body">
           <nav class="ec-tabs" id="ecTabs">
             <button type="button" class="ec-tab is-active" data-ec-tab="home">Accueil</button>
+            <button type="button" class="ec-tab" data-ec-tab="services">Prestations</button>
             <button type="button" class="ec-tab" data-ec-tab="appointments">Mes rendez-vous</button>
             <button type="button" class="ec-tab" data-ec-tab="interventions">Mes interventions</button>
             <button type="button" class="ec-tab" data-ec-tab="equipment">Mes équipements</button>
@@ -7472,6 +7919,7 @@ if ('serviceWorker' in navigator){
 
           <div class="ec-panels">
             <section class="ec-panel" id="ecPanelHome" data-ec-panel="home"></section>
+            <section class="ec-panel" id="ecPanelServices" data-ec-panel="services" hidden></section>
             <section class="ec-panel" id="ecPanelAppointments" data-ec-panel="appointments" hidden></section>
             <section class="ec-panel" id="ecPanelInterventions" data-ec-panel="interventions" hidden></section>
             <section class="ec-panel" id="ecPanelEquipment" data-ec-panel="equipment" hidden></section>
@@ -7482,6 +7930,14 @@ if ('serviceWorker' in navigator){
             <section class="ec-panel" id="ecPanelProfile" data-ec-panel="profile" hidden></section>
           </div>
         </div>
+
+        <nav class="ecx-bottomnav is-visible" id="ecxBottomNav" aria-label="Navigation Espace Client">
+          <button type="button" class="ecx-bottomnav-item is-active" data-ecx-section="home"><span class="ecx-bn-icon" aria-hidden="true">🏠</span>Accueil</button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="services"><span class="ecx-bn-icon" aria-hidden="true">🛠️</span>Prestations</button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="appointments"><span class="ecx-bn-icon" aria-hidden="true">📅</span>Rendez-vous</button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="documents"><span class="ecx-bn-icon" aria-hidden="true">📄</span>Documents</button>
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="profile"><span class="ecx-bn-icon" aria-hidden="true">👤</span>Profil</button>
+        </nav>
       </div>
 
     </div>
@@ -9688,6 +10144,19 @@ if ('serviceWorker' in navigator){
   showStep(1, true);
 
   window.sudBooking = {
+    // Ajouts pour la refonte Espace Client (page "Prestations" + carrousel
+    // "populaires" de l'accueil) : exposent le catalogue déjà chargé
+    // (SERVICES/POPULAR_IDS/CATEGORY_META, définis plus haut) sans jamais le
+    // dupliquer — mêmes prix, mêmes libellés, même logique de catégorie que
+    // partout ailleurs sur le site.
+    allServices: function(){ return SERVICES.slice(); },
+    popularServices: function(){
+      return POPULAR_IDS.map(function(id){ return SERVICES.filter(function(s){ return s.id === id; })[0]; }).filter(Boolean);
+    },
+    categoriesList: function(){
+      return Object.keys(CATEGORY_META).map(function(key){ return { id:key, label:CATEGORY_META[key].label }; });
+    },
+    serviceCategory: function(id){ return serviceCategory(id); },
     selectService: function(id){
       state.serviceId = id;
       state.time = null;
@@ -13160,7 +13629,7 @@ if ('serviceWorker' in navigator){
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
-    if (key === 'voice' && typeof voiceSimInit === 'function') voiceSimInit();
+    if (key === 'voice' && typeof voiceSectionInit === 'function') voiceSectionInit();
   }
 
   // ============================================================
@@ -14925,9 +15394,58 @@ if ('serviceWorker' in navigator){
     ['create_booking', 'Création du rendez-vous'], ['completed', 'Terminé']
   ];
   var VOICE_ESCAPE_STATES = { human_transfer: 'Transfert humain', callback_required: 'Rappel nécessaire', failed: 'Échec', cancelled: 'Annulé' };
+  var VOICE_INFO_FIELDS = [
+    ['customer_name', 'Client'], ['customer_phone', 'Téléphone'], ['customer_address', 'Adresse'], ['customer_city', 'Ville'],
+    ['customer_type', 'Type de client'], ['service_category', 'Service'], ['problem_description', 'Problème'],
+    ['urgency_level', "Niveau d'urgence"], ['desired_date', 'Date souhaitée'], ['desired_slot_label', 'Créneau souhaité'],
+  ];
+  var VOICE_INFO_VALUE_LABELS = {
+    customer_type: { particulier: 'Particulier', professionnel: 'Professionnel' },
+    service_category: { plomberie: 'Plomberie', chauffage: 'Chauffage', climatisation: 'Climatisation', autre: 'Autre' },
+    urgency_level: { normale: 'Normale', elevee: 'Élevée', urgence: 'Urgence' },
+  };
+  // Outils qui écriraient un VRAI rendez-vous en dehors de la simulation —
+  // toujours étiquetés [TEST] dans le journal, jamais ambigus avec une
+  // action réelle (voir §1 du cahier des charges).
+  var VOICE_MUTATING_TOOLS = { create_booking: 1, reschedule_booking: 1, cancel_booking: 1 };
   var voiceSimSessionId = null;
   var voiceSimInFlight = false;
   var voiceSimInitialized = false;
+
+  function voiceSimFmtTime(iso){
+    try { return new Date(iso).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+    catch(e){ return ''; }
+  }
+
+  // Libellé lisible d'un événement du journal — jamais une clé/un secret :
+  // les outils serveur n'en renvoient aucun (voir _shared/voice/tools.ts),
+  // ce libellé se contente de résumer ce qu'ils ont déjà renvoyé.
+  function voiceSimEventLabel(ev){
+    var isMutating = ev.tool_name && VOICE_MUTATING_TOOLS[ev.tool_name];
+    if (ev.type === 'tool_call'){
+      return ev.tool_name + (isMutating ? ' [TEST]' : '');
+    }
+    if (ev.type === 'tool_result'){
+      var r = ev.tool_result || {};
+      if (r.error) return 'Échec — ' + r.error;
+      if (ev.tool_name === 'get_available_slots'){
+        var n = (r.slots || []).length;
+        return n ? (n + ' créneau' + (n > 1 ? 'x' : '') + ' retourné' + (n > 1 ? 's' : '')) : 'Aucun créneau disponible';
+      }
+      if (ev.tool_name === 'create_booking' && r.reference) return 'Rendez-vous de test créé (réf. ' + r.reference + ')' + (isMutating ? ' [TEST]' : '');
+      if (ev.tool_name === 'reschedule_booking' && r.reference) return 'Rendez-vous de test déplacé (réf. ' + r.reference + ')' + (isMutating ? ' [TEST]' : '');
+      if (ev.tool_name === 'cancel_booking' && r.reference) return 'Rendez-vous de test annulé (réf. ' + r.reference + ')' + (isMutating ? ' [TEST]' : '');
+      if (ev.tool_name === 'record_customer_info') return 'Informations enregistrées : ' + ((r.recorded || []).join(', ') || '—');
+      return '→ ' + JSON.stringify(r);
+    }
+    if (ev.type === 'state_change'){
+      var label = null;
+      VOICE_STATE_ORDER.forEach(function(p){ if (p[0] === ev.state) label = p[1]; });
+      if (!label) label = VOICE_ESCAPE_STATES[ev.state] || ev.state;
+      return 'Étape : ' + label;
+    }
+    return ev.type;
+  }
 
   function voiceSimAddMessage(role, text){
     var wrap = document.getElementById('voiceSimMessages');
@@ -14968,20 +15486,37 @@ if ('serviceWorker' in navigator){
     var placeholder = wrap.querySelector('.ec-row-meta');
     if (placeholder) placeholder.remove();
     events.forEach(function(ev){
-      if (ev.type === 'tool_call'){
-        var div = document.createElement('div');
-        div.className = 'voice-sim-tool-call';
-        div.textContent = ev.tool_name + '(' + JSON.stringify(ev.tool_args || {}) + ')';
-        wrap.appendChild(div);
-      } else if (ev.type === 'tool_result'){
-        var isErr = ev.tool_result && ev.tool_result.error;
-        var div2 = document.createElement('div');
-        div2.className = 'voice-sim-tool-call' + (isErr ? ' is-error' : '');
-        div2.textContent = '→ ' + JSON.stringify(ev.tool_result || {});
-        wrap.appendChild(div2);
-      }
+      if (ev.type !== 'tool_call' && ev.type !== 'tool_result' && ev.type !== 'state_change') return;
+      var isErr = ev.type === 'tool_result' && ev.tool_result && ev.tool_result.error;
+      var isMutating = ev.tool_name && VOICE_MUTATING_TOOLS[ev.tool_name];
+      var div = document.createElement('div');
+      div.className = 'voice-sim-tool-call' + (isErr ? ' is-error' : '') + (isMutating ? ' is-mutating' : '');
+      var ts = document.createElement('span');
+      ts.className = 'ts';
+      ts.textContent = voiceSimFmtTime(ev.created_at) || '';
+      div.appendChild(ts);
+      div.appendChild(document.createTextNode(voiceSimEventLabel(ev)));
+      wrap.appendChild(div);
     });
     wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  // "Informations comprises" — jamais inventées : un champ non encore
+  // communiqué par le client s'affiche "Non renseigné", jamais deviné.
+  function voiceSimRenderInfo(info){
+    var wrap = document.getElementById('voiceSimInfo');
+    if (!wrap) return;
+    info = info || {};
+    var html = '';
+    VOICE_INFO_FIELDS.forEach(function(pair){
+      var key = pair[0], label = pair[1];
+      var raw = info[key];
+      var valueLabels = VOICE_INFO_VALUE_LABELS[key];
+      var display = raw ? (valueLabels ? (valueLabels[raw] || raw) : raw) : null;
+      html += '<div class="voice-sim-info-row"><span class="lbl">' + admEscape(label) + '</span>' +
+        '<span class="val' + (display ? '' : ' is-empty') + '">' + admEscape(display || 'Non renseigné') + '</span></div>';
+    });
+    wrap.innerHTML = html;
   }
 
   function voiceSimSetBusy(busy){
@@ -15009,6 +15544,7 @@ if ('serviceWorker' in navigator){
     voiceSimShowError('');
     voiceSimSessionId = null;
     voiceSimRenderStates('greeting');
+    voiceSimRenderInfo({});
     voiceSimSetBusy(true);
     sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: null } }).then(function(res){
       voiceSimSetBusy(false);
@@ -15020,6 +15556,7 @@ if ('serviceWorker' in navigator){
       voiceSimSessionId = data.session_id;
       voiceSimAddMessage('assistant', data.reply);
       voiceSimRenderStates(data.call_state);
+      voiceSimRenderInfo(data.info);
       var input = document.getElementById('voiceSimInput');
       var sendBtn = document.getElementById('voiceSimSend');
       if (input){ input.disabled = false; input.focus(); }
@@ -15030,39 +15567,354 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // Envoi partagé texte/vocal — le MÊME appel au MÊME moteur
+  // (voice-assistant-simulate) quel que soit le mode d'entrée : la Phase 2
+  // n'ajoute qu'une couche audio au-dessus du moteur texte de la Phase 1,
+  // jamais un second assistant. clientT0 permet au mode vocal de mesurer sa
+  // propre latence réseau+serveur pour le panneau DEBUG.
+  function voiceSimSendMessage(text){
+    voiceSimShowError('');
+    voiceSimSetBusy(true);
+    var clientT0 = Date.now();
+    return sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: voiceSimSessionId, message: text } }).then(function(res){
+      voiceSimSetBusy(false);
+      var data = res.data;
+      if (res.error || !data){ voiceSimShowError('Erreur de connexion au simulateur.'); return null; }
+      if (data.status === 'session_ended'){ voiceSimShowError('Cette simulation est terminée — lancez-en une nouvelle.'); return null; }
+      if (data.status === 'session_cap_reached'){ voiceSimShowError('Limite de messages atteinte pour cette simulation — lancez-en une nouvelle.'); return null; }
+      if (data.status !== 'ok'){ voiceSimShowError('Le simulateur est momentanément indisponible.'); return null; }
+      data._client_round_trip_ms = Date.now() - clientT0;
+      voiceSimAddToolEvents(data.events);
+      voiceSimAddMessage('assistant', data.reply);
+      voiceSimRenderStates(data.call_state);
+      voiceSimRenderInfo(data.info);
+      return data;
+    }).catch(function(){
+      voiceSimSetBusy(false);
+      voiceSimShowError('Erreur de connexion au simulateur.');
+      return null;
+    });
+  }
+
+  // ---------- Phase 2 : test vocal navigateur (Web Speech API) ----------
+  // STT/TTS du NAVIGATEUR uniquement pour ce test admin — aucune clé ni
+  // fournisseur externe : c'est justement l'objectif de la Phase 2, valider
+  // le moteur en conversation vocale AVANT de brancher un vrai fournisseur
+  // téléphonique/STT/TTS (Phase 3+, voir _shared/voice/providers.ts). Le
+  // "barge-in" (coupure de l'assistant si le client recommence à parler)
+  // prépare exactement le même besoin pour le futur téléphone.
+  var voiceSimRecognition = null;
+  var voiceSimVoiceActive = false; // le client a démarré une conversation vocale (peut englober plusieurs tours)
+  var voiceSimFrenchVoice = null;
+  var voiceSimSttStartedAt = 0;
+  var voiceSimLastTimings = null;
+
+  function voiceSimPickFrenchVoice(){
+    if (!('speechSynthesis' in window)) return;
+    var voices = window.speechSynthesis.getVoices();
+    voiceSimFrenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
+  }
+
+  function voiceSimSetVoiceStatus(text, cls){
+    var el = document.getElementById('voiceSimVoiceStatus');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'voice-sim-voice-status' + (cls ? ' ' + cls : '');
+  }
+
+  function voiceSimRenderDebug(data, extra){
+    var panel = document.getElementById('voiceSimDebugPanel');
+    var toggle = document.getElementById('voiceSimDebugToggle');
+    if (!panel || !toggle || !toggle.checked) return;
+    var t = (data && data.timings) || {};
+    var rows = [
+      ['Total serveur', t.total_ms],
+      ['— dont LLM', t.llm_ms],
+      ['— dont outils', t.tools_ms],
+      ['Aller-retour client (réseau+serveur)', data && data._client_round_trip_ms],
+    ];
+    if (extra){
+      rows.push(['Reconnaissance vocale (client)', extra.sttMs]);
+      rows.push(['Démarrage synthèse vocale', extra.ttsStartMs]);
+    }
+    panel.hidden = false;
+    panel.innerHTML = rows.filter(function(r){ return typeof r[1] === 'number'; }).map(function(r){
+      return '<div class="row"><span>' + admEscape(r[0]) + '</span><strong>' + Math.round(r[1]) + ' ms</strong></div>';
+    }).join('') || '<div class="row"><span>Aucune donnée pour ce tour.</span></div>';
+  }
+
+  function voiceSimSpeak(text, onDone){
+    if (!('speechSynthesis' in window)){ if (onDone) onDone(); return; }
+    window.speechSynthesis.cancel(); // coupe toute synthèse en cours (barge-in ou tour précédent)
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    if (voiceSimFrenchVoice) utter.voice = voiceSimFrenchVoice;
+    var t0 = Date.now();
+    var ttsStartMs = null;
+    utter.onstart = function(){
+      ttsStartMs = Date.now() - t0;
+      voiceSimSetVoiceStatus('🔊 HAYEVA Voice parle…', 'is-speaking');
+      var btn = document.getElementById('voiceSimMicBtn');
+      if (btn){ btn.classList.remove('is-listening'); btn.classList.add('is-speaking'); }
+    };
+    utter.onend = function(){
+      if (voiceSimLastTimings) voiceSimRenderDebug(voiceSimLastTimings, { ttsStartMs: ttsStartMs });
+      var btn = document.getElementById('voiceSimMicBtn');
+      if (btn) btn.classList.remove('is-speaking');
+      if (voiceSimVoiceActive){
+        voiceSimSetVoiceStatus('🎙️ HAYEVA Voice écoute…', 'is-listening');
+        if (btn) btn.classList.add('is-listening');
+      } else {
+        voiceSimSetVoiceStatus('Appuyez pour démarrer une conversation vocale', '');
+      }
+      if (onDone) onDone();
+    };
+    utter.onerror = function(){ if (onDone) onDone(); };
+    try { window.speechSynthesis.speak(utter); }
+    catch(e){ voiceSimSetVoiceStatus('Synthèse vocale indisponible — réponse affichée en texte uniquement.', ''); if (onDone) onDone(); }
+  }
+
+  // Traite une phrase finale reconnue : même chemin que le mode texte
+  // (voiceSimSendMessage), puis prononce la réponse. Le micro reste actif en
+  // continu pendant ce tour (barge-in possible dès que l'assistant parle).
+  function voiceSimHandleFinalTranscript(text){
+    if (!text || !text.trim() || voiceSimInFlight) return;
+    document.getElementById('voiceSimVoiceInterim').textContent = '';
+    voiceSimAddMessage('user', text.trim());
+    var sttMs = Date.now() - voiceSimSttStartedAt;
+    voiceSimSendMessage(text.trim()).then(function(data){
+      if (!data) return;
+      voiceSimLastTimings = data;
+      voiceSimRenderDebug(data, { sttMs: sttMs });
+      voiceSimSpeak(data.reply, null);
+    });
+  }
+
+  function voiceSimInitRecognition(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    var rec = new Ctor();
+    rec.lang = 'fr-FR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = function(event){
+      var interim = '', final = '';
+      for (var i = event.resultIndex; i < event.results.length; i++){
+        var transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += transcript;
+        else interim += transcript;
+      }
+      // Barge-in : dès que le client recommence à parler (même un résultat
+      // provisoire), on coupe immédiatement la synthèse en cours plutôt que
+      // d'attendre la phrase complète — exactement le comportement attendu
+      // au téléphone (voir §"BARGE-IN" du cahier des charges).
+      if ((interim || final) && 'speechSynthesis' in window && window.speechSynthesis.speaking){
+        window.speechSynthesis.cancel();
+      }
+      var interimEl = document.getElementById('voiceSimVoiceInterim');
+      if (interimEl) interimEl.textContent = interim;
+      if (final) voiceSimHandleFinalTranscript(final);
+    };
+    rec.onstart = function(){
+      voiceSimSttStartedAt = Date.now();
+      voiceSimSetVoiceStatus('🎙️ HAYEVA Voice écoute…', 'is-listening');
+      var btn = document.getElementById('voiceSimMicBtn');
+      if (btn) btn.classList.add('is-listening');
+    };
+    rec.onerror = function(event){
+      if (event.error === 'no-speech' || event.error === 'aborted') return; // silence normal, onend relance
+      voiceSimShowError('Reconnaissance vocale indisponible (' + event.error + ').');
+    };
+    rec.onend = function(){
+      // "continuous" s'arrête tout de même après un silence prolongé selon
+      // le navigateur — on relance automatiquement tant que le client n'a
+      // pas explicitement arrêté la conversation vocale (bouton micro).
+      if (voiceSimVoiceActive && !window.speechSynthesis.speaking){
+        try { rec.start(); } catch(e){ /* déjà démarré */ }
+      } else if (voiceSimVoiceActive){
+        // laisse la synthèse finir puis relance via utter.onend -> pas ici
+        setTimeout(function(){ if (voiceSimVoiceActive){ try { rec.start(); } catch(e){} } }, 300);
+      }
+    };
+    return rec;
+  }
+
+  function voiceSimStopVoice(){
+    voiceSimVoiceActive = false;
+    if (voiceSimRecognition){ try { voiceSimRecognition.stop(); } catch(e){} }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    var btn = document.getElementById('voiceSimMicBtn');
+    if (btn){ btn.classList.remove('is-listening', 'is-speaking'); }
+    voiceSimSetVoiceStatus('Appuyez pour démarrer une conversation vocale', '');
+    var interimEl = document.getElementById('voiceSimVoiceInterim');
+    if (interimEl) interimEl.textContent = '';
+  }
+
+  function voiceSimStartVoice(){
+    if (!voiceSimRecognition){
+      var panel = document.getElementById('voiceSimVoicePanel');
+      if (panel) panel.insertAdjacentHTML('beforeend', '<p class="voice-sim-voice-unsupported">Reconnaissance vocale non disponible dans ce navigateur — utilisez Chrome/Edge, ou le mode texte.</p>');
+      return;
+    }
+    if (!voiceSimSessionId){ voiceSimShowError('Simulation non prête — réessayez dans un instant.'); return; }
+    voiceSimVoiceActive = true;
+    try { voiceSimRecognition.start(); } catch(e){ /* déjà démarré */ }
+  }
+
+  function voiceSimSetMode(mode){
+    var textBtn = document.getElementById('voiceSimModeTextBtn');
+    var voiceBtn = document.getElementById('voiceSimModeVoiceBtn');
+    var form = document.getElementById('voiceSimForm');
+    var voicePanel = document.getElementById('voiceSimVoicePanel');
+    if (textBtn) textBtn.classList.toggle('is-active', mode === 'text');
+    if (voiceBtn) voiceBtn.classList.toggle('is-active', mode === 'voice');
+    if (form) form.hidden = mode === 'voice';
+    if (voicePanel) voicePanel.hidden = mode !== 'voice';
+    if (mode !== 'voice') voiceSimStopVoice();
+  }
+
   function voiceSimInit(){
     if (voiceSimInitialized) return;
     voiceSimInitialized = true;
     var form = document.getElementById('voiceSimForm');
     var resetBtn = document.getElementById('voiceSimResetBtn');
+    var micBtn = document.getElementById('voiceSimMicBtn');
+    var textModeBtn = document.getElementById('voiceSimModeTextBtn');
+    var voiceModeBtn = document.getElementById('voiceSimModeVoiceBtn');
     if (form){
       form.addEventListener('submit', function(e){
         e.preventDefault();
         var input = document.getElementById('voiceSimInput');
         var text = input.value.trim();
         if (!text || voiceSimInFlight || !voiceSimSessionId) return;
-        voiceSimAddMessage('user', text);
         input.value = '';
-        voiceSimShowError('');
-        voiceSimSetBusy(true);
-        sb.client.functions.invoke('voice-assistant-simulate', { body: { session_id: voiceSimSessionId, message: text } }).then(function(res){
-          voiceSimSetBusy(false);
-          var data = res.data;
-          if (res.error || !data){ voiceSimShowError('Erreur de connexion au simulateur.'); return; }
-          if (data.status === 'session_ended'){ voiceSimShowError('Cette simulation est terminée — lancez-en une nouvelle.'); return; }
-          if (data.status === 'session_cap_reached'){ voiceSimShowError('Limite de messages atteinte pour cette simulation — lancez-en une nouvelle.'); return; }
-          if (data.status !== 'ok'){ voiceSimShowError('Le simulateur est momentanément indisponible.'); return; }
-          voiceSimAddToolEvents(data.events);
-          voiceSimAddMessage('assistant', data.reply);
-          voiceSimRenderStates(data.call_state);
-        }).catch(function(){
-          voiceSimSetBusy(false);
-          voiceSimShowError('Erreur de connexion au simulateur.');
-        });
+        voiceSimAddMessage('user', text);
+        voiceSimSendMessage(text);
       });
     }
-    if (resetBtn) resetBtn.addEventListener('click', voiceSimStart);
+    if (resetBtn) resetBtn.addEventListener('click', function(){ voiceSimStopVoice(); voiceSimStart(); });
+    if (textModeBtn) textModeBtn.addEventListener('click', function(){ voiceSimSetMode('text'); });
+    if (voiceModeBtn) voiceModeBtn.addEventListener('click', function(){ voiceSimSetMode('voice'); });
+    if (micBtn){
+      micBtn.addEventListener('click', function(){
+        if (voiceSimVoiceActive) voiceSimStopVoice();
+        else voiceSimStartVoice();
+      });
+    }
+    voiceSimRecognition = voiceSimInitRecognition();
+    if ('speechSynthesis' in window){
+      voiceSimPickFrenchVoice();
+      window.speechSynthesis.onvoiceschanged = voiceSimPickFrenchVoice;
+    }
     voiceSimStart();
+  }
+
+  // ---------- HAYEVA Voice — onglets de section (Simulateur / Téléphonie / Appels) ----------
+  var voiceSectionInitialized = false;
+  var voiceTelInitialized = false;
+
+  function voiceSetSectionTab(tab){
+    var tabs = { sim: 'voiceSectionSimulateur', tel: 'voiceSectionTelephonie', calls: 'voiceSectionAppels' };
+    var btns = { sim: 'voiceSectionTabSimBtn', tel: 'voiceSectionTabTelBtn', calls: 'voiceSectionTabCallsBtn' };
+    Object.keys(tabs).forEach(function(k){
+      var panel = document.getElementById(tabs[k]);
+      var btn = document.getElementById(btns[k]);
+      if (panel) panel.hidden = k !== tab;
+      if (btn) btn.classList.toggle('is-active', k === tab);
+    });
+    if (tab === 'tel') voiceTelLoad();
+  }
+
+  // Config Téléphonie + coupe-circuits — lecture/écriture directes de
+  // voice_telephony_settings (RLS admin uniquement, voir 0037). Tant
+  // qu'aucun provider n'est enregistré, le point reste rouge : aucun secret
+  // fournisseur n'est jamais saisi ici, seulement le nom du fournisseur et
+  // le numéro une fois le compte externe créé par l'administrateur.
+  function voiceTelRenderStatus(row){
+    var dot = document.getElementById('voiceTelStatusDot');
+    var label = document.getElementById('voiceTelStatusLabel');
+    var modeBadge = document.getElementById('voiceTelModeBadge');
+    var connected = !!(row.provider && row.phone_number);
+    if (dot) dot.classList.toggle('is-connected', connected);
+    if (label) label.textContent = connected
+      ? ('🟢 Connecté — ' + row.provider + ' (' + row.phone_number + ')')
+      : '🔴 Non configuré — aucun appel réel possible';
+    if (modeBadge){
+      modeBadge.textContent = row.mode === 'production' ? '🟢 PRODUCTION' : '🧪 TEST';
+      modeBadge.classList.toggle('is-production', row.mode === 'production');
+    }
+  }
+
+  function voiceTelLoad(){
+    var msg = document.getElementById('voiceTelSaveMsg');
+    if (msg) msg.hidden = true;
+    sb.client.from('voice_telephony_settings').select('*').eq('id', true).maybeSingle().then(function(res){
+      if (res.error || !res.data) return;
+      var row = res.data;
+      voiceTelRenderStatus(row);
+      document.getElementById('voiceTelProvider').value = row.provider || '';
+      document.getElementById('voiceTelPhoneNumber').value = row.phone_number || '';
+      document.getElementById('voiceTelTransferNumber').value = row.human_transfer_number || '';
+      document.getElementById('voiceTelMode').value = row.mode || 'test';
+      document.getElementById('voiceTelEnabled').checked = !!row.voice_enabled;
+      document.getElementById('voiceTelInbound').checked = !!row.inbound_enabled;
+      document.getElementById('voiceTelOutbound').checked = !!row.outbound_enabled;
+      document.getElementById('voiceTelAiBooking').checked = !!row.ai_booking_enabled;
+      document.getElementById('voiceTelTransfer').checked = !!row.human_transfer_enabled;
+      document.getElementById('voiceTelMaxOutbound').value = row.max_outbound_calls_per_day == null ? '' : row.max_outbound_calls_per_day;
+      document.getElementById('voiceTelMaxDuration').value = row.max_call_duration_minutes == null ? '' : row.max_call_duration_minutes;
+      document.getElementById('voiceTelMaxCallbacks').value = row.max_callbacks_per_day == null ? '' : row.max_callbacks_per_day;
+    });
+  }
+
+  function voiceTelInit(){
+    if (voiceTelInitialized) return;
+    voiceTelInitialized = true;
+    var form = document.getElementById('voiceTelForm');
+    if (!form) return;
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var saveBtn = document.getElementById('voiceTelSaveBtn');
+      var msg = document.getElementById('voiceTelSaveMsg');
+      var toIntOrNull = function(v){ v = v.trim(); return v === '' ? null : parseInt(v, 10); };
+      var payload = {
+        provider: document.getElementById('voiceTelProvider').value || null,
+        phone_number: document.getElementById('voiceTelPhoneNumber').value.trim() || null,
+        human_transfer_number: document.getElementById('voiceTelTransferNumber').value.trim() || null,
+        mode: document.getElementById('voiceTelMode').value,
+        voice_enabled: document.getElementById('voiceTelEnabled').checked,
+        inbound_enabled: document.getElementById('voiceTelInbound').checked,
+        outbound_enabled: document.getElementById('voiceTelOutbound').checked,
+        ai_booking_enabled: document.getElementById('voiceTelAiBooking').checked,
+        human_transfer_enabled: document.getElementById('voiceTelTransfer').checked,
+        max_outbound_calls_per_day: toIntOrNull(document.getElementById('voiceTelMaxOutbound').value),
+        max_call_duration_minutes: toIntOrNull(document.getElementById('voiceTelMaxDuration').value),
+        max_callbacks_per_day: toIntOrNull(document.getElementById('voiceTelMaxCallbacks').value),
+        updated_at: new Date().toISOString(),
+      };
+      saveBtn.disabled = true;
+      sb.client.from('voice_telephony_settings').update(payload).eq('id', true).select('*').maybeSingle().then(function(res){
+        saveBtn.disabled = false;
+        msg.hidden = false;
+        if (res.error || !res.data){ msg.textContent = "Échec de l'enregistrement."; return; }
+        msg.textContent = 'Enregistré.';
+        voiceTelRenderStatus(res.data);
+      });
+    });
+  }
+
+  function voiceSectionInit(){
+    if (!voiceSectionInitialized){
+      voiceSectionInitialized = true;
+      var simBtn = document.getElementById('voiceSectionTabSimBtn');
+      var telBtn = document.getElementById('voiceSectionTabTelBtn');
+      var callsBtn = document.getElementById('voiceSectionTabCallsBtn');
+      if (simBtn) simBtn.addEventListener('click', function(){ voiceSetSectionTab('sim'); });
+      if (telBtn) telBtn.addEventListener('click', function(){ voiceSetSectionTab('tel'); });
+      if (callsBtn) callsBtn.addEventListener('click', function(){ voiceSetSectionTab('calls'); });
+      voiceTelInit();
+    }
+    voiceSimInit();
   }
 
   // ---------- Consignes de préparation avant intervention (admin) ----------
@@ -15436,6 +16288,28 @@ if ('serviceWorker' in navigator){
     chauffe_eau:'Chauffe-eau', pac:'Pompe à chaleur', autre:'Autre'
   };
 
+  // Refonte Espace Client : la navigation basse (5 sections, mobile) reste
+  // un habillage AU-DESSUS des 10 onglets data-ec-tab existants — jamais un
+  // second système de routage. Chaque section basse pointe vers un onglet
+  // "par défaut" ; les onglets restants d'une même section (ex. factures à
+  // l'intérieur de "Documents") restent joignables via les pastilles de
+  // filtre posées en tête de panneau (voir ecxDocFilters/ecxApptFilters).
+  var ECX_SECTION_FOR_TAB = {
+    home:'home', services:'services',
+    appointments:'appointments', interventions:'appointments',
+    quotes:'documents', invoices:'documents', documents:'documents',
+    equipment:'profile', addresses:'profile', profile:'profile'
+  };
+  var ECX_DEFAULT_TAB_FOR_SECTION = { home:'home', services:'services', appointments:'appointments', documents:'quotes', profile:'profile' };
+
+  function ecxSyncBottomNav(tab){
+    var section = ECX_SECTION_FOR_TAB[tab] || tab;
+    var items = document.querySelectorAll('#ecxBottomNav .ecx-bottomnav-item');
+    for (var i = 0; i < items.length; i++){
+      items[i].classList.toggle('is-active', items[i].getAttribute('data-ecx-section') === section);
+    }
+  }
+
   function ecShowTab(tab){
     var tabs = document.querySelectorAll('#ecTabs .ec-tab');
     for (var i = 0; i < tabs.length; i++){
@@ -15445,12 +16319,14 @@ if ('serviceWorker' in navigator){
     for (var j = 0; j < panels.length; j++){
       panels[j].hidden = panels[j].getAttribute('data-ec-panel') !== tab;
     }
+    ecxSyncBottomNav(tab);
     ecLoadTab(tab);
   }
   function ecLoadTab(tab){
     if (ecLoaded[tab] || !ecUser) return;
     ecLoaded[tab] = true;
     if (tab === 'home') ecLoadHome();
+    else if (tab === 'services') ecLoadServices();
     else if (tab === 'appointments') ecLoadAppointments();
     else if (tab === 'interventions') ecLoadInterventions();
     else if (tab === 'equipment') ecLoadEquipment();
@@ -15468,6 +16344,7 @@ if ('serviceWorker' in navigator){
     for (var i = 0; i < panels.length; i++){ panels[i].innerHTML = ''; }
     var tabs = document.querySelectorAll('#ecTabs .ec-tab');
     for (var j = 0; j < tabs.length; j++){ tabs[j].classList.toggle('is-active', tabs[j].getAttribute('data-ec-tab') === 'home'); }
+    ecxSyncBottomNav('home');
   }
   function ecInitDashboard(user){
     ecUser = user;
@@ -15513,15 +16390,112 @@ if ('serviceWorker' in navigator){
       if (el && el.hasAttribute && el.hasAttribute('data-ec-tab')) ecShowTab(el.getAttribute('data-ec-tab'));
     });
   }
+  var ecxBottomNavEl = document.getElementById('ecxBottomNav');
+  if (ecxBottomNavEl){
+    ecxBottomNavEl.addEventListener('click', function(e){
+      var el = e.target;
+      while (el && el !== ecxBottomNavEl && !el.hasAttribute('data-ecx-section')) el = el.parentNode;
+      if (!el || !el.hasAttribute || !el.hasAttribute('data-ecx-section')) return;
+      var section = el.getAttribute('data-ecx-section');
+      ecShowTab(ECX_DEFAULT_TAB_FOR_SECTION[section] || section);
+    });
+  }
 
+  // "Prestations" (marketplace) — lit le catalogue déjà chargé par le
+  // module de réservation public (window.sudBooking, voir ses ajouts
+  // allServices/popularServices/categoriesList) : aucune nouvelle requête
+  // Supabase, aucun prix dupliqué. Réserver relance le VRAI tunnel de
+  // réservation existant (sudBooking.selectService + scroll vers #rdv),
+  // jamais un second système de réservation propre à l'Espace Client.
+  var ecxSvcCategoryFilter = 'all';
+  var ecxSvcQuery = '';
+  function ecxGoToBookingTunnel(serviceId){
+    if (window.sudBooking) window.sudBooking.selectService(serviceId);
+    if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+    var el = document.getElementById('rdv');
+    if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  function ecxServiceCardHtml(s){
+    var cat = window.sudBooking && window.sudBooking.serviceCategory ? window.sudBooking.serviceCategory(s.id) : '';
+    var emoji = { clim:'❄️', chauffage:'🔥', plomberie:'💧', multi:'🛠️', devis:'📝', pro:'✅' }[cat] || '🔧';
+    var priceLine = window.sudBooking ? window.sudBooking.priceLine(s) : s.price;
+    return '<div class="ecx-svc-card" data-svc-id="' + ecEscape(s.id) + '">' +
+      '<div class="ecx-svc-card-visual ecx-cat-' + ecEscape(cat || 'multi') + '" aria-hidden="true">' + emoji + '</div>' +
+      '<div class="ecx-svc-card-body">' +
+        '<p class="ecx-svc-card-title">' + ecEscape(s.title) + '</p>' +
+        '<p class="ecx-svc-card-desc">' + ecEscape(s.desc || '') + '</p>' +
+        '<div class="ecx-svc-card-meta">' +
+          '<span class="ecx-svc-card-price">' + ecEscape(priceLine) + '</span>' +
+          (s.duration ? '<span class="ecx-svc-card-duration">' + ecFmtDuration(s.duration) + '</span>' : '') +
+        '</div>' +
+        '<button type="button" class="ecx-svc-card-cta" data-svc-book="' + ecEscape(s.id) + '">Réserver</button>' +
+      '</div></div>';
+  }
+  function ecxRenderServicesList(){
+    var wrap = document.getElementById('ecxSvcResults');
+    if (!wrap || !window.sudBooking) return;
+    var all = window.sudBooking.allServices();
+    var list = all.filter(function(s){
+      if (ecxSvcCategoryFilter !== 'all' && window.sudBooking.serviceCategory(s.id) !== ecxSvcCategoryFilter) return false;
+      if (ecxSvcQuery && s.title.toLowerCase().indexOf(ecxSvcQuery) === -1 && (s.desc || '').toLowerCase().indexOf(ecxSvcQuery) === -1) return false;
+      return true;
+    });
+    wrap.innerHTML = list.length
+      ? '<div class="ecx-svc-grid">' + list.map(ecxServiceCardHtml).join('') + '</div>'
+      : '<div class="ec-empty"><strong>Aucune prestation trouvée</strong>Essayez un autre mot-clé ou une autre catégorie.</div>';
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-svc-book]'), function(btn){
+      btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
+    });
+  }
+  function ecLoadServices(){
+    var panel = document.getElementById('ecPanelServices');
+    if (!window.sudBooking){ panel.innerHTML = ecErrorBlock(); return; }
+    var cats = window.sudBooking.categoriesList();
+    var html = '<p class="ec-section-title">Nos prestations</p><p class="ec-section-sub">Plomberie, chauffage, climatisation — trouvez la bonne intervention en quelques secondes.</p>' +
+      '<div class="ecx-search"><span class="ecx-search-icon" aria-hidden="true">🔍</span><input type="text" id="ecxSvcSearchInput" placeholder="Rechercher une prestation"></div>' +
+      '<div class="ecx-filter-row" id="ecxSvcFilters">' +
+        '<button type="button" class="ecx-filter-pill is-active" data-cat="all">Tout</button>' +
+        cats.map(function(c){ return '<button type="button" class="ecx-filter-pill" data-cat="' + ecEscape(c.id) + '">' + ecEscape(c.label) + '</button>'; }).join('') +
+      '</div>' +
+      '<div id="ecxSvcResults"></div>';
+    panel.innerHTML = html;
+    ecxSvcCategoryFilter = 'all';
+    ecxSvcQuery = '';
+    ecxRenderServicesList();
+    var searchInput = document.getElementById('ecxSvcSearchInput');
+    if (searchInput){
+      searchInput.addEventListener('input', function(){
+        ecxSvcQuery = searchInput.value.trim().toLowerCase();
+        ecxRenderServicesList();
+      });
+    }
+    var filters = document.getElementById('ecxSvcFilters');
+    if (filters){
+      filters.addEventListener('click', function(e){
+        var btn = e.target.closest ? e.target.closest('[data-cat]') : null;
+        if (!btn) return;
+        ecxSvcCategoryFilter = btn.getAttribute('data-cat');
+        Array.prototype.forEach.call(filters.querySelectorAll('.ecx-filter-pill'), function(p){ p.classList.toggle('is-active', p === btn); });
+        ecxRenderServicesList();
+      });
+    }
+  }
+
+  // Accueil — refonte "application" : recherche + catégories (relaient vers
+  // l'onglet Prestations, jamais un second moteur de recherche), prochain
+  // rendez-vous avec les VRAIES actions Voir/Modifier/Annuler (réutilise
+  // ecOpenMoveModal/ecOpenCancelModal telles quelles — voir mise en cache
+  // ci-dessous), prestations populaires (catalogue existant), carte
+  // "entretien" (jamais de marketing agressif), rien d'inventé : chaque
+  // section ne s'affiche que si la donnée réelle existe.
   function ecLoadHome(){
     var panel = document.getElementById('ecPanelHome');
-    panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    panel.innerHTML = '<div class="ecx-skeleton"><div class="ecx-skel-line" style="width:40%;height:28px;"></div><div class="ecx-skel-card"></div><div class="ecx-skel-card" style="height:56px;"></div></div>';
     var today = new Date().toISOString().slice(0,10);
     Promise.all([
       ecFetchProfile(),
       sb.client.from('bookings')
-        .select('id, reference, date, start_time, status, services(name), customer_addresses(label,address,city)')
+        .select('id, reference, date, start_time, status, service_duration_minutes, services(name), customer_addresses(label,address,city)')
         .eq('customer_user_id', ecUser.id)
         .gte('date', today)
         .in('status', ['PENDING','CONFIRMED','IN_PROGRESS'])
@@ -15535,33 +16509,53 @@ if ('serviceWorker' in navigator){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var firstName = profile && profile.first_name ? profile.first_name.trim() : '';
         var html = '<div class="ec-home-head">' +
-          '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) + '' : 'Bonjour') + '</p>' +
+          '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) + ' 👋' : 'Bonjour 👋') + '</p>' +
           '<button type="button" class="ec-site-link" id="ecHomeGoToSiteBtn">Voir le site HAYEVA</button>' +
+        '</div>' +
+        '<p class="ec-section-sub" style="margin-top:-10px;">Que pouvons-nous faire pour votre logement ?</p>' +
+        '<div class="ecx-search" id="ecxHomeSearch"><span class="ecx-search-icon" aria-hidden="true">🔍</span><input type="text" id="ecxHomeSearchInput" placeholder="De quoi avez-vous besoin ?" readonly></div>' +
+        '<div class="ecx-cats" id="ecxHomeCats">' +
+          '<button type="button" class="ecx-cat-chip" data-cat="plomberie"><span class="ecx-cat-emoji">💧</span>Plomberie</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="chauffage"><span class="ecx-cat-emoji">🔥</span>Chauffage</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="clim"><span class="ecx-cat-emoji">❄️</span>Climatisation</button>' +
+          '<button type="button" class="ecx-cat-chip" data-cat="multi"><span class="ecx-cat-emoji">🛠️</span>Multi-services</button>' +
         '</div>';
         var b = res.data && res.data[0];
         if (b){
           var svcName = (b.services && b.services.name) || 'Service';
           var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
-          html += '<div class="ec-next-appt"><p class="ec-eyebrow">Prochain rendez-vous</p>' +
+          html += '<div class="ec-next-appt"><p class="ec-eyebrow">Votre prochaine intervention</p>' +
             '<h3>' + ecEscape(svcName) + '</h3>' +
             '<div class="ec-next-appt-meta">' +
               '<span>' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) + '</span>' +
               '<span>' + ecBadge(b.status) + '</span>' +
               (addr ? '<span>' + ecEscape(addr) + '</span>' : '') +
-            '</div></div>';
+            '</div>' +
+            (ecIsUpcomingModifiable(b) ?
+              '<div class="ec-appt-actions" style="margin-top:14px;">' +
+                '<button type="button" class="ec-appt-move-btn" data-ec-home-view="1">Voir le rendez-vous</button>' +
+                '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Modifier</button>' +
+                '<button type="button" class="ec-appt-cancel-btn" data-booking-id="' + b.id + '">Annuler</button>' +
+              '</div>'
+              : '') +
+          '</div>';
+          // Alimente le même cache que "Mes rendez-vous" : ecOpenMoveModal/
+          // ecOpenCancelModal le lisent par id, sans nouvelle requête.
+          if (!ecAppointmentsCache.some(function(x){ return x.id === b.id; })) ecAppointmentsCache.push(b);
         } else {
-          html += '<div class="ec-empty"><strong>Aucun rendez-vous à venir</strong>Réservez votre prochaine intervention en quelques clics.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
+          html += '<div class="ec-empty"><strong>Vous n\'avez aucune intervention prévue</strong><br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
         }
-        html += '<div class="ec-home-grid">' +
-          '<div class="espace-pro-card" data-ec-goto="appointments" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true"></span>Rendez-vous</h3><p>Consultez l’historique complet de vos rendez-vous.</p></div>' +
-          '<div class="espace-pro-card" data-ec-goto="quotes" role="button" tabindex="0"><h3><span class="ec-card-icon" aria-hidden="true"></span>Devis &amp; factures</h3><p>Retrouvez vos documents commerciaux.</p></div>' +
-          '<div class="espace-pro-card"><h3><span class="ec-card-icon" aria-hidden="true"></span>Une question ?</h3><p>Contactez-nous au <a href="tel:+33671262302">06 71 26 23 02</a>.</p></div>' +
-        '</div>';
+        if (window.sudBooking){
+          var popular = window.sudBooking.popularServices();
+          if (popular.length){
+            html += '<div class="ecx-section-head"><h3>Les prestations les plus demandées</h3><button type="button" class="ecx-section-link" data-ec-goto="services">Tout voir</button></div>' +
+              '<div class="ecx-svc-scroll">' + popular.map(ecxServiceCardHtml).join('') + '</div>';
+          }
+        }
+        html += '<div class="ecx-promo-card"><h3>Votre logement mérite un petit check ?</h3>' +
+          '<p>Découvrez les entretiens recommandés pour conserver vos équipements plus longtemps.</p>' +
+          '<button type="button" class="ecx-promo-cta" data-ec-goto="services">Voir les entretiens</button></div>';
         panel.innerHTML = html;
-        // Cartes cliquables : ramènent vers l'onglet correspondant, avec le
-        // même petit flash visuel que le clic sur un onglet natif — jamais
-        // sur le lien tél. imbriqué (stopPropagation ci-dessus), sinon le
-        // clic "Appeler" déclencherait aussi une navigation d'onglet.
         // Seul bouton "retour au site" de l'Espace Client (l'ancien, dans la
         // bannière sombre, jugé pas assez visible, a été retiré) : referme
         // l'écran plein écran, jamais de déconnexion. Réinjecté à chaque
@@ -15574,12 +16568,40 @@ if ('serviceWorker' in navigator){
             window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
           });
         }
+        // Recherche/catégories : relaient vers le vrai moteur (page
+        // Prestations), jamais un second moteur de recherche dupliqué.
+        var searchBox = document.getElementById('ecxHomeSearch');
+        if (searchBox) searchBox.addEventListener('click', function(){ ecShowTab('services'); });
+        var catsWrap = document.getElementById('ecxHomeCats');
+        if (catsWrap){
+          catsWrap.addEventListener('click', function(e){
+            var chip = e.target.closest ? e.target.closest('[data-cat]') : null;
+            if (!chip) return;
+            ecxSvcCategoryFilter = chip.getAttribute('data-cat');
+            ecShowTab('services');
+          });
+        }
         Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(card){
           card.addEventListener('click', function(){ ecShowTab(card.getAttribute('data-ec-goto')); });
-          card.addEventListener('keydown', function(e){
-            if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); ecShowTab(card.getAttribute('data-ec-goto')); }
-          });
         });
+        Array.prototype.forEach.call(panel.querySelectorAll('[data-svc-book]'), function(btn){
+          btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
+        });
+        // Prochain rendez-vous : "Voir" ouvre l'onglet complet, Modifier/
+        // Annuler réutilisent EXACTEMENT les mêmes modales que "Mes
+        // rendez-vous" (même fonctions, même cache, mêmes règles métier
+        // serveur) — jamais une seconde implémentation.
+        var homeApptActions = panel.querySelector('.ec-appt-actions');
+        if (homeApptActions){
+          homeApptActions.addEventListener('click', function(e){
+            var viewBtn = e.target.closest('[data-ec-home-view]');
+            if (viewBtn){ ecShowTab('appointments'); return; }
+            var moveBtn = e.target.closest('.ec-appt-move-btn[data-booking-id]');
+            if (moveBtn){ ecOpenMoveModal(moveBtn.getAttribute('data-booking-id')); return; }
+            var cancelBtn = e.target.closest('.ec-appt-cancel-btn[data-booking-id]');
+            if (cancelBtn) ecOpenCancelModal(cancelBtn.getAttribute('data-booking-id'));
+          });
+        }
       })
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
@@ -15968,21 +16990,21 @@ if ('serviceWorker' in navigator){
         '<label class="ec-form-full">Notes<input type="text" id="ecEquipNotes" placeholder="Facultatif"></label>' +
         '<button type="submit" class="btn-primary ec-form-full">Ajouter cet équipement</button>' +
       '</form>';
+      var EC_EQUIPMENT_EMOJI = { climatisation:'❄️', chaudiere_gaz:'🔥', chaudiere_fioul:'🔥', chauffe_eau:'🚿', pac:'♨️', autre:'🔧' };
       if (!rows.length){
         html += '<div class="ec-empty"><strong>Aucun équipement renseigné</strong>Ajoutez votre climatiseur, chaudière ou chauffe-eau ci-dessus.</div>';
       } else {
-        html += '<div class="ec-list">';
         rows.forEach(function(eq){
           var eqMeta = [];
           if (eq.installed_at) eqMeta.push('Installé le ' + ecFmtDate(eq.installed_at));
-          if (eq.last_service_at) eqMeta.push('Dernière intervention le ' + ecFmtDate(eq.last_service_at));
+          if (eq.last_service_at) eqMeta.push('Dernier entretien le ' + ecFmtDate(eq.last_service_at));
           if (eq.notes) eqMeta.push(ecEscape(eq.notes));
-          html += '<div class="ec-row"><div class="ec-row-info">' +
-            '<span class="ec-row-title">' + ecEscape(EC_EQUIPMENT_LABEL[eq.equipment_type] || eq.equipment_type) + (eq.brand ? ' — ' + ecEscape(eq.brand) : '') + (eq.model ? ' ' + ecEscape(eq.model) : '') + '</span>' +
-            (eqMeta.length ? '<span class="ec-row-meta">' + eqMeta.join(' · ') + '</span>' : '') +
+          html += '<div class="ecx-equip-card"><span class="ecx-equip-emoji" aria-hidden="true">' + (EC_EQUIPMENT_EMOJI[eq.equipment_type] || '🔧') + '</span>' +
+            '<div class="ecx-equip-card-body">' +
+              '<p class="ecx-equip-card-title">' + ecEscape(EC_EQUIPMENT_LABEL[eq.equipment_type] || eq.equipment_type) + (eq.brand ? ' — ' + ecEscape(eq.brand) : '') + (eq.model ? ' ' + ecEscape(eq.model) : '') + '</p>' +
+              (eqMeta.length ? '<p class="ecx-equip-card-meta">' + eqMeta.join(' · ') + '</p>' : '') +
             '</div><button type="button" class="ec-row-del" data-eq-del="' + eq.id + '">Supprimer</button></div>';
         });
-        html += '</div>';
       }
       panel.innerHTML = html;
       var form = document.getElementById('ecEquipForm');
@@ -16235,17 +17257,16 @@ if ('serviceWorker' in navigator){
       if (!rows.length){
         html += '<div class="ec-empty"><strong>Aucune adresse enregistrée</strong>Ajoutez votre adresse pour accélérer vos prochaines réservations.</div>';
       } else {
-        html += '<div class="ec-list">';
         rows.forEach(function(a){
-          html += '<div class="ec-row"><div class="ec-row-info">' +
-            '<span class="ec-row-title">' + ecEscape(a.label) + (a.is_default ? ' <span class="ec-badge ec-badge-completed">Par défaut</span>' : '') + '</span>' +
-            '<span class="ec-row-meta">' + ecEscape(a.address) + (a.postal_code ? ', ' + ecEscape(a.postal_code) : '') + (a.city ? ' ' + ecEscape(a.city) : '') + '</span>' +
+          html += '<div class="ecx-home-card"><span class="ecx-home-card-visual" aria-hidden="true">🏠</span>' +
+            '<div class="ecx-home-card-body">' +
+              '<p class="ecx-home-card-title">' + ecEscape(a.label) + (a.is_default ? ' <span class="ec-badge ec-badge-completed">Par défaut</span>' : '') + '</p>' +
+              '<p class="ecx-home-card-meta">' + ecEscape(a.address) + (a.postal_code ? ', ' + ecEscape(a.postal_code) : '') + (a.city ? ' ' + ecEscape(a.city) : '') + '</p>' +
             '</div><div style="display:flex; gap:8px; flex:0 0 auto; flex-wrap:wrap;">' +
             '<button type="button" class="ec-row-del" data-addr-edit="' + a.id + '">Modifier</button>' +
             (a.is_default ? '' : '<button type="button" class="ec-row-del" data-addr-default="' + a.id + '">Définir par défaut</button>') +
             '<button type="button" class="ec-row-del" data-addr-del="' + a.id + '">Supprimer</button></div></div>';
         });
-        html += '</div>';
       }
       panel.innerHTML = html;
       var form = document.getElementById('ecAddrForm');
@@ -16329,10 +17350,29 @@ if ('serviceWorker' in navigator){
 
   function ecLoadProfile(){
     var panel = document.getElementById('ecPanelProfile');
-    panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    panel.innerHTML = '<div class="ecx-skeleton"><div class="ecx-skel-card" style="height:160px;border-radius:22px;"></div><div class="ecx-skel-card"></div></div>';
     ecFetchProfile().then(function(p){
       p = p || {};
-      var html = '<p class="ec-section-title">Mon profil</p><p class="ec-section-sub">Vos informations personnelles.</p>';
+      var firstName = (p.first_name || '').trim();
+      var lastName = (p.last_name || '').trim();
+      var fullName = (firstName + ' ' + lastName).trim() || ecUser.email;
+      var initials = ((firstName ? firstName[0] : '') + (lastName ? lastName[0] : '')).toUpperCase() || (ecUser.email || '?')[0].toUpperCase();
+      var html = '<div class="ecx-card ecx-profile-hero">' +
+        '<div class="ecx-profile-avatar">' + ecEscape(initials) + '</div>' +
+        '<p class="ecx-profile-name">' + ecEscape(fullName) + '</p>' +
+        '<p class="ecx-profile-tag">Client HAYEVA</p>' +
+      '</div>' +
+      '<div class="ecx-profile-tiles">' +
+        '<div class="ecx-profile-tile" data-ec-goto="addresses"><span class="ecx-tile-icon" aria-hidden="true">🏠</span><span class="ecx-tile-label">Mes logements</span></div>' +
+        '<div class="ecx-profile-tile" data-ec-goto="equipment"><span class="ecx-tile-icon" aria-hidden="true">🔧</span><span class="ecx-tile-label">Mes équipements</span></div>' +
+      '</div>' +
+      '<div class="ecx-option-list ecx-card ecx-card-flat" style="padding:6px 14px;">' +
+        '<button type="button" class="ecx-option-row" data-scroll-to="ecProfileForm"><span class="ecx-opt-icon" aria-hidden="true">👤</span><span class="ecx-opt-label">Informations personnelles</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="addresses"><span class="ecx-opt-icon" aria-hidden="true">📍</span><span class="ecx-opt-label">Mes adresses</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<a class="ecx-option-row" href="tel:+33671262302"><span class="ecx-opt-icon" aria-hidden="true">💬</span><span class="ecx-opt-label">Aide — 06 71 26 23 02</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></a>' +
+        '<button type="button" class="ecx-option-row is-danger" id="ecProfileLogoutBtn"><span class="ecx-opt-icon" aria-hidden="true">🚪</span><span class="ecx-opt-label">Déconnexion</span></button>' +
+      '</div>' +
+      '<p class="ec-section-title" style="margin-top:24px;">Informations personnelles</p><p class="ec-section-sub">Modifiables à tout moment.</p>';
       html += '<form class="ec-form" id="ecProfileForm">' +
         '<label>E-mail<input type="email" value="' + ecEscape(ecUser.email) + '" disabled></label>' +
         '<label>Téléphone<input type="tel" id="ecProfPhone" value="' + ecEscape(p.phone || '') + '" placeholder="06 12 34 56 78"></label>' +
@@ -16342,6 +17382,26 @@ if ('serviceWorker' in navigator){
         '<button type="submit" class="btn-primary ec-form-full">Enregistrer</button>' +
       '</form>';
       panel.innerHTML = html;
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(el){
+        el.addEventListener('click', function(){ ecShowTab(el.getAttribute('data-ec-goto')); });
+      });
+      var scrollBtn = panel.querySelector('[data-scroll-to]');
+      if (scrollBtn){
+        scrollBtn.addEventListener('click', function(){
+          var target = document.getElementById(scrollBtn.getAttribute('data-scroll-to'));
+          if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+      // Jamais une seconde implémentation de la déconnexion : ce bouton
+      // déclenche le VRAI bouton de la bannière (#espaceClientLogoutBtn),
+      // qui porte déjà toute la logique signOut()/afterClientLogout().
+      var profileLogoutBtn = document.getElementById('ecProfileLogoutBtn');
+      if (profileLogoutBtn){
+        profileLogoutBtn.addEventListener('click', function(){
+          var realLogoutBtn = document.getElementById('espaceClientLogoutBtn');
+          if (realLogoutBtn) realLogoutBtn.click();
+        });
+      }
       var form = document.getElementById('ecProfileForm');
       var successEl = document.getElementById('ecProfileSuccess');
       form.addEventListener('submit', function(e){
@@ -17673,6 +18733,7 @@ if ('serviceWorker' in navigator){
     panel.hidden = true;
     toggleBtn.hidden = false;
     setCharacterState(null);
+    if (typeof voiceStop === 'function') voiceStop();
   }
   toggleBtn.addEventListener('click', openPanel);
   // .ai-widget-toggle est un <div role="button"> (pas un <button>, pour
@@ -17757,6 +18818,263 @@ if ('serviceWorker' in navigator){
       addMessage('assistant', "Désolé, une erreur est survenue. Réessayez dans un instant.", { safety:false });
     });
   });
+
+  // ============================================================
+  // HAYEVA Voice — conversation vocale temps réel directement dans le
+  // navigateur, SANS fournisseur payant supplémentaire : reconnaissance et
+  // synthèse vocale NATIVES du navigateur (Web Speech API — SpeechRecognition/
+  // SpeechSynthesis, gratuites, aucune clé), branchées sur le MÊME moteur
+  // métier que le simulateur admin (tools.ts/state-machine.ts) via l'Edge
+  // Function voice-public-chat, qui réutilise OPENROUTER_API_KEY déjà
+  // configurée et déjà utilisée en production par le chatbot texte du site —
+  // aucun nouveau compte, aucune nouvelle facturation. Écoute continue :
+  // la reconnaissance redémarre automatiquement après chaque tour, sans
+  // jamais devoir rappuyer sur le micro. Barge-in : toute nouvelle parole du
+  // client coupe immédiatement la synthèse vocale de l'assistant en cours.
+  // ============================================================
+  var modeTextBtn = document.getElementById('aiWidgetModeTextBtn');
+  var modeVoiceBtn = document.getElementById('aiWidgetModeVoiceBtn');
+  var voicePanel = document.getElementById('aiWidgetVoicePanel');
+  var voiceOrb = document.getElementById('aiWidgetVoiceOrb');
+  var voiceStatusEl = document.getElementById('aiWidgetVoiceStatus');
+  var voiceErrorEl = document.getElementById('aiWidgetVoiceError');
+  var voiceStartBtn = document.getElementById('aiWidgetVoiceStartBtn');
+  var voiceControls = document.getElementById('aiWidgetVoiceControls');
+  var voiceMuteBtn = document.getElementById('aiWidgetVoiceMuteBtn');
+  var voiceEndBtn = document.getElementById('aiWidgetVoiceEndBtn');
+
+  var voiceState = { sessionId: null, active: false, muted: false, recognition: null, frenchVoice: null, sending: false };
+
+  function voiceSetStatus(text, orbClass){
+    if (voiceStatusEl) voiceStatusEl.textContent = text;
+    if (voiceOrb){
+      voiceOrb.classList.remove('is-connecting', 'is-listening', 'is-speaking');
+      if (orbClass) voiceOrb.classList.add(orbClass);
+    }
+  }
+  function voiceShowError(msg){
+    if (!voiceErrorEl) return;
+    voiceErrorEl.textContent = msg || '';
+    voiceErrorEl.hidden = !msg;
+  }
+  function voiceSttSupported(){
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }
+  function voicePickFrenchVoice(){
+    if (!('speechSynthesis' in window)) return;
+    var voices = window.speechSynthesis.getVoices();
+    voiceState.frenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
+  }
+
+  function setAiWidgetMode(mode){
+    if (modeTextBtn) modeTextBtn.classList.toggle('is-active', mode === 'text');
+    if (modeVoiceBtn) modeVoiceBtn.classList.toggle('is-active', mode === 'voice');
+    if (form) form.hidden = mode === 'voice';
+    if (voicePanel) voicePanel.hidden = mode !== 'voice';
+    if (mode !== 'voice') voiceStop();
+  }
+  if (modeTextBtn) modeTextBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
+  if (modeVoiceBtn) modeVoiceBtn.addEventListener('click', function(){ setAiWidgetMode('voice'); });
+
+  // guide_to_booking : jamais de création de RDV depuis ce canal — on amène
+  // le client vers le VRAI tunnel de réservation déjà existant sur le site
+  // (window.sudBooking, même mécanisme que "Prendre rendez-vous" en mode texte).
+  function voiceHandleGuideToBooking(result){
+    if (!result || !window.sudBooking) return;
+    var matchId = null;
+    if (window.sudBooking.searchScored && result.service_name){
+      var scored = window.sudBooking.searchScored(result.service_name) || [];
+      if (scored.length) matchId = scored[0].service.id;
+    }
+    setTimeout(function(){
+      if (matchId) window.sudBooking.selectService(matchId);
+      var el = document.getElementById('rdv');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+      closePanel();
+    }, 900);
+  }
+
+  function voiceSpeak(text, onDone){
+    if (!('speechSynthesis' in window) || !text){ if (onDone) onDone(); return; }
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    if (voiceState.frenchVoice) utter.voice = voiceState.frenchVoice;
+    utter.onstart = function(){
+      voiceSetStatus('🔊 HAYEVA vous répond…', 'is-speaking');
+      if (voiceOrb) voiceOrb.classList.add('is-speaking');
+    };
+    // Le retour à l'écoute doit se produire quoi qu'il arrive à la
+    // synthèse (succès, erreur, ou speak() qui jette une exception
+    // synchrone) — sinon un échec TTS laisserait le micro éteint en
+    // silence, sans que le client comprenne pourquoi la conversation
+    // semble s'être arrêtée.
+    function resumeListening(){
+      if (voiceState.active){
+        voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+        voiceRecognitionRestart();
+      }
+      if (onDone) onDone();
+    }
+    utter.onend = resumeListening;
+    utter.onerror = resumeListening;
+    try { window.speechSynthesis.speak(utter); }
+    catch(e){ resumeListening(); }
+  }
+
+  function voiceSendMessage(text){
+    if (voiceState.sending) return;
+    voiceState.sending = true;
+    voiceSetStatus('HAYEVA réfléchit…', 'is-connecting');
+    var sb = window.sudSupabase;
+    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    sb.client.functions.invoke('voice-public-chat', {
+      body: { session_id: voiceState.sessionId, client_session_id: clientSessionId, message: text }
+    }).then(function(res){
+      voiceState.sending = false;
+      var data = res.data;
+      if (res.error || !data || data.status !== 'ok'){
+        voiceShowError("L'assistant vocal est momentanément indisponible — utilisez le mode 💬 Écrire.");
+        voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+        return;
+      }
+      addMessage('assistant', data.reply);
+      if (data.guide_to_booking){
+        addMessage('assistant', 'Je vous amène vers notre calendrier de réservation…');
+      }
+      voiceSpeak(data.reply, function(){
+        if (data.guide_to_booking) voiceHandleGuideToBooking(data.guide_to_booking);
+      });
+    }).catch(function(){
+      voiceState.sending = false;
+      voiceShowError("Erreur de connexion — utilisez le mode 💬 Écrire.");
+      voiceSetStatus('🎙️ HAYEVA vous écoute…', 'is-listening');
+    });
+  }
+
+  function voiceInitRecognition(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    var rec = new Ctor();
+    rec.lang = 'fr-FR';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onstart = function(){ voiceShowError(''); }; // efface un éventuel message "connexion perdue" dès que l'écoute reprend
+    rec.onresult = function(ev){
+      var final = '';
+      for (var i = ev.resultIndex; i < ev.results.length; i++){
+        if (ev.results[i].isFinal) final += ev.results[i][0].transcript;
+      }
+      // Barge-in : toute parole (même provisoire) coupe la synthèse en cours.
+      if ('speechSynthesis' in window && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+      if (final && final.trim()){
+        addMessage('user', final.trim());
+        voiceSendMessage(final.trim());
+      }
+    };
+    rec.onerror = function(ev){
+      if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+        voiceShowError("Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode 💬 Écrire.");
+        voiceStop();
+        return;
+      }
+      if (ev.error === 'network'){
+        // La reconnaissance vocale de Chrome dépend d'un service distant :
+        // une coupure réseau se manifeste ici, pas seulement sur l'appel à
+        // voice-public-chat. On l'affiche clairement plutôt que de laisser
+        // le micro sembler actif sans jamais rien reconnaître ; onend
+        // relancera automatiquement dès que la connexion revient.
+        voiceShowError('Connexion perdue — la reconnaissance vocale reprendra automatiquement dès que le réseau revient.');
+        return;
+      }
+      if (ev.error === 'audio-capture'){
+        voiceShowError("Aucun microphone détecté — utilisez le mode 💬 Écrire.");
+        voiceStop();
+      }
+    };
+    rec.onend = function(){
+      // Redémarre automatiquement tant que la conversation est active — le
+      // client ne doit jamais avoir à rappuyer sur le micro entre deux tours.
+      if (voiceState.active && !(window.speechSynthesis && window.speechSynthesis.speaking)){
+        try { rec.start(); } catch(e){ /* déjà démarré */ }
+      }
+    };
+    return rec;
+  }
+  function voiceRecognitionRestart(){
+    if (!voiceState.recognition || !voiceState.active) return;
+    try { voiceState.recognition.start(); } catch(e){ /* déjà démarré */ }
+  }
+
+  function voiceStop(){
+    voiceState.active = false;
+    if (voiceState.recognition){ try { voiceState.recognition.stop(); } catch(e){} }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    voiceState.sessionId = null;
+    voiceState.muted = false;
+    if (voiceControls) voiceControls.hidden = true;
+    if (voiceStartBtn) voiceStartBtn.hidden = false;
+    if (voiceMuteBtn){ voiceMuteBtn.textContent = '🔇 Couper le micro'; voiceMuteBtn.classList.remove('is-muted'); }
+    voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
+  }
+
+  function voiceStart(){
+    voiceShowError('');
+    if (!voiceSttSupported()){
+      voiceShowError("Votre navigateur ne prend pas en charge la conversation vocale ici (essayez Chrome) — utilisez le mode 💬 Écrire.");
+      return;
+    }
+    var sb = window.sudSupabase;
+    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    if (!sb || !sb.configured || !clientSessionId){ voiceShowError('Service indisponible pour le moment.'); return; }
+
+    voiceSetStatus('Connexion…', 'is-connecting');
+    voiceStartBtn.hidden = true;
+
+    sb.client.functions.invoke('voice-public-chat', { body: { client_session_id: clientSessionId } }).then(function(res){
+      var data = res.data;
+      if (!data || data.status !== 'ok'){
+        var msg = "L'assistant vocal n'est pas disponible pour le moment — utilisez le mode 💬 Écrire.";
+        if (data && data.status === 'quota_reached') msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode 💬 Écrire.";
+        voiceShowError(msg);
+        voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
+        voiceStartBtn.hidden = false;
+        return;
+      }
+      voiceState.sessionId = data.session_id;
+      voiceState.active = true;
+      addMessage('assistant', data.reply);
+      if (!voiceState.recognition) voiceState.recognition = voiceInitRecognition();
+      voiceSpeak(data.reply, function(){
+        if (voiceControls) voiceControls.hidden = false;
+      });
+    }).catch(function(){
+      voiceShowError("La conversation vocale n'a pas pu démarrer — utilisez le mode 💬 Écrire.");
+      voiceSetStatus('Parlez à HAYEVA en direct, comme une vraie conversation.', null);
+      voiceStartBtn.hidden = false;
+    });
+  }
+
+  if ('speechSynthesis' in window){
+    voicePickFrenchVoice();
+    window.speechSynthesis.onvoiceschanged = voicePickFrenchVoice;
+  }
+  if (voiceStartBtn) voiceStartBtn.addEventListener('click', voiceStart);
+  if (voiceMuteBtn){
+    voiceMuteBtn.addEventListener('click', function(){
+      voiceState.muted = !voiceState.muted;
+      if (voiceState.recognition){
+        try { if (voiceState.muted) voiceState.recognition.stop(); else voiceState.recognition.start(); } catch(e){}
+      }
+      voiceMuteBtn.textContent = voiceState.muted ? '🎙️ Réactiver le micro' : '🔇 Couper le micro';
+      voiceMuteBtn.classList.toggle('is-muted', voiceState.muted);
+      voiceSetStatus(voiceState.muted ? 'Micro coupé.' : '🎙️ HAYEVA vous écoute…', voiceState.muted ? null : 'is-listening');
+    });
+  }
+  if (voiceEndBtn){
+    voiceEndBtn.addEventListener('click', function(){ setAiWidgetMode('text'); });
+  }
 })();
 </script>
 

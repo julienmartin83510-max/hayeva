@@ -19,19 +19,35 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import type { ToolSchema } from './llm-provider.ts';
 import { canTransition, type CallState } from './state-machine.ts';
 
+export interface SessionInfo {
+  call_state: CallState;
+  customer_type: string | null;
+  service_category: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_address: string | null;
+  customer_city: string | null;
+  problem_description: string | null;
+  urgency_level: string | null;
+  desired_date: string | null;
+  desired_slot_label: string | null;
+}
+
 export interface ToolContext {
   supabase: SupabaseClient;
   sessionId: string;
-  session: { call_state: CallState; customer_type: string | null; service_category: string | null };
+  session: SessionInfo;
 }
+
+export type SessionPatch = Partial<Omit<SessionInfo, 'call_state'>> & Partial<{ call_state: CallState; test_booking_id: string }>;
 
 export interface ToolResult {
   ok: boolean;
   data?: Record<string, unknown>;
   error?: string;
   // Effets de bord que l'appelant (index.ts) doit appliquer à la session
-  // après un outil réussi (ex. mémoriser le type de client identifié).
-  sessionPatch?: Partial<{ customer_type: string; service_category: string; test_booking_id: string; call_state: CallState }>;
+  // après un outil réussi (ex. mémoriser une information client comprise).
+  sessionPatch?: SessionPatch;
 }
 
 function genTestReference(): string {
@@ -129,6 +145,49 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     description: "Recherche un client existant par téléphone. En simulation (Phase 1), aucune vraie fiche client n'est consultée — répond toujours qu'aucune correspondance n'est trouvée.",
     parameters: { type: 'object', properties: { phone: { type: 'string' } }, required: ['phone'] },
   },
+  {
+    name: 'record_customer_info',
+    description: "Enregistre ou met à jour, au fur et à mesure, les informations déjà données par le client (même une seule à la fois, ou plusieurs en même temps si le client les a toutes données dans la même phrase). N'invente JAMAIS une valeur non dite explicitement — ne renseigne que ce que le client a réellement communiqué.",
+    parameters: {
+      type: 'object',
+      properties: {
+        customer_name: { type: 'string' },
+        customer_phone: { type: 'string' },
+        customer_address: { type: 'string' },
+        customer_city: { type: 'string' },
+        customer_type: { type: 'string', enum: ['particulier', 'professionnel'] },
+        service_category: { type: 'string', enum: ['plomberie', 'chauffage', 'climatisation', 'autre'] },
+        problem_description: { type: 'string', description: 'Description courte du problème, dans les mots du client' },
+        urgency_level: { type: 'string', enum: ['normale', 'elevee', 'urgence'] },
+        desired_date: { type: 'string', description: "Date souhaitée si connue précisément, AAAA-MM-JJ" },
+        desired_slot_label: { type: 'string', description: "Moment souhaité tel que dit par le client, ex. 'demain après-midi' (texte libre, avant vérification réelle via get_available_slots)" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_service_price',
+    description: "Consulte le VRAI tarif d'une prestation HAYEVA. N'invente jamais un prix : si le tarif est \"sur devis\", dis-le clairement au lieu de proposer un chiffre.",
+    parameters: {
+      type: 'object',
+      properties: { service_slug: { type: 'string' } },
+      required: ['service_slug'],
+    },
+  },
+  {
+    name: 'get_travel_information',
+    description: "Donne la règle HAYEVA de frais de déplacement (rayon inclus gratuitement autour de Fréjus, tarif au km au-delà). Ne calcule PAS une distance précise pour une adresse donnée en Phase 1 — indique que le montant exact sera confirmé lors de la réservation.",
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'guide_to_booking',
+    description: "Une fois le besoin qualifié (prestation identifiée) et suffisamment d'informations recueillies (idéalement nom, téléphone, adresse/ville, et date/créneau souhaité si connus), utilise cet outil pour amener le client vers le vrai calendrier de réservation HAYEVA du site — il choisira lui-même son créneau réel et confirmera sa réservation à cette étape, jamais toi. N'appelle JAMAIS create_booking : cet outil n'existe pas dans ce canal, seul guide_to_booking peut faire progresser une réservation.",
+    parameters: {
+      type: 'object',
+      properties: { service_slug: { type: 'string', description: 'Slug de la prestation identifiée (voir get_service_information)' } },
+      required: ['service_slug'],
+    },
+  },
 ];
 
 // ------------------------------------------------------------
@@ -146,11 +205,20 @@ async function toolSetCallState(ctx: ToolContext, args: Record<string, unknown>)
 async function toolGetServiceInformation(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const query = typeof args.query === 'string' ? args.query.trim() : '';
   if (!query) return { ok: false, error: 'query manquant.' };
+  // Recherche par MOT plutôt que par phrase exacte : "fuite évier" doit
+  // trouver un service dont le nom contient seulement "fuite" (ex. "Forfait
+  // recherche de fuite") — un filtre sur la phrase entière échouait dès que
+  // le client formulait sa demande différemment du nom exact de la
+  // prestation (constaté en test). Chaque mot (nettoyé des caractères qui
+  // casseraient la mini-syntaxe .or() de PostgREST) élargit la recherche.
+  const words = query.split(/\s+/).map((w) => w.replace(/[(),%]/g, '')).filter((w) => w.length >= 3).slice(0, 6);
+  const terms = words.length ? words : [query.replace(/[(),%]/g, '')];
+  const orFilter = terms.map((w) => `name.ilike.%${w}%,description.ilike.%${w}%`).join(',');
   const { data, error } = await ctx.supabase
     .from('services')
     .select('slug, name, category, description, duration_minutes, booking_type, customer_type')
     .eq('is_active', true)
-    .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+    .or(orFilter)
     .limit(5);
   if (error) return { ok: false, error: 'Recherche indisponible.' };
   return { ok: true, data: { results: data || [] } };
@@ -169,10 +237,22 @@ async function toolGetAvailableSlots(ctx: ToolContext, args: Record<string, unkn
   return { ok: true, data: { service: service.name, date, slots: data || [] } };
 }
 
+// Accepte HH:MM ou HH:MM:SS — get_available_slots renvoie ses horaires avec
+// les secondes (ex. "09:15:00"), et le modèle les réutilise souvent tels
+// quels lors de create_booking/reschedule_booking plutôt que de les
+// retronquer ; sans cette tolérance, un horaire pourtant valide échouait
+// silencieusement la validation stricte HH:MM et retombait sur le message
+// générique "informations manquantes".
+function normalizeTimeArg(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const m = /^(\d{2}:\d{2})(?::\d{2})?$/.exec(value.trim());
+  return m ? m[1] + ':00' : '';
+}
+
 async function toolCreateBooking(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const serviceSlug = typeof args.service_slug === 'string' ? args.service_slug.trim() : '';
   const date = typeof args.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args.date) ? args.date : '';
-  const startTime = typeof args.start_time === 'string' && /^\d{2}:\d{2}$/.test(args.start_time) ? args.start_time + ':00' : '';
+  const startTime = normalizeTimeArg(args.start_time);
   const customerType = args.customer_type === 'professionnel' ? 'professionnel' : args.customer_type === 'particulier' ? 'particulier' : '';
   const customerName = typeof args.customer_name === 'string' ? args.customer_name.trim().slice(0, 120) : '';
   const customerPhone = typeof args.customer_phone === 'string' ? args.customer_phone.trim().slice(0, 30) : '';
@@ -218,7 +298,19 @@ async function toolCreateBooking(ctx: ToolContext, args: Record<string, unknown>
     })
     .select('id, reference')
     .single();
-  if (insertErr || !inserted) return { ok: false, error: 'Échec de la création du rendez-vous de test.' };
+  if (insertErr) {
+    // 23P01 = exclusion_violation (voir voice_test_bookings_no_overlap,
+    // 0036) : filet de sécurité ATOMIQUE contre une double réservation même
+    // en cas de deux create_booking quasi simultanés sur le même créneau —
+    // jamais uniquement la revérification applicative ci-dessus, qui reste
+    // sujette à une minuscule fenêtre de course entre la lecture et
+    // l'écriture. Message clair au modèle pour qu'il propose autre chose.
+    if ((insertErr as { code?: string }).code === '23P01') {
+      return { ok: false, error: 'Ce créneau vient tout juste être pris par une autre demande — proposez immédiatement un autre créneau via get_available_slots.' };
+    }
+    return { ok: false, error: 'Échec de la création du rendez-vous de test.' };
+  }
+  if (!inserted) return { ok: false, error: 'Échec de la création du rendez-vous de test.' };
 
   return {
     ok: true,
@@ -230,12 +322,10 @@ async function toolCreateBooking(ctx: ToolContext, args: Record<string, unknown>
 async function toolGetBooking(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const reference = typeof args.reference === 'string' ? args.reference.trim() : '';
   if (!reference) return { ok: false, error: 'reference manquante.' };
-  // Portée volontairement limitée à CETTE session : un "appel" ne doit
-  // jamais pouvoir retrouver le rendez-vous de test d'un autre appel.
+  // Portée par référence seule — voir commentaire dans toolCancelBooking.
   const { data, error } = await ctx.supabase
     .from('voice_test_bookings')
     .select('reference, date, start_time, status, customer_name, services(name)')
-    .eq('session_id', ctx.sessionId)
     .eq('reference', reference)
     .maybeSingle();
   if (error) return { ok: false, error: 'Recherche indisponible.' };
@@ -246,13 +336,15 @@ async function toolGetBooking(ctx: ToolContext, args: Record<string, unknown>): 
 async function toolRescheduleBooking(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const reference = typeof args.reference === 'string' ? args.reference.trim() : '';
   const newDate = typeof args.new_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args.new_date) ? args.new_date : '';
-  const newStartTime = typeof args.new_start_time === 'string' && /^\d{2}:\d{2}$/.test(args.new_start_time) ? args.new_start_time + ':00' : '';
+  const newStartTime = normalizeTimeArg(args.new_start_time);
   if (!reference || !newDate || !newStartTime) return { ok: false, error: 'reference, new_date et new_start_time sont requis.' };
 
+  // Portée par référence seule — voir commentaire équivalent dans
+  // toolCancelBooking : un déplacement se demande nécessairement depuis un
+  // nouvel appel puisque l'appel de création s'est déjà terminé.
   const { data: booking } = await ctx.supabase
     .from('voice_test_bookings')
     .select('id, status, service_id, services(slug)')
-    .eq('session_id', ctx.sessionId)
     .eq('reference', reference)
     .maybeSingle();
   if (!booking) return { ok: false, error: 'Aucun rendez-vous trouvé avec cette référence.' };
@@ -266,17 +358,27 @@ async function toolRescheduleBooking(ctx: ToolContext, args: Record<string, unkn
   }
 
   const { error: updErr } = await ctx.supabase.from('voice_test_bookings').update({ date: newDate, start_time: newStartTime }).eq('id', booking.id);
-  if (updErr) return { ok: false, error: 'Échec du déplacement du rendez-vous.' };
+  if (updErr) {
+    if ((updErr as { code?: string }).code === '23P01') {
+      return { ok: false, error: 'Ce nouveau créneau vient tout juste être pris — proposez-en un autre.' };
+    }
+    return { ok: false, error: 'Échec du déplacement du rendez-vous.' };
+  }
   return { ok: true, data: { reference, new_date: newDate, new_start_time: newStartTime.slice(0, 5) } };
 }
 
 async function toolCancelBooking(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const reference = typeof args.reference === 'string' ? args.reference.trim() : '';
   if (!reference) return { ok: false, error: 'reference manquante.' };
+  // Portée par référence seule (pas par session) : un rendez-vous de test
+  // est nécessairement créé lors d'un appel qui se termine ensuite
+  // (call_state passe à completed, terminal) — un client qui rappelle pour
+  // annuler le fait forcément depuis un NOUVEL appel/session. La référence
+  // aléatoire (TEST-VOICE-XXXXXX) reste l'identifiant fonctionnel, exactement
+  // comme en production où reference+nom suffisent à retrouver un RDV.
   const { data: booking } = await ctx.supabase
     .from('voice_test_bookings')
     .select('id, status')
-    .eq('session_id', ctx.sessionId)
     .eq('reference', reference)
     .maybeSingle();
   if (!booking) return { ok: false, error: 'Aucun rendez-vous trouvé avec cette référence.' };
@@ -286,9 +388,14 @@ async function toolCancelBooking(ctx: ToolContext, args: Record<string, unknown>
   return { ok: true, data: { reference, status: 'CANCELLED' } };
 }
 
-async function toolCreateCallbackRequest(_ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+async function toolCreateCallbackRequest(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 300) : '';
-  const phone = typeof args.customer_phone === 'string' ? args.customer_phone.trim().slice(0, 30) : null;
+  // Repli sur le téléphone déjà enregistré via record_customer_info dans
+  // cette même session — un rappel humain n'a de sens que si un numéro est
+  // réellement joignable, et le modèle ne le repasse pas toujours en
+  // argument même quand il l'a déjà obtenu du client (observé en test).
+  const argPhone = typeof args.customer_phone === 'string' ? args.customer_phone.trim().slice(0, 30) : '';
+  const phone = argPhone || ctx.session.customer_phone || null;
   if (!reason) return { ok: false, error: 'reason manquant.' };
   // Phase 1 : pas encore de table dédiée aux demandes de rappel réelles
   // (prévue en Phase 5, "Être rappelé par l'assistant"/appels sortants) —
@@ -305,6 +412,123 @@ async function toolGetCustomer(_ctx: ToolContext, args: Record<string, unknown>)
   return { ok: true, data: { found: false, note: 'Recherche client réelle non disponible en mode simulateur (Phase 1).' } };
 }
 
+// Whitelist stricte des champs modifiables + validation individuelle —
+// jamais un simple "...args" recopié tel quel (un champ mal orthographié
+// ou d'un type inattendu envoyé par le modèle est silencieusement ignoré
+// plutôt que de corrompre la session).
+const URGENCY_VALUES = ['normale', 'elevee', 'urgence'];
+const CUSTOMER_TYPE_VALUES = ['particulier', 'professionnel'];
+const SERVICE_CATEGORY_VALUES = ['plomberie', 'chauffage', 'climatisation', 'autre'];
+
+async function toolRecordCustomerInfo(_ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+  const patch: SessionPatch = {};
+  const recorded: string[] = [];
+
+  function str(key: string, max: number) {
+    const v = args[key];
+    if (typeof v === 'string' && v.trim()) { (patch as Record<string, unknown>)[key] = v.trim().slice(0, max); recorded.push(key); }
+  }
+  function enumField(key: string, allowed: string[]) {
+    const v = args[key];
+    if (typeof v === 'string' && allowed.includes(v)) { (patch as Record<string, unknown>)[key] = v; recorded.push(key); }
+  }
+
+  str('customer_name', 120);
+  str('customer_phone', 30);
+  str('customer_address', 300);
+  str('customer_city', 120);
+  str('problem_description', 500);
+  str('desired_slot_label', 120);
+  enumField('customer_type', CUSTOMER_TYPE_VALUES);
+  enumField('service_category', SERVICE_CATEGORY_VALUES);
+  enumField('urgency_level', URGENCY_VALUES);
+  const desiredDate = args.desired_date;
+  if (typeof desiredDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(desiredDate)) { patch.desired_date = desiredDate; recorded.push('desired_date'); }
+
+  if (!recorded.length) return { ok: false, error: 'Aucune information valide à enregistrer.' };
+  return { ok: true, data: { recorded }, sessionPatch: patch };
+}
+
+async function toolGetServicePrice(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+  const serviceSlug = typeof args.service_slug === 'string' ? args.service_slug.trim() : '';
+  if (!serviceSlug) return { ok: false, error: 'service_slug manquant.' };
+  const { data: service } = await ctx.supabase
+    .from('services')
+    .select('id, name, base_price_cents, price_display_mode, is_active')
+    .eq('slug', serviceSlug)
+    .maybeSingle();
+  if (!service || !service.is_active) return { ok: false, error: "Cette prestation n'existe pas ou n'est plus active." };
+
+  if (service.base_price_cents == null) {
+    // Service décliné en formules (service_packs) : jamais un prix unique.
+    const { data: packs } = await ctx.supabase
+      .from('service_packs')
+      .select('name, price_cents, duration_minutes')
+      .eq('service_id', service.id)
+      .eq('is_active', true)
+      .order('sort_order');
+    return { ok: true, data: { service: service.name, packs: (packs || []).map((p) => ({ name: p.name, price_euros: p.price_cents / 100, duration_minutes: p.duration_minutes })) } };
+  }
+  if (service.price_display_mode === 'QUOTE') {
+    return { ok: true, data: { service: service.name, mode: 'QUOTE', note: 'Sur devis — aucun tarif fixe communicable, un devis personnalisé gratuit est proposé.' } };
+  }
+  return {
+    ok: true,
+    data: {
+      service: service.name,
+      mode: service.price_display_mode,
+      price_euros: service.base_price_cents / 100,
+      note: service.price_display_mode === 'FROM' ? 'Tarif "à partir de" — le prix définitif dépend du diagnostic.' : 'Tarif ferme TTC.',
+    },
+  };
+}
+
+async function toolGetTravelInformation(ctx: ToolContext): Promise<ToolResult> {
+  const { data, error } = await ctx.supabase.from('travel_settings_public').select('origin_label, included_radius_km, rate_per_km_cents').maybeSingle();
+  if (error || !data) return { ok: false, error: 'Informations de déplacement indisponibles pour le moment.' };
+  return {
+    ok: true,
+    data: {
+      origin: data.origin_label,
+      included_radius_km: data.included_radius_km,
+      rate_per_km_euros: data.rate_per_km_cents / 100,
+      note: "Distance exacte non calculée en simulation (Phase 1) — le montant réel sera confirmé automatiquement avant la validation d'un vrai rendez-vous.",
+    },
+  };
+}
+
+// Utilisé par le canal "HAYEVA Voice navigateur" (assistant vocal
+// temps réel intégré au site, pas le simulateur admin) : jamais de
+// create_booking en production depuis ce canal — on renvoie seulement les
+// informations validées nécessaires pour que le FRONTEND amène le client
+// vers le vrai tunnel de réservation existant (window.sudBooking, déjà
+// utilisé par l'assistant texte) et l'y laisse choisir/confirmer lui-même
+// un créneau réel. N'invente jamais une info non recueillie : les champs
+// non renseignés restent null, jamais devinés.
+async function toolGuideToBooking(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+  const serviceSlug = typeof args.service_slug === 'string' ? args.service_slug.trim() : '';
+  if (!serviceSlug) return { ok: false, error: 'service_slug manquant.' };
+  const { data: service } = await ctx.supabase.from('services').select('slug, name, category, is_active').eq('slug', serviceSlug).maybeSingle();
+  if (!service || !service.is_active) return { ok: false, error: "Cette prestation n'existe pas ou n'est plus active." };
+  return {
+    ok: true,
+    data: {
+      service_slug: service.slug,
+      service_name: service.name,
+      service_category: service.category,
+      recap: {
+        customer_name: ctx.session.customer_name,
+        customer_phone: ctx.session.customer_phone,
+        customer_address: ctx.session.customer_address,
+        customer_city: ctx.session.customer_city,
+        desired_date: ctx.session.desired_date,
+        desired_slot_label: ctx.session.desired_slot_label,
+      },
+      note: 'Le client va être dirigé vers le vrai calendrier de réservation pour choisir et confirmer lui-même son créneau.',
+    },
+  };
+}
+
 const HANDLERS: Record<string, (ctx: ToolContext, args: Record<string, unknown>) => Promise<ToolResult>> = {
   set_call_state: toolSetCallState,
   get_service_information: toolGetServiceInformation,
@@ -315,7 +539,24 @@ const HANDLERS: Record<string, (ctx: ToolContext, args: Record<string, unknown>)
   cancel_booking: toolCancelBooking,
   create_callback_request: toolCreateCallbackRequest,
   get_customer: toolGetCustomer,
+  record_customer_info: toolRecordCustomerInfo,
+  get_service_price: toolGetServicePrice,
+  get_travel_information: toolGetTravelInformation,
+  guide_to_booking: toolGuideToBooking,
 };
+
+// Sous-ensemble d'outils autorisés pour le canal "HAYEVA Voice navigateur"
+// (voir voice-realtime-tool/index.ts) : jamais create_booking/
+// reschedule_booking/cancel_booking/get_booking/get_customer — ces outils
+// resteraient valides pour le simulateur admin, mais aucune réservation
+// production réelle n'est jamais créée/modifiée/annulée directement par le
+// modèle depuis ce canal public, uniquement via guide_to_booking (qui
+// renvoie la main au vrai tunnel de réservation existant).
+export const REALTIME_ALLOWED_TOOLS = [
+  'set_call_state', 'get_service_information', 'get_available_slots',
+  'create_callback_request', 'record_customer_info', 'get_service_price',
+  'get_travel_information', 'guide_to_booking',
+];
 
 export async function executeTool(name: string, ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
   const handler = HANDLERS[name];
