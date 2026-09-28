@@ -6393,6 +6393,31 @@ if ('serviceWorker' in navigator){
         </figure>
       </div>
 
+      <div class="ba-slider reveal-on-scroll" data-ba-slider>
+        <div class="ba-slider-after">
+          <img src="images/sanitaire/colonne-douche-apres-md.jpg"
+               srcset="images/sanitaire/colonne-douche-apres-sm.jpg 480w, images/sanitaire/colonne-douche-apres-md.jpg 900w, images/sanitaire/colonne-douche-apres-lg.jpg 1600w"
+               sizes="(min-width:760px) 640px, 90vw"
+               alt="Colonne de douche après réparation : rampe droite, pommeau de douche de tête fixé au plafond, flexible bien rangé"
+               width="1242" height="2208"
+               loading="lazy">
+        </div>
+        <div class="ba-slider-before">
+          <img src="images/sanitaire/colonne-douche-avant-md.jpg"
+               srcset="images/sanitaire/colonne-douche-avant-sm.jpg 480w, images/sanitaire/colonne-douche-avant-md.jpg 900w, images/sanitaire/colonne-douche-avant-lg.jpg 1600w"
+               sizes="(min-width:760px) 640px, 90vw"
+               alt="La même colonne de douche avant réparation : rampe tordue, pommeau de tête absent, flexible mal fixé"
+               width="1242" height="2208"
+               loading="lazy">
+        </div>
+        <div class="ba-slider-line"></div>
+        <div class="ba-slider-handle"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7L3 12L8 17M16 7L21 12L16 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="ba-slider-tag ba-slider-tag-before">Avant</span>
+        <span class="ba-slider-tag ba-slider-tag-after">Après</span>
+        <input type="range" class="ba-slider-range" min="0" max="100" value="50" aria-label="Faites glisser pour comparer la colonne de douche avant et après la réparation HAYEVA">
+      </div>
+      <p class="ba-slider-caption">La même colonne de douche, avant et après le passage de nos techniciens — faites glisser pour comparer.</p>
+
       <div class="univers-split">
         <div class="univers-split-media">
           <div class="photo-frame reveal-on-scroll">
@@ -19991,7 +20016,9 @@ if ('serviceWorker' in navigator){
     { cat:'plomberie', file:'filtration/systeme-filtration-eau-cartouches', alt:"Système de filtration d'eau à deux cartouches" },
     { cat:'sanitaire', file:'sanitaire/cabine-douche-vitree', alt:'Cabine de douche vitrée installée par HAYEVA' },
     { cat:'sanitaire', file:'sanitaire/installation-baignoire', alt:'Baignoire installée par HAYEVA' },
-    { cat:'sanitaire', file:'sanitaire/installation-wc', alt:'WC installé par HAYEVA' }
+    { cat:'sanitaire', file:'sanitaire/installation-wc', alt:'WC installé par HAYEVA' },
+    { cat:'sanitaire', file:'sanitaire/colonne-douche-avant', alt:'Colonne de douche avant réparation, rampe tordue et flexible mal fixé' },
+    { cat:'sanitaire', file:'sanitaire/colonne-douche-apres', alt:'Colonne de douche après réparation, rampe droite et pommeau de tête fixé' }
   ];
 
   var CATEGORIES = [
