@@ -4848,7 +4848,11 @@ if ('serviceWorker' in navigator){
     background:rgba(10,14,20,0.94); padding:24px; text-align:center;
   }
   .story-video-end-logo{ width:64px; height:auto; }
-  .story-video-end-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; color:#fff; margin:0; }
+  .story-video-end-brand{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.1rem; letter-spacing:0.08em; color:#fff; margin:2px 0 0; }
+  .story-video-end-tagline{ font-size:0.78rem; letter-spacing:0.04em; color:rgba(255,255,255,0.65); margin:0; }
+  .story-video-end-signature{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.9rem; color:#fff; margin:10px 0 0; }
+  .story-video-end-signature span{ display:block; font-weight:500; font-size:0.76rem; color:rgba(255,255,255,0.65); margin-top:2px; }
+  .story-video-end-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; color:#fff; margin:6px 0 0; }
   .story-video-end-ctas{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; margin-top:6px; }
   .story-video-end-link{
     background:none; border:none; color:#fff; text-decoration:underline; font-weight:700; cursor:pointer; font-size:0.9rem;
@@ -8829,11 +8833,14 @@ if ('serviceWorker' in navigator){
     </div>
     <div class="story-video-end" id="storyVideoEnd" hidden>
       <img src="images/brand/hayeva-logo.png" alt="HAYEVA" class="story-video-end-logo">
-      <p class="story-video-end-title">Bienvenue chez HAYEVA</p>
+      <p class="story-video-end-brand">HAYEVA</p>
+      <p class="story-video-end-tagline">Plomberie • Chauffage • Climatisation</p>
+      <p class="story-video-end-signature">Julien Martin<span>Fondateur de HAYEVA</span></p>
+      <p class="story-video-end-title">Bienvenue chez HAYEVA.</p>
       <div class="story-video-end-ctas">
         <a href="#besoin" class="btn-hero-primary" id="storyVideoCtaServices">Découvrir nos services</a>
         <a href="#rdv" class="btn-hero-secondary" id="storyVideoCtaBooking">Prendre rendez-vous</a>
-        <button type="button" class="story-video-end-link" id="storyVideoCtaFullBio">Lire mon histoire complète</button>
+        <button type="button" class="story-video-end-link" id="storyVideoCtaFullBio">Lire mon histoire</button>
       </div>
     </div>
   </div>
