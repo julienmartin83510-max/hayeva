@@ -14210,7 +14210,16 @@ if ('serviceWorker' in navigator){
       var st = document.createElement('style');
       st.id = 'admIvStyles';
       st.textContent =
-        '#admIvOverlay{position:fixed;inset:0;background:rgba(16,27,36,0.6);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;box-sizing:border-box;}' +
+        // z-index 9000 était INFÉRIEUR à plusieurs overlays plein écran déjà
+        // présents ailleurs sur le site (portail de connexion, bannière
+        // cookies, panneau assistant, feuille "Plus", overlay story — jusqu'à
+        // 10080) : si l'un d'eux restait actif/non masqué, il recouvrait
+        // entièrement cette fiche sans que ses propres vérifications de DOM
+        // (display/visibility/dimensions) ne puissent jamais le détecter,
+        // puisqu'elles ne portaient que sur cet élément, jamais sur ce qui
+        // est réellement peint AU-DESSUS. Valeur portée largement au-dessus
+        // de tout le reste du site pour rendre ce recouvrement impossible.
+        '#admIvOverlay{position:fixed;inset:0;background:rgba(16,27,36,0.6);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;box-sizing:border-box;}' +
         '#admIvOverlay[hidden]{display:none;}' +
         '.adm-iv-sheet{background:var(--adm-card-bg,#fff);color:var(--adm-ink,#16222c);border-radius:16px;max-width:760px;width:100%;margin:24px auto;padding:22px 22px calc(22px + env(safe-area-inset-bottom, 0px));box-sizing:border-box;font-family:"Poppins",sans-serif;}' +
         '.adm-iv-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;}' +
@@ -14381,7 +14390,7 @@ if ('serviceWorker' in navigator){
       if (!badge){
         badge = document.createElement('div');
         badge.id = 'admIvDebugBadge';
-        badge.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:99999;' +
+        badge.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:2147483647;' +
           'background:#101B24;color:#EAF2F8;font:11px/1.45 -apple-system,Menlo,monospace;' +
           'padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,0.35);cursor:pointer;';
         badge.addEventListener('click', function(){ admIvDebugExpanded = !admIvDebugExpanded; admIvDebugRenderBadge(); });
@@ -14524,12 +14533,23 @@ if ('serviceWorker' in navigator){
               var r = el.getBoundingClientRect();
               var reallyVisible = !el.hidden && cs.display !== 'none' && cs.visibility !== 'hidden' &&
                 parseFloat(cs.opacity) !== 0 && r.width > 0 && r.height > 0;
+              // Preuve décisive qu'aucun autre test précédent n'apportait :
+              // qu'est-ce qui est RÉELLEMENT au sommet de la pile visuelle à
+              // l'endroit même de cette fiche (pas seulement ce que CETTE
+              // fiche affirme sur elle-même) ? Un élément différent ici — un
+              // autre overlay du site resté actif par-dessus — serait la
+              // preuve définitive d'un recouvrement, chose que "display:flex,
+              // dimensions non nulles" ne peut jamais révéler à lui seul.
+              var topEl = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
+              var topIsOverlayOrChild = topEl === el || el.contains(topEl);
               admIvDebugLog(reallyVisible ? 'DOM VISIBLE ✓' : 'DOM VISIBLE ✕', {
                 hiddenAttr: el.hidden, display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
                 position: cs.position, zIndex: cs.zIndex,
-                rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
+                rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
+                elementRéellementAuSommet: topEl ? (topEl.tagName + (topEl.id ? '#' + topEl.id : '') + (topEl.className ? '.' + String(topEl.className).replace(/\s+/g, '.') : '')) : null,
+                cEstBienLaFiche: topIsOverlayOrChild
               });
-              if (!reallyVisible){
+              if (!reallyVisible || !topIsOverlayOrChild){
                 admIvDebugLog('Fallback navigation en dur', ivPagePath);
                 window.location.assign(ivPagePath);
               }
