@@ -14052,6 +14052,64 @@ if ('serviceWorker' in navigator){
       });
     });
 
+    // ------------------------------------------------------------
+    // FIABILITÉ TACTILE — diagnostic terrain (badge debug, vrai iPhone) :
+    // TOUCH REÇU se journalise, puis PLUS RIEN — aucun "click" ne suit.
+    // C'est un comportement documenté de Safari iOS : la synthèse du click
+    // à partir d'un touchstart/touchend peut être silencieusement
+    // abandonnée (ambiguïté scroll/tap dans une liste, mouvement même
+    // infime du doigt, tap rapproché d'un tap précédent) — indépendant de
+    // notre code, jamais reproductible en simulation Chromium. On ne peut
+    // pas réparer le "click" de Safari ; on cesse d'en dépendre pour ces
+    // boutons critiques : pointerdown/pointerup, avec un seuil de
+    // mouvement/délai pour ne déclencher que sur un vrai tap (jamais sur un
+    // glissé/scroll), déclenchent directement l'action. Le "click" reste
+    // câblé en secours (souris, clavier, Safari quand il fonctionne
+    // normalement) ; admWasRecentlyTapHandled() évite qu'un "click" natif
+    // arrivant malgré tout juste après ne déclenche l'action une seconde fois.
+    // ------------------------------------------------------------
+    var admTapTrack = null;
+    function admWireReliableTap(container, selector, handler){
+      container.addEventListener('pointerdown', function(e){
+        var el = e.target.closest(selector);
+        if (!el) return;
+        admTapTrack = { el: el, x: e.clientX, y: e.clientY, t: Date.now(), pointerId: e.pointerId };
+      });
+      container.addEventListener('pointerup', function(e){
+        if (!admTapTrack || admTapTrack.pointerId !== e.pointerId) return;
+        var track = admTapTrack;
+        admTapTrack = null;
+        var el = e.target.closest(selector);
+        if (!el || el !== track.el) return;
+        var moved = Math.hypot(e.clientX - track.x, e.clientY - track.y);
+        var elapsed = Date.now() - track.t;
+        if (moved > 12 || elapsed > 800) return; // vrai glissé/scroll, pas un tap
+        el.__hayevaTapHandledAt = Date.now();
+        handler(el);
+      });
+    }
+    function admWasRecentlyTapHandled(el){
+      return !!(el && el.__hayevaTapHandledAt && (Date.now() - el.__hayevaTapHandledAt) < 600);
+    }
+    function admHandleStartResumeTap(startBtn){
+      // Retour visuel IMMÉDIAT : le bug réel constaté venait d'un
+      // utilisateur qui retapait ce bouton plusieurs fois de suite parce
+      // que rien ne s'affichait tout de suite (réseau mobile plus lent) —
+      // chaque tap relançait tout le chargement en parallèle, ce qui a
+      // fini par dupliquer la checklist d'une intervention en production
+      // (voir admIvOpening et 0047_fix_intervention_items_duplicates.sql).
+      // Désactiver le bouton dès le premier tap rend cette situation
+      // impossible, en plus de la garde admIvOpening côté fonction.
+      if (startBtn.disabled) return;
+      startBtn.disabled = true;
+      var startBtnOriginalText = startBtn.textContent;
+      startBtn.textContent = 'Ouverture…';
+      admOpenInterventionSheet(startBtn.getAttribute('data-booking-id'), function(){
+        startBtn.disabled = false;
+        startBtn.textContent = startBtnOriginalText;
+      });
+    }
+
     // Déplacement RÉEL d'un rendez-vous (contrairement à "Proposer un autre
     // créneau" qui n'envoie qu'un e-mail) : appelle admin_reschedule_booking
     // (0044_intervention_reports.sql), même patron que reschedule_own_booking
@@ -14075,25 +14133,12 @@ if ('serviceWorker' in navigator){
       }
       var startBtn = e.target.closest('.admin-bk-start-btn, .admin-bk-resume-btn');
       if (startBtn){
-        // Retour visuel IMMÉDIAT : le bug réel constaté venait d'un
-        // utilisateur qui retapait ce bouton plusieurs fois de suite parce
-        // que rien ne s'affichait tout de suite (réseau mobile plus lent) —
-        // chaque tap relançait tout le chargement en parallèle, ce qui a
-        // fini par dupliquer la checklist d'une intervention en production
-        // (voir admIvOpening et 0047_fix_intervention_items_duplicates.sql).
-        // Désactiver le bouton dès le premier tap rend cette situation
-        // impossible, en plus de la garde admIvOpening côté fonction.
-        if (startBtn.disabled) return;
-        startBtn.disabled = true;
-        var startBtnOriginalText = startBtn.textContent;
-        startBtn.textContent = 'Ouverture…';
-        admOpenInterventionSheet(startBtn.getAttribute('data-booking-id'), function(){
-          startBtn.disabled = false;
-          startBtn.textContent = startBtnOriginalText;
-        });
+        if (admWasRecentlyTapHandled(startBtn)) return;
+        admHandleStartResumeTap(startBtn);
         return;
       }
     });
+    admWireReliableTap(adminListEl, '.admin-bk-start-btn, .admin-bk-resume-btn', admHandleStartResumeTap);
 
     adminListEl.addEventListener('submit', function(e){
       var form = e.target.closest('.admin-bk-move-form');
@@ -15275,23 +15320,34 @@ if ('serviceWorker' in navigator){
   // pendant que la requête précédente est encore en vol) — clé = booking id.
   var admDecisionInFlight = {};
 
+  function admHandleModalIvTap(ivBtn){
+    if (ivBtn.disabled) return;
+    ivBtn.disabled = true;
+    var ivBtnOriginalText = ivBtn.textContent;
+    ivBtn.textContent = 'Ouverture…';
+    var ivBookingId = ivBtn.getAttribute('data-booking-id');
+    admCloseBookingModal();
+    admOpenInterventionSheet(ivBookingId, function(){
+      ivBtn.disabled = false;
+      ivBtn.textContent = ivBtnOriginalText;
+    });
+  }
+
   var adminBkModalOverlayEl = document.getElementById('adminBkModalOverlay');
   if (adminBkModalOverlayEl){
+    // Même filet de fiabilité tactile que les boutons de la vue Liste (voir
+    // admWireReliableTap) : ne dépend plus uniquement du "click" de Safari
+    // iOS, dont la synthèse peut être silencieusement abandonnée après un
+    // touchstart pourtant bien reçu.
+    admWireReliableTap(adminBkModalOverlayEl, '.admin-bk-modal-iv-btn', admHandleModalIvTap);
+
     adminBkModalOverlayEl.addEventListener('click', function(e){
       if (e.target === adminBkModalOverlayEl){ admCloseBookingModal(); return; }
 
       var ivBtn = e.target.closest('.admin-bk-modal-iv-btn');
       if (ivBtn){
-        if (ivBtn.disabled) return;
-        ivBtn.disabled = true;
-        var ivBtnOriginalText = ivBtn.textContent;
-        ivBtn.textContent = 'Ouverture…';
-        var ivBookingId = ivBtn.getAttribute('data-booking-id');
-        admCloseBookingModal();
-        admOpenInterventionSheet(ivBookingId, function(){
-          ivBtn.disabled = false;
-          ivBtn.textContent = ivBtnOriginalText;
-        });
+        if (admWasRecentlyTapHandled(ivBtn)) return;
+        admHandleModalIvTap(ivBtn);
         return;
       }
 
