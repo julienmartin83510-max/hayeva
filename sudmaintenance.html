@@ -3436,7 +3436,7 @@ if ('serviceWorker' in navigator){
     background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:12px; padding:11px 15px;
     cursor:pointer; transition:border-color .15s, box-shadow .15s; box-shadow:var(--adm-shadow-sm);
   }
-  .admin-account-row:hover{ border-color:var(--adm-ocean); }
+  @media (hover:hover){ .admin-account-row:hover{ border-color:var(--adm-ocean); } }
   .admin-account-row.is-expanded{ border-color:var(--adm-ocean); }
   .admin-account-row-summary{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; font-size:0.88rem; }
   .admin-account-row-name{ font-weight:700; color:var(--adm-ink); }
@@ -3646,7 +3646,7 @@ if ('serviceWorker' in navigator){
     display:flex; flex-direction:column; gap:2px; text-align:left; transition:filter .15s ease, transform .15s ease;
     box-shadow:var(--adm-shadow-sm);
   }
-  .admin-bk-event:hover{ filter:brightness(0.98); transform:translateY(-1px); }
+  @media (hover:hover){ .admin-bk-event:hover{ filter:brightness(0.98); transform:translateY(-1px); } }
   .admin-bk-event-time{ font-size:0.68rem; font-weight:700; color:var(--adm-ocean-deep); line-height:1.2; }
   .admin-bk-event-title{ font-size:0.75rem; font-weight:700; color:var(--adm-ink); line-height:1.2; }
   .admin-bk-event-meta{ font-size:0.66rem; color:var(--adm-ink-soft); line-height:1.25; }
@@ -3755,7 +3755,7 @@ if ('serviceWorker' in navigator){
   }
   .admin-req-new-badge{ background:var(--adm-ocean-soft); color:var(--adm-ocean); margin-left:8px; }
   .admin-req-row{ cursor:pointer; transition:border-color .2s, background .2s; }
-  .admin-req-row:hover{ border-color:var(--adm-ocean); }
+  @media (hover:hover){ .admin-req-row:hover{ border-color:var(--adm-ocean); } }
   .admin-req-row-new{ border-color:var(--adm-turquoise); background:var(--adm-turquoise-soft); }
   @keyframes adminReqHighlight{
     0%, 100%{ box-shadow:none; }
@@ -3772,6 +3772,12 @@ if ('serviceWorker' in navigator){
      fiche (admOpenBookingModal) : il ne modifie plus jamais un statut. Les
      deux gros boutons ci-dessous sont l'unique façon de changer le statut
      d'une demande PENDING, chacun avec sa propre confirmation. */
+  .admin-bk-modal-iv-row{ margin:0 0 18px; }
+  .admin-bk-modal-iv-btn{
+    display:block; width:100%; box-sizing:border-box; background:var(--adm-green,#3F9463); color:#fff; border:none;
+    border-radius:12px; padding:14px 16px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; cursor:pointer;
+  }
+  .admin-bk-modal-iv-btn[disabled]{ opacity:0.6; cursor:not-allowed; }
   .admin-bk-modal-decision{ display:flex; gap:12px; flex-wrap:wrap; margin:18px 0 10px; }
   .admin-bk-decision-btn{
     flex:1 1 180px; display:flex; align-items:center; justify-content:center; gap:8px;
@@ -14942,7 +14948,21 @@ if ('serviceWorker' in navigator){
       // classe et fonctionnent donc sans rien dupliquer. Le menu déroulant
       // Statut reste inchangé juste en dessous pour les autres transitions
       // (ex. marquer Terminé).
+      // Bouton principal d'accès à la fiche d'intervention DEPUIS cette
+      // fiche rendez-vous (Planning → tap sur un créneau → admOpenBookingModal)
+      // — jusqu'ici seule la vue Liste (admRenderList) l'avait ; ouvrir un
+      // rendez-vous confirmé/en cours/terminé depuis le Planning ne donnait
+      // aucun accès à la fiche d'intervention.
+      var ivActionHtml = '';
+      if (b.status === 'CONFIRMED'){
+        ivActionHtml = '<button type="button" class="admin-bk-modal-iv-btn" data-booking-id="' + b.id + '">▶ Commencer l\'intervention</button>';
+      } else if (b.status === 'IN_PROGRESS'){
+        ivActionHtml = '<button type="button" class="admin-bk-modal-iv-btn" data-booking-id="' + b.id + '">Reprendre la fiche d\'intervention</button>';
+      } else if (b.status === 'COMPLETED'){
+        ivActionHtml = '<button type="button" class="admin-bk-modal-iv-btn" data-booking-id="' + b.id + '">Voir le compte rendu</button>';
+      }
       actionsHtml =
+        (ivActionHtml ? '<div class="admin-bk-modal-iv-row">' + ivActionHtml + '</div>' : '') +
         '<div class="admin-bk-modal-status-row">' +
           '<label for="adminBkModalStatusSelect">Statut</label>' +
           '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
@@ -15058,6 +15078,21 @@ if ('serviceWorker' in navigator){
   if (adminBkModalOverlayEl){
     adminBkModalOverlayEl.addEventListener('click', function(e){
       if (e.target === adminBkModalOverlayEl){ admCloseBookingModal(); return; }
+
+      var ivBtn = e.target.closest('.admin-bk-modal-iv-btn');
+      if (ivBtn){
+        if (ivBtn.disabled) return;
+        ivBtn.disabled = true;
+        var ivBtnOriginalText = ivBtn.textContent;
+        ivBtn.textContent = 'Ouverture…';
+        var ivBookingId = ivBtn.getAttribute('data-booking-id');
+        admCloseBookingModal();
+        admOpenInterventionSheet(ivBookingId, function(){
+          ivBtn.disabled = false;
+          ivBtn.textContent = ivBtnOriginalText;
+        });
+        return;
+      }
 
       var acceptBtn = e.target.closest('.admin-bk-decision-accept');
       if (acceptBtn){
@@ -15378,8 +15413,19 @@ if ('serviceWorker' in navigator){
       var row = e.target.closest('.admin-req-row');
       if (!row) return;
       var id = row.getAttribute('data-booking-id');
-      admMarkRequestViewed(id);
+      // BUG RÉEL corrigé : admMarkRequestViewed() régénère tout de suite
+      // #adminReqList.innerHTML (pour retirer le badge "NOUVEAU"), ce qui
+      // détruit la ligne <div> tapée PENDANT le traitement de son propre
+      // événement click. Sur Chrome/desktop ça ne se voit pas ; sur Safari
+      // iOS, retirer du DOM l'élément à l'origine d'un tap EN PLEIN milieu
+      // du traitement de ce tap peut empêcher la suite du geste d'aboutir
+      // (le clic "se perd" — rien ne s'ouvre). Ouvrir la fiche d'ABORD (elle
+      // vit dans #adminBkModalOverlay, un élément totalement séparé, jamais
+      // affecté par ce re-rendu) rend l'ordre sans risque : le marquage
+      // "vu" peut se produire juste après sans plus jamais interférer avec
+      // le geste tactile en cours.
       admOpenBookingModal(id);
+      admMarkRequestViewed(id);
     });
   }
   var adminReqFiltersEl = document.getElementById('adminReqFilters');
