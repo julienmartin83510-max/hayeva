@@ -3277,6 +3277,7 @@ if ('serviceWorker' in navigator){
     --adm-amber:#C4862A; --adm-amber-soft:rgba(196,134,42,0.15);
     --adm-grey:#7C8AA0; --adm-grey-soft:rgba(124,138,160,0.15);
     --adm-red:#C1503B; --adm-red-soft:rgba(193,80,59,0.14);
+    --adm-blue:#2D6FA8; --adm-blue-soft:rgba(45,111,168,0.14);
     margin-top:38px; position:relative;
   }
   @media (prefers-color-scheme: dark){
@@ -3389,6 +3390,7 @@ if ('serviceWorker' in navigator){
   .adm-badge-pending{ background:var(--adm-amber-soft); color:var(--adm-amber); }
   .adm-badge-completed{ background:var(--adm-grey-soft); color:var(--adm-grey); }
   .adm-badge-cancelled{ background:var(--adm-red-soft); color:var(--adm-red); }
+  .adm-badge-progress{ background:var(--adm-blue-soft); color:var(--adm-blue); }
   .adm-badge-review{ background:rgba(124,58,207,0.14); color:#7C3ACF; }
 
   /* ---------- Cartes partagées avec l'Espace Client (.ec-*), resurchargées
@@ -3504,30 +3506,34 @@ if ('serviceWorker' in navigator){
   .admin-bk-refuse-btn:hover{ background:var(--adm-red); color:#fff; }
   .admin-bk-propose-btn{ border-color:var(--adm-ocean); color:var(--adm-ocean); }
   .admin-bk-propose-btn:hover{ background:var(--adm-ocean); color:#fff; }
+  .admin-bk-move-btn{ border-color:var(--adm-blue); color:var(--adm-blue); }
+  .admin-bk-move-btn:hover{ background:var(--adm-blue); color:#fff; }
+  .admin-bk-start-btn, .admin-bk-resume-btn{ border-color:var(--adm-green); color:var(--adm-green); }
+  .admin-bk-start-btn:hover, .admin-bk-resume-btn:hover{ background:var(--adm-green); color:#fff; }
   .admin-bk-action-btn[disabled]{ opacity:0.55; cursor:not-allowed; }
-  .admin-bk-propose-form{
+  .admin-bk-propose-form, .admin-bk-move-form{
     flex:1 1 100%; min-width:0; display:flex; flex-direction:column; gap:10px;
     background:var(--adm-sand); border-radius:12px; padding:14px; margin-top:8px; box-sizing:border-box;
   }
   .admin-bk-propose-form-row{ display:flex; flex-wrap:wrap; gap:10px; }
-  .admin-bk-propose-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.76rem; font-weight:600; color:var(--adm-ink-soft); flex:1 1 140px; min-width:0; }
-  .admin-bk-propose-form input, .admin-bk-propose-form textarea{
+  .admin-bk-propose-form label, .admin-bk-move-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.76rem; font-weight:600; color:var(--adm-ink-soft); flex:1 1 140px; min-width:0; }
+  .admin-bk-propose-form input, .admin-bk-propose-form textarea, .admin-bk-move-form input{
     font-family:inherit; font-size:0.85rem; padding:8px 10px; border-radius:8px; border:1.5px solid var(--adm-line);
     background:var(--adm-card-bg); color:var(--adm-ink); width:100%; box-sizing:border-box;
   }
   .admin-bk-propose-form textarea{ resize:vertical; min-height:38px; }
-  .admin-bk-propose-send{
+  .admin-bk-propose-send, .admin-bk-move-send{
     background:var(--adm-ocean); color:#fff; border:none; border-radius:8px; padding:9px 14px;
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; cursor:pointer;
   }
-  .admin-bk-propose-send[disabled]{ opacity:0.6; cursor:not-allowed; }
-  .admin-bk-propose-cancel{
+  .admin-bk-propose-send[disabled], .admin-bk-move-send[disabled]{ opacity:0.6; cursor:not-allowed; }
+  .admin-bk-propose-cancel, .admin-bk-move-cancel{
     background:transparent; border:1px solid var(--adm-line); color:var(--adm-ink-soft); border-radius:8px;
     padding:9px 12px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.78rem; cursor:pointer;
   }
-  .admin-bk-propose-msg{ font-size:0.78rem; font-weight:600; }
-  .admin-bk-propose-msg.is-error{ color:var(--adm-red); }
-  .admin-bk-propose-msg.is-success{ color:var(--adm-green); }
+  .admin-bk-propose-msg, .admin-bk-move-msg{ font-size:0.78rem; font-weight:600; }
+  .admin-bk-propose-msg.is-error, .admin-bk-move-msg.is-error{ color:var(--adm-red); }
+  .admin-bk-propose-msg.is-success, .admin-bk-move-msg.is-success{ color:var(--adm-green); }
   .admin-bk-note{
     font-size:0.8rem; font-style:italic; color:var(--adm-ink); background:var(--adm-sand);
     border-radius:8px; padding:7px 10px; margin-top:2px; max-width:44ch;
@@ -13317,8 +13323,18 @@ if ('serviceWorker' in navigator){
   // espace reste indépendant dans ce fichier, même convention que le reste.
   var ADMIN_STATUS_OPTIONS = [
     ['PENDING', 'En attente'], ['CONFIRMED', 'Confirmé'],
-    ['COMPLETED', 'Terminé'], ['CANCELLED', 'Annulé']
+    ['IN_PROGRESS', 'En intervention'], ['COMPLETED', 'Terminé'],
+    ['CANCELLED', 'Annulé'], ['NO_SHOW', 'Absence client']
   ];
+  // Source unique de vérité pour "ce rendez-vous fait-il partie du travail en
+  // cours" — réutilisée par la liste "Demandes"/"Tous mes rendez-vous", le
+  // Planning et les compteurs du tableau de bord, pour ne jamais avoir deux
+  // définitions divergentes de ce qui est actif. CANCELLED/COMPLETED/NO_SHOW
+  // ne sont jamais supprimés de Supabase : juste écartés d'ici, retrouvables
+  // dans l'Historique (adminBkShowHistory).
+  function admIsOperationalBooking(b){
+    return b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS';
+  }
   var adminBookingsCache = null;
   // "today" comme filtre par défaut cachait les toutes nouvelles demandes
   // dès qu'un client choisissait une date différente d'aujourd'hui (cas le
@@ -13615,12 +13631,13 @@ if ('serviceWorker' in navigator){
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
     admUpdatePendingCount();
-    // Les rendez-vous annulés/refusés (status='CANCELLED') sont exclus de la
-    // liste principale — jamais supprimés de Supabase, juste filtrés ici —
-    // et ne réapparaissent que dans l'Historique (adminBkShowHistory), qui
-    // montre alors UNIQUEMENT ceux-là, toutes périodes confondues.
+    // Seuls les rendez-vous opérationnels (PENDING/CONFIRMED/IN_PROGRESS,
+    // voir admIsOperationalBooking) restent dans la liste principale —
+    // CANCELLED, COMPLETED et NO_SHOW ne sont jamais supprimés de Supabase,
+    // juste filtrés ici, et ne réapparaissent que dans l'Historique
+    // (adminBkShowHistory), qui montre alors ceux-là, toutes périodes confondues.
     var scoped = adminBookingsCache.rows.filter(function(b){
-      return adminBkShowHistory ? b.status === 'CANCELLED' : b.status !== 'CANCELLED';
+      return adminBkShowHistory ? !admIsOperationalBooking(b) : admIsOperationalBooking(b);
     });
     var rows = adminBkShowHistory ? scoped.slice() : admFilterBookings(scoped, adminFilter);
     if (adminBkShowHistory){
@@ -13661,10 +13678,10 @@ if ('serviceWorker' in navigator){
       var optionsHtml = ADMIN_STATUS_OPTIONS.map(function(o){
         return '<option value="' + o[0] + '"' + (o[0] === b.status ? ' selected' : '') + '>' + o[1] + '</option>';
       }).join('');
-      // Un statut hors des 4 valeurs pilotées ici (IN_PROGRESS, NO_SHOW —
-      // existent en base mais ne sont pas gérées depuis cet écran) reste
-      // affiché tel quel dans le <select> pour ne jamais l'écraser au premier
-      // changement accidentel : on ajoute une option correspondante.
+      // Garde-fou : si un statut venait à exister hors de cette liste (valeur
+      // ajoutée en base sans mise à jour de ce tableau), il reste affiché tel
+      // quel dans le <select> pour ne jamais l'écraser au premier changement
+      // accidentel.
       if (!ADMIN_STATUS_OPTIONS.some(function(o){ return o[0] === b.status; })){
         optionsHtml += '<option value="' + admEscape(b.status) + '" selected>' + admEscape(b.status) + '</option>';
       }
@@ -13705,8 +13722,30 @@ if ('serviceWorker' in navigator){
         (b.status === 'CONFIRMED' ?
           '<button type="button" class="admin-bk-action-btn admin-bk-cancel-confirmed-btn" data-booking-id="' + b.id + '">Annuler ce rendez-vous</button>'
           : '') +
+        ((b.status === 'CONFIRMED' || b.status === 'PENDING') ?
+          '<button type="button" class="admin-bk-action-btn admin-bk-move-btn" data-booking-id="' + b.id + '">Déplacer ce rendez-vous</button>'
+          : '') +
+        (b.status === 'CONFIRMED' ?
+          '<button type="button" class="admin-bk-action-btn admin-bk-start-btn" data-booking-id="' + b.id + '">▶ Commencer l\'intervention</button>'
+          : '') +
+        (b.status === 'IN_PROGRESS' ?
+          '<button type="button" class="admin-bk-action-btn admin-bk-resume-btn" data-booking-id="' + b.id + '">Reprendre la fiche d\'intervention</button>'
+          : '') +
         '<select class="admin-bk-status-select" data-booking-id="' + b.id + '" aria-label="Statut du rendez-vous">' + optionsHtml + '</select>' +
         (b.status === 'CONFIRMED' ? '<button type="button" class="admin-bk-ics-btn" data-booking-id="' + b.id + '">Ajouter à Apple Calendar</button>' : '') +
+        ((b.status === 'CONFIRMED' || b.status === 'PENDING') ?
+          '<form class="admin-bk-move-form" data-booking-id="' + b.id + '" hidden>' +
+            '<div class="admin-bk-propose-form-row">' +
+              '<label>Nouvelle date<input type="date" class="admin-bk-move-date" required value="' + admEscape(b.date) + '"></label>' +
+              '<label>Nouvelle heure<input type="time" class="admin-bk-move-time" required value="' + admEscape(String(b.start_time).slice(0,5)) + '"></label>' +
+            '</div>' +
+            '<div class="admin-bk-propose-form-row">' +
+              '<button type="submit" class="admin-bk-move-send">Confirmer le déplacement</button>' +
+              '<button type="button" class="admin-bk-move-cancel">Annuler</button>' +
+            '</div>' +
+            '<p class="admin-bk-move-msg" hidden></p>' +
+          '</form>'
+          : '') +
         (b.status === 'PENDING' ?
           '<form class="admin-bk-propose-form" data-booking-id="' + b.id + '" hidden>' +
             '<div class="admin-bk-propose-form-row">' +
@@ -14006,6 +14045,559 @@ if ('serviceWorker' in navigator){
       });
     });
 
+    // Déplacement RÉEL d'un rendez-vous (contrairement à "Proposer un autre
+    // créneau" qui n'envoie qu'un e-mail) : appelle admin_reschedule_booking
+    // (0044_intervention_reports.sql), même patron que reschedule_own_booking
+    // côté client — UPDATE en place sur la même ligne bookings, jamais de
+    // doublon. Le Realtime déjà branché (admSetupBkRealtime, event UPDATE)
+    // recharge la liste/le Planning automatiquement ; pas besoin de le faire
+    // ici en plus.
+    adminListEl.addEventListener('click', function(e){
+      var moveBtn = e.target.closest('.admin-bk-move-btn');
+      if (moveBtn){
+        var row = e.target.closest('.ec-row');
+        var form = row && row.querySelector('.admin-bk-move-form');
+        if (form) form.hidden = !form.hidden;
+        return;
+      }
+      var moveCancelBtn = e.target.closest('.admin-bk-move-cancel');
+      if (moveCancelBtn){
+        var formToClose = moveCancelBtn.closest('.admin-bk-move-form');
+        if (formToClose) formToClose.hidden = true;
+        return;
+      }
+      var startBtn = e.target.closest('.admin-bk-start-btn, .admin-bk-resume-btn');
+      if (startBtn){
+        admOpenInterventionSheet(startBtn.getAttribute('data-booking-id'));
+        return;
+      }
+    });
+
+    adminListEl.addEventListener('submit', function(e){
+      var form = e.target.closest('.admin-bk-move-form');
+      if (!form) return;
+      e.preventDefault();
+      var id = form.getAttribute('data-booking-id');
+      var dateVal = form.querySelector('.admin-bk-move-date').value;
+      var timeVal = form.querySelector('.admin-bk-move-time').value;
+      var msgEl = form.querySelector('.admin-bk-move-msg');
+      var sendBtn = form.querySelector('.admin-bk-move-send');
+      if (!dateVal || !timeVal) return;
+      msgEl.hidden = true;
+      msgEl.className = 'admin-bk-move-msg';
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Déplacement…';
+      sb.client.rpc('admin_reschedule_booking', { p_booking_id: id, p_date: dateVal, p_start_time: timeVal }).then(function(res){
+        if (res.error) throw res.error;
+        form.hidden = true;
+        admLoadBookings();
+      }).catch(function(err){
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Confirmer le déplacement';
+        msgEl.textContent = (err && err.message) || 'Échec du déplacement. Réessayez.';
+        msgEl.className = 'admin-bk-move-msg is-error';
+        msgEl.hidden = false;
+      });
+    });
+
+    // ============================================================
+    // FICHE D'INTERVENTION — module climatisation (première prestation
+    // câblée ; la liste CLIM_CHECKLIST_TEMPLATE est le seul endroit à
+    // dupliquer/adapter pour une autre prestation, sans toucher au reste).
+    // Réutilise intégralement le modèle déjà posé en 0001_init.sql
+    // (interventions/intervention_items/intervention_photos/customer_equipment)
+    // et complété par 0044_intervention_reports.sql (signatures, statut
+    // FINALIZED, bucket intervention-photos) — aucune nouvelle table.
+    // ============================================================
+    var CLIM_CHECKLIST_TEMPLATE = [
+      'Filtres air intérieurs (nettoyage/état)',
+      'Unité intérieure — propreté générale',
+      'Unité extérieure — dégagement et propreté',
+      'Évacuation des condensats',
+      'Fixations et supports',
+      'Raccordements électriques visibles',
+      'Télécommande / thermostat',
+      'Niveau sonore au fonctionnement',
+      'Test de fonctionnement'
+    ];
+    var IV_STATUS_OPTIONS = [
+      ['OK', '✓ OK'], ['WATCH', '⚠ À surveiller'],
+      ['ANOMALY', '✕ Anomalie'], ['NOT_APPLICABLE', 'N/A']
+    ];
+    var IV_TAG_OPTIONS = [
+      ['PENDANT', 'Pendant'], ['AVANT', 'Avant'], ['APRES', 'Après'],
+      ['ANOMALIE', 'Anomalie'], ['EQUIPEMENT', 'Équipement']
+    ];
+    // Même mapping que EC_EQUIPMENT_LABEL (espace client, autre IIFE/script) —
+    // dupliqué ici volontairement : les deux <script> ne partagent pas leur
+    // portée JS, aucune variable globale commune n'existe pour ce lexique.
+    var IV_EQUIPMENT_LABEL = {
+      climatisation:'Climatisation', chaudiere_gaz:'Chaudière gaz', chaudiere_fioul:'Chaudière fioul',
+      chauffe_eau:'Chauffe-eau', pac:'Pompe à chaleur', autre:'Autre'
+    };
+    var admIv = null; // état de la fiche ouverte (reset à chaque ouverture/fermeture)
+    var admIvSaveTimer = null;
+
+    function admIvInjectStyles(){
+      if (document.getElementById('admIvStyles')) return;
+      var st = document.createElement('style');
+      st.id = 'admIvStyles';
+      st.textContent =
+        '#admIvOverlay{position:fixed;inset:0;background:rgba(16,27,36,0.6);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;box-sizing:border-box;}' +
+        '#admIvOverlay[hidden]{display:none;}' +
+        '.adm-iv-sheet{background:var(--adm-card-bg,#fff);color:var(--adm-ink,#16222c);border-radius:16px;max-width:760px;width:100%;margin:24px auto;padding:22px;box-sizing:border-box;font-family:"Poppins",sans-serif;}' +
+        '.adm-iv-sheet h3{margin:0 0 4px;font-size:1.1rem;}' +
+        '.adm-iv-sheet .adm-iv-sub{font-size:0.82rem;color:var(--adm-ink-soft,#5B6B78);margin:0 0 16px;}' +
+        '.adm-iv-section{border-top:1px solid var(--adm-line,#E5E1D6);padding-top:14px;margin-top:14px;}' +
+        '.adm-iv-section h4{margin:0 0 10px;font-size:0.92rem;}' +
+        '.adm-iv-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--adm-line,#E5E1D6);}' +
+        '.adm-iv-item-label{flex:1 1 220px;font-size:0.84rem;font-weight:600;min-width:0;}' +
+        '.adm-iv-status-group{display:flex;gap:4px;flex-wrap:wrap;}' +
+        '.adm-iv-status-btn{border:1.5px solid var(--adm-line,#E5E1D6);background:transparent;border-radius:7px;padding:5px 9px;font-size:0.72rem;font-weight:700;cursor:pointer;color:var(--adm-ink,#16222c);}' +
+        '.adm-iv-status-btn.is-active[data-status="OK"]{background:var(--adm-green,#3F9463);border-color:var(--adm-green,#3F9463);color:#fff;}' +
+        '.adm-iv-status-btn.is-active[data-status="WATCH"]{background:var(--adm-amber,#C4862A);border-color:var(--adm-amber,#C4862A);color:#fff;}' +
+        '.adm-iv-status-btn.is-active[data-status="ANOMALY"]{background:var(--adm-red,#C1503B);border-color:var(--adm-red,#C1503B);color:#fff;}' +
+        '.adm-iv-status-btn.is-active[data-status="NOT_APPLICABLE"]{background:var(--adm-grey,#7C8AA0);border-color:var(--adm-grey,#7C8AA0);color:#fff;}' +
+        '.adm-iv-item input.adm-iv-value{width:90px;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
+        '.adm-iv-item input.adm-iv-obs{flex:1 1 160px;min-width:0;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
+        '.adm-iv-photo-btn{border:1.5px dashed var(--adm-line,#E5E1D6);background:transparent;border-radius:6px;padding:5px 8px;font-size:0.72rem;cursor:pointer;}' +
+        '.adm-iv-photo-thumbs{display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:4px;}' +
+        '.adm-iv-photo-thumb{position:relative;width:56px;height:56px;border-radius:6px;overflow:hidden;background:#eee;}' +
+        '.adm-iv-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}' +
+        '.adm-iv-photo-thumb button{position:absolute;top:0;right:0;background:rgba(16,27,36,0.75);color:#fff;border:none;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;}' +
+        '.adm-iv-sheet textarea{width:100%;box-sizing:border-box;font-family:inherit;font-size:0.85rem;padding:9px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);resize:vertical;min-height:60px;}' +
+        '.adm-iv-sheet input[type=text]{font-family:inherit;font-size:0.85rem;padding:8px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);box-sizing:border-box;width:100%;}' +
+        '.adm-iv-equip-list{display:flex;flex-direction:column;gap:6px;}' +
+        '.adm-iv-equip-option{display:flex;align-items:center;gap:8px;font-size:0.82rem;padding:8px 10px;border:1.5px solid var(--adm-line,#E5E1D6);border-radius:8px;cursor:pointer;}' +
+        '.adm-iv-equip-option.is-selected{border-color:var(--adm-green,#3F9463);background:var(--adm-green-soft,rgba(63,148,99,0.1));}' +
+        '.adm-iv-signature-box{border:1.5px dashed var(--adm-line,#E5E1D6);border-radius:10px;padding:10px;margin-top:8px;}' +
+        '.adm-iv-signature-box canvas{width:100%;height:140px;touch-action:none;background:#fbfaf6;border-radius:8px;display:block;}' +
+        '.adm-iv-signature-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}' +
+        '.adm-iv-footer{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-content:flex-end;}' +
+        '.adm-iv-btn{border-radius:9px;padding:10px 16px;font-weight:700;font-size:0.82rem;cursor:pointer;font-family:inherit;}' +
+        '.adm-iv-btn-ghost{background:transparent;border:1.5px solid var(--adm-line,#E5E1D6);color:var(--adm-ink-soft,#5B6B78);}' +
+        '.adm-iv-btn-primary{background:var(--adm-ocean,#2D6FA8);border:none;color:#fff;}' +
+        '.adm-iv-btn-danger{background:var(--adm-red,#C1503B);border:none;color:#fff;}' +
+        '.adm-iv-btn[disabled]{opacity:0.5;cursor:not-allowed;}' +
+        '.adm-iv-msg{font-size:0.8rem;font-weight:600;margin-top:8px;}' +
+        '.adm-iv-msg.is-error{color:var(--adm-red,#C1503B);} .adm-iv-msg.is-success{color:var(--adm-green,#3F9463);}' +
+        '@media (max-width:600px){ .adm-iv-sheet{margin:0;border-radius:0;min-height:100%;} #admIvOverlay{padding:0;} }';
+      document.head.appendChild(st);
+    }
+
+    function admIvCompressImage(file){
+      return new Promise(function(resolve, reject){
+        var img = new Image();
+        var reader = new FileReader();
+        reader.onload = function(){
+          img.onload = function(){
+            var maxDim = 1600;
+            var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function(blob){
+              if (!blob) return reject(new Error('compression échouée'));
+              resolve(blob);
+            }, 'image/jpeg', 0.78);
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function admIvOverlayEl(){
+      var el = document.getElementById('admIvOverlay');
+      if (!el){
+        el = document.createElement('div');
+        el.id = 'admIvOverlay';
+        el.hidden = true;
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+
+    function admOpenInterventionSheet(bookingId){
+      admIvInjectStyles();
+      var booking = adminBookingsCache && adminBookingsCache.rows.filter(function(b){ return b.id === bookingId; })[0];
+      if (!booking){ window.alert('Réservation introuvable.'); return; }
+      var contact = admContactFor(booking, adminBookingsCache.profiles);
+      var technicianName = window.localStorage.getItem('admTechnicianName') || '';
+      var overlay = admIvOverlayEl();
+      overlay.innerHTML = '<div class="adm-iv-sheet"><p class="ec-loading">Ouverture de la fiche…</p></div>';
+      overlay.hidden = false;
+
+      sb.client.rpc('start_intervention', { p_booking_id: bookingId, p_technician_name: technicianName || null }).then(function(res){
+        if (res.error) throw res.error;
+        var interventionId = res.data && res.data[0] && res.data[0].intervention_id;
+        if (!interventionId) throw new Error('intervention_id manquant');
+
+        var loadEquip = booking.customer_user_id
+          ? sb.client.from('customer_equipment').select('*').eq('customer_user_id', booking.customer_user_id).order('created_at', { ascending:false })
+          : Promise.resolve({ data: [] });
+        var loadIv = sb.client.from('interventions').select('*').eq('id', interventionId).maybeSingle();
+        var loadItems = sb.client.from('intervention_items').select('*, intervention_photos(*)').eq('intervention_id', interventionId).order('sort_order', { ascending:true });
+
+        return Promise.all([loadEquip, loadIv, loadItems]).then(function(results){
+          var equipList = results[0].data || [];
+          var ivRow = results[1].data;
+          var existingItems = results[2].data || [];
+
+          var missing = CLIM_CHECKLIST_TEMPLATE.filter(function(label){
+            return !existingItems.some(function(it){ return it.name === label; });
+          });
+          var insertPromise = missing.length
+            ? sb.client.from('intervention_items').insert(missing.map(function(label, i){
+                return { intervention_id: interventionId, name: label, status: 'NOT_APPLICABLE',
+                  visibility: 'customer_visible', sort_order: existingItems.length + i };
+              })).select('*, intervention_photos(*)')
+            : Promise.resolve({ data: [] });
+
+          return insertPromise.then(function(insRes){
+            var allItems = existingItems.concat(insRes.data || []);
+            allItems.sort(function(a,b){ return (a.sort_order||0) - (b.sort_order||0); });
+            admIv = {
+              bookingId: bookingId, interventionId: interventionId, booking: booking, contact: contact,
+              equipList: equipList, selectedEquipmentId: ivRow.equipment_id || (equipList[0] && equipList[0].id) || null,
+              items: allItems, observations: ivRow.observations || '', recommendations: ivRow.recommendations || '',
+              technicianName: ivRow.technician_name || technicianName,
+              reportStatus: ivRow.report_status, clientSignatureData: ivRow.client_signature_data,
+              technicianSignatureData: ivRow.technician_signature_data
+            };
+            admIvRender();
+          });
+        });
+      }).catch(function(err){
+        console.error('admOpenInterventionSheet', err);
+        overlay.innerHTML = '<div class="adm-iv-sheet"><p class="ec-empty"><strong>Impossible d\'ouvrir la fiche</strong>' + admEscape((err && err.message) || '') + '</p><button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-close>Fermer</button></div>';
+      });
+    }
+
+    function admIvCloseSheet(){
+      var overlay = document.getElementById('admIvOverlay');
+      if (overlay) overlay.hidden = true;
+      admIv = null;
+    }
+
+    function admIvScheduleSave(){
+      if (admIvSaveTimer) clearTimeout(admIvSaveTimer);
+      admIvSaveTimer = setTimeout(admIvPersistDraft, 900);
+    }
+
+    // Sauvegarde du brouillon : update() par id pour chaque item déjà en
+    // base (jamais de delete+reinsert, qui casserait le lien avec les photos
+    // déjà uploadées via intervention_photos.intervention_item_id).
+    function admIvPersistDraft(){
+      if (!admIv) return;
+      var updates = admIv.items.map(function(it){
+        return sb.client.from('intervention_items').update({
+          status: it.status, observation: it.observation || null, measured_value: it.measured_value || null
+        }).eq('id', it.id);
+      });
+      updates.push(sb.client.from('interventions').update({
+        observations: admIv.observations || null,
+        recommendations: admIv.recommendations || null,
+        equipment_id: admIv.selectedEquipmentId || null,
+        technician_name: admIv.technicianName || null
+      }).eq('id', admIv.interventionId));
+      Promise.all(updates).catch(function(err){ console.warn('admIvPersistDraft: échec autosave', err); });
+    }
+
+    function admIvItemHtml(it){
+      var statusBtns = IV_STATUS_OPTIONS.map(function(o){
+        return '<button type="button" class="adm-iv-status-btn' + (it.status === o[0] ? ' is-active' : '') + '" data-status="' + o[0] + '" data-item-id="' + it.id + '">' + o[1] + '</button>';
+      }).join('');
+      var thumbs = (it.intervention_photos || []).map(function(p){
+        return '<div class="adm-iv-photo-thumb" data-photo-id="' + p.id + '"><img src="" data-storage-path="' + admEscape(p.storage_path) + '" alt=""><button type="button" data-iv-del-photo="' + p.id + '" aria-label="Supprimer">×</button></div>';
+      }).join('');
+      return '<div class="adm-iv-item" data-item-id="' + it.id + '">' +
+        '<span class="adm-iv-item-label">' + admEscape(it.name) + '</span>' +
+        '<div class="adm-iv-status-group">' + statusBtns + '</div>' +
+        '<input type="text" class="adm-iv-value" placeholder="Valeur" value="' + admEscape(it.measured_value || '') + '" data-item-id="' + it.id + '">' +
+        '<input type="text" class="adm-iv-obs" placeholder="Observation" value="' + admEscape(it.observation || '') + '" data-item-id="' + it.id + '">' +
+        '<label class="adm-iv-photo-btn">📷 Photo<input type="file" accept="image/*" capture="environment" hidden data-item-id="' + it.id + '" class="adm-iv-photo-input"></label>' +
+        '<div class="adm-iv-photo-thumbs">' + thumbs + '</div>' +
+        '</div>';
+    }
+
+    function admIvEquipHtml(){
+      if (!admIv.booking.customer_user_id){
+        return '<p class="ec-row-meta">Réservation invité : équipement non enregistré dans l\'espace client.</p>';
+      }
+      var opts = admIv.equipList.map(function(eq){
+        var label = (IV_EQUIPMENT_LABEL[eq.equipment_type] || eq.equipment_type) + (eq.brand ? ' — ' + eq.brand : '') + (eq.model ? ' ' + eq.model : '');
+        return '<label class="adm-iv-equip-option' + (admIv.selectedEquipmentId === eq.id ? ' is-selected' : '') + '">' +
+          '<input type="radio" name="admIvEquip" value="' + eq.id + '"' + (admIv.selectedEquipmentId === eq.id ? ' checked' : '') + '> ' + admEscape(label) + '</label>';
+      }).join('');
+      return '<div class="adm-iv-equip-list">' + opts +
+        '<label class="adm-iv-equip-option"><input type="radio" name="admIvEquip" value="__new__"' + (!admIv.selectedEquipmentId ? ' checked' : '') + '> + Ajouter un nouvel équipement</label>' +
+        '</div>' +
+        '<div id="admIvNewEquipForm" hidden style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<input type="text" id="admIvNewEquipBrand" placeholder="Marque">' +
+          '<input type="text" id="admIvNewEquipModel" placeholder="Modèle">' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admIvNewEquipSave">Enregistrer cet équipement</button>' +
+        '</div>';
+    }
+
+    function admIvSignatureBoxHtml(role, signatureData){
+      return '<div class="adm-iv-signature-box" data-role="' + role + '">' +
+        '<input type="text" class="adm-iv-sig-name" placeholder="Nom du signataire" data-role="' + role + '" value="' + admEscape((role === 'client' ? admIv.contact.name : admIv.technicianName) || '') + '">' +
+        '<canvas class="adm-iv-sig-canvas" data-role="' + role + '" width="640" height="140"></canvas>' +
+        '<div class="adm-iv-signature-actions">' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-sig-clear="' + role + '">Effacer / Recommencer</button>' +
+        '</div>' +
+        (signatureData ? '<p class="adm-iv-msg is-success">Signature déjà enregistrée.</p>' : '') +
+        '</div>';
+    }
+
+    function admIvRender(){
+      var overlay = admIvOverlayEl();
+      var b = admIv.booking, c = admIv.contact;
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var isFinalized = admIv.reportStatus === 'FINALIZED';
+      overlay.innerHTML = '<div class="adm-iv-sheet">' +
+        '<h3>Fiche d\'intervention — ' + admEscape(svcName) + '</h3>' +
+        '<p class="adm-iv-sub">' + admEscape(c.name) + (c.address ? ' · ' + admEscape(c.address) : '') + (c.phone ? ' · ' + admEscape(c.phone) : '') + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + ' · Réf. ' + admEscape(b.reference) + '</p>' +
+        '<div class="adm-iv-section"><h4>Technicien</h4><input type="text" id="admIvTechName" placeholder="Nom du technicien" value="' + admEscape(admIv.technicianName || '') + '"></div>' +
+        '<div class="adm-iv-section"><h4>Équipement</h4>' + admIvEquipHtml() + '</div>' +
+        '<div class="adm-iv-section"><h4>Contrôles effectués</h4>' + admIv.items.map(admIvItemHtml).join('') + '</div>' +
+        '<div class="adm-iv-section"><h4>Observations du technicien</h4><textarea id="admIvObs" placeholder="Observations libres…">' + admEscape(admIv.observations) + '</textarea></div>' +
+        '<div class="adm-iv-section"><h4>Recommandations</h4><textarea id="admIvReco" placeholder="Recommandations pour le client…">' + admEscape(admIv.recommendations) + '</textarea></div>' +
+        (isFinalized ?
+          '<div class="adm-iv-section"><h4>Fiche validée</h4><p class="adm-iv-msg is-success">Cette fiche a été finalisée et signée — elle n\'est plus modifiable depuis cet écran.</p></div>'
+          : '<div class="adm-iv-section"><h4>Signature du client</h4>' + admIvSignatureBoxHtml('client', admIv.clientSignatureData) + '</div>' +
+            '<div class="adm-iv-section"><h4>Signature du technicien</h4>' + admIvSignatureBoxHtml('technician', admIv.technicianSignatureData) + '</div>') +
+        '<p class="adm-iv-msg" id="admIvMsg" hidden></p>' +
+        '<div class="adm-iv-footer">' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-close>Fermer (garder le brouillon)</button>' +
+          (isFinalized ? '' : '<button type="button" class="adm-iv-btn adm-iv-btn-primary" id="admIvFinishBtn">Terminer l\'intervention</button>') +
+        '</div>' +
+        '</div>';
+
+      // Charge les vignettes photo (signedUrl privé, jamais public).
+      Array.prototype.forEach.call(overlay.querySelectorAll('.adm-iv-photo-thumb img'), function(img){
+        var path = img.getAttribute('data-storage-path');
+        sb.client.storage.from('intervention-photos').createSignedUrl(path, 3600).then(function(res){
+          if (res.data && res.data.signedUrl) img.src = res.data.signedUrl;
+        });
+      });
+
+      admIvSetupCanvas(overlay.querySelector('.adm-iv-sig-canvas[data-role="client"]'));
+      admIvSetupCanvas(overlay.querySelector('.adm-iv-sig-canvas[data-role="technician"]'));
+    }
+
+    function admIvSetupCanvas(canvas){
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#16222c';
+      var drawing = false, last = null;
+      function posFromEvent(e){
+        var rect = canvas.getBoundingClientRect();
+        var pt = e.touches ? e.touches[0] : e;
+        return { x: (pt.clientX - rect.left) * (canvas.width / rect.width), y: (pt.clientY - rect.top) * (canvas.height / rect.height) };
+      }
+      function start(e){ drawing = true; last = posFromEvent(e); e.preventDefault(); }
+      function move(e){
+        if (!drawing) return;
+        var p = posFromEvent(e);
+        ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        last = p; e.preventDefault();
+      }
+      function end(){ drawing = false; }
+      canvas.addEventListener('pointerdown', start);
+      canvas.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', end);
+      canvas.addEventListener('touchstart', start, { passive:false });
+      canvas.addEventListener('touchmove', move, { passive:false });
+      canvas.addEventListener('touchend', end);
+    }
+
+    function admIvCanvasIsBlank(canvas){
+      var ctx = canvas.getContext('2d');
+      var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      for (var i = 3; i < data.length; i += 4){ if (data[i] !== 0) return false; }
+      return true;
+    }
+
+    var admIvOverlayRef = admIvOverlayEl();
+    admIvOverlayRef.addEventListener('click', function(e){
+      if (e.target.closest('[data-iv-close]')){ admIvCloseSheet(); return; }
+      var statusBtn = e.target.closest('.adm-iv-status-btn');
+      if (statusBtn && admIv){
+        var itemId = statusBtn.getAttribute('data-item-id');
+        var status = statusBtn.getAttribute('data-status');
+        var item = admIv.items.filter(function(it){ return it.id === itemId; })[0];
+        if (item){ item.status = status; admIvRender(); admIvScheduleSave(); }
+        return;
+      }
+      var delPhotoBtn = e.target.closest('[data-iv-del-photo]');
+      if (delPhotoBtn && admIv){
+        var photoId = delPhotoBtn.getAttribute('data-iv-del-photo');
+        sb.client.from('intervention_photos').select('storage_path').eq('id', photoId).maybeSingle().then(function(res){
+          var path = res.data && res.data.storage_path;
+          return sb.client.from('intervention_photos').delete().eq('id', photoId).then(function(){
+            if (path) sb.client.storage.from('intervention-photos').remove([path]).catch(function(){});
+          });
+        }).then(function(){
+          admIv.items.forEach(function(it){
+            it.intervention_photos = (it.intervention_photos || []).filter(function(p){ return p.id !== photoId; });
+          });
+          admIvRender();
+        });
+        return;
+      }
+      var sigClearBtn = e.target.closest('[data-iv-sig-clear]');
+      if (sigClearBtn){
+        var role = sigClearBtn.getAttribute('data-iv-sig-clear');
+        var canvas = admIvOverlayRef.querySelector('.adm-iv-sig-canvas[data-role="' + role + '"]');
+        if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      if (e.target.id === 'admIvNewEquipSave'){
+        var brand = document.getElementById('admIvNewEquipBrand').value.trim();
+        var model = document.getElementById('admIvNewEquipModel').value.trim();
+        sb.client.from('customer_equipment').insert({
+          customer_user_id: admIv.booking.customer_user_id, equipment_type: 'climatisation', brand: brand || null, model: model || null
+        }).select('*').then(function(res){
+          if (res.error){ window.alert('Impossible d\'enregistrer cet équipement.'); return; }
+          var eq = res.data[0];
+          admIv.equipList.unshift(eq);
+          admIv.selectedEquipmentId = eq.id;
+          admIvRender();
+          admIvScheduleSave();
+        });
+        return;
+      }
+      if (e.target.id === 'admIvFinishBtn'){
+        admIvFinalize();
+        return;
+      }
+    });
+    admIvOverlayRef.addEventListener('change', function(e){
+      if (!admIv) return;
+      if (e.target.name === 'admIvEquip'){
+        if (e.target.value === '__new__'){
+          admIv.selectedEquipmentId = null;
+          var f = document.getElementById('admIvNewEquipForm'); if (f) f.hidden = false;
+        } else {
+          admIv.selectedEquipmentId = e.target.value;
+          admIvScheduleSave();
+        }
+        return;
+      }
+      if (e.target.classList.contains('adm-iv-value')){
+        var vItem = admIv.items.filter(function(it){ return it.id === e.target.getAttribute('data-item-id'); })[0];
+        if (vItem){ vItem.measured_value = e.target.value; admIvScheduleSave(); }
+        return;
+      }
+      if (e.target.classList.contains('adm-iv-obs')){
+        var oItem = admIv.items.filter(function(it){ return it.id === e.target.getAttribute('data-item-id'); })[0];
+        if (oItem){ oItem.observation = e.target.value; admIvScheduleSave(); }
+        return;
+      }
+      if (e.target.id === 'admIvObs'){ admIv.observations = e.target.value; admIvScheduleSave(); return; }
+      if (e.target.id === 'admIvReco'){ admIv.recommendations = e.target.value; admIvScheduleSave(); return; }
+      if (e.target.id === 'admIvTechName'){
+        admIv.technicianName = e.target.value;
+        window.localStorage.setItem('admTechnicianName', e.target.value);
+        admIvScheduleSave();
+        return;
+      }
+      if (e.target.classList.contains('adm-iv-photo-input') && e.target.files && e.target.files[0]){
+        var itemIdForPhoto = e.target.getAttribute('data-item-id');
+        var file = e.target.files[0];
+        admIvCompressImage(file).then(function(blob){
+          var path = admIv.interventionId + '/' + itemIdForPhoto + '/' + Date.now() + '.jpg';
+          return sb.client.storage.from('intervention-photos').upload(path, blob, { contentType: 'image/jpeg' }).then(function(upRes){
+            if (upRes.error) throw upRes.error;
+            return sb.client.from('intervention_photos').insert({
+              intervention_item_id: itemIdForPhoto, storage_path: path, tag: 'PENDANT', file_name: file.name
+            }).select('*');
+          });
+        }).then(function(insRes){
+          var photo = insRes.data[0];
+          var item = admIv.items.filter(function(it){ return it.id === itemIdForPhoto; })[0];
+          if (item){ item.intervention_photos = (item.intervention_photos || []).concat([photo]); }
+          admIvRender();
+        }).catch(function(err){
+          console.error('admIv photo upload', err);
+          window.alert('Échec de l\'envoi de la photo.');
+        });
+        return;
+      }
+    });
+
+    function admIvFinalize(){
+      var clientCanvas = admIvOverlayRef.querySelector('.adm-iv-sig-canvas[data-role="client"]');
+      var techCanvas = admIvOverlayRef.querySelector('.adm-iv-sig-canvas[data-role="technician"]');
+      var clientName = admIvOverlayRef.querySelector('.adm-iv-sig-name[data-role="client"]').value.trim();
+      var techName = admIvOverlayRef.querySelector('.adm-iv-sig-name[data-role="technician"]').value.trim();
+      var msgEl = document.getElementById('admIvMsg');
+      function showMsg(text, ok){
+        msgEl.textContent = text; msgEl.className = 'adm-iv-msg ' + (ok ? 'is-success' : 'is-error'); msgEl.hidden = false;
+      }
+      if (!clientName || admIvCanvasIsBlank(clientCanvas)){ showMsg('Merci de faire signer le client avant de valider.', false); return; }
+      if (!techName || admIvCanvasIsBlank(techCanvas)){ showMsg('Merci de renseigner et signer en tant que technicien avant de valider.', false); return; }
+
+      var finishBtn = document.getElementById('admIvFinishBtn');
+      finishBtn.disabled = true; finishBtn.textContent = 'Validation…';
+
+      var reportNumber = 'CR-' + new Date().getFullYear() + '-' + admIv.interventionId.slice(0, 8).toUpperCase();
+      // Sauvegarde d'ABORD la fiche (signatures + report_status=FINALIZED) —
+      // le rendez-vous ne passe à COMPLETED qu'ENSUITE, jamais l'inverse :
+      // un échec d'e-mail plus tard ne doit jamais faire perdre le compte
+      // rendu déjà enregistré ici.
+      sb.client.from('interventions').update({
+        observations: admIv.observations || null,
+        recommendations: admIv.recommendations || null,
+        equipment_id: admIv.selectedEquipmentId || null,
+        technician_name: techName,
+        ended_at: new Date().toISOString(),
+        report_status: 'FINALIZED',
+        report_number: reportNumber,
+        client_signature_name: clientName,
+        client_signature_data: clientCanvas.toDataURL('image/png'),
+        client_signed_at: new Date().toISOString(),
+        technician_signature_name: techName,
+        technician_signature_data: techCanvas.toDataURL('image/png'),
+        technician_signed_at: new Date().toISOString()
+      }).eq('id', admIv.interventionId).then(function(res){
+        if (res.error) throw res.error;
+        return sb.client.rpc('finalize_intervention_booking', { p_booking_id: admIv.bookingId });
+      }).then(function(res){
+        if (res.error) throw res.error;
+        showMsg('Fiche validée et rendez-vous marqué Terminé.', true);
+        admLoadBookings();
+        admIvSendReportEmail(admIv.interventionId);
+        setTimeout(admIvCloseSheet, 1200);
+      }).catch(function(err){
+        console.error('admIvFinalize', err);
+        finishBtn.disabled = false; finishBtn.textContent = 'Terminer l\'intervention';
+        showMsg((err && err.message) || 'Échec de la validation. Réessayez.', false);
+      });
+    }
+
+    // Envoi du compte rendu par e-mail : best-effort, jamais bloquant — la
+    // fiche est déjà enregistrée et le rendez-vous déjà COMPLETED avant cet
+    // appel (voir admIvFinalize). Un échec ici ne perd jamais le compte
+    // rendu, retrouvable depuis l'historique/l'espace client quoi qu'il arrive.
+    function admIvSendReportEmail(interventionId){
+      sb.client.auth.getSession().then(function(res){
+        var token = res && res.data && res.data.session && res.data.session.access_token;
+        if (!token) throw new Error('no-session');
+        return fetch('https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/send-intervention-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ intervention_id: interventionId })
+        });
+      }).catch(function(err){ console.warn('admIvSendReportEmail: envoi impossible', err); });
+    }
+
     // Renvoi d'un e-mail client en échec : appelle resend-booking-email
     // (même mécanisme d'authentification que propose-alternative-slot —
     // jeton de session admin, revérifié côté serveur).
@@ -14086,7 +14678,10 @@ if ('serviceWorker' in navigator){
     var isoStart = admIsoDate(weekStart);
     var isoEnd = admIsoDate(admAddDays(weekStart, 6));
     return adminBookingsCache.rows.filter(function(b){
-      return b.status === 'CONFIRMED' && b.date >= isoStart && b.date <= isoEnd;
+      // IN_PROGRESS reste affiché : une intervention en cours ne doit jamais
+      // disparaître du Planning pendant qu'elle se déroule (section "EN
+      // INTERVENTION" du cahier des charges) — seule CANCELLED/COMPLETED en sortent.
+      return (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') && b.date >= isoStart && b.date <= isoEnd;
     });
   }
   // Le rayon horaire 7h-20h (spec) ne doit jamais faire disparaître un
@@ -14952,8 +15547,10 @@ if ('serviceWorker' in navigator){
     var map = {
       CONFIRMED: ['adm-badge-confirmed', 'Confirmé'],
       PENDING: ['adm-badge-pending', 'En attente'],
+      IN_PROGRESS: ['adm-badge-progress', 'En intervention'],
       COMPLETED: ['adm-badge-completed', 'Terminé'],
-      CANCELLED: ['adm-badge-cancelled', 'Annulé']
+      CANCELLED: ['adm-badge-cancelled', 'Annulé'],
+      NO_SHOW: ['adm-badge-cancelled', 'Absence client']
     };
     var conf = map[status];
     if (!conf) return '';
@@ -18711,12 +19308,16 @@ if ('serviceWorker' in navigator){
   function ecLoadInterventions(){
     var panel = document.getElementById('ecPanelInterventions');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    var IC_ITEM_STATUS_LABEL = {
+      OK:'✓ OK', FUNCTIONAL:'✓ OK', WATCH:'⚠ À surveiller', ANOMALY:'✕ Anomalie',
+      INTERVENTION_RECOMMENDED:'✕ Anomalie', NOT_APPLICABLE:'N/A'
+    };
     sb.client.from('interventions')
-      .select('id, performed_at, technician_name, check_type, bookings(reference, date, services(name)), intervention_items(id,name,status,observation,visibility)')
-      .order('performed_at', { ascending:false })
+      .select('id, performed_at, ended_at, technician_name, check_type, report_status, report_number, observations, recommendations, client_signed_at, technician_signed_at, bookings(reference, date, services(name)), intervention_items(id,name,status,observation,visibility)')
+      .order('created_at', { ascending:false })
       .then(function(res){
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
-        var rows = res.data || [];
+        var rows = (res.data || []).filter(function(iv){ return iv.report_status === 'FINALIZED' || iv.performed_at; });
         if (!rows.length){
           panel.innerHTML = ecxCompositeSubNavHtml('interventions') + '<div class="ec-empty"><strong>Aucune intervention enregistrée</strong>Les comptes-rendus de vos interventions apparaîtront ici après chaque rendez-vous.</div>';
           return;
@@ -18724,19 +19325,22 @@ if ('serviceWorker' in navigator){
         var html = ecxCompositeSubNavHtml('interventions') + '<p class="ec-section-title">Mes interventions</p><p class="ec-section-sub">Comptes-rendus techniques réalisés à votre domicile.</p><div class="ec-list">';
         rows.forEach(function(iv){
           var svcName = (iv.bookings && iv.bookings.services && iv.bookings.services.name) || 'Intervention';
-          var when = iv.performed_at ? new Date(iv.performed_at).toLocaleDateString('fr-FR') : (iv.bookings ? ecFmtDate(iv.bookings.date) : '');
+          var when = iv.ended_at ? new Date(iv.ended_at).toLocaleDateString('fr-FR') : (iv.performed_at ? new Date(iv.performed_at).toLocaleDateString('fr-FR') : (iv.bookings ? ecFmtDate(iv.bookings.date) : ''));
           var items = (iv.intervention_items || []).filter(function(it){ return it.visibility === 'customer_visible'; });
           html += '<div class="ec-row" style="flex-direction:column; align-items:stretch;"><div class="ec-row-info">' +
-            '<span class="ec-row-title">' + ecEscape(svcName) + '</span>' +
+            '<span class="ec-row-title">' + ecEscape(svcName) + (iv.report_number ? ' — ' + ecEscape(iv.report_number) : '') + '</span>' +
             '<span class="ec-row-meta">' + ecEscape(when) + (iv.technician_name ? ' · ' + ecEscape(iv.technician_name) : '') + (iv.check_type ? ' · ' + ecEscape(iv.check_type) : '') + '</span>' +
+            (iv.report_status === 'FINALIZED' && iv.client_signed_at ? '<span class="ec-row-meta">Signé par le client le ' + ecEscape(new Date(iv.client_signed_at).toLocaleDateString('fr-FR')) + '</span>' : '') +
             '</div>';
           if (items.length){
             html += '<ul style="margin:10px 0 0; padding-left:18px; font-size:0.82rem; color:var(--ink-soft);">';
             items.forEach(function(it){
-              html += '<li>' + ecEscape(it.name) + ' — ' + ecEscape(it.status) + (it.observation ? ' : ' + ecEscape(it.observation) : '') + '</li>';
+              html += '<li>' + ecEscape(it.name) + ' — ' + ecEscape(IC_ITEM_STATUS_LABEL[it.status] || it.status) + (it.observation ? ' : ' + ecEscape(it.observation) : '') + '</li>';
             });
             html += '</ul>';
           }
+          if (iv.observations) html += '<p style="margin:8px 0 0;font-size:0.82rem;"><strong>Observations :</strong> ' + ecEscape(iv.observations) + '</p>';
+          if (iv.recommendations) html += '<p style="margin:6px 0 0;font-size:0.82rem;"><strong>Recommandations :</strong> ' + ecEscape(iv.recommendations) + '</p>';
           html += '</div>';
         });
         html += '</div>';

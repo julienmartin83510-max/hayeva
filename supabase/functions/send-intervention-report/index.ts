@@ -1,0 +1,159 @@
+// Supabase Edge Function — envoie au client le compte rendu HAYEVA d'une
+// intervention déjà finalisée (report_status='FINALIZED'), après validation
+// et signatures côté admin (module Fiche d'intervention, 0044_intervention_
+// reports.sql).
+//
+// DÉCLENCHEMENT : appelée par le frontend admin juste après avoir marqué la
+// fiche FINALIZED et le rendez-vous COMPLETED (voir admIvFinalize/
+// admIvSendReportEmail, index.html) — jamais l'inverse : le compte rendu est
+// déjà enregistré en base avant cet appel, un échec d'envoi ne perd donc
+// jamais le rapport (voir email_status ci-dessous, géré indépendamment).
+//
+// SÉCURITÉ : même patron que propose-alternative-slot — jeton de session
+// admin revérifié côté serveur (global_role='admin'), aucun secret exposé au
+// frontend, réutilise le même compte Resend (RESEND_API_KEY/RESEND_FROM_EMAIL)
+// et le même gabarit visuel partagé (_shared/email-template.ts) que le reste
+// des e-mails HAYEVA — pas un second système d'envoi.
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
+  ));
+}
+
+const ITEM_STATUS_LABEL: Record<string, string> = {
+  OK: 'OK', FUNCTIONAL: 'OK', WATCH: 'À surveiller', ANOMALY: 'Anomalie',
+  INTERVENTION_RECOMMENDED: 'Anomalie', NOT_APPLICABLE: 'N/A',
+};
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+
+  try {
+    const authHeader = req.headers.get('authorization') || '';
+    const jwt = authHeader.replace(/^Bearer\s+/i, '');
+    if (!jwt) return json({ error: 'unauthorized' }, 401);
+
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    const { data: userRes, error: userErr } = await supabase.auth.getUser(jwt);
+    if (userErr || !userRes?.user) return json({ error: 'unauthorized' }, 401);
+
+    const { data: profile } = await supabase
+      .from('profiles').select('global_role').eq('user_id', userRes.user.id).maybeSingle();
+    if (!profile || profile.global_role !== 'admin') return json({ error: 'forbidden' }, 403);
+
+    const body = await req.json();
+    const interventionId = body.intervention_id;
+    if (!interventionId) return json({ error: 'missing_intervention_id' }, 400);
+
+    const { data: iv } = await supabase
+      .from('interventions')
+      .select(`
+        id, report_status, report_number, observations, recommendations, ended_at,
+        client_signature_name, technician_signature_name,
+        bookings(reference, date, start_time, customer_user_id, guest_name, guest_email,
+          customer_addresses(address, postal_code, city), services(name)),
+        intervention_items(name, status, observation, measured_value, visibility, sort_order)
+      `)
+      .eq('id', interventionId)
+      .maybeSingle();
+
+    if (!iv) return json({ error: 'not_found' }, 404);
+    if (iv.report_status !== 'FINALIZED') return json({ error: 'not_finalized' }, 422);
+
+    const booking = iv.bookings as any;
+    let contactEmail: string | null = booking?.guest_email || null;
+    let contactName = booking?.guest_name || 'Client';
+    if (booking?.customer_user_id) {
+      const [{ data: cp }, { data: prof }] = await Promise.all([
+        supabase.from('customer_profiles').select('first_name,last_name').eq('user_id', booking.customer_user_id).maybeSingle(),
+        supabase.from('profiles').select('email').eq('user_id', booking.customer_user_id).maybeSingle(),
+      ]);
+      if (prof?.email) contactEmail = prof.email;
+      if (cp) contactName = [cp.first_name, cp.last_name].filter(Boolean).join(' ') || contactName;
+    }
+
+    if (!contactEmail) {
+      await supabase.from('interventions').update({ email_status: 'FAILED' }).eq('id', interventionId);
+      return json({ error: 'no_contact_email' }, 422);
+    }
+    if (!RESEND_API_KEY) {
+      await supabase.from('interventions').update({ email_status: 'FAILED' }).eq('id', interventionId);
+      return json({ error: 'missing_resend_key' }, 500);
+    }
+
+    const svcName = booking?.services?.name || 'votre intervention';
+    const address = booking?.customer_addresses
+      ? [booking.customer_addresses.address, booking.customer_addresses.postal_code, booking.customer_addresses.city].filter(Boolean).join(', ')
+      : '';
+    const items = ((iv.intervention_items as any[]) || [])
+      .filter((it) => it.visibility === 'customer_visible')
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+    const itemsHtml = items.length
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0;font-size:13px;">
+          ${items.map((it) => `
+            <tr>
+              <td style="padding:5px 0;border-bottom:1px solid #EFE9DB;">${escapeHtml(it.name)}</td>
+              <td style="padding:5px 0;border-bottom:1px solid #EFE9DB;text-align:right;white-space:nowrap;">${escapeHtml(ITEM_STATUS_LABEL[it.status] || it.status)}</td>
+            </tr>`).join('')}
+        </table>`
+      : '';
+
+    const bodyHtml = `
+      ${statusBadgeHtml('Compte rendu d\'intervention', 'confirmed')}
+      <h2 style="color:#101B24;margin:0 0 14px;">Bonjour ${escapeHtml(contactName)},</h2>
+      <p>Voici le compte rendu de votre intervention <strong>${escapeHtml(svcName)}</strong>${iv.report_number ? ` (réf. ${escapeHtml(iv.report_number)})` : ''}${address ? ` au ${escapeHtml(address)}` : ''}, réalisée le ${booking?.date ? escapeHtml(booking.date.split('-').reverse().join('/')) : ''}.</p>
+      ${itemsHtml}
+      ${iv.observations ? `<p><strong>Observations du technicien :</strong><br>${escapeHtml(iv.observations)}</p>` : ''}
+      ${iv.recommendations ? `<p><strong>Recommandations :</strong><br>${escapeHtml(iv.recommendations)}</p>` : ''}
+      <p style="margin-top:20px;color:#5B6B78;font-size:13px;">
+        Signé par ${escapeHtml(iv.client_signature_name || contactName)} (client) et ${escapeHtml(iv.technician_signature_name || 'notre technicien')} (HAYEVA).
+      </p>
+      <p style="margin-top:24px;">Pour toute question sur cette intervention, répondez à cet e-mail ou appelez-nous au <strong>06 71 26 23 02</strong>.</p>
+    `;
+
+    const html = renderEmailShell(bodyHtml, booking?.reference);
+    const subject = 'Compte rendu de votre intervention HAYEVA';
+
+    await supabase.from('interventions').update({ email_status: 'PENDING' }).eq('id', interventionId);
+
+    const emailRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM_EMAIL, to: [contactEmail], subject, html }),
+    });
+
+    if (!emailRes.ok) {
+      console.error('send-intervention-report: échec envoi Resend', emailRes.status, await emailRes.text());
+      await supabase.from('interventions').update({ email_status: 'FAILED' }).eq('id', interventionId);
+      return json({ error: 'email_failed' }, 502);
+    }
+
+    await supabase.from('interventions').update({
+      email_status: 'SENT', email_sent_at: new Date().toISOString(),
+    }).eq('id', interventionId);
+
+    return json({ ok: true });
+  } catch (err) {
+    console.error('send-intervention-report: erreur inattendue', err);
+    return json({ error: 'unexpected' }, 500);
+  }
+});
