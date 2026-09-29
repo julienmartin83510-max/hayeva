@@ -34,3 +34,14 @@
   for = "/sitemap.xml"
   [headers.values]
     Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Route dédiée de la fiche d'intervention (Administration) : le site est un
+# fichier unique (index.html), sans routeur serveur — sans cette règle,
+# /admin/interventions/<id> renverrait un 404 Netlify au chargement direct
+# ou au rechargement, puisqu'aucun fichier réel n'existe à ce chemin.
+# Volontairement scopée à ce seul préfixe (pas un catch-all "/*" global) :
+# aucune autre route existante du site n'est affectée.
+[[redirects]]
+  from = "/admin/interventions/*"
+  to = "/index.html"
+  status = 200
