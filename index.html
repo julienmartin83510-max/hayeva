@@ -14261,25 +14261,46 @@ if ('serviceWorker' in navigator){
     // demande explicite de l'utilisateur une fois le bug confirmé résolu
     // sur son appareil réel.
     // ------------------------------------------------------------
+    // Petit badge replié par défaut (coin haut-droit, hors du chemin des
+    // boutons) — un tap l'ouvre en panneau de logs complet, un second tap le
+    // referme en badge. Remplace la grande bannière permanente d'origine
+    // (trop envahissante sur petit écran, retour explicite de l'utilisateur).
+    var admIvDebugLines = [];
+    var admIvDebugExpanded = false;
+    function admIvDebugRenderBadge(){
+      var badge = document.getElementById('admIvDebugBadge');
+      if (!badge) return;
+      if (admIvDebugExpanded){
+        badge.innerHTML = '<div style="padding:10px 12px 6px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);">DEBUG INTERVENTION</div>' +
+          '<div style="padding:8px 12px;white-space:pre-wrap;word-break:break-word;overflow-y:auto;max-height:40vh;">' +
+          admEscape(admIvDebugLines.join('\n')) + '</div>';
+        badge.style.width = 'min(340px, calc(100vw - 24px))';
+        badge.style.borderRadius = '12px';
+      } else {
+        badge.textContent = 'DEBUG INTERVENTION';
+        badge.style.width = 'auto';
+        badge.style.borderRadius = '999px';
+      }
+    }
     function admIvDebugLog(step, detail){
       var msg = detail !== undefined
         ? (typeof detail === 'string' ? detail : (function(){ try { return JSON.stringify(detail); } catch(e){ return String(detail); } })())
         : '';
       try { console.log('[HAYEVA INTERVENTION]', step, msg); } catch(e){}
-      var el = document.getElementById('admIvDebugBanner');
-      if (!el){
-        el = document.createElement('div');
-        el.id = 'admIvDebugBanner';
-        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#101B24;color:#EAF2F8;' +
-          'font:12px/1.45 -apple-system,Menlo,monospace;padding:10px 14px calc(10px + env(safe-area-inset-top,0px));' +
-          'white-space:pre-wrap;word-break:break-word;max-height:45vh;overflow-y:auto;box-shadow:0 4px 14px rgba(0,0,0,0.35);';
-        el.setAttribute('data-hint', 'Diagnostic HAYEVA — appuyer pour effacer');
-        el.addEventListener('click', function(){ el.remove(); });
-        document.body.appendChild(el);
+      var badge = document.getElementById('admIvDebugBadge');
+      if (!badge){
+        badge = document.createElement('div');
+        badge.id = 'admIvDebugBadge';
+        badge.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:99999;' +
+          'background:#101B24;color:#EAF2F8;font:11px/1.45 -apple-system,Menlo,monospace;' +
+          'padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,0.35);cursor:pointer;';
+        badge.addEventListener('click', function(){ admIvDebugExpanded = !admIvDebugExpanded; admIvDebugRenderBadge(); });
+        document.body.appendChild(badge);
       }
       var line = '[' + new Date().toLocaleTimeString('fr-FR') + '] ' + step + (msg ? ' — ' + msg : '');
-      el.textContent = (el.textContent ? el.textContent + '\n' : '') + line;
-      el.scrollTop = el.scrollHeight;
+      admIvDebugLines.push(line);
+      if (admIvDebugLines.length > 40) admIvDebugLines.shift();
+      admIvDebugRenderBadge();
     }
 
     // Capture au niveau document, en phase de capture (AVANT toute synthèse
@@ -14321,6 +14342,17 @@ if ('serviceWorker' in navigator){
       var overlay = admIvOverlayEl();
       overlay.innerHTML = '<div class="adm-iv-sheet"><p class="ec-loading">Ouverture de la fiche…</p></div>';
       overlay.hidden = false;
+      // Bug Safari iOS connu : un élément position:fixed qui passe de
+      // display:none à visible pendant que la page est défilée peut se
+      // peindre à l'ancienne position de défilement au lieu du haut réel du
+      // viewport — la fiche existe alors bien dans le DOM (tout paraît
+      // correct dans les outils/logs) mais reste hors champ visuel tant
+      // qu'on ne défile pas manuellement plus bas. window.scrollTo(0,0) +
+      // lecture forcée de boundingClientRect (force un reflow synchrone)
+      // avant l'affichage éliminent ce risque, sans effet indésirable sur
+      // desktop/Android où le bug n'existe pas.
+      window.scrollTo(0, 0);
+      overlay.getBoundingClientRect();
 
       sb.client.rpc('start_intervention', { p_booking_id: bookingId, p_technician_name: technicianName || null }).then(function(res){
         if (res.error) throw res.error;
@@ -14375,7 +14407,28 @@ if ('serviceWorker' in navigator){
               technicianSignatureData: ivRow.technician_signature_data
             };
             admIvRender();
+            admIvSyncUrl(bookingId);
             admIvDebugLog('FICHE OUVERTE ✓', { items: allItems.length });
+            // Le log ci-dessus prouve seulement que admIvRender() s'est
+            // exécuté sans exception — PAS que la fiche est réellement
+            // visible à l'écran. Vérification réelle post-rendu (après le
+            // repaint, d'où requestAnimationFrame) : dimensions/position
+            // effectives du conteneur dans le DOM, pour distinguer "jamais
+            // rendue" / "rendue mais cachée" / "rendue hors-écran" / "rendue
+            // mais démontée aussitôt".
+            requestAnimationFrame(function(){
+              var el = document.getElementById('admIvOverlay');
+              if (!el){ admIvDebugLog('FICHE DOM PRESENTE', 'false — #admIvOverlay absent du DOM'); return; }
+              var cs = window.getComputedStyle(el);
+              var r = el.getBoundingClientRect();
+              admIvDebugLog('FICHE DOM PRESENTE', {
+                present: true, hiddenAttr: el.hidden,
+                display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
+                position: cs.position, zIndex: cs.zIndex,
+                rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
+                childCount: el.children.length
+              });
+            });
             settle();
           });
         });
@@ -14392,6 +14445,7 @@ if ('serviceWorker' in navigator){
       var overlay = document.getElementById('admIvOverlay');
       if (overlay) overlay.hidden = true;
       admIv = null;
+      admIvSyncUrl(null);
     }
 
     function admIvScheduleSave(){
@@ -15083,6 +15137,11 @@ if ('serviceWorker' in navigator){
       deleteHtml;
 
     overlay.hidden = false;
+    // Même filet Safari iOS que la fiche d'intervention (voir
+    // admOpenInterventionSheet) : évite qu'une fiche position:fixed nouvellement
+    // affichée reste peinte à l'ancienne position de défilement.
+    window.scrollTo(0, 0);
+    overlay.getBoundingClientRect();
   }
 
   // Suppression définitive d'une demande refusée par l'admin — DELETE réel,
@@ -15521,7 +15580,33 @@ if ('serviceWorker' in navigator){
   // (lien "?booking=<id>", voir le bloc push de notify-admin-booking) :
   // fonctionne aussi si l'admin doit d'abord se connecter, car le paramètre
   // reste dans l'URL jusqu'au premier admLoadBookings() réussi après coup.
+  // Persistance au rechargement de la fiche d'intervention (?intervention=
+  // <bookingId>) — même mécanisme que ?booking=<id> juste en dessous (déjà
+  // utilisé pour le lien de notification push), pas un système parallèle.
+  // Recharger la page pendant une intervention rouvre automatiquement la
+  // même fiche dès que adminBookingsCache est prêt, sans dépendre d'un
+  // quelconque état React/JS en mémoire perdu au rechargement.
+  var adminIvDeepLinkHandled = false;
+  function admHandleInterventionDeepLink(){
+    if (adminIvDeepLinkHandled || !adminBookingsCache || typeof admOpenInterventionSheet !== 'function') return;
+    var params = new URLSearchParams(window.location.search);
+    var bookingId = params.get('intervention');
+    if (!bookingId) return;
+    var exists = adminBookingsCache.rows.some(function(b){ return b.id === bookingId; });
+    if (!exists) return;
+    adminIvDeepLinkHandled = true;
+    admIvDebugLog('Réouverture après rechargement (URL)', { bookingId: bookingId });
+    admOpenInterventionSheet(bookingId);
+  }
+  function admIvSyncUrl(bookingId){
+    var url = new URL(window.location.href);
+    if (bookingId) url.searchParams.set('intervention', bookingId);
+    else url.searchParams.delete('intervention');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
+
   function admHandleDeepLink(){
+    admHandleInterventionDeepLink();
     if (adminDeepLinkHandled || !adminBookingsCache) return;
     var params = new URLSearchParams(window.location.search);
     var bookingId = params.get('booking');
