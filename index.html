@@ -13788,10 +13788,11 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)';
   function admLoadBookings(){
     admSetBkLoadingState();
     sb.client.from('bookings')
-      .select('id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)')
+      .select(ADMIN_BOOKING_SELECT_COLUMNS)
       .order('date', { ascending:true })
       .order('start_time', { ascending:true })
       .limit(500)
@@ -17092,31 +17093,104 @@ if ('serviceWorker' in navigator){
   if (adminCatalogPickerOverlayEl) adminCatalogPickerOverlayEl.addEventListener('click', function(e){ if (e.target === adminCatalogPickerOverlayEl) adminCatalogPickerOverlayEl.hidden = true; });
 
   // ---------- Supabase Realtime : synchronisation live des réservations ----------
-  // Écoute INSERT et UPDATE sur bookings — RLS déjà correcte pour Realtime
-  // (la policy "bookings: owner or admin read", 0001_init.sql, s'applique
-  // aussi au flux postgres_changes : un admin reçoit tous les événements,
-  // jamais plus, aucune nouvelle policy nécessaire). Nécessite que la table
-  // soit ajoutée à la publication supabase_realtime — voir la migration
-  // dédiée. Un seul canal partagé, jamais dupliqué (admSetupBkRealtime()
-  // ignore un second appel si déjà actif) ; se contente de redéclencher un
-  // admLoadBookings() complet à chaque événement plutôt que de fusionner le
-  // cache manuellement ligne par ligne — bien plus fiable, et largement
-  // assez rapide pour un volume de quelques centaines de réservations.
-  // Couvre à la fois Demandes récentes, Planning/Liste, Devis et les cartes
-  // du Tableau de bord puisqu'ils partagent tous adminBookingsCache.
+  // Écoute INSERT/UPDATE/DELETE sur bookings — RLS déjà correcte pour
+  // Realtime (la policy "bookings: owner or admin read", 0001_init.sql,
+  // s'applique aussi au flux postgres_changes : un admin reçoit tous les
+  // événements, jamais plus, aucune nouvelle policy nécessaire). Nécessite
+  // que la table soit ajoutée à la publication supabase_realtime — voir la
+  // migration dédiée. Un seul canal partagé, jamais dupliqué
+  // (admSetupBkRealtime() ignore un second appel si déjà actif).
+  //
+  // Patch chirurgical plutôt que rechargement complet : chaque événement ne
+  // déclenche qu'une requête ciblée sur LA ligne concernée (jamais les 500
+  // réservations en cache), fusionnée dans adminBookingsCache.rows par id
+  // (dédoublonnage garanti : remplace si l'id existe déjà, sinon l'ajoute —
+  // jamais une réservation présente deux fois, que ce soit celle du
+  // chargement initial ou celle d'un événement Realtime ultérieur).
   var adminBkRealtimeChannel = null;
+  function admPatchBookingsCacheRow(row){
+    if (!adminBookingsCache) return;
+    var idx = -1;
+    for (var i = 0; i < adminBookingsCache.rows.length; i++){
+      if (adminBookingsCache.rows[i].id === row.id){ idx = i; break; }
+    }
+    if (idx >= 0) adminBookingsCache.rows[idx] = row; else adminBookingsCache.rows.push(row);
+    adminBookingsCache.rows.sort(function(a, b){
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.start_time < b.start_time ? -1 : (a.start_time > b.start_time ? 1 : 0);
+    });
+  }
+  function admRemoveBookingsCacheRow(id){
+    if (!adminBookingsCache) return;
+    adminBookingsCache.rows = adminBookingsCache.rows.filter(function(b){ return b.id !== id; });
+  }
+  // Même chaîne de rendu qu'après un admLoadBookings() complet (Planning ou
+  // Liste selon l'onglet actif, Demandes récentes, cartes du Tableau de
+  // bord, Devis) — tous relisent simplement adminBookingsCache, jamais de
+  // logique de rendu séparée à maintenir pour le chemin "événement Realtime".
+  function admRerenderAfterBkPatch(){
+    admRenderBkArea();
+    admRenderRecentRequests();
+    admRenderDashboardStats();
+    admRenderQuotesPage();
+  }
+  function admHandleBookingRealtimeEvent(payload){
+    // Pas encore de cache initial (Realtime branché avant le premier
+    // admLoadBookings()) : ce chargement initial s'en chargera de toute
+    // façon dès qu'il arrivera, rien à patcher ici.
+    if (!adminBookingsCache) return;
+    if (payload.eventType === 'DELETE'){
+      var oldId = payload.old && payload.old.id;
+      if (oldId){ admRemoveBookingsCacheRow(oldId); admRerenderAfterBkPatch(); }
+      return;
+    }
+    var id = payload.new && payload.new.id;
+    if (!id) return;
+    sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS).eq('id', id).maybeSingle().then(function(res){
+      if (res.error || !res.data) return;
+      var row = res.data;
+      var needProfile = row.customer_user_id && !row.guest_name && !adminBookingsCache.profiles[row.customer_user_id];
+      if (!needProfile){
+        admPatchBookingsCacheRow(row);
+        admRerenderAfterBkPatch();
+        return;
+      }
+      Promise.all([
+        sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').eq('user_id', row.customer_user_id).maybeSingle(),
+        sb.client.from('profiles').select('user_id,email').eq('user_id', row.customer_user_id).maybeSingle()
+      ]).then(function(res2){
+        var entry = adminBookingsCache.profiles[row.customer_user_id] || {};
+        if (res2[0].data){ entry.first_name = res2[0].data.first_name; entry.last_name = res2[0].data.last_name; entry.phone = res2[0].data.phone; }
+        if (res2[1].data){ entry.email = res2[1].data.email; }
+        adminBookingsCache.profiles[row.customer_user_id] = entry;
+        admPatchBookingsCacheRow(row);
+        admRerenderAfterBkPatch();
+      });
+    });
+  }
   function admSetupBkRealtime(){
     if (adminBkRealtimeChannel || !sb || !sb.client) return;
+    // Ne déclenche la resynchronisation "après coupure" qu'à partir de la
+    // 2e fois où le canal atteint SUBSCRIBED : la toute première fois, c'est
+    // simplement l'ouverture normale (le chargement initial admLoadBookings()
+    // appelé séparément suffit déjà, pas besoin d'un second fetch complet).
+    var hasBeenSubscribedOnce = false;
     adminBkRealtimeChannel = sb.client
       .channel('admin-bookings-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, function(){
-        admLoadBookings();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, function(){
-        admLoadBookings();
-      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .subscribe(function(status, err){
         if (err) console.error('admSetupBkRealtime: erreur de connexion Realtime', err);
+        // Une reconnexion après coupure peut avoir manqué des événements —
+        // une resynchronisation ponctuelle est explicitement autorisée
+        // (contrairement au polling permanent) : un seul admLoadBookings()
+        // complet au moment précis où le canal REPASSE à SUBSCRIBED après
+        // avoir déjà été actif une première fois, jamais de boucle.
+        if (status === 'SUBSCRIBED'){
+          if (hasBeenSubscribedOnce && adminBookingsCache) admLoadBookings();
+          hasBeenSubscribedOnce = true;
+        }
       });
   }
   function admTeardownBkRealtime(){
