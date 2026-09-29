@@ -17242,6 +17242,29 @@ if ('serviceWorker' in navigator){
     }
   }
 
+  // Filet de sécurité, PAS un polling : si le téléphone se verrouille ou
+  // qu'on change d'onglet pendant que l'Administration est ouverte, le
+  // WebSocket Realtime peut se couper sans que le navigateur prévienne tout
+  // de suite (iOS Safari en particulier suspend agressivement les WebSocket
+  // en arrière-plan). Un seul refetch ciblé au retour au premier plan —
+  // jamais une boucle — pour ne jamais rester silencieusement désynchronisé
+  // en attendant un hypothétique prochain événement Realtime. Un garde-fou
+  // de 3s évite un double refetch quand 'visibilitychange' et 'focus' se
+  // déclenchent tous les deux pour le même retour au premier plan.
+  var admLastForegroundResync = 0;
+  function admResyncOnForeground(){
+    var panel = document.getElementById('espaceProAdminPanel');
+    if (!panel || panel.hidden || !adminBookingsCache) return;
+    var now = Date.now();
+    if (now - admLastForegroundResync < 3000) return;
+    admLastForegroundResync = now;
+    admLoadBookings();
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') admResyncOnForeground();
+  });
+  window.addEventListener('focus', admResyncOnForeground);
+
   // ============================================================
   // Chiffrage / Devis — outil interne admin uniquement (voir
   // 0021_admin_quote_calculator.sql). Trois tables entièrement séparées du
