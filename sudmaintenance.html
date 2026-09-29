@@ -14247,6 +14247,48 @@ if ('serviceWorker' in navigator){
       return el;
     }
 
+    // Bug WebKit/iOS connu et confirmé sur le terrain : après un remplacement
+    // massif et synchrone du DOM (innerHTML) déclenché DANS un gestionnaire
+    // tactile, le moteur de rendu peut laisser l'ANCIENNE image composée à
+    // l'écran alors que le DOM/CSSOM est déjà correctement à jour en
+    // interne — getComputedStyle/getBoundingClientRect renvoient alors des
+    // valeurs parfaitement correctes (display:flex, dimensions réelles non
+    // nulles...) tout en ne correspondant à RIEN de ce qui est réellement
+    // peint à l'écran, ce qui explique pourquoi la vérification "DOM
+    // VISIBLE ✓" précédente ne pouvait pas détecter ce cas précis. Aucun
+    // test JS ne peut observer ce décalage : il faut FORCER un nouveau
+    // calque de composition, inconditionnellement, à chaque ouverture.
+    // Combine deux contournements largement documentés pour ce bug WebKit :
+    // un micro-défilement (force le moteur à recalculer les tuiles/calques
+    // visibles) et un aller-retour de transform (force une nouvelle couche
+    // de composition pour l'élément concerné).
+    function admIvForceRepaint(el){
+      try {
+        var y = window.scrollY || window.pageYOffset || 0;
+        window.scrollTo(0, y + 1);
+        el.style.webkitTransform = 'translateZ(0)';
+        void el.offsetHeight;
+        requestAnimationFrame(function(){
+          window.scrollTo(0, y);
+          requestAnimationFrame(function(){
+            el.style.webkitTransform = '';
+            // Filet supplémentaire, indépendant du défilement (fonctionne
+            // même si la page n'a rien à défiler, ce qui rendrait le
+            // contournement ci-dessus inopérant) : retirer puis remettre
+            // l'élément du flux de rendu force une composition entièrement
+            // neuve. Un aller-retour display:none -> display réel dans deux
+            // frames successives, jamais visible à l'œil nu (deux frames
+            // ≈ 33ms à 60fps), garanti de casser une image figée du moteur.
+            el.style.display = 'none';
+            void el.offsetHeight;
+            requestAnimationFrame(function(){
+              el.style.display = '';
+            });
+          });
+        });
+      } catch(e){ /* jamais bloquant : au pire l'affichage reste tel quel */ }
+    }
+
     // Garde anti-double-appel : BUG RÉEL corrigé (voir
     // 0047_fix_intervention_items_duplicates.sql) — sans elle, un second tap
     // pendant qu'un premier appel est encore en vol relance tout le cycle
@@ -14411,6 +14453,7 @@ if ('serviceWorker' in navigator){
               technicianSignatureData: ivRow.technician_signature_data
             };
             admIvRender();
+            admIvForceRepaint(overlay);
             admIvDebugLog('INTERVENTION PAGE MOUNTED ✓', { interventionId: interventionId });
             admIvDebugLog('DATA LOADED ✓', { items: allItems.length });
             admIvDebugLog('NAVIGATION REQUESTED', '/admin/interventions/' + interventionId);
@@ -15168,10 +15211,14 @@ if ('serviceWorker' in navigator){
 
     overlay.hidden = false;
     // Même filet Safari iOS que la fiche d'intervention (voir
-    // admOpenInterventionSheet) : évite qu'une fiche position:fixed nouvellement
-    // affichée reste peinte à l'ancienne position de défilement.
+    // admOpenInterventionSheet/admIvForceRepaint) : évite qu'une fiche
+    // position:fixed nouvellement affichée reste peinte à l'ancienne
+    // position de défilement, ET force une recomposition complète pour le
+    // cas (confirmé sur le terrain) où le moteur laisse une image figée à
+    // l'écran malgré un DOM/CSSOM correctement à jour.
     window.scrollTo(0, 0);
     overlay.getBoundingClientRect();
+    if (typeof admIvForceRepaint === 'function') admIvForceRepaint(overlay);
   }
 
   // Suppression définitive d'une demande refusée par l'admin — DELETE réel,
