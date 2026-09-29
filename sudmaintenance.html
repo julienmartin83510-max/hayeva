@@ -17168,35 +17168,70 @@ if ('serviceWorker' in navigator){
       });
     });
   }
+  // CORRECTIF : le statut retourné par subscribe() n'était vérifié que pour
+  // 'SUBSCRIBED' — un CHANNEL_ERROR/TIMED_OUT/CLOSED (coupure réseau, veille
+  // iOS, hoquet WebSocket) laissait adminBkRealtimeChannel non-nul pour
+  // autant (le channel est retourné avant que la connexion aboutisse), donc
+  // le garde-fou "if (adminBkRealtimeChannel)" bloquait ensuite toute
+  // nouvelle tentative pour le reste de la session admin : l'admin restait
+  // silencieusement avec des données obsolètes jusqu'à un rechargement
+  // manuel. Même correctif que admStatsSubscribeOnlineRealtime (déjà
+  // correct) : ces trois statuts déclenchent une nouvelle tentative bornée
+  // dans le temps (4s), jamais une boucle immédiate/agressive.
+  var admBkRealtimeSubscribing = false;
+  // Suit le channel en cours de connexion séparément de adminBkRealtimeChannel
+  // (qui ne représente que l'abonnement CONFIRMÉ) : sans ça, un teardown
+  // appelé pendant la phase de connexion (avant le premier SUBSCRIBED) ne
+  // retrouverait aucun channel à retirer via removeChannel() et laisserait
+  // un WebSocket orphelin ouvert derrière lui.
+  var admBkPendingChannel = null;
   function admSetupBkRealtime(){
-    if (adminBkRealtimeChannel || !sb || !sb.client) return;
+    if (adminBkRealtimeChannel || admBkRealtimeSubscribing || !sb || !sb.client) return;
+    admBkRealtimeSubscribing = true;
     // Ne déclenche la resynchronisation "après coupure" qu'à partir de la
     // 2e fois où le canal atteint SUBSCRIBED : la toute première fois, c'est
     // simplement l'ouverture normale (le chargement initial admLoadBookings()
     // appelé séparément suffit déjà, pas besoin d'un second fetch complet).
     var hasBeenSubscribedOnce = false;
-    adminBkRealtimeChannel = sb.client
+    var channel = sb.client
       .channel('admin-bookings-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .subscribe(function(status, err){
-        if (err) console.error('admSetupBkRealtime: erreur de connexion Realtime', err);
-        // Une reconnexion après coupure peut avoir manqué des événements —
-        // une resynchronisation ponctuelle est explicitement autorisée
-        // (contrairement au polling permanent) : un seul admLoadBookings()
-        // complet au moment précis où le canal REPASSE à SUBSCRIBED après
-        // avoir déjà été actif une première fois, jamais de boucle.
         if (status === 'SUBSCRIBED'){
+          admBkRealtimeSubscribing = false;
+          admBkPendingChannel = null;
+          adminBkRealtimeChannel = channel;
+          // Une reconnexion après coupure peut avoir manqué des événements —
+          // une resynchronisation ponctuelle est explicitement autorisée
+          // (contrairement au polling permanent) : un seul admLoadBookings()
+          // complet au moment précis où le canal REPASSE à SUBSCRIBED après
+          // avoir déjà été actif une première fois, jamais de boucle.
           if (hasBeenSubscribedOnce && adminBookingsCache) admLoadBookings();
           hasBeenSubscribedOnce = true;
+          return;
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+          admBkRealtimeSubscribing = false;
+          console.error('admSetupBkRealtime: connexion Realtime en échec (' + status + ') — nouvelle tentative dans 4s', err || '');
+          try { sb.client.removeChannel(channel); } catch(e){}
+          if (admBkPendingChannel === channel) admBkPendingChannel = null;
+          if (adminBkRealtimeChannel === channel) adminBkRealtimeChannel = null;
+          // Reconnexion bornée, uniquement si l'admin est toujours ouvert —
+          // jamais de tentative pour une session déjà déconnectée.
+          var panel = document.getElementById('espaceProAdminPanel');
+          if (panel && !panel.hidden) setTimeout(admSetupBkRealtime, 4000);
         }
       });
+    admBkPendingChannel = channel;
   }
   function admTeardownBkRealtime(){
-    if (!adminBkRealtimeChannel) return;
-    sb.client.removeChannel(adminBkRealtimeChannel);
+    admBkRealtimeSubscribing = false;
+    var channel = adminBkRealtimeChannel || admBkPendingChannel;
     adminBkRealtimeChannel = null;
+    admBkPendingChannel = null;
+    if (channel) sb.client.removeChannel(channel);
   }
   // Arrête le canal Realtime et le sondage périodique du "En ligne
   // maintenant" — évite des requêtes Supabase inutiles une fois l'admin
@@ -17258,12 +17293,18 @@ if ('serviceWorker' in navigator){
     var now = Date.now();
     if (now - admLastForegroundResync < 3000) return;
     admLastForegroundResync = now;
+    // Rétablit l'abonnement s'il a été perdu silencieusement (no-op si déjà
+    // actif — admSetupBkRealtime() ignore un appel si un channel confirmé ou
+    // une connexion en cours existe déjà) avant de relire les données.
+    admSetupBkRealtime();
     admLoadBookings();
   }
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'visible') admResyncOnForeground();
   });
   window.addEventListener('focus', admResyncOnForeground);
+  window.addEventListener('pageshow', admResyncOnForeground);
+  window.addEventListener('online', admResyncOnForeground);
 
   // ============================================================
   // Chiffrage / Devis — outil interne admin uniquement (voir
