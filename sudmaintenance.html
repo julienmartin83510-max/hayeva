@@ -14069,7 +14069,22 @@ if ('serviceWorker' in navigator){
       }
       var startBtn = e.target.closest('.admin-bk-start-btn, .admin-bk-resume-btn');
       if (startBtn){
-        admOpenInterventionSheet(startBtn.getAttribute('data-booking-id'));
+        // Retour visuel IMMÉDIAT : le bug réel constaté venait d'un
+        // utilisateur qui retapait ce bouton plusieurs fois de suite parce
+        // que rien ne s'affichait tout de suite (réseau mobile plus lent) —
+        // chaque tap relançait tout le chargement en parallèle, ce qui a
+        // fini par dupliquer la checklist d'une intervention en production
+        // (voir admIvOpening et 0047_fix_intervention_items_duplicates.sql).
+        // Désactiver le bouton dès le premier tap rend cette situation
+        // impossible, en plus de la garde admIvOpening côté fonction.
+        if (startBtn.disabled) return;
+        startBtn.disabled = true;
+        var startBtnOriginalText = startBtn.textContent;
+        startBtn.textContent = 'Ouverture…';
+        admOpenInterventionSheet(startBtn.getAttribute('data-booking-id'), function(){
+          startBtn.disabled = false;
+          startBtn.textContent = startBtnOriginalText;
+        });
         return;
       }
     });
@@ -14146,7 +14161,7 @@ if ('serviceWorker' in navigator){
       st.textContent =
         '#admIvOverlay{position:fixed;inset:0;background:rgba(16,27,36,0.6);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;box-sizing:border-box;}' +
         '#admIvOverlay[hidden]{display:none;}' +
-        '.adm-iv-sheet{background:var(--adm-card-bg,#fff);color:var(--adm-ink,#16222c);border-radius:16px;max-width:760px;width:100%;margin:24px auto;padding:22px;box-sizing:border-box;font-family:"Poppins",sans-serif;}' +
+        '.adm-iv-sheet{background:var(--adm-card-bg,#fff);color:var(--adm-ink,#16222c);border-radius:16px;max-width:760px;width:100%;margin:24px auto;padding:22px 22px calc(22px + env(safe-area-inset-bottom, 0px));box-sizing:border-box;font-family:"Poppins",sans-serif;}' +
         '.adm-iv-sheet h3{margin:0 0 4px;font-size:1.1rem;}' +
         '.adm-iv-sheet .adm-iv-sub{font-size:0.82rem;color:var(--adm-ink-soft,#5B6B78);margin:0 0 16px;}' +
         '.adm-iv-section{border-top:1px solid var(--adm-line,#E5E1D6);padding-top:14px;margin-top:14px;}' +
@@ -14223,10 +14238,22 @@ if ('serviceWorker' in navigator){
       return el;
     }
 
-    function admOpenInterventionSheet(bookingId){
+    // Garde anti-double-appel : BUG RÉEL corrigé (voir
+    // 0047_fix_intervention_items_duplicates.sql) — sans elle, un second tap
+    // pendant qu'un premier appel est encore en vol relance tout le cycle
+    // fetch+insert en parallèle. Chaque copie voit la checklist comme
+    // "manquante" (l'insert précédent n'a pas encore été relu) et la
+    // réinsère en entier, dupliquant les lignes en base à chaque tap
+    // impatient — exactement ce qui est arrivé en production (4 taps -> 36
+    // lignes au lieu de 9 pour une même intervention).
+    var admIvOpening = false;
+    function admOpenInterventionSheet(bookingId, onSettled){
+      function settle(){ admIvOpening = false; if (onSettled) onSettled(); }
+      if (admIvOpening) return;
+      admIvOpening = true;
       admIvInjectStyles();
       var booking = adminBookingsCache && adminBookingsCache.rows.filter(function(b){ return b.id === bookingId; })[0];
-      if (!booking){ window.alert('Réservation introuvable.'); return; }
+      if (!booking){ window.alert('Réservation introuvable.'); settle(); return; }
       var contact = admContactFor(booking, adminBookingsCache.profiles);
       var technicianName = window.localStorage.getItem('admTechnicianName') || '';
       var overlay = admIvOverlayEl();
@@ -14246,17 +14273,26 @@ if ('serviceWorker' in navigator){
 
         return Promise.all([loadEquip, loadIv, loadItems]).then(function(results){
           var equipList = results[0].data || [];
-          var ivRow = results[1].data;
+          // Garde défensive : une intervention introuvable (cas normalement
+          // impossible puisqu'on vient de la créer/retrouver ci-dessus) ne
+          // doit jamais faire planter silencieusement l'ouverture de la
+          // fiche — objet vide plutôt qu'un accès à null juste en dessous.
+          var ivRow = results[1].data || {};
           var existingItems = results[2].data || [];
 
           var missing = CLIM_CHECKLIST_TEMPLATE.filter(function(label){
             return !existingItems.some(function(it){ return it.name === label; });
           });
+          // upsert(...ignoreDuplicates) plutôt qu'un simple insert() : même
+          // en cas de course encore possible (deux onglets admin ouverts en
+          // même temps, par ex.), la contrainte unique (intervention_id,
+          // name) posée par la migration 0047 empêche tout doublon d'être
+          // réellement écrit — deuxième filet, indépendant de admIvOpening.
           var insertPromise = missing.length
-            ? sb.client.from('intervention_items').insert(missing.map(function(label, i){
+            ? sb.client.from('intervention_items').upsert(missing.map(function(label, i){
                 return { intervention_id: interventionId, name: label, status: 'NOT_APPLICABLE',
                   visibility: 'customer_visible', sort_order: existingItems.length + i };
-              })).select('*, intervention_photos(*)')
+              }), { onConflict: 'intervention_id,name', ignoreDuplicates: true }).select('*, intervention_photos(*)')
             : Promise.resolve({ data: [] });
 
           return insertPromise.then(function(insRes){
@@ -14271,11 +14307,13 @@ if ('serviceWorker' in navigator){
               technicianSignatureData: ivRow.technician_signature_data
             };
             admIvRender();
+            settle();
           });
         });
       }).catch(function(err){
         console.error('admOpenInterventionSheet', err);
         overlay.innerHTML = '<div class="adm-iv-sheet"><p class="ec-empty"><strong>Impossible d\'ouvrir la fiche</strong>' + admEscape((err && err.message) || '') + '</p><button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-close>Fermer</button></div>';
+        settle();
       });
     }
 
