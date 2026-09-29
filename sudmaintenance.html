@@ -3496,8 +3496,8 @@ if ('serviceWorker' in navigator){
   }
   .admin-bk-ics-btn:hover{ background:var(--adm-ocean); color:#fff; }
   .admin-bk-action-btn{
-    display:inline-flex; align-items:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
-    padding:7px 12px; border-radius:8px; border:1.5px solid var(--adm-line); cursor:pointer; white-space:nowrap;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
+    min-height:44px; padding:7px 14px; border-radius:8px; border:1.5px solid var(--adm-line); cursor:pointer; white-space:nowrap;
     background:transparent; transition:background .2s ease, color .2s ease, border-color .2s ease;
   }
   .admin-bk-accept-btn{ border-color:var(--adm-green); color:var(--adm-green); }
@@ -14252,14 +14252,70 @@ if ('serviceWorker' in navigator){
     // réinsère en entier, dupliquant les lignes en base à chaque tap
     // impatient — exactement ce qui est arrivé en production (4 taps -> 36
     // lignes au lieu de 9 pour une même intervention).
+    // ------------------------------------------------------------
+    // DIAGNOSTIC TEMPORAIRE — bannière visible + logs [HAYEVA INTERVENTION].
+    // Demandé explicitement pour localiser précisément, depuis un vrai
+    // iPhone, l'étape exacte où "Commencer l'intervention"/"Reprendre la
+    // fiche d'intervention" s'arrête, sans dépendre d'un accès à la console
+    // Safari. Reste actif tant que ce commentaire n'a pas été retiré à la
+    // demande explicite de l'utilisateur une fois le bug confirmé résolu
+    // sur son appareil réel.
+    // ------------------------------------------------------------
+    function admIvDebugLog(step, detail){
+      var msg = detail !== undefined
+        ? (typeof detail === 'string' ? detail : (function(){ try { return JSON.stringify(detail); } catch(e){ return String(detail); } })())
+        : '';
+      try { console.log('[HAYEVA INTERVENTION]', step, msg); } catch(e){}
+      var el = document.getElementById('admIvDebugBanner');
+      if (!el){
+        el = document.createElement('div');
+        el.id = 'admIvDebugBanner';
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#101B24;color:#EAF2F8;' +
+          'font:12px/1.45 -apple-system,Menlo,monospace;padding:10px 14px calc(10px + env(safe-area-inset-top,0px));' +
+          'white-space:pre-wrap;word-break:break-word;max-height:45vh;overflow-y:auto;box-shadow:0 4px 14px rgba(0,0,0,0.35);';
+        el.setAttribute('data-hint', 'Diagnostic HAYEVA — appuyer pour effacer');
+        el.addEventListener('click', function(){ el.remove(); });
+        document.body.appendChild(el);
+      }
+      var line = '[' + new Date().toLocaleTimeString('fr-FR') + '] ' + step + (msg ? ' — ' + msg : '');
+      el.textContent = (el.textContent ? el.textContent + '\n' : '') + line;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // Capture au niveau document, en phase de capture (AVANT toute synthèse
+    // click/délégation) : détecte si le doigt atteint réellement le bouton,
+    // ou si un élément invisible superposé (overlay, barre de navigation,
+    // etc.) intercepte le geste avant même que le code applicatif ne le
+    // voie. Couvre pointerdown (desktop/Android) et touchstart (fallback
+    // Safari iOS plus ancien) — les deux sont sans risque à logguer en plus
+    // l'un de l'autre, ils décrivent le même geste physique.
+    function admIvTouchProbe(e){
+      var hit = e.target.closest && e.target.closest('.admin-bk-start-btn, .admin-bk-resume-btn, .admin-bk-modal-iv-btn');
+      if (!hit) return;
+      var pt = (e.touches && e.touches[0]) || e;
+      var atPoint = (pt.clientX != null) ? document.elementFromPoint(pt.clientX, pt.clientY) : null;
+      admIvDebugLog('TOUCH REÇU sur bouton', {
+        type: e.type, texte: hit.textContent.trim(),
+        elementAuPointExact: atPoint ? (atPoint.tagName + (atPoint.className ? '.' + String(atPoint.className).split(' ').join('.') : '')) : null,
+        estLeBonElement: atPoint ? (atPoint === hit || hit.contains(atPoint)) : null
+      });
+    }
+    document.addEventListener('pointerdown', admIvTouchProbe, true);
+    document.addEventListener('touchstart', admIvTouchProbe, true);
+
     var admIvOpening = false;
     function admOpenInterventionSheet(bookingId, onSettled){
       function settle(){ admIvOpening = false; if (onSettled) onSettled(); }
-      if (admIvOpening) return;
+      admIvDebugLog('CLIC DÉTECTÉ ✓', { bookingId: bookingId });
+      if (admIvOpening){ admIvDebugLog('Ignoré — une ouverture est déjà en cours'); return; }
       admIvOpening = true;
       admIvInjectStyles();
       var booking = adminBookingsCache && adminBookingsCache.rows.filter(function(b){ return b.id === bookingId; })[0];
-      if (!booking){ window.alert('Réservation introuvable.'); settle(); return; }
+      if (!booking){
+        admIvDebugLog('INTERVENTION OPEN FAILED', 'Réservation introuvable dans adminBookingsCache (id=' + bookingId + ')');
+        window.alert('Réservation introuvable.'); settle(); return;
+      }
+      admIvDebugLog('CHARGEMENT INTERVENTION…', { reference: booking.reference, status: booking.status });
       var contact = admContactFor(booking, adminBookingsCache.profiles);
       var technicianName = window.localStorage.getItem('admTechnicianName') || '';
       var overlay = admIvOverlayEl();
@@ -14269,7 +14325,8 @@ if ('serviceWorker' in navigator){
       sb.client.rpc('start_intervention', { p_booking_id: bookingId, p_technician_name: technicianName || null }).then(function(res){
         if (res.error) throw res.error;
         var interventionId = res.data && res.data[0] && res.data[0].intervention_id;
-        if (!interventionId) throw new Error('intervention_id manquant');
+        if (!interventionId) throw new Error('intervention_id manquant dans la réponse de start_intervention');
+        admIvDebugLog('start_intervention OK', { interventionId: interventionId });
 
         var loadEquip = booking.customer_user_id
           ? sb.client.from('customer_equipment').select('*').eq('customer_user_id', booking.customer_user_id).order('created_at', { ascending:false })
@@ -14278,6 +14335,9 @@ if ('serviceWorker' in navigator){
         var loadItems = sb.client.from('intervention_items').select('*, intervention_photos(*)').eq('intervention_id', interventionId).order('sort_order', { ascending:true });
 
         return Promise.all([loadEquip, loadIv, loadItems]).then(function(results){
+          if (results[0].error) throw results[0].error;
+          if (results[1].error) throw results[1].error;
+          if (results[2].error) throw results[2].error;
           var equipList = results[0].data || [];
           // Garde défensive : une intervention introuvable (cas normalement
           // impossible puisqu'on vient de la créer/retrouver ci-dessus) ne
@@ -14285,6 +14345,7 @@ if ('serviceWorker' in navigator){
           // fiche — objet vide plutôt qu'un accès à null juste en dessous.
           var ivRow = results[1].data || {};
           var existingItems = results[2].data || [];
+          admIvDebugLog('Données chargées', { equipements: equipList.length, checklistExistante: existingItems.length });
 
           var missing = CLIM_CHECKLIST_TEMPLATE.filter(function(label){
             return !existingItems.some(function(it){ return it.name === label; });
@@ -14302,6 +14363,7 @@ if ('serviceWorker' in navigator){
             : Promise.resolve({ data: [] });
 
           return insertPromise.then(function(insRes){
+            if (insRes.error) throw insRes.error;
             var allItems = existingItems.concat(insRes.data || []);
             allItems.sort(function(a,b){ return (a.sort_order||0) - (b.sort_order||0); });
             admIv = {
@@ -14313,12 +14375,15 @@ if ('serviceWorker' in navigator){
               technicianSignatureData: ivRow.technician_signature_data
             };
             admIvRender();
+            admIvDebugLog('FICHE OUVERTE ✓', { items: allItems.length });
             settle();
           });
         });
       }).catch(function(err){
         console.error('admOpenInterventionSheet', err);
-        overlay.innerHTML = '<div class="adm-iv-sheet"><p class="ec-empty"><strong>Impossible d\'ouvrir la fiche</strong>' + admEscape((err && err.message) || '') + '</p><button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-close>Fermer</button></div>';
+        var errMsg = (err && (err.message || err.error_description || err.details)) || String(err);
+        admIvDebugLog('INTERVENTION OPEN FAILED ✕', errMsg + (err && err.code ? ' (code ' + err.code + ')' : ''));
+        overlay.innerHTML = '<div class="adm-iv-sheet"><p class="ec-empty"><strong>Impossible d\'ouvrir la fiche</strong>' + admEscape(errMsg) + '</p><button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-close>Fermer</button></div>';
         settle();
       });
     }
