@@ -5860,6 +5860,52 @@ if ('serviceWorker' in navigator){
   .lc-card-visual-placeholder[hidden]{ display:none; }
   .lc-card-visual-placeholder svg{ width:52px; height:52px; opacity:0.7; }
   .lc-card-visual-placeholder span{ font-size:0.74rem; line-height:1.4; }
+
+  /* Lot n°2 — carte cadeau HAYEVA construite en CSS pur (pas d'image
+     générée) : le logo affiché dessus est TOUJOURS le fichier original
+     (images/brand/hayeva-logo.png) via <img>, jamais redessiné. */
+  .lc-gift-card{
+    position:relative; width:100%; height:100%; padding:16px 18px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    border-radius:14px; overflow:hidden;
+    background:linear-gradient(135deg, #1a2c42 0%, #0f1c2e 55%, #0a1420 100%);
+    box-shadow:0 16px 34px -12px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.05) inset;
+    border:1px solid rgba(255,255,255,0.1);
+  }
+  .lc-gift-card::before{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(120deg, rgba(232,90,18,0.16) 0%, transparent 40%),
+               linear-gradient(320deg, rgba(120,170,220,0.14) 0%, transparent 45%);
+  }
+  .lc-gift-card::after{
+    content:''; position:absolute; right:-30px; bottom:-30px; width:140px; height:140px;
+    border-radius:50%; background:radial-gradient(circle, rgba(232,90,18,0.25) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .lc-gift-card-top{ position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .lc-gift-card-logo-plate{
+    display:flex; align-items:center; padding:4px 8px; border-radius:7px;
+    background:rgba(255,255,255,0.94);
+  }
+  .lc-card-visual .lc-gift-card-logo{ height:14px; width:auto; object-fit:contain; display:block; }
+  .lc-gift-card-chip{ width:26px; height:18px; border-radius:4px; background:linear-gradient(135deg,#d9b768,#a9843f); opacity:0.9; flex-shrink:0; }
+  .lc-gift-card-mid{ position:relative; z-index:1; flex-shrink:0; }
+  .lc-gift-card-amount{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.6rem; color:#fff; line-height:1; margin:0; }
+  .lc-gift-card-label{ font-size:0.66rem; letter-spacing:0.1em; text-transform:uppercase; color:#FFD9B8; margin:3px 0 0; font-weight:700; }
+  .lc-gift-card-bottom{ position:relative; z-index:1; font-size:0.62rem; letter-spacing:0.03em; color:rgba(255,255,255,0.6); flex-shrink:0; }
+
+  /* Lot n°3 — vraie photo technicien (bibliothèque d'images existante du
+     site, aucune génération) avec le logo HAYEVA original superposé en
+     badge dans un coin, jamais dessiné/incrusté sur le vêtement. */
+  .lc-photo-visual{ position:relative; }
+  .lc-photo-visual img{ object-fit:cover; object-position:center 35%; }
+  .lc-photo-logo-badge{
+    position:absolute; left:10px; bottom:10px; z-index:2;
+    display:flex; align-items:center; padding:5px 9px; border-radius:8px;
+    background:rgba(10,18,28,0.72); backdrop-filter:blur(3px);
+    border:1px solid rgba(255,255,255,0.15);
+  }
+  .lc-card-visual .lc-photo-logo-badge img{ height:16px; width:auto; object-fit:contain; }
   .lc-card-name{ font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; margin:0; }
   .lc-card--hero .lc-card-name{ font-size:1.5rem; }
   .lc-card-value{ font-weight:700; font-size:0.92rem; color:#FFD9B8; margin:0; }
@@ -6316,9 +6362,18 @@ if ('serviceWorker' in navigator){
         <div class="lc-card">
           <span class="lc-card-tag lc-card-tag--hayeva">Lot n°2</span>
           <div class="lc-card-visual">
-            <div class="lc-card-visual-placeholder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>
-              <span>Crédit HAYEVA</span>
+            <div class="lc-gift-card">
+              <div class="lc-gift-card-top">
+                <span class="lc-gift-card-logo-plate">
+                  <img class="lc-gift-card-logo" src="images/brand/hayeva-logo.png" alt="Logo HAYEVA">
+                </span>
+                <span class="lc-gift-card-chip" aria-hidden="true"></span>
+              </div>
+              <div class="lc-gift-card-mid">
+                <p class="lc-gift-card-amount">200 €</p>
+                <p class="lc-gift-card-label">Crédit prestations</p>
+              </div>
+              <p class="lc-gift-card-bottom">Climatisation • Chauffage • Plomberie</p>
             </div>
           </div>
           <h3 class="lc-card-name">200 € de crédit HAYEVA</h3>
@@ -6329,15 +6384,22 @@ if ('serviceWorker' in navigator){
 
         <div class="lc-card">
           <span class="lc-card-tag lc-card-tag--hayeva">Lot n°3</span>
-          <div class="lc-card-visual">
-            <div class="lc-card-visual-placeholder">
+          <div class="lc-card-visual lc-photo-visual">
+            <img src="images/climatisation/technicien-entretien-climatisation-md.jpg"
+                 alt="Technicien HAYEVA réalisant l'entretien d'une climatisation murale"
+                 loading="lazy"
+                 onerror="this.hidden=true; var b=this.nextElementSibling; if(b) b.hidden=true; var ph=b && b.nextElementSibling; if(ph) ph.hidden=false;">
+            <span class="lc-photo-logo-badge">
+              <img src="images/brand/hayeva-logo.png" alt="Logo HAYEVA">
+            </span>
+            <div class="lc-card-visual-placeholder" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6Z"/><path d="M9 12l2 2 4-4"/></svg>
               <span>Entretien climatisation</span>
             </div>
           </div>
           <h3 class="lc-card-name">Entretien climatisation offert</h3>
-          <p class="lc-card-value" id="lcLot3Value">Valeur indicative : 79 €</p>
-          <p class="lc-card-desc">Un entretien climatisation HAYEVA offert, selon les conditions du règlement.</p>
+          <p class="lc-card-value" id="lcLot3Value">Valeur : jusqu'à 129 €</p>
+          <p class="lc-card-desc">Un entretien de climatisation HAYEVA offert, d'une valeur maximale de 129 €, selon les conditions du règlement.</p>
         </div>
       </div>
 
@@ -9517,7 +9579,7 @@ if ('serviceWorker' in navigator){
     lots: {
       lot1: { name: 'Nintendo Switch 2', valueCents: 49999, valueLabel: 'Valeur indicative : 499,99 €' },
       lot2: { name: '200 € de crédit HAYEVA', valueCents: 20000, valueLabel: 'Valeur : 200 €' },
-      lot3: { name: 'Entretien climatisation offert', valueCents: 7900, valueLabel: 'Valeur indicative : 79 €' }
+      lot3: { name: 'Entretien climatisation offert', valueCents: 12900, valueLabel: 'Valeur : jusqu\'à 129 €' }
     }
   };
   var CONFIG = window.HAYEVA_LAUNCH_CAMPAIGN;
