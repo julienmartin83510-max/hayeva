@@ -3178,6 +3178,7 @@ if ('serviceWorker' in navigator){
   .ai-widget-voice-ctrl-btn.is-muted{ background:var(--amber-soft); border-color:var(--amber); color:#7a5200; }
   .ai-widget-voice-ctrl-end{ color:var(--terracotta-fixed); border-color:var(--terracotta-fixed); }
   .ai-widget-voice-ctrl-btn:hover{ filter:brightness(0.97); }
+  .ai-widget-voice-ctrl-btn[disabled]{ opacity:0.55; cursor:not-allowed; filter:none; }
 
   @media (max-width:480px){
     .ai-widget-panel{
@@ -4601,6 +4602,8 @@ if ('serviceWorker' in navigator){
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; color:var(--navy-fixed); cursor:pointer;
   }
   .ecx-assist-voice-ctrlend{ background:var(--sand); color:var(--terracotta-fixed); border-color:transparent; }
+  .ecx-assist-voice-ctrlbtn.is-muted{ background:var(--amber-soft, #FBE6C4); border-color:var(--amber, #E8A23C); color:#7a5200; }
+  .ecx-assist-voice-ctrlbtn[disabled]{ opacity:0.55; cursor:not-allowed; }
   @media (prefers-reduced-motion: reduce){
     .ecx-assist-callout, .ecx-assist-card, .ecx-assist-voice-orb{ animation:none !important; }
   }
@@ -21490,10 +21493,26 @@ if ('serviceWorker' in navigator){
 // jamais un second moteur vocal indépendant. `cfg.customerType` est la
 // seule chose qui varie ; voice-public-chat adapte déjà son prompt système
 // selon cette valeur (voir buildVoiceInstructions côté serveur).
+//
+// REPLI iOS/Safari (et tout navigateur iOS — Chrome iOS utilise le même
+// moteur WebKit qu'Apple impose, ce n'est PAS équivalent à Chrome desktop) :
+// SpeechRecognition n'existe simplement pas sur iOS. Quand elle est absente
+// mais que l'enregistrement audio (getUserMedia + MediaRecorder) est
+// disponible, ce moteur bascule automatiquement sur un second chemin :
+// enregistrement court à l'appui, envoyé à la nouvelle Edge Function
+// voice-transcribe (transcription serveur), puis le texte obtenu repart
+// dans EXACTEMENT le même sendMessage()/voice-public-chat que le chemin
+// desktop — aucune conversation ni réservation dupliquée. Le chemin
+// desktop existant (SpeechRecognition) n'est jamais modifié : il reste la
+// branche prioritaire, essayée en premier, inchangée.
 // ============================================================
 function ecxCreateVoiceEngine(cfg){
-  var state = { sessionId: null, active: false, muted: false, recognition: null, frenchVoice: null, sending: false };
+  var state = {
+    sessionId: null, active: false, muted: false, recognition: null, frenchVoice: null, sending: false,
+    mode: null, mediaStream: null, mediaRecorder: null, recordedChunks: [], recorderMimeType: '', isRecording: false, recordTimer: null
+  };
   var IDLE_STATUS = cfg.idleStatusText || 'Parlez à HAYEVA en direct, comme une vraie conversation.';
+  var MAX_RECORD_MS = 45000;
 
   function setStatus(text, orbClass){
     if (cfg.statusEl) cfg.statusEl.textContent = text;
@@ -21508,10 +21527,33 @@ function ecxCreateVoiceEngine(cfg){
     cfg.errorEl.hidden = !msg;
   }
   function sttSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+  function mediaRecorderSupported(){
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  }
+  function pickRecorderMimeType(){
+    var candidates = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/aac'];
+    for (var i = 0; i < candidates.length; i++){
+      if (window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+    }
+    return ''; // laisse le navigateur choisir son format par défaut
+  }
   function pickFrenchVoice(){
     if (!('speechSynthesis' in window)) return;
     var voices = window.speechSynthesis.getVoices();
     state.frenchVoice = voices.find(function(v){ return v.lang === 'fr-FR'; }) || voices.find(function(v){ return /^fr/i.test(v.lang); }) || null;
+  }
+  // iOS bloque toute lecture audio qui ne découle pas directement d'un
+  // geste utilisateur. Un utterance quasi vide, lancé de façon synchrone
+  // dans le gestionnaire de clic (avant tout appel réseau), "débloque"
+  // l'audio pour le reste de la session — sans ça, la toute première
+  // réponse vocale peut rester silencieuse sur iPhone.
+  function primeAudioForIOS(){
+    if (!('speechSynthesis' in window)) return;
+    try {
+      var primer = new SpeechSynthesisUtterance(' ');
+      primer.volume = 0;
+      window.speechSynthesis.speak(primer);
+    } catch(e){ /* tant pis, la vraie réponse tentera quand même de se lire */ }
   }
 
   function speak(text, onDone){
@@ -21520,12 +21562,20 @@ function ecxCreateVoiceEngine(cfg){
     var utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'fr-FR';
     if (state.frenchVoice) utter.voice = state.frenchVoice;
-    utter.onstart = function(){ setStatus('HAYEVA vous répond…', 'is-speaking'); };
+    utter.onstart = function(){ setStatus('🔊 HAYEVA vous répond…', 'is-speaking'); };
     // Le retour à l'écoute doit se produire quoi qu'il arrive à la synthèse
     // (succès, erreur, ou speak() qui jette une exception synchrone) — sinon
     // un échec TTS laisserait le micro éteint en silence.
     function resumeListening(){
-      if (state.active){ setStatus('HAYEVA vous écoute…', 'is-listening'); recognitionRestart(); }
+      if (state.active){
+        if (state.mode === 'recorder'){
+          setStatus('🎙️ Appuyez pour parler à nouveau.', null);
+          if (cfg.muteBtn){ cfg.muteBtn.textContent = '🎙️ Parler'; cfg.muteBtn.classList.remove('is-muted'); cfg.muteBtn.disabled = false; }
+        } else {
+          setStatus('HAYEVA vous écoute…', 'is-listening');
+          recognitionRestart();
+        }
+      }
       if (onDone) onDone();
     }
     utter.onend = resumeListening;
@@ -21537,7 +21587,8 @@ function ecxCreateVoiceEngine(cfg){
   function sendMessage(text){
     if (state.sending) return;
     state.sending = true;
-    setStatus('HAYEVA réfléchit…', 'is-connecting');
+    setStatus(state.mode === 'recorder' ? '⏳ Je comprends votre demande…' : 'HAYEVA réfléchit…', 'is-connecting');
+    if (state.mode === 'recorder' && cfg.muteBtn) cfg.muteBtn.disabled = true;
     var sb = window.sudSupabase;
     var clientSessionId = cfg.getClientSessionId ? cfg.getClientSessionId() : (window.sudGetSessionId ? window.sudGetSessionId() : null);
     sb.client.functions.invoke('voice-public-chat', {
@@ -21547,7 +21598,12 @@ function ecxCreateVoiceEngine(cfg){
       var data = res.data;
       if (res.error || !data || data.status !== 'ok'){
         showError("L'assistant vocal est momentanément indisponible — utilisez le mode texte.");
-        setStatus('HAYEVA vous écoute…', 'is-listening');
+        if (state.mode === 'recorder'){
+          setStatus('🎙️ Appuyez pour parler à nouveau.', null);
+          if (cfg.muteBtn) cfg.muteBtn.disabled = false;
+        } else {
+          setStatus('HAYEVA vous écoute…', 'is-listening');
+        }
         return;
       }
       cfg.addMessage('assistant', data.reply);
@@ -21560,7 +21616,120 @@ function ecxCreateVoiceEngine(cfg){
     }).catch(function(){
       state.sending = false;
       showError('Erreur de connexion — utilisez le mode texte.');
-      setStatus('HAYEVA vous écoute…', 'is-listening');
+      if (state.mode === 'recorder'){
+        setStatus('🎙️ Appuyez pour parler à nouveau.', null);
+        if (cfg.muteBtn) cfg.muteBtn.disabled = false;
+      } else {
+        setStatus('HAYEVA vous écoute…', 'is-listening');
+      }
+    });
+  }
+
+  // ---------- Chemin de repli : enregistrement + transcription serveur ----------
+  function blobToBase64(blob){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onloadend = function(){
+        var result = String(reader.result || '');
+        var comma = result.indexOf(',');
+        resolve(comma !== -1 ? result.slice(comma + 1) : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function sendRecordedAudio(blob, mimeType){
+    if (state.sending) return;
+    state.sending = true;
+    setStatus('⏳ Je comprends votre demande…', 'is-connecting');
+    if (cfg.muteBtn) cfg.muteBtn.disabled = true;
+    var sb = window.sudSupabase;
+    var clientSessionId = cfg.getClientSessionId ? cfg.getClientSessionId() : (window.sudGetSessionId ? window.sudGetSessionId() : null);
+    blobToBase64(blob).then(function(base64){
+      return sb.client.functions.invoke('voice-transcribe', {
+        body: { audio_base64: base64, mime_type: mimeType, client_session_id: clientSessionId }
+      });
+    }).then(function(res){
+      state.sending = false;
+      var data = res.data;
+      if (res.error || !data || data.status !== 'ok' || !data.text){
+        var msg = 'Le microphone n\'est pas disponible sur cet appareil. Vous pouvez continuer la conversation par écrit.';
+        if (data && data.status === 'quota_reached') msg = "L'assistant vocal est très sollicité aujourd'hui — réessayez demain, ou utilisez le mode texte.";
+        else if (data && data.status === 'empty') msg = "Je n'ai rien entendu — réessayez, ou utilisez le mode texte.";
+        showError(msg);
+        setStatus('🎙️ Appuyez pour parler à nouveau.', null);
+        if (cfg.muteBtn) cfg.muteBtn.disabled = false;
+        return;
+      }
+      showError('');
+      cfg.addMessage('user', data.text);
+      // sendMessage repositionne déjà son propre indicateur "state.sending"
+      // et son statut — on le laisse gérer la suite (réponse + lecture).
+      state.sending = false;
+      sendMessage(data.text);
+    }).catch(function(){
+      state.sending = false;
+      showError('Erreur de connexion — utilisez le mode texte.');
+      setStatus('🎙️ Appuyez pour parler à nouveau.', null);
+      if (cfg.muteBtn) cfg.muteBtn.disabled = false;
+    });
+  }
+
+  function stopRecording(){
+    if (state.recordTimer){ clearTimeout(state.recordTimer); state.recordTimer = null; }
+    state.isRecording = false;
+    if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive'){
+      try { state.mediaRecorder.stop(); } catch(e){}
+    }
+  }
+
+  function startRecording(){
+    if (state.isRecording || state.sending) return;
+    showError('');
+    if (window.speechSynthesis && window.speechSynthesis.speaking){
+      // Le client reparle pendant que HAYEVA répond : on l'interrompt
+      // (équivalent "barge-in" pour un enregistrement à l'appui, qui ne
+      // peut pas écouter en continu comme SpeechRecognition).
+      window.speechSynthesis.cancel();
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      state.mediaStream = stream;
+      state.recordedChunks = [];
+      var options = state.recorderMimeType ? { mimeType: state.recorderMimeType } : {};
+      var rec;
+      try { rec = new MediaRecorder(stream, options); }
+      catch(e){ rec = new MediaRecorder(stream); } // repli navigateur par défaut si l'option est rejetée
+      state.mediaRecorder = rec;
+      state.isRecording = true;
+      setStatus('🔴 Je vous écoute…', 'is-listening');
+      if (cfg.muteBtn){ cfg.muteBtn.textContent = '⏹ Arrêter et envoyer'; cfg.muteBtn.classList.add('is-muted'); }
+      rec.ondataavailable = function(ev){ if (ev.data && ev.data.size > 0) state.recordedChunks.push(ev.data); };
+      rec.onstop = function(){
+        state.isRecording = false;
+        if (state.mediaStream){ state.mediaStream.getTracks().forEach(function(t){ t.stop(); }); state.mediaStream = null; }
+        if (cfg.muteBtn){ cfg.muteBtn.textContent = '🎙️ Parler'; cfg.muteBtn.classList.remove('is-muted'); }
+        if (!state.recordedChunks.length){
+          setStatus('🎙️ Appuyez pour parler à nouveau.', null);
+          return;
+        }
+        var mimeType = rec.mimeType || state.recorderMimeType || 'audio/webm';
+        var blob = new Blob(state.recordedChunks, { type: mimeType });
+        state.recordedChunks = [];
+        sendRecordedAudio(blob, mimeType);
+      };
+      rec.start();
+      state.recordTimer = setTimeout(function(){ stopRecording(); }, MAX_RECORD_MS);
+    }).catch(function(err){
+      var name = err && err.name;
+      if (name === 'NotAllowedError' || name === 'SecurityError'){
+        showError("Le microphone a été refusé — autorisez-le dans les réglages de votre navigateur pour utiliser HAYEVA Voice, ou utilisez le mode texte.");
+      } else if (name === 'NotFoundError' || name === 'OverconstrainedError'){
+        showError("Aucun microphone détecté — utilisez le mode texte.");
+      } else {
+        showError("Le microphone n'est pas disponible sur cet appareil. Vous pouvez continuer la conversation par écrit.");
+      }
+      setStatus('🎙️ Appuyez pour parler à nouveau.', null);
     });
   }
 
@@ -21614,21 +21783,35 @@ function ecxCreateVoiceEngine(cfg){
   function stop(){
     state.active = false;
     if (state.recognition){ try { state.recognition.stop(); } catch(e){} }
+    if (state.recordTimer){ clearTimeout(state.recordTimer); state.recordTimer = null; }
+    if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive'){ try { state.mediaRecorder.stop(); } catch(e){} }
+    if (state.mediaStream){ state.mediaStream.getTracks().forEach(function(t){ t.stop(); }); state.mediaStream = null; }
+    state.isRecording = false;
+    state.recordedChunks = [];
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     state.sessionId = null;
     state.muted = false;
+    state.mode = null;
     if (cfg.controlsEl) cfg.controlsEl.hidden = true;
     if (cfg.startBtn) cfg.startBtn.hidden = false;
-    if (cfg.muteBtn){ cfg.muteBtn.textContent = 'Couper le micro'; cfg.muteBtn.classList.remove('is-muted'); }
+    if (cfg.muteBtn){ cfg.muteBtn.textContent = 'Couper le micro'; cfg.muteBtn.classList.remove('is-muted'); cfg.muteBtn.disabled = false; }
     setStatus(IDLE_STATUS, null);
   }
 
   function start(){
     showError('');
-    if (!sttSupported()){
+    var useRecognition = sttSupported();
+    var useRecorder = !useRecognition && mediaRecorderSupported();
+    if (!useRecognition && !useRecorder){
       showError("Votre navigateur ne prend pas en charge la conversation vocale ici (essayez Chrome) — utilisez le mode texte.");
       return;
     }
+    // Geste utilisateur direct (clic) : on débloque l'audio iOS ICI, avant
+    // le moindre appel réseau, jamais après un await.
+    if (useRecorder) primeAudioForIOS();
+    state.mode = useRecognition ? 'recognition' : 'recorder';
+    if (useRecorder && !state.recorderMimeType) state.recorderMimeType = pickRecorderMimeType();
+
     var sb = window.sudSupabase;
     var clientSessionId = cfg.getClientSessionId ? cfg.getClientSessionId() : (window.sudGetSessionId ? window.sudGetSessionId() : null);
     if (!sb || !sb.configured || !clientSessionId){ showError('Service indisponible pour le moment.'); return; }
@@ -21649,7 +21832,8 @@ function ecxCreateVoiceEngine(cfg){
       state.sessionId = data.session_id;
       state.active = true;
       cfg.addMessage('assistant', data.reply);
-      if (!state.recognition) state.recognition = initRecognition();
+      if (state.mode === 'recognition' && !state.recognition) state.recognition = initRecognition();
+      if (state.mode === 'recorder' && cfg.muteBtn) cfg.muteBtn.textContent = '🎙️ Parler';
       speak(data.reply, function(){
         if (cfg.controlsEl) cfg.controlsEl.hidden = false;
       });
@@ -21661,6 +21845,14 @@ function ecxCreateVoiceEngine(cfg){
   }
 
   function toggleMute(){
+    if (state.mode === 'recorder'){
+      // Dans ce mode, ce bouton n'est plus un mute mais le déclencheur
+      // "parler / arrêter et envoyer" (voir startRecording/stopRecording) —
+      // même emplacement visuel, comportement adapté à l'enregistrement
+      // à l'appui plutôt qu'à une écoute continue.
+      if (state.isRecording) stopRecording(); else startRecording();
+      return;
+    }
     state.muted = !state.muted;
     if (state.recognition){
       try { if (state.muted) state.recognition.stop(); else state.recognition.start(); } catch(e){}
