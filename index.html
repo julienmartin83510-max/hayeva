@@ -14480,12 +14480,15 @@ if ('serviceWorker' in navigator){
           : Promise.resolve({ data: [] });
         var loadIv = sb.client.from('interventions').select('*').eq('id', interventionId).maybeSingle();
         var loadItems = sb.client.from('intervention_items').select('*, intervention_photos(*)').eq('intervention_id', interventionId).order('sort_order', { ascending:true });
+        var loadGeneralPhotos = sb.client.from('intervention_photos').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
 
-        return Promise.all([loadEquip, loadIv, loadItems]).then(function(results){
+        return Promise.all([loadEquip, loadIv, loadItems, loadGeneralPhotos]).then(function(results){
           if (results[0].error) throw results[0].error;
           if (results[1].error) throw results[1].error;
           if (results[2].error) throw results[2].error;
+          if (results[3].error) throw results[3].error;
           var equipList = results[0].data || [];
+          var generalPhotos = results[3].data || [];
           // Garde défensive : une intervention introuvable (cas normalement
           // impossible puisqu'on vient de la créer/retrouver ci-dessus) ne
           // doit jamais faire planter silencieusement l'ouverture de la
@@ -14517,6 +14520,7 @@ if ('serviceWorker' in navigator){
               bookingId: bookingId, interventionId: interventionId, booking: booking, contact: contact,
               equipList: equipList, selectedEquipmentId: ivRow.equipment_id || (equipList[0] && equipList[0].id) || null,
               items: allItems, observations: ivRow.observations || '', recommendations: ivRow.recommendations || '',
+              generalPhotos: generalPhotos,
               technicianName: ivRow.technician_name || technicianName,
               reportStatus: ivRow.report_status, clientSignatureData: ivRow.client_signature_data,
               technicianSignatureData: ivRow.technician_signature_data
@@ -14635,6 +14639,20 @@ if ('serviceWorker' in navigator){
         '</div>';
     }
 
+    // Photos générales de l'intervention (pas liées à un item de checklist) —
+    // utile quand la checklist du service ne couvre pas ce qui doit être
+    // photographié (ex. checklist climatisation par défaut sur un job
+    // plomberie), ou simplement pour une photo avant/pendant/après globale.
+    function admIvGeneralPhotosHtml(){
+      var thumbs = (admIv.generalPhotos || []).map(function(p){
+        return '<div class="adm-iv-photo-thumb" data-photo-id="' + p.id + '"><img src="" data-storage-path="' + admEscape(p.storage_path) + '" alt=""><button type="button" data-iv-del-photo="' + p.id + '" aria-label="Supprimer">×</button></div>';
+      }).join('');
+      return '<div class="adm-iv-section"><h4>Photos de l\'intervention</h4>' +
+        '<label class="adm-iv-photo-btn">📷 Ajouter / prendre une photo<input type="file" accept="image/*" capture="environment" hidden class="adm-iv-general-photo-input"></label>' +
+        '<div class="adm-iv-photo-thumbs">' + thumbs + '</div>' +
+        '</div>';
+    }
+
     function admIvEquipHtml(){
       if (!admIv.booking.customer_user_id){
         return '<p class="ec-row-meta">Réservation invité : équipement non enregistré dans l\'espace client.</p>';
@@ -14682,6 +14700,7 @@ if ('serviceWorker' in navigator){
         '<p class="adm-iv-sub">' + admEscape(c.name) + (c.address ? ' · ' + admEscape(c.address) : '') + (c.phone ? ' · ' + admEscape(c.phone) : '') + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + ' · Réf. ' + admEscape(b.reference) + '</p>' +
         '<div class="adm-iv-section"><h4>Technicien</h4><input type="text" id="admIvTechName" placeholder="Nom du technicien" value="' + admEscape(admIv.technicianName || '') + '"></div>' +
         '<div class="adm-iv-section"><h4>Équipement</h4>' + admIvEquipHtml() + '</div>' +
+        admIvGeneralPhotosHtml() +
         '<div class="adm-iv-section"><h4>Contrôles effectués</h4>' + admIv.items.map(admIvItemHtml).join('') + '</div>' +
         '<div class="adm-iv-section"><h4>Observations du technicien</h4><textarea id="admIvObs" placeholder="Observations libres…">' + admEscape(admIv.observations) + '</textarea></div>' +
         '<div class="adm-iv-section"><h4>Recommandations</h4><textarea id="admIvReco" placeholder="Recommandations pour le client…">' + admEscape(admIv.recommendations) + '</textarea></div>' +
@@ -14764,6 +14783,7 @@ if ('serviceWorker' in navigator){
           admIv.items.forEach(function(it){
             it.intervention_photos = (it.intervention_photos || []).filter(function(p){ return p.id !== photoId; });
           });
+          admIv.generalPhotos = (admIv.generalPhotos || []).filter(function(p){ return p.id !== photoId; });
           admIvRender();
         });
         return;
@@ -14843,6 +14863,25 @@ if ('serviceWorker' in navigator){
           admIvRender();
         }).catch(function(err){
           console.error('admIv photo upload', err);
+          window.alert('Échec de l\'envoi de la photo.');
+        });
+        return;
+      }
+      if (e.target.classList.contains('adm-iv-general-photo-input') && e.target.files && e.target.files[0]){
+        var file2 = e.target.files[0];
+        admIvCompressImage(file2).then(function(blob){
+          var path = admIv.interventionId + '/general/' + Date.now() + '.jpg';
+          return sb.client.storage.from('intervention-photos').upload(path, blob, { contentType: 'image/jpeg' }).then(function(upRes){
+            if (upRes.error) throw upRes.error;
+            return sb.client.from('intervention_photos').insert({
+              intervention_id: admIv.interventionId, storage_path: path, tag: 'PENDANT', file_name: file2.name
+            }).select('*');
+          });
+        }).then(function(insRes){
+          admIv.generalPhotos = (admIv.generalPhotos || []).concat([insRes.data[0]]);
+          admIvRender();
+        }).catch(function(err){
+          console.error('admIv general photo upload', err);
           window.alert('Échec de l\'envoi de la photo.');
         });
         return;
