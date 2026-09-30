@@ -3605,6 +3605,14 @@ if ('serviceWorker' in navigator){
   }
   .adm-retry-btn:hover{ background:var(--adm-ocean); color:#fff; }
 
+  /* ---------- Table simple (admin "Jeu & récompenses") ---------- */
+  .admin-table-wrap{ overflow-x:auto; border:1px solid var(--adm-line); border-radius:12px; }
+  .admin-table{ width:100%; border-collapse:collapse; font-size:0.86rem; min-width:640px; }
+  .admin-table th, .admin-table td{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--adm-line); white-space:nowrap; }
+  .admin-table th{ color:var(--adm-ink-soft); font-weight:700; background:var(--adm-card-bg); }
+  .admin-table tbody tr:last-child td{ border-bottom:none; }
+  .admin-table .adm-retry-btn{ margin-top:0; padding:5px 12px; font-size:0.74rem; }
+
   .admin-bk-planning-nav{
     display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;
   }
@@ -5040,6 +5048,104 @@ if ('serviceWorker' in navigator){
     color:var(--ink-soft);
     margin-top:2px;
   }
+
+  /* ---------- Lecteur "Mon histoire en vidéo" ----------
+     Overlay plein écran dédié, fond noir cinématographique (distinct de
+     #legalOverlay/#founderBioOverlay). Contrôles minimalistes, jamais
+     l'interface native du navigateur (aucun attribut "controls" sur
+     <video> : tout est piloté par nos propres boutons). */
+  .story-video-overlay{
+    position:fixed; inset:0; z-index:10090; background:#0A0E14;
+    display:flex; align-items:center; justify-content:center;
+    padding-top:env(safe-area-inset-top, 0px); padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  .story-video-overlay[hidden]{ display:none; }
+  .story-video-close{
+    position:absolute; top:calc(16px + env(safe-area-inset-top, 0px)); right:16px; z-index:2;
+    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .story-video-close:hover{ background:rgba(255,255,255,0.18); }
+  .story-video-close svg{ width:18px; height:18px; }
+  .story-video-stage{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9; margin:0 16px;
+    display:flex; align-items:center; justify-content:center; background:#000; border-radius:10px; overflow:hidden;
+  }
+  @media (max-width:640px){
+    .story-video-stage{ max-width:100%; margin:0; border-radius:0; aspect-ratio:9/16; max-height:100dvh; }
+  }
+  .story-video-stage video{ width:100%; height:100%; object-fit:contain; background:#000; }
+  .story-video-unavailable{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    color:#fff; text-align:center; padding:24px;
+  }
+  .story-video-unavailable p{ margin:0; font-family:"Poppins",sans-serif; }
+  .story-video-unavailable p:first-child{ font-weight:800; font-size:1.15rem; }
+  .story-video-unavailable-sub{ opacity:0.75; font-size:0.9rem; }
+  /* .btn-hero-secondary dépend des jetons --hl-* scopés à .hero (voir plus
+     haut) : hors de ce contexte, var(--hl-navy) est indéfinie et le bouton
+     hérite silencieusement du blanc ambiant (texte invisible, bug réel
+     détecté en test). Couleurs explicites ici, jamais un jeton scopé. */
+  .story-video-unavailable .btn-hero-secondary{ background:#fff; color:#12213D; border-color:transparent; }
+  .story-video-playbtn{
+    position:absolute; width:72px; height:72px; border-radius:50%; border:none;
+    background:rgba(255,255,255,0.92); color:var(--sky-deep); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px -10px rgba(0,0,0,0.5);
+    transition:transform .18s ease;
+  }
+  .story-video-playbtn:hover{ transform:scale(1.06); }
+  .story-video-playbtn svg{ width:30px; height:30px; margin-left:3px; }
+  .story-video-controls{
+    position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; gap:12px;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+  }
+  .story-video-ctrl{
+    width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.12); color:#fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .story-video-ctrl:hover{ background:rgba(255,255,255,0.22); }
+  .story-video-ctrl svg{ width:18px; height:18px; }
+  .story-video-cc{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.72rem; }
+  .story-video-cc.is-off{ opacity:0.5; }
+  .story-video-progress{
+    flex:1 1 auto; height:5px; border-radius:999px; background:rgba(255,255,255,0.22); cursor:pointer; position:relative;
+  }
+  .story-video-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--terracotta); border-radius:999px; }
+  .story-video-end{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    background:rgba(10,14,20,0.94); padding:24px; text-align:center;
+  }
+  .story-video-end-logo{ width:64px; height:auto; }
+  .story-video-end-brand{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.1rem; letter-spacing:0.08em; color:#fff; margin:2px 0 0; }
+  .story-video-end-tagline{ font-size:0.78rem; letter-spacing:0.04em; color:rgba(255,255,255,0.65); margin:0; }
+  .story-video-end-signature{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.9rem; color:#fff; margin:10px 0 0; }
+  .story-video-end-signature span{ display:block; font-weight:500; font-size:0.76rem; color:rgba(255,255,255,0.65); margin-top:2px; }
+  .story-video-end-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; color:#fff; margin:6px 0 0; }
+  .story-video-end-ctas{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; margin-top:6px; }
+  .story-video-end-link{
+    background:none; border:none; color:#fff; text-decoration:underline; font-weight:700; cursor:pointer; font-size:0.9rem;
+  }
+  /* Même correctif que .story-video-unavailable ci-dessus : .btn-hero-primary/
+     -secondary dépendent des jetons --hl-* scopés à .hero, indéfinis ici. */
+  .story-video-end .btn-hero-primary{ background:linear-gradient(135deg, #E85A12 0%, #C94400 100%); }
+  .story-video-end .btn-hero-secondary{ background:#fff; color:#12213D; border-color:transparent; }
+  @media (prefers-reduced-motion: reduce){
+    .story-video-playbtn, .story-video-ctrl{ transition:none !important; }
+  }
+
+  /* ---------- Teaser "La Maison HAYEVA" (accueil) ---------- */
+  .jeu-teaser-card{
+    display:flex; align-items:center; gap:32px; flex-wrap:wrap; background:var(--white);
+    border:1px solid var(--line); border-radius:22px; padding:28px; box-shadow:0 16px 40px -24px rgba(16,27,46,0.25);
+  }
+  .jeu-teaser-visual{ flex:0 0 auto; width:140px; }
+  .jeu-teaser-house{ width:100%; height:auto; filter:drop-shadow(0 10px 18px rgba(16,27,46,0.18)); }
+  .jeu-teaser-body{ flex:1 1 280px; min-width:0; }
+  .jeu-teaser-body h2{ margin:2px 0 10px; }
+  .jeu-teaser-body p{ color:var(--ink-soft); margin:0 0 18px; max-width:56ch; }
+  @media (max-width:640px){ .jeu-teaser-card{ flex-direction:column; text-align:center; padding:24px 20px; } .jeu-teaser-body p{ margin-inline:auto; } }
 
   /* Contact band — deliberately fixed dark navy, independent of light/dark theme */
   #contact{background:var(--navy-fixed);}
@@ -8125,6 +8231,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="voice" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">HAYEVA Voice</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="game" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Jeu &amp; récompenses</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="settings" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Paramètres</span>
                 </button>
@@ -8613,6 +8722,28 @@ if ('serviceWorker' in navigator){
                 </div>
               </section>
 
+              <section class="adm-page" id="admPageGame" data-adm-page="game" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">Jeu &amp; récompenses</h2>
+                  <p class="adm-page-sub">« La Maison HAYEVA » — statistiques et codes de récompense.</p>
+                </div>
+                <div class="adm-stats-grid" id="admGameStatsGrid">
+                  <div class="adm-stat-card"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="admGameStatOpened">—</span><span class="adm-stat-label">Parties commencées</span></div>
+                  <div class="adm-stat-card"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="admGameStatCompleted">—</span><span class="adm-stat-label">Parties terminées</span></div>
+                  <div class="adm-stat-card"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="admGameStatRate">—</span><span class="adm-stat-label">Taux de complétion</span></div>
+                  <div class="adm-stat-card"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="admGameStatCodes">—</span><span class="adm-stat-label">Codes générés</span></div>
+                  <div class="adm-stat-card"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="admGameStatRedeemed">—</span><span class="adm-stat-label">Codes utilisés</span></div>
+                </div>
+                <h3 class="adm-subhead">Codes de récompense</h3>
+                <div class="admin-travel-settings-form" style="margin-bottom:14px;">
+                  <label style="flex:1 1 260px;">Rechercher (code)
+                    <input type="text" id="admGameCodeSearch" placeholder="HAYEVA-XXXXXX">
+                  </label>
+                </div>
+                <div id="admGameCodesList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
@@ -8996,6 +9127,30 @@ if ('serviceWorker' in navigator){
         <div class="why-card" style="--why-accent:var(--cat-plomberie); --why-accent-soft:var(--sky-accent-soft);">
           <span class="mark"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="12" r="9"/><path d="M11 10.5 L14 13.5 L19.5 8"/><path d="M10 19.5 L7.5 27 L15 24 L22.5 27 L20 19.5"/></svg></span>
           <h3>Équipements de qualité, toutes marques</h3>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="jeuTeaser" class="section-relative" style="background:var(--sand-deep); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+    <div class="deco-blob" style="width:220px; height:220px; top:-60px; left:6%; background:var(--terracotta); opacity:0.08;"></div>
+    <div class="wrap">
+      <div class="jeu-teaser-card">
+        <div class="jeu-teaser-visual" aria-hidden="true">
+          <svg viewBox="0 0 200 160" class="jeu-teaser-house">
+            <rect x="30" y="70" width="140" height="80" rx="4" fill="#F2E4C9"/>
+            <polygon points="20,75 100,25 180,75" fill="#C9724A"/>
+            <rect x="55" y="95" width="22" height="26" rx="2" fill="#3F7FA6"/>
+            <rect x="123" y="95" width="22" height="26" rx="2" fill="#3F7FA6"/>
+            <rect x="90" y="110" width="20" height="40" rx="2" fill="#7A5230"/>
+            <circle cx="105" cy="130" r="1.6" fill="#F2E4C9"/>
+          </svg>
+        </div>
+        <div class="jeu-teaser-body">
+          <p class="eyebrow">Nouveau<span class="rule"></span></p>
+          <h2>La Maison HAYEVA</h2>
+          <p>Un mini-jeu pour toute la famille : explorez une maison du Sud et débusquez les petits problèmes qui coûtent cher — fuite, mauvais réglage, isolation... Comprenez, en jouant, ce que nous vérifions à chaque intervention.</p>
+          <button type="button" class="btn-hero-primary" id="jeuTeaserOpenBtn">Découvrir le jeu</button>
         </div>
       </div>
     </div>
@@ -16025,6 +16180,7 @@ if ('serviceWorker' in navigator){
     if (key === 'voice' && typeof voiceSectionInit === 'function') voiceSectionInit();
     if (key === 'launch-campaign' && typeof admLoadLaunchCampaign === 'function') admLoadLaunchCampaign();
     if (key === 'launch-campaign' && typeof lcRenderDrawReadiness === 'function') lcRenderDrawReadiness();
+    if (key === 'game' && typeof admGameInit === 'function') admGameInit();
   }
 
   // ============================================================
@@ -16205,6 +16361,98 @@ if ('serviceWorker' in navigator){
         '<span class="admin-bk-pending-count">' + e.count + '</span></div>';
     }).join('');
   }
+
+  // ============================================================
+  // Administration — "Jeu & récompenses" (La Maison HAYEVA). Réutilise
+  // analytics_events pour les compteurs de parties (mêmes événements
+  // game_* que le jeu, voir sudTrack), et lit game_reward_codes en
+  // DIRECT depuis le client admin authentifié : la policy RLS
+  // "game_reward_codes: admin full access" (0041_hayeva_game_rewards.sql)
+  // autorise déjà ce compte, aucune Edge Function n'est nécessaire ici
+  // (contrairement à la génération/vérification côté joueur, qui doit
+  // rester strictement serveur).
+  // ============================================================
+  var admGameCodesCache = null;
+  function admGameFmtDate(iso){
+    if (!iso) return '—';
+    var d = new Date(iso);
+    return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  }
+  function admGameRenderCodes(rows, filter){
+    var list = document.getElementById('admGameCodesList');
+    if (!list) return;
+    var filtered = filter ? rows.filter(function(r){ return r.code.toLowerCase().indexOf(filter.toLowerCase()) !== -1; }) : rows;
+    if (!filtered.length){
+      list.innerHTML = '<div class="ec-empty"><strong>Aucun code</strong>Aucun code de récompense ne correspond.</div>';
+      return;
+    }
+    var statusLabel = { created: 'Créé', claimed: 'Réclamé', redeemed: 'Utilisé', expired: 'Expiré', cancelled: 'Annulé' };
+    var html = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>' +
+      '<th>Code</th><th>Statut</th><th>Score</th><th>Créé le</th><th>Expire le</th><th>Actions</th>' +
+      '</tr></thead><tbody>';
+    filtered.forEach(function(r){
+      html += '<tr>' +
+        '<td><strong>' + r.code + '</strong></td>' +
+        '<td>' + (statusLabel[r.status] || r.status) + '</td>' +
+        '<td>' + (r.score != null ? r.score : '—') + '</td>' +
+        '<td>' + admGameFmtDate(r.created_at) + '</td>' +
+        '<td>' + admGameFmtDate(r.expires_at) + '</td>' +
+        '<td style="display:flex; gap:6px; flex-wrap:wrap;">' +
+          (r.status !== 'redeemed' && r.status !== 'cancelled' ? '<button type="button" class="adm-retry-btn" data-game-redeem="' + r.id + '">Marquer utilisé</button>' : '') +
+          (r.status !== 'cancelled' && r.status !== 'redeemed' ? '<button type="button" class="adm-retry-btn" data-game-cancel="' + r.id + '">Désactiver</button>' : '') +
+        '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    list.innerHTML = html;
+    Array.prototype.forEach.call(list.querySelectorAll('[data-game-redeem]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-game-redeem');
+        btn.disabled = true;
+        window.sudSupabase.client.from('game_reward_codes').update({ status: 'redeemed', redeemed_at: new Date().toISOString() }).eq('id', id).then(function(){ admGameInit(); });
+      });
+    });
+    Array.prototype.forEach.call(list.querySelectorAll('[data-game-cancel]'), function(btn){
+      btn.addEventListener('click', function(){
+        if (!window.confirm('Désactiver ce code ? Il ne pourra plus être utilisé.')) return;
+        var id = btn.getAttribute('data-game-cancel');
+        btn.disabled = true;
+        window.sudSupabase.client.from('game_reward_codes').update({ status: 'cancelled' }).eq('id', id).then(function(){ admGameInit(); });
+      });
+    });
+  }
+  function admGameInit(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    var since = admStatsPeriodStart('30d').toISOString();
+    sb.client.from('analytics_events').select('event_type').gte('created_at', since).then(function(res){
+      var rows = res.data || [];
+      var opened = rows.filter(function(r){ return r.event_type === 'game_opened'; }).length;
+      var completed = rows.filter(function(r){ return r.event_type === 'game_completed'; }).length;
+      var rate = opened ? Math.round(completed / opened * 100) + ' %' : '—';
+      var setTxt = function(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; };
+      setTxt('admGameStatOpened', opened);
+      setTxt('admGameStatCompleted', completed);
+      setTxt('admGameStatRate', rate);
+    });
+    sb.client.from('game_reward_codes').select('id, code, status, score, created_at, expires_at, redeemed_at').order('created_at', { ascending: false }).then(function(res){
+      if (res.error){
+        var list = document.getElementById('admGameCodesList');
+        if (list) list.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les codes</strong></div>';
+        return;
+      }
+      admGameCodesCache = res.data || [];
+      var setTxt = function(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; };
+      setTxt('admGameStatCodes', admGameCodesCache.length);
+      setTxt('admGameStatRedeemed', admGameCodesCache.filter(function(r){ return r.status === 'redeemed'; }).length);
+      var searchInput = document.getElementById('admGameCodeSearch');
+      admGameRenderCodes(admGameCodesCache, searchInput ? searchInput.value : '');
+    });
+  }
+  var admGameSearchEl = document.getElementById('admGameCodeSearch');
+  if (admGameSearchEl) admGameSearchEl.addEventListener('input', function(){
+    if (admGameCodesCache) admGameRenderCodes(admGameCodesCache, admGameSearchEl.value);
+  });
 
   function admLoadStats(){
     var sb = window.sudSupabase;
@@ -22629,4 +22877,653 @@ function ecxCreateVoiceEngine(cfg){
   });
 })();
 </script>
+
+<style>
+/* ============================================================
+   "La Maison HAYEVA" — mini-jeu premium intégré au site.
+   Namespace CSS dédié .hgame- (aucun conflit avec les namespaces .ec-,
+   .ecx- et .pro- déjà utilisés ailleurs sur le site).
+   2.5D en couches CSS/SVG (pas de moteur 3D lourd) : plusieurs plans
+   superposés avec ombres et légère parallaxe au lieu d'un simple
+   rotateX() sur des cartes plates.
+   ============================================================ */
+.hgame-overlay{
+  position:fixed; inset:0; z-index:10095; background:linear-gradient(180deg, #FDF6E9 0%, #F3E6CB 100%);
+  display:flex; flex-direction:column; overflow:hidden;
+  padding-top:env(safe-area-inset-top, 0px); padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.hgame-overlay[hidden]{ display:none; }
+.hgame-topbar{
+  flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:12px 16px;
+  background:rgba(255,255,255,0.7); backdrop-filter:blur(10px); border-bottom:1px solid rgba(16,27,46,0.08); z-index:2;
+}
+.hgame-quit, .hgame-help{
+  border:none; border-radius:999px; cursor:pointer; font-family:"Poppins",sans-serif; font-weight:700;
+  display:flex; align-items:center; gap:6px; flex:0 0 auto;
+}
+.hgame-quit{ width:38px; height:38px; justify-content:center; background:rgba(16,27,46,0.08); color:var(--ink);}
+.hgame-quit svg{ width:16px; height:16px; }
+.hgame-help{ padding:9px 14px; background:var(--sky-deep); color:#fff; font-size:0.8rem; margin-left:auto; }
+.hgame-help svg{ width:15px; height:15px; }
+.hgame-progress{ flex:1 1 auto; display:flex; align-items:center; gap:10px; max-width:320px; }
+.hgame-progress-track{ flex:1 1 auto; height:8px; border-radius:999px; background:rgba(16,27,46,0.1); overflow:hidden; }
+.hgame-progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--terracotta), var(--sky-deep)); transition:width .4s ease; }
+.hgame-progress-label{ font-size:0.74rem; font-weight:700; color:var(--ink-soft); white-space:nowrap; }
+.hgame-stage{ flex:1 1 auto; overflow-y:auto; position:relative; }
+.hgame-screen{ min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 20px 48px; text-align:center; }
+
+/* ---- Intro ---- */
+.hgame-intro-scene{ position:relative; width:min(92vw, 420px); aspect-ratio:4/3; margin-bottom:18px; }
+.hgame-intro-layer{ position:absolute; inset:0; }
+.hgame-intro-scene svg{ width:100%; height:100%; }
+.hgame-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:clamp(1.5rem,5vw,2.1rem); color:var(--navy-fixed, #12213D); margin:0 0 8px; }
+.hgame-tagline{ color:var(--ink-soft); max-width:44ch; margin:0 0 22px; }
+.hgame-cta{
+  border:none; border-radius:14px; padding:16px 32px; font-family:"Poppins",sans-serif; font-weight:800; font-size:1rem;
+  background:linear-gradient(135deg, var(--terracotta) 0%, #C9724A 100%); color:#fff; cursor:pointer;
+  box-shadow:0 16px 30px -14px rgba(201,68,0,0.5); transition:transform .18s ease;
+}
+.hgame-cta:hover{ transform:translateY(-2px); }
+.hgame-howto-link{ margin-top:14px; background:none; border:none; color:var(--sky-deep); font-weight:700; text-decoration:underline; cursor:pointer; font-size:0.86rem; }
+
+/* ---- Carte de la maison (choix de mission) ---- */
+.hgame-house-map{ position:relative; width:min(94vw, 480px); }
+.hgame-house-map svg{ width:100%; height:auto; display:block; }
+.hgame-room-hotspot{
+  position:absolute; border:2px solid transparent; border-radius:14px; background:rgba(255,255,255,0.0);
+  cursor:pointer; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px;
+  transition:background .18s ease, border-color .18s ease;
+}
+.hgame-room-hotspot:hover, .hgame-room-hotspot:focus-visible{ background:rgba(255,255,255,0.25); border-color:var(--terracotta); outline:none; }
+.hgame-room-hotspot[data-done="1"]{ border-color:var(--turquoise); }
+.hgame-room-hotspot-label{
+  background:rgba(16,27,46,0.85); color:#fff; font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px;
+  font-family:"Poppins",sans-serif; display:flex; align-items:center; gap:5px;
+}
+.hgame-room-hotspot-label svg{ width:12px; height:12px; }
+
+/* ---- Guide HAYEVA ---- */
+.hgame-guide{ display:flex; align-items:flex-start; gap:12px; max-width:460px; margin:16px auto 0; text-align:left; }
+.hgame-guide-avatar{ flex:0 0 auto; width:52px; height:52px; }
+.hgame-guide-bubble{
+  background:#fff; border:1px solid var(--line); border-radius:14px; border-top-left-radius:4px; padding:10px 14px;
+  font-size:0.88rem; color:var(--ink); box-shadow:0 8px 20px -14px rgba(16,27,46,0.3);
+}
+
+/* ---- Scène de mission ---- */
+.hgame-mission-head{ margin-bottom:10px; }
+.hgame-mission-eyebrow{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--terracotta); margin:0; }
+.hgame-mission-title{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; margin:2px 0 6px; }
+.hgame-mission-instruction{ color:var(--ink-soft); max-width:48ch; margin:0 auto 14px; font-size:0.92rem; }
+.hgame-scene-wrap{ position:relative; width:min(94vw, 520px); }
+.hgame-scene-wrap svg{ width:100%; height:auto; display:block; border-radius:18px; box-shadow:0 20px 40px -24px rgba(16,27,46,0.35); }
+.hgame-hotspot{
+  position:absolute; width:13%; aspect-ratio:1; border-radius:50%; border:2px dashed transparent; background:transparent;
+  cursor:pointer; transform:translate(-50%,-50%);
+}
+.hgame-hotspot:hover, .hgame-hotspot:focus-visible{ border-color:rgba(16,27,46,0.35); outline:none; }
+.hgame-hotspot.is-wrong{ animation:hgameShake .4s ease; }
+.hgame-hotspot.is-hint{ border-color:var(--terracotta); animation:hgamePulse 1.2s ease-in-out infinite; }
+.hgame-hotspot.is-correct{ border-color:var(--turquoise); background:rgba(63,169,160,0.18); animation:none; }
+@keyframes hgameShake{ 0%,100%{ transform:translate(-50%,-50%); } 25%{ transform:translate(calc(-50% - 4px),-50%); } 75%{ transform:translate(calc(-50% + 4px),-50%); } }
+@keyframes hgamePulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(201,68,0,0.35); } 50%{ box-shadow:0 0 0 8px rgba(201,68,0,0); } }
+.hgame-mission-actions{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; justify-content:center; }
+.hgame-hint-btn{
+  border:1px solid var(--line); background:#fff; border-radius:999px; padding:9px 16px; font-family:"Poppins",sans-serif;
+  font-weight:700; font-size:0.82rem; color:var(--ink); cursor:pointer;
+}
+.hgame-hint-btn[disabled]{ opacity:0.4; cursor:not-allowed; }
+.hgame-learning{
+  margin-top:16px; max-width:48ch; background:var(--sand-deep, #F2E9DA); border-radius:12px; padding:12px 16px;
+  font-size:0.88rem; color:var(--ink); border-left:3px solid var(--terracotta);
+}
+
+/* ---- Fin de partie ---- */
+.hgame-end-house{ width:min(80vw, 300px); margin-bottom:10px; }
+.hgame-score{ font-family:"Poppins",sans-serif; font-weight:800; font-size:2rem; color:var(--terracotta); margin:6px 0 2px; }
+.hgame-badge{
+  display:inline-flex; align-items:center; gap:8px; background:var(--navy-fixed, #12213D); color:#fff; padding:8px 16px;
+  border-radius:999px; font-weight:700; font-size:0.84rem; margin:10px 0 20px;
+}
+.hgame-badge svg{ width:16px; height:16px; }
+.hgame-confetti{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.hgame-confetti-piece{ position:absolute; width:8px; height:8px; border-radius:2px; opacity:0.9; animation:hgameConfettiFall 2.4s ease-in forwards; }
+@keyframes hgameConfettiFall{ 0%{ transform:translateY(-20px) rotate(0deg); opacity:1; } 100%{ transform:translateY(340px) rotate(260deg); opacity:0; } }
+
+/* ---- Portail parent / récompense ---- */
+.hgame-parentgate-card, .hgame-reward-card{
+  background:#fff; border-radius:18px; padding:28px 24px; max-width:420px; width:100%; box-shadow:0 20px 44px -24px rgba(16,27,46,0.35);
+}
+.hgame-parentgate-question{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.3rem; margin:10px 0 16px; }
+.hgame-parentgate-input{
+  width:100%; text-align:center; font-size:1.3rem; padding:12px; border:1px solid var(--line); border-radius:10px; margin-bottom:14px;
+}
+.hgame-reward-code{
+  font-family:"Poppins",sans-serif; font-weight:800; font-size:1.4rem; letter-spacing:0.06em; color:var(--terracotta);
+  background:var(--sand-deep,#F2E9DA); border-radius:10px; padding:12px; margin:14px 0; user-select:all;
+}
+.hgame-reward-conditions{ text-align:left; font-size:0.84rem; color:var(--ink-soft); background:var(--sand,#F7F2E7); border-radius:10px; padding:12px 14px; margin:12px 0; }
+.hgame-error-msg{ color:var(--terracotta-deep, #C94400); font-size:0.84rem; min-height:1.2em; margin:0 0 8px; }
+
+@media (prefers-reduced-motion: reduce){
+  .hgame-cta, .hgame-hotspot.is-hint, .hgame-confetti-piece{ animation:none !important; transition:none !important; }
+}
+</style>
+
+<div class="hgame-overlay" id="hgameOverlay" hidden role="dialog" aria-modal="true" aria-label="La Maison HAYEVA">
+  <div class="hgame-topbar">
+    <button type="button" class="hgame-quit" id="hgameQuitBtn" aria-label="Quitter le jeu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <div class="hgame-progress" id="hgameProgressWrap" hidden>
+      <div class="hgame-progress-track"><div class="hgame-progress-fill" id="hgameProgressFill"></div></div>
+      <span class="hgame-progress-label" id="hgameProgressLabel">0/5 missions</span>
+    </div>
+    <button type="button" class="hgame-help" id="hgameHelpBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+      Besoin d'aide ?
+    </button>
+  </div>
+  <div class="hgame-stage" id="hgameStage"></div>
+</div>
+
+<script>
+// ============================================================
+// "La Maison HAYEVA" — mini-jeu premium, entièrement autonome (aucune
+// dépendance externe, aucun service payant). Rendu 100% CSS/SVG (pas de
+// Three.js : inutile pour une scène 2.5D en couches, et plus lourd que
+// nécessaire). Le score/les missions sont un jeu côté navigateur sans
+// valeur réelle (persistant en localStorage uniquement) — seul le CODE DE
+// RÉCOMPENSE a une vraie valeur, et celui-là est TOUJOURS généré et validé
+// côté serveur (voir game-generate-code/game-check-code), jamais fabriqué
+// en JS. Aucun emoji : uniquement des SVG.
+// ============================================================
+(function(){
+  var overlay = document.getElementById('hgameOverlay');
+  if (!overlay) return;
+  var stage = document.getElementById('hgameStage');
+  var quitBtn = document.getElementById('hgameQuitBtn');
+  var helpBtn = document.getElementById('hgameHelpBtn');
+  var progressWrap = document.getElementById('hgameProgressWrap');
+  var progressFill = document.getElementById('hgameProgressFill');
+  var progressLabel = document.getElementById('hgameProgressLabel');
+
+  var STORAGE_KEY = 'hayeva_game_v1';
+  var TOTAL_MISSIONS = 5;
+  var MISSION_BASE_SCORE = 180;
+  var HINT_PENALTY = 40;
+  var MIN_MISSION_SCORE = 60;
+  var COMPLETION_BONUS = 100;
+
+  function track(eventType){ if (window.sudTrack) window.sudTrack(eventType, 'jeu'); }
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  // ---------- État persistant (localStorage uniquement — le jeu doit
+  // fonctionner sans compte, voir consigne). ----------
+  function loadState(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) throw 0;
+      var s = JSON.parse(raw);
+      if (!s || typeof s !== 'object') throw 0;
+      s.missionsCompleted = Array.isArray(s.missionsCompleted) ? s.missionsCompleted : [];
+      s.hintsUsedByMission = s.hintsUsedByMission && typeof s.hintsUsedByMission === 'object' ? s.hintsUsedByMission : {};
+      s.missionScores = s.missionScores && typeof s.missionScores === 'object' ? s.missionScores : {};
+      return s;
+    } catch(e){
+      return { missionsCompleted: [], hintsUsedByMission: {}, missionScores: {} };
+    }
+  }
+  function saveState(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){}
+  }
+  var state = loadState();
+
+  function totalScore(){
+    var sum = 0;
+    for (var k in state.missionScores) sum += state.missionScores[k];
+    if (state.missionsCompleted.length >= TOTAL_MISSIONS) sum += COMPLETION_BONUS;
+    return Math.min(1000, sum);
+  }
+
+  // ---------- Avatar du guide HAYEVA — illustration vectorielle simple,
+  // jamais un emoji ni une mascotte enfantine. ----------
+  var GUIDE_AVATAR_SVG = '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="26" fill="#12213D"/><circle cx="26" cy="20" r="8" fill="#F2D9B8"/><path d="M10 46c0-9 7-14 16-14s16 5 16 14" fill="#E85A12"/><path d="M18 34c2 2 5 3 8 3s6-1 8-3" stroke="#12213D" stroke-width="1.5" fill="none"/></svg>';
+
+  var HOUSE_ICON = {
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>',
+    badge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14 7 22l5-3 5 3-2-8"/></svg>'
+  };
+
+  // ---------- Scènes de mission (SVG plats, palette HAYEVA/Provence,
+  // volontairement schématiques : aucun schéma technique dangereux/faux -
+  // voir consigne "attention aux équipements techniques"). ----------
+  var MISSIONS = [
+    {
+      id: 'salon',
+      room: 'Le salon',
+      eyebrow: 'Mission 1',
+      instruction: "Observe la pièce : un élément laisse passer le froid. Trouve-le.",
+      learning: "Une fenêtre mal isolée peut représenter une grande partie des pertes de chaleur d'une pièce.",
+      hints: [
+        "Regarde du côté de la lumière du jour.",
+        "C'est un élément qui s'ouvre et se ferme.",
+        "C'est la fenêtre, sur la gauche de la pièce."
+      ],
+      svg: '<svg viewBox="0 0 400 300"><rect width="400" height="300" fill="#F3E6CB"/><rect y="220" width="400" height="80" fill="#C9A876"/>' +
+        '<rect x="30" y="70" width="90" height="110" rx="4" fill="#BFE0F5" stroke="#3F7FA6" stroke-width="6"/><line x1="75" y1="70" x2="75" y2="180" stroke="#3F7FA6" stroke-width="4"/>' +
+        '<rect x="230" y="150" width="120" height="60" rx="10" fill="#C9724A"/><rect x="230" y="130" width="120" height="26" rx="10" fill="#E0916B"/>' +
+        '<circle cx="180" cy="90" r="16" fill="#F2D9B8" stroke="#8A6A4A" stroke-width="3"/><rect x="172" y="105" width="16" height="30" fill="#8A6A4A"/>' +
+        '<rect x="290" y="60" width="50" height="60" fill="#fff" stroke="#C9A876" stroke-width="4"/></svg>',
+      hotspots: [
+        { id: 'window', x: 19, y: 42, correct: true },
+        { id: 'sofa', x: 73, y: 62, correct: false },
+        { id: 'lamp', x: 45, y: 34, correct: false },
+        { id: 'frame', x: 79, y: 27, correct: false }
+      ]
+    },
+    {
+      id: 'salledebain',
+      room: 'La salle de bain',
+      eyebrow: 'Mission 2',
+      instruction: "Un détail gaspille de l'eau sans que personne ne s'en rende compte. Trouve-le.",
+      learning: "Une petite fuite peut représenter beaucoup d'eau perdue sur une année.",
+      hints: [
+        "Écoute... un bruit discret et régulier.",
+        "Ça se trouve près du lavabo.",
+        "C'est le robinet, qui goutte."
+      ],
+      svg: '<svg viewBox="0 0 400 300"><rect width="400" height="300" fill="#E9F1F5"/><rect y="220" width="400" height="80" fill="#CFE3EA"/>' +
+        '<rect x="120" y="140" width="120" height="50" rx="8" fill="#fff" stroke="#3F7FA6" stroke-width="4"/><rect x="165" y="120" width="10" height="24" fill="#3F7FA6"/>' +
+        '<circle cx="170" cy="190" r="2.5" fill="#3F7FA6"/>' +
+        '<rect x="150" y="60" width="60" height="50" rx="4" fill="#fff" stroke="#C9A876" stroke-width="3"/>' +
+        '<rect x="280" y="150" width="14" height="60" rx="6" fill="#E0C9A0"/><rect x="270" y="145" width="34" height="10" rx="4" fill="#C9A876"/>' +
+        '<circle cx="60" cy="180" r="20" fill="#8CBF9A"/><rect x="55" y="195" width="10" height="30" fill="#6E9C7C"/></svg>',
+      hotspots: [
+        { id: 'faucet', x: 42, y: 62, correct: true },
+        { id: 'mirror', x: 44, y: 27, correct: false },
+        { id: 'towel', x: 73, y: 58, correct: false },
+        { id: 'plant', x: 15, y: 65, correct: false }
+      ]
+    },
+    {
+      id: 'cuisine',
+      room: 'La cuisine',
+      eyebrow: 'Mission 3',
+      instruction: "Un réglage fait consommer de l'énergie pour rien. Trouve lequel.",
+      learning: "Un mauvais réglage peut faire consommer inutilement plus d'énergie — avant de changer un appareil, vérifier ses réglages est souvent utile.",
+      hints: [
+        "Ce n'est pas un meuble : regarde les commandes sur le mur.",
+        "C'est un petit cadran, pas un placard.",
+        "C'est le thermostat, réglé beaucoup trop haut."
+      ],
+      svg: '<svg viewBox="0 0 400 300"><rect width="400" height="300" fill="#F7F0E3"/><rect y="200" width="400" height="100" fill="#D8C6A0"/>' +
+        '<rect x="20" y="140" width="360" height="60" fill="#EADFC4"/>' +
+        '<rect x="40" y="90" width="70" height="90" rx="4" fill="#DDE7E9" stroke="#8FA6AC" stroke-width="4"/>' +
+        '<rect x="260" y="100" width="80" height="80" rx="4" fill="#fff" stroke="#C9A876" stroke-width="3"/>' +
+        '<circle cx="180" cy="90" r="18" fill="#fff" stroke="#C9724A" stroke-width="4"/><line x1="180" y1="90" x2="190" y2="76" stroke="#C9724A" stroke-width="3" stroke-linecap="round"/>' +
+        '<rect x="150" y="150" width="100" height="10" rx="4" fill="#B99D6E"/></svg>',
+      hotspots: [
+        { id: 'thermostat', x: 45, y: 30, correct: true },
+        { id: 'fridge', x: 19, y: 44, correct: false },
+        { id: 'cupboard', x: 75, y: 43, correct: false },
+        { id: 'counter', x: 50, y: 55, correct: false }
+      ]
+    },
+    {
+      id: 'couloir',
+      room: 'Le couloir et le chauffage',
+      eyebrow: 'Mission 4',
+      instruction: "Un radiateur ne chauffe pas comme il devrait. Trouve-le.",
+      learning: "Avant de remplacer un équipement, son entretien et ses réglages méritent souvent d'être vérifiés.",
+      hints: [
+        "C'est un appareil accroché au mur, pas un meuble.",
+        "Il est froid en haut, chaud en bas.",
+        "C'est le radiateur — il a probablement besoin d'être purgé."
+      ],
+      svg: '<svg viewBox="0 0 400 300"><rect width="400" height="300" fill="#F3E9DA"/><rect y="230" width="400" height="70" fill="#C9A876"/>' +
+        '<rect x="60" y="120" width="110" height="70" rx="4" fill="url(#radGrad)" stroke="#8A6A4A" stroke-width="3"/>' +
+        '<defs><linearGradient id="radGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#BFE0F5"/><stop offset="55%" stop-color="#BFE0F5"/><stop offset="60%" stop-color="#E0916B"/><stop offset="100%" stop-color="#C9724A"/></linearGradient></defs>' +
+        '<rect x="240" y="80" width="16" height="120" fill="#8A6A4A"/><circle cx="248" cy="80" r="10" fill="#E0C9A0"/>' +
+        '<rect x="300" y="130" width="60" height="90" rx="4" fill="#fff" stroke="#C9A876" stroke-width="3"/></svg>',
+      hotspots: [
+        { id: 'radiator', x: 31, y: 50, correct: true },
+        { id: 'coatrack', x: 62, y: 44, correct: false },
+        { id: 'door', x: 84, y: 55, correct: false }
+      ]
+    },
+    {
+      id: 'confortete',
+      room: "Le confort d'été",
+      eyebrow: 'Mission 5',
+      instruction: "En pleine chaleur, un geste simple limiterait la surchauffe. Trouve l'élément à actionner.",
+      learning: "Fermer les volets aux heures chaudes limite la surchauffe sans consommer d'énergie.",
+      hints: [
+        "Regarde du côté de la fenêtre, encore une fois.",
+        "C'est un élément extérieur, pas un meuble.",
+        "C'est le volet — il devrait être fermé en pleine journée."
+      ],
+      svg: '<svg viewBox="0 0 400 300"><rect width="400" height="150" fill="#BFE0F5"/><circle cx="340" cy="50" r="26" fill="#F2C14E"/>' +
+        '<rect y="150" width="400" height="150" fill="#F3E6CB"/>' +
+        '<rect x="120" y="60" width="120" height="130" fill="#fff" stroke="#8A6A4A" stroke-width="6"/>' +
+        '<rect x="90" y="60" width="24" height="130" fill="#3F7FA6"/><rect x="246" y="60" width="24" height="130" fill="#3F7FA6"/>' +
+        '<rect x="60" y="200" width="50" height="60" rx="4" fill="#C9724A"/><rect x="300" y="210" width="40" height="50" rx="20" fill="#8CBF9A"/></svg>',
+      hotspots: [
+        { id: 'shutter', x: 25, y: 42, correct: true },
+        { id: 'chair', x: 21, y: 78, correct: false },
+        { id: 'plant', x: 80, y: 80, correct: false }
+      ]
+    }
+  ];
+
+  function missionById(id){
+    for (var i = 0; i < MISSIONS.length; i++) if (MISSIONS[i].id === id) return MISSIONS[i];
+    return null;
+  }
+
+  function updateProgressBar(){
+    var n = state.missionsCompleted.length;
+    progressFill.style.width = (n / TOTAL_MISSIONS * 100) + '%';
+    progressLabel.textContent = n + '/' + TOTAL_MISSIONS + ' missions';
+  }
+
+  // ---------- Écrans ----------
+  function showIntro(){
+    progressWrap.hidden = true;
+    stage.innerHTML =
+      '<div class="hgame-screen">' +
+        '<div class="hgame-intro-scene">' +
+          '<svg viewBox="0 0 300 220"><rect width="300" height="220" fill="none"/>' +
+            '<rect y="160" width="300" height="60" fill="#E3D3AE"/>' +
+            '<rect x="60" y="70" width="180" height="100" fill="#F2E4C9" stroke="#C9A876" stroke-width="3"/>' +
+            '<polygon points="45,75 150,20 255,75" fill="#C9724A"/>' +
+            '<rect x="80" y="95" width="30" height="35" fill="#3F7FA6"/><rect x="190" y="95" width="30" height="35" fill="#3F7FA6"/>' +
+            '<rect x="135" y="120" width="30" height="50" fill="#8A6A4A"/><circle cx="158" cy="145" r="2" fill="#F2E4C9"/>' +
+            '<rect x="10" y="200" width="40" height="20" fill="#8CBF9A"/><rect x="250" y="195" width="35" height="25" fill="#8CBF9A"/>' +
+          '</svg>' +
+        '</div>' +
+        '<h1 class="hgame-title">La Maison HAYEVA</h1>' +
+        '<p class="hgame-tagline">Une maison peut cacher de nombreux problèmes. À toi de les découvrir.</p>' +
+        '<button type="button" class="hgame-cta" id="hgameStartBtn">Commencer l\'aventure</button>' +
+        '<button type="button" class="hgame-howto-link" id="hgameHowtoBtn">Comment jouer ?</button>' +
+      '</div>';
+    document.getElementById('hgameStartBtn').addEventListener('click', function(){
+      track('game_started');
+      showHouseMap();
+    });
+    document.getElementById('hgameHowtoBtn').addEventListener('click', function(){
+      window.alert("Explore chaque pièce de la maison et clique sur l'élément qui pose problème. Tu as 3 indices par mission si besoin. Termine les 5 missions pour débloquer le diagnostic final.");
+    });
+  }
+
+  function showHouseMap(){
+    progressWrap.hidden = false;
+    updateProgressBar();
+    var positions = [
+      { top: '58%', left: '10%', width: '22%', height: '22%' },
+      { top: '55%', left: '68%', width: '20%', height: '20%' },
+      { top: '30%', left: '38%', width: '22%', height: '20%' },
+      { top: '32%', left: '8%', width: '18%', height: '18%' },
+      { top: '28%', left: '68%', width: '20%', height: '18%' }
+    ];
+    var hotspotsHtml = MISSIONS.map(function(m, i){
+      var done = state.missionsCompleted.indexOf(m.id) !== -1;
+      var pos = positions[i];
+      return '<button type="button" class="hgame-room-hotspot" data-mission="' + m.id + '" data-done="' + (done ? '1' : '0') + '" ' +
+        'style="top:' + pos.top + ';left:' + pos.left + ';width:' + pos.width + ';height:' + pos.height + ';" aria-label="' + escapeHtml(m.room) + (done ? ' (terminée)' : '') + '">' +
+        '<span class="hgame-room-hotspot-label">' + (done ? HOUSE_ICON.check : '') + escapeHtml(m.room) + '</span></button>';
+    }).join('');
+    stage.innerHTML =
+      '<div class="hgame-screen">' +
+        '<div class="hgame-guide"><div class="hgame-guide-avatar">' + GUIDE_AVATAR_SVG + '</div>' +
+          '<div class="hgame-guide-bubble">Choisis une pièce à explorer. Chaque pièce cache un petit problème à trouver.</div></div>' +
+        '<div class="hgame-house-map" style="margin-top:18px;">' +
+          '<svg viewBox="0 0 300 220"><rect y="160" width="300" height="60" fill="#E3D3AE"/>' +
+            '<rect x="60" y="70" width="180" height="100" fill="#F2E4C9" stroke="#C9A876" stroke-width="3"/>' +
+            '<polygon points="45,75 150,20 255,75" fill="#C9724A"/>' +
+            '<rect x="80" y="95" width="30" height="35" fill="#BFE0F5" stroke="#3F7FA6" stroke-width="3"/>' +
+            '<rect x="190" y="95" width="30" height="35" fill="#BFE0F5" stroke="#3F7FA6" stroke-width="3"/>' +
+            '<rect x="135" y="120" width="30" height="50" fill="#8A6A4A"/><circle cx="158" cy="145" r="2" fill="#F2E4C9"/></svg>' +
+          hotspotsHtml +
+        '</div>' +
+        (state.missionsCompleted.length >= TOTAL_MISSIONS ?
+          '<button type="button" class="hgame-cta" id="hgameFinalBtn" style="margin-top:22px;">Voir le diagnostic final</button>' : '') +
+      '</div>';
+    Array.prototype.forEach.call(stage.querySelectorAll('[data-mission]'), function(btn){
+      btn.addEventListener('click', function(){ showMission(btn.getAttribute('data-mission')); });
+    });
+    var finalBtn = document.getElementById('hgameFinalBtn');
+    if (finalBtn) finalBtn.addEventListener('click', showEnd);
+  }
+
+  function showMission(missionId){
+    var m = missionById(missionId);
+    if (!m) return;
+    track('game_mission_started');
+    var hintsUsed = state.hintsUsedByMission[m.id] || 0;
+    var alreadyDone = state.missionsCompleted.indexOf(m.id) !== -1;
+    progressWrap.hidden = false;
+
+    var hotspotsHtml = m.hotspots.map(function(h){
+      return '<button type="button" class="hgame-hotspot" data-hotspot="' + h.id + '" data-correct="' + (h.correct ? '1' : '0') + '" ' +
+        'style="top:' + h.y + '%;left:' + h.x + '%;" aria-label="Zone à inspecter"></button>';
+    }).join('');
+
+    stage.innerHTML =
+      '<div class="hgame-screen">' +
+        '<div class="hgame-mission-head">' +
+          '<p class="hgame-mission-eyebrow">' + escapeHtml(m.eyebrow) + '</p>' +
+          '<h2 class="hgame-mission-title">' + escapeHtml(m.room) + '</h2>' +
+          '<p class="hgame-mission-instruction">' + escapeHtml(m.instruction) + '</p>' +
+        '</div>' +
+        '<div class="hgame-scene-wrap" id="hgameSceneWrap">' + m.svg + hotspotsHtml + '</div>' +
+        '<div class="hgame-mission-actions">' +
+          '<button type="button" class="hgame-hint-btn" id="hgameHintBtn"' + (alreadyDone ? ' disabled' : '') + '>Indice (' + (3 - Math.min(hintsUsed,3)) + ' restant' + ((3 - Math.min(hintsUsed,3)) > 1 ? 's' : '') + ')</button>' +
+          '<button type="button" class="hgame-hint-btn" id="hgameBackBtn">Retour à la maison</button>' +
+        '</div>' +
+        '<div id="hgameMissionFeedback"></div>' +
+      '</div>';
+
+    document.getElementById('hgameBackBtn').addEventListener('click', showHouseMap);
+
+    var hintBtn = document.getElementById('hgameHintBtn');
+    var feedback = document.getElementById('hgameMissionFeedback');
+    var sceneWrap = document.getElementById('hgameSceneWrap');
+
+    function refreshHintBtn(){
+      var used = state.hintsUsedByMission[m.id] || 0;
+      var remaining = Math.max(0, 3 - used);
+      hintBtn.textContent = 'Indice (' + remaining + ' restant' + (remaining > 1 ? 's' : '') + ')';
+      if (remaining <= 0 || alreadyDone) hintBtn.disabled = true;
+    }
+    refreshHintBtn();
+
+    if (!alreadyDone) hintBtn.addEventListener('click', function(){
+      var used = state.hintsUsedByMission[m.id] || 0;
+      if (used >= 3) return;
+      state.hintsUsedByMission[m.id] = used + 1;
+      saveState();
+      track('game_hint_used');
+      feedback.innerHTML = '<div class="hgame-guide" style="margin-top:14px;"><div class="hgame-guide-avatar">' + GUIDE_AVATAR_SVG + '</div>' +
+        '<div class="hgame-guide-bubble">' + escapeHtml(m.hints[used]) + '</div></div>';
+      if (used + 1 >= 3){
+        var correctHotspot = sceneWrap.querySelector('[data-correct="1"]');
+        if (correctHotspot) correctHotspot.classList.add('is-hint');
+      }
+      refreshHintBtn();
+    });
+
+    if (alreadyDone){
+      feedback.innerHTML = '<div class="hgame-learning">' + escapeHtml(m.learning) + '</div>';
+      Array.prototype.forEach.call(sceneWrap.querySelectorAll('.hgame-hotspot[data-correct="1"]'), function(el){ el.classList.add('is-correct'); });
+      return;
+    }
+
+    Array.prototype.forEach.call(sceneWrap.querySelectorAll('.hgame-hotspot'), function(el){
+      el.addEventListener('click', function(){
+        if (el.getAttribute('data-correct') === '1'){
+          el.classList.add('is-correct');
+          Array.prototype.forEach.call(sceneWrap.querySelectorAll('.hgame-hotspot'), function(o){ o.style.pointerEvents = 'none'; });
+          var used = state.hintsUsedByMission[m.id] || 0;
+          var score = Math.max(MIN_MISSION_SCORE, MISSION_BASE_SCORE - used * HINT_PENALTY);
+          state.missionScores[m.id] = score;
+          if (state.missionsCompleted.indexOf(m.id) === -1) state.missionsCompleted.push(m.id);
+          saveState();
+          track('game_mission_completed');
+          updateProgressBar();
+          feedback.innerHTML = '<div class="hgame-learning">' + escapeHtml(m.learning) + '</div>';
+          hintBtn.disabled = true;
+          setTimeout(function(){
+            if (state.missionsCompleted.length >= TOTAL_MISSIONS) showEnd(); else showHouseMap();
+          }, 2200);
+        } else {
+          el.classList.remove('is-wrong'); void el.offsetWidth; el.classList.add('is-wrong');
+        }
+      });
+    });
+  }
+
+  function spawnConfetti(container){
+    var colors = ['#E85A12', '#3F7FA6', '#3FA9A0', '#F2C14E'];
+    for (var i = 0; i < 26; i++){
+      var piece = document.createElement('span');
+      piece.className = 'hgame-confetti-piece';
+      piece.style.left = (Math.random() * 100) + '%';
+      piece.style.top = '-10px';
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDelay = (Math.random() * 0.6) + 's';
+      container.appendChild(piece);
+    }
+  }
+
+  function showEnd(){
+    var score = totalScore();
+    stage.innerHTML =
+      '<div class="hgame-screen" id="hgameEndScreen" style="position:relative;">' +
+        '<div class="hgame-confetti" id="hgameConfetti"></div>' +
+        '<div class="hgame-end-house"><svg viewBox="0 0 300 220"><rect y="160" width="300" height="60" fill="#E3D3AE"/>' +
+          '<rect x="60" y="70" width="180" height="100" fill="#FBEFD6" stroke="#C9724A" stroke-width="3"/>' +
+          '<polygon points="45,75 150,20 255,75" fill="#E0916B"/>' +
+          '<rect x="80" y="95" width="30" height="35" fill="#F2C14E" opacity="0.5"/><rect x="190" y="95" width="30" height="35" fill="#F2C14E" opacity="0.5"/>' +
+          '<rect x="135" y="120" width="30" height="50" fill="#8A6A4A"/><circle cx="158" cy="145" r="2" fill="#F2E4C9"/></svg></div>' +
+        '<h2 class="hgame-title">Mission accomplie</h2>' +
+        '<p class="hgame-tagline">Tu connais maintenant quelques-uns des secrets d\'une maison confortable.</p>' +
+        '<p class="hgame-score">' + score + ' / 1000</p>' +
+        '<div class="hgame-badge">' + HOUSE_ICON.badge + 'Explorateur HAYEVA</div>' +
+        '<div><button type="button" class="hgame-cta" id="hgameUnlockBtn">Débloquer ma récompense</button></div>' +
+      '</div>';
+    spawnConfetti(document.getElementById('hgameConfetti'));
+    track('game_completed');
+    document.getElementById('hgameUnlockBtn').addEventListener('click', showParentGate);
+  }
+
+  function showParentGate(){
+    track('reward_parent_gate_opened');
+    var a = 3 + Math.floor(Math.random() * 6);
+    var b = 3 + Math.floor(Math.random() * 6);
+    stage.innerHTML =
+      '<div class="hgame-screen">' +
+        '<div class="hgame-parentgate-card">' +
+          '<p class="hgame-mission-eyebrow">Espace parent</p>' +
+          '<p class="hgame-tagline" style="margin-bottom:0;">Demande à un parent de continuer.</p>' +
+          '<p class="hgame-parentgate-question">Combien font ' + a + ' × ' + b + ' ?</p>' +
+          '<input type="number" class="hgame-parentgate-input" id="hgameGateInput" inputmode="numeric" aria-label="Réponse">' +
+          '<p class="hgame-error-msg" id="hgameGateError"></p>' +
+          '<button type="button" class="hgame-cta" id="hgameGateSubmit">Continuer</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('hgameGateSubmit').addEventListener('click', function(){
+      var val = parseInt(document.getElementById('hgameGateInput').value, 10);
+      if (val === a * b){ showReward(); }
+      else document.getElementById('hgameGateError').textContent = 'Ce n\'est pas la bonne réponse — réessaie.';
+    });
+  }
+
+  function showReward(){
+    stage.innerHTML =
+      '<div class="hgame-screen">' +
+        '<div class="hgame-reward-card">' +
+          '<p class="hgame-mission-eyebrow">Récompense HAYEVA</p>' +
+          '<h2 class="hgame-mission-title">L\'aventure est terminée</h2>' +
+          '<p class="hgame-tagline" style="margin-bottom:0;">Une récompense HAYEVA a été débloquée.</p>' +
+          '<div id="hgameRewardBody"><p class="hgame-tagline">Génération du code en cours…</p></div>' +
+        '</div>' +
+      '</div>';
+    var sb = window.sudSupabase;
+    var clientSessionId = window.sudGetSessionId ? window.sudGetSessionId() : null;
+    var body = document.getElementById('hgameRewardBody');
+    if (!sb || !sb.configured || !clientSessionId){
+      body.innerHTML = '<p class="hgame-tagline">Service momentanément indisponible — réessaie un peu plus tard.</p>';
+      return;
+    }
+    sb.client.functions.invoke('game-generate-code', { body: { client_session_id: clientSessionId, score: totalScore() } }).then(function(res){
+      var data = res.data;
+      if (res.error || !data || data.status !== 'ok'){
+        body.innerHTML = '<p class="hgame-tagline">Service momentanément indisponible — réessaie un peu plus tard.</p>';
+        return;
+      }
+      track('reward_code_generated');
+      body.innerHTML =
+        '<div class="hgame-reward-code">' + escapeHtml(data.code) + '</div>' +
+        '<div class="hgame-reward-conditions">Ce code peut être mentionné lors de votre prochaine prise de rendez-vous HAYEVA. Les conditions exactes de cette offre vous seront confirmées par l\'équipe HAYEVA avant toute intervention — aucun engagement, aucun paiement requis ici.</div>' +
+        '<div class="hgame-mission-actions">' +
+          '<button type="button" class="hgame-cta" id="hgameUseCodeBtn">Utiliser mon code</button>' +
+          '<button type="button" class="hgame-hint-btn" id="hgameCloseRewardBtn">Fermer</button>' +
+        '</div>';
+      document.getElementById('hgameUseCodeBtn').addEventListener('click', function(){
+        track('reward_code_redeemed');
+        try { navigator.clipboard && navigator.clipboard.writeText(data.code); } catch(e){}
+        closeGame();
+        setTimeout(function(){
+          var el = document.getElementById('rdv');
+          if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+          window.alert('Code copié : ' + data.code + '\nMentionnez-le lors de votre prise de rendez-vous.');
+        }, 200);
+      });
+      document.getElementById('hgameCloseRewardBtn').addEventListener('click', closeGame);
+    }).catch(function(){
+      body.innerHTML = '<p class="hgame-tagline">Service momentanément indisponible — réessaie un peu plus tard.</p>';
+    });
+  }
+
+  // ---------- Ouverture / fermeture ----------
+  function openGame(){
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    if (location.hash !== '#jeu') history.replaceState(null, '', location.pathname + location.search + '#jeu');
+    track('game_opened');
+    if (state.missionsCompleted.length >= TOTAL_MISSIONS) showHouseMap(); else showIntro();
+  }
+  function closeGame(){
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+    if (location.hash === '#jeu') history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  quitBtn.addEventListener('click', closeGame);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !overlay.hidden) closeGame(); });
+
+  helpBtn.addEventListener('click', function(){
+    var toggle = document.getElementById('aiWidgetToggle');
+    var input = document.getElementById('aiWidgetInput');
+    if (toggle && !toggle.hidden){
+      toggle.click();
+      if (input) input.placeholder = "Une question sur le jeu La Maison HAYEVA ?";
+    } else {
+      window.alert("L'assistant HAYEVA n'est pas disponible pour le moment. Utilise les indices de la mission en cours.");
+    }
+  });
+
+  var openBtn = document.getElementById('jeuTeaserOpenBtn');
+  if (openBtn) openBtn.addEventListener('click', openGame);
+
+  if ((window.location.hash || '').toLowerCase() === '#jeu') openGame();
+})();
+</script>
+
 
