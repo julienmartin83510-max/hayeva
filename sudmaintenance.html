@@ -13809,7 +13809,7 @@ if ('serviceWorker' in navigator){
     });
   }
 
-  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)';
+  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)';
   function admLoadBookings(){
     admSetBkLoadingState();
     sb.client.from('bookings')
@@ -14183,25 +14183,34 @@ if ('serviceWorker' in navigator){
     });
 
     // ============================================================
-    // FICHE D'INTERVENTION — module climatisation (première prestation
-    // câblée ; la liste CLIM_CHECKLIST_TEMPLATE est le seul endroit à
-    // dupliquer/adapter pour une autre prestation, sans toucher au reste).
+    // FICHE D'INTERVENTION — catalogue de templates de diagnostic PAR
+    // MÉTIER/PRESTATION (voir getDiagnosticTemplate ci-dessous).
+    //
+    // Historique du bug corrigé ici : ce module seedait auparavant TOUJOURS
+    // intervention_items avec une constante climatisation en dur (l'unique
+    // prestation câblée au départ), quelle que soit la prestation réservée
+    // — une "Remplacement mécanisme WC" affichait donc "Filtres air
+    // intérieurs". DIAGNOSTIC_TEMPLATES remplace cette constante unique par
+    // un catalogue couvrant les 32 prestations réservables (voir SERVICES
+    // plus haut dans ce fichier), avec un template dédié par prestation
+    // quand c'est pertinent, un repli par catégorie métier (jamais
+    // climatisation pour une autre catégorie) et un dernier repli neutre
+    // "Diagnostic personnalisé" sans AUCUN contrôle propre à un métier.
+    //
+    // Chaque contrôle est { n:libellé, t:type, s:section, u:unité?, o:options? }
+    //   t (field_type) : 'status' (OK/À surveiller/Anomalie/N/A, comme avant),
+    //     'text', 'number' (avec unité u), 'boolean' (Oui/Non), 'select'
+    //     (options o), 'textarea'.
+    //   s (section) : 'avant' (état initial/diagnostic), 'controles'
+    //     (contrôles techniques), 'apres' (essais/travaux réalisés) — une
+    //     section vide n'est simplement pas affichée (voir admIvRender).
+    //
     // Réutilise intégralement le modèle déjà posé en 0001_init.sql
     // (interventions/intervention_items/intervention_photos/customer_equipment)
-    // et complété par 0044_intervention_reports.sql (signatures, statut
-    // FINALIZED, bucket intervention-photos) — aucune nouvelle table.
+    // et étendu par 0044 (signatures/statut FINALIZED) et 0050 (field_type/
+    // section/diagnostic_snapshot/intervention_parts) — aucune nouvelle
+    // table pour les contrôles eux-mêmes.
     // ============================================================
-    var CLIM_CHECKLIST_TEMPLATE = [
-      'Filtres air intérieurs (nettoyage/état)',
-      'Unité intérieure — propreté générale',
-      'Unité extérieure — dégagement et propreté',
-      'Évacuation des condensats',
-      'Fixations et supports',
-      'Raccordements électriques visibles',
-      'Télécommande / thermostat',
-      'Niveau sonore au fonctionnement',
-      'Test de fonctionnement'
-    ];
     var IV_STATUS_OPTIONS = [
       ['OK', '✓ OK'], ['WATCH', '⚠ À surveiller'],
       ['ANOMALY', '✕ Anomalie'], ['NOT_APPLICABLE', 'N/A']
@@ -14215,8 +14224,367 @@ if ('serviceWorker' in navigator){
     // portée JS, aucune variable globale commune n'existe pour ce lexique.
     var IV_EQUIPMENT_LABEL = {
       climatisation:'Climatisation', chaudiere_gaz:'Chaudière gaz', chaudiere_fioul:'Chaudière fioul',
-      chauffe_eau:'Chauffe-eau', pac:'Pompe à chaleur', autre:'Autre'
+      chauffe_eau:'Chauffe-eau', pac:'Pompe à chaleur', wc:'WC / sanitaire',
+      robinetterie:'Robinetterie', radiateur:'Radiateur', circulateur:'Circulateur',
+      sanitaire_autre:'Autre équipement sanitaire', autre:'Autre'
     };
+    var IV_SECTION_LABEL = { avant:'État initial / diagnostic', controles:'Contrôles techniques', apres:'Essais après intervention / travaux réalisés' };
+    var IV_COMPLETION_OPTIONS = [
+      ['CONFORME', 'Intervention terminée — fonctionnement conforme'],
+      ['SURVEILLANCE', 'Intervention terminée — surveillance recommandée'],
+      ['PROVISOIRE', 'Intervention provisoire'],
+      ['PIECE_A_COMMANDER', 'Pièce à commander'],
+      ['DEVIS_COMPLEMENTAIRE', 'Devis complémentaire nécessaire'],
+      ['NOUVELLE_INTERVENTION', 'Nouvelle intervention nécessaire']
+    ];
+
+    // ---- Blocs de contrôles réutilisés tels quels par plusieurs templates ----
+    var CLIM_IDENTIFICATION = [
+      { n:'Marque', t:'text', s:'avant' }, { n:'Modèle', t:'text', s:'avant' },
+      { n:"Type d'installation", t:'select', s:'avant', o:['Mono-split','Multi-split','Gainable','Cassette','Console'] }
+    ];
+    var CLIM_CONTROLES_BASE = [
+      { n:'Filtres air intérieurs (nettoyage/état)', t:'status', s:'controles' },
+      { n:'Unité intérieure — propreté générale', t:'status', s:'controles' },
+      { n:'Évacuation des condensats', t:'status', s:'controles' },
+      { n:'Fixations et supports', t:'status', s:'controles' },
+      { n:'Raccordements électriques visibles', t:'status', s:'controles' },
+      { n:'Télécommande / thermostat', t:'status', s:'controles' }
+    ];
+    var CLIM_CONTROLES_ETENDU = CLIM_CONTROLES_BASE.concat([
+      { n:'Unité extérieure — dégagement et propreté', t:'status', s:'controles' },
+      { n:'Échangeur unité extérieure', t:'status', s:'controles' }
+    ]);
+    var CLIM_ESSAIS = [
+      { n:'Niveau sonore au fonctionnement', t:'status', s:'apres' },
+      { n:'Test de fonctionnement', t:'status', s:'apres' },
+      { n:'Température soufflage', t:'number', s:'apres', u:'°C' }
+    ];
+    function climTemplate(id, title, controles){
+      return { id:id, title:title, category:'climatisation', equipmentType:'climatisation',
+        controls: CLIM_IDENTIFICATION.concat(controles).concat(CLIM_ESSAIS) };
+    }
+
+    var CHAUDIERE_ENTRETIEN_BASE = [
+      { n:'Marque chaudière', t:'text', s:'avant' }, { n:'Modèle', t:'text', s:'avant' },
+      { n:'Pression circuit avant entretien', t:'number', s:'avant', u:'bar' },
+      { n:'Corps de chauffe / brûleur', t:'status', s:'controles' },
+      { n:'Évacuation des fumées', t:'status', s:'controles' },
+      { n:'Étanchéité des raccords', t:'status', s:'controles' },
+      { n:'Sécurités (pressostat, sonde…)', t:'status', s:'controles' },
+      { n:'Combustion / réglage', t:'status', s:'controles' }
+    ];
+    var CHAUDIERE_ESSAIS = [
+      { n:'Test de fonctionnement', t:'status', s:'apres' },
+      { n:'Pression circuit après entretien', t:'number', s:'apres', u:'bar' },
+      { n:'Attestation remise au client', t:'boolean', s:'apres' }
+    ];
+    function chaudiereTemplate(id, title, equipmentType, withRegulation){
+      var controles = CHAUDIERE_ENTRETIEN_BASE.slice();
+      if (withRegulation){
+        controles = controles.concat([
+          { n:'Thermostat / régulation', t:'status', s:'controles' },
+          { n:'Programmation vérifiée', t:'status', s:'controles' }
+        ]);
+      }
+      return { id:id, title:title, category:'chauffage', equipmentType:equipmentType,
+        controls: controles.concat(CHAUDIERE_ESSAIS) };
+    }
+
+    // ---- Catalogue complet : une entrée par prestation réservable (voir
+    // SERVICES) quand un diagnostic dédié apporte une vraie valeur, sinon
+    // rattachement volontaire à un template de catégorie ci-dessous (jamais
+    // un template d'une autre catégorie). ----
+    var DIAGNOSTIC_TEMPLATES_VERSION = 1;
+    var DIAGNOSTIC_TEMPLATES_BY_SLUG = {
+      'clim-essentiel': climTemplate('clim-essentiel', 'Climatisation — Pack Essentiel', CLIM_CONTROLES_BASE),
+      'clim-confort': climTemplate('clim-confort', 'Climatisation — Pack Confort', CLIM_CONTROLES_ETENDU),
+      'clim-premium': climTemplate('clim-premium', 'Climatisation — Pack Premium', CLIM_CONTROLES_ETENDU.concat([
+        { n:'Vibrations / fixation unité extérieure', t:'status', s:'controles' },
+        { n:"Bilan général de l'installation", t:'textarea', s:'apres' }
+      ])),
+
+      'chauffage-chaudiere-gaz-essentiel': chaudiereTemplate('chauffage-chaudiere-gaz-essentiel', 'Chaudière gaz — Pack Essentiel', 'chaudiere_gaz', false),
+      'chauffage-chaudiere-gaz-confort': chaudiereTemplate('chauffage-chaudiere-gaz-confort', 'Chaudière gaz — Pack Confort', 'chaudiere_gaz', false),
+      'chauffage-chaudiere-gaz-premium': chaudiereTemplate('chauffage-chaudiere-gaz-premium', 'Chaudière gaz — Pack Premium', 'chaudiere_gaz', true),
+      'chauffage-chaudiere-fioul-essentiel': chaudiereTemplate('chauffage-chaudiere-fioul-essentiel', 'Chaudière fioul — Pack Essentiel', 'chaudiere_fioul', false),
+      'chauffage-chaudiere-fioul-confort': chaudiereTemplate('chauffage-chaudiere-fioul-confort', 'Chaudière fioul — Pack Confort', 'chaudiere_fioul', false),
+      'chauffage-chaudiere-fioul-premium': chaudiereTemplate('chauffage-chaudiere-fioul-premium', 'Chaudière fioul — Pack Premium', 'chaudiere_fioul', true),
+
+      'chauffage-depannage': { id:'chauffage-depannage', title:'Dépannage chauffage', category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
+        { n:'Équipement concerné', t:'select', s:'avant', o:['Chaudière gaz','Chaudière fioul','Radiateur','Circulateur','Chauffe-eau','Autre'] },
+        { n:'Symptôme signalé par le client', t:'textarea', s:'avant' },
+        { n:'Code erreur affiché', t:'text', s:'avant' },
+        { n:'Alimentation électrique', t:'status', s:'controles' },
+        { n:'Pression circuit', t:'number', s:'controles', u:'bar' },
+        { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+        { n:'Action réalisée', t:'textarea', s:'apres' },
+        { n:'Test de fonctionnement final', t:'status', s:'apres' }
+      ]},
+      'chauffage-radiateur': { id:'chauffage-radiateur', title:'Remplacement radiateur', category:'chauffage', equipmentType:'radiateur', controls:[
+        { n:'Ancien radiateur — type', t:'text', s:'avant' },
+        { n:'État des fixations existantes', t:'status', s:'avant' },
+        { n:'Purge nécessaire', t:'boolean', s:'avant' },
+        { n:'Radiateur posé', t:'status', s:'apres' },
+        { n:'Étanchéité des raccords', t:'status', s:'apres' },
+        { n:'Purge effectuée', t:'status', s:'apres' },
+        { n:'Équilibrage', t:'status', s:'apres' },
+        { n:'Test de chauffe', t:'status', s:'apres' }
+      ]},
+      'chauffage-circulateur': { id:'chauffage-circulateur', title:'Remplacement circulateur', category:'chauffage', equipmentType:'circulateur', controls:[
+        { n:'Constat initial', t:'select', s:'avant', o:['Bloqué','Bruyant','Absence de circulation','Fonctionne mais faible'] },
+        { n:'Alimentation électrique', t:'status', s:'avant' },
+        { n:'Circulateur remplacé', t:'status', s:'apres' },
+        { n:'Sens de circulation vérifié', t:'status', s:'apres' },
+        { n:'Purge / désembouage', t:'status', s:'apres' },
+        { n:'Température départ', t:'number', s:'apres', u:'°C' },
+        { n:'Température retour', t:'number', s:'apres', u:'°C' },
+        { n:'Test de fonctionnement', t:'status', s:'apres' }
+      ]},
+      'chauffage-vase': { id:'chauffage-vase', title:"Remplacement vase d'expansion", category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
+        { n:'Pression circuit avant', t:'number', s:'avant', u:'bar' },
+        { n:'État du vase actuel', t:'status', s:'avant' },
+        { n:'Vase remplacé', t:'status', s:'apres' },
+        { n:'Pression de gonflage réglée', t:'number', s:'apres', u:'bar' },
+        { n:'Pression circuit après', t:'number', s:'apres', u:'bar' },
+        { n:'Test étanchéité', t:'status', s:'apres' }
+      ]},
+      'chauffage-purge': { id:'chauffage-purge', title:'Purge complète du circuit', category:'chauffage', equipmentType:'chaudiere_fioul', controls:[
+        { n:'Pression avant purge', t:'number', s:'avant', u:'bar' },
+        { n:'Purge effectuée', t:'status', s:'apres' },
+        { n:'Pression après purge', t:'number', s:'apres', u:'bar' },
+        { n:"Qualité de l'eau évacuée", t:'select', s:'apres', o:['Claire','Trouble','Boueuse'] },
+        { n:'Test de circulation', t:'status', s:'apres' }
+      ]},
+      'chauffage-pression': { id:'chauffage-pression', title:'Remise en pression du circuit', category:'chauffage', equipmentType:'chaudiere_fioul', controls:[
+        { n:'Pression constatée', t:'number', s:'avant', u:'bar' },
+        { n:'Remise en pression effectuée', t:'status', s:'apres' },
+        { n:'Pression finale', t:'number', s:'apres', u:'bar' },
+        { n:'Recherche de fuite associée', t:'boolean', s:'apres' },
+        { n:'Test de stabilité de la pression', t:'status', s:'apres' }
+      ]},
+
+      'plomberie-depannage': { id:'plomberie-depannage', title:'Forfait dépannage plomberie', category:'plomberie', equipmentType:'autre', controls:[
+        { n:'Équipement concerné', t:'text', s:'avant' },
+        { n:'Type de panne', t:'select', s:'avant', o:['Fuite','Bouchon','Panne équipement','Autre'] },
+        { n:'Symptôme signalé', t:'textarea', s:'avant' },
+        { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+        { n:'Action réalisée', t:'textarea', s:'apres' },
+        { n:'Test final', t:'status', s:'apres' }
+      ]},
+      'plomberie-fuite': { id:'plomberie-fuite', title:'Recherche de fuite', category:'plomberie', equipmentType:'autre', controls:[
+        { n:'Emplacement suspecté', t:'text', s:'avant' },
+        { n:'Fuite visible', t:'boolean', s:'avant' },
+        { n:'Méthode de recherche', t:'select', s:'controles', o:['Visuelle','Mise en pression','Colorant','Autre'] },
+        { n:'Fuite localisée', t:'boolean', s:'apres' },
+        { n:'Cause identifiée', t:'textarea', s:'apres' },
+        { n:'Réparation effectuée', t:'status', s:'apres' },
+        { n:'Test étanchéité', t:'status', s:'apres' }
+      ]},
+      'plomberie-robinet': { id:'plomberie-robinet', title:'Remplacement robinet évier', category:'plomberie', equipmentType:'robinetterie', controls:[
+        { n:'Ancien robinet — état', t:'status', s:'avant' },
+        { n:"Alimentation d'eau", t:'status', s:'avant' },
+        { n:'Robinet posé', t:'status', s:'apres' },
+        { n:'Étanchéité des raccords', t:'status', s:'apres' },
+        { n:'Test de débit', t:'status', s:'apres' }
+      ]},
+      'plomberie-wc-mecanisme': { id:'plomberie-wc-mecanisme', title:'Remplacement mécanisme WC', category:'plomberie', equipmentType:'wc', controls:[
+        { n:'Type de WC', t:'select', s:'avant', o:['Sur pied','Suspendu','Autre'] },
+        { n:'Marque', t:'text', s:'avant' }, { n:'Modèle', t:'text', s:'avant' },
+        { n:"Type de mécanisme existant", t:'text', s:'avant' },
+        { n:"Robinet d'arrêt", t:'status', s:'avant' },
+        { n:'Flexible', t:'status', s:'avant' },
+        { n:'Réservoir', t:'status', s:'avant' },
+        { n:'Flotteur', t:'status', s:'avant' },
+        { n:'Joint réservoir/cuvette', t:'status', s:'avant' },
+        { n:'Présence de calcaire', t:'boolean', s:'avant' },
+        { n:'Fuite constatée', t:'select', s:'avant', o:['Aucune','Fuite continue dans la cuvette','Remplissage anormal','Bruit anormal'] },
+        { n:'Mécanisme remplacé', t:'text', s:'apres' },
+        { n:'Référence de la pièce', t:'text', s:'apres' },
+        { n:'Réglage flotteur effectué', t:'status', s:'apres' },
+        { n:"Niveau d'eau réglé", t:'status', s:'apres' },
+        { n:'Étanchéité contrôlée', t:'status', s:'apres' },
+        { n:'Test de remplissage', t:'status', s:'apres' },
+        { n:'Test de chasse', t:'status', s:'apres' },
+        { n:"Robinet d'arrêt contrôlé", t:'status', s:'apres' },
+        { n:'Fonctionnement final conforme', t:'status', s:'apres' }
+      ]},
+      'plomberie-chasse-eau': { id:'plomberie-chasse-eau', title:"Remplacement chasse d'eau complète", category:'plomberie', equipmentType:'wc', controls:[
+        { n:'État du réservoir', t:'status', s:'avant' },
+        { n:'Type de chasse', t:'select', s:'avant', o:['Mécanisme simple','Double commande'] },
+        { n:'Chasse remplacée', t:'status', s:'apres' },
+        { n:"Réglage niveau d'eau", t:'status', s:'apres' },
+        { n:'Test de remplissage', t:'status', s:'apres' },
+        { n:'Test de chasse', t:'status', s:'apres' },
+        { n:'Étanchéité', t:'status', s:'apres' }
+      ]},
+      'plomberie-debouchage-evier': { id:'plomberie-debouchage-evier', title:'Débouchage évier / lavabo', category:'plomberie', equipmentType:'sanitaire_autre', controls:[
+        { n:'Type de bouchon suspecté', t:'select', s:'avant', o:['Graisse','Cheveux','Objet','Tartre','Inconnu'] },
+        { n:'Écoulement constaté', t:'select', s:'avant', o:['Nul','Lent','Normal'] },
+        { n:'Débouchage effectué', t:'status', s:'apres' },
+        { n:'Méthode utilisée', t:'select', s:'apres', o:['Furet','Ventouse','Produit','Démontage siphon'] },
+        { n:'État du siphon', t:'status', s:'apres' },
+        { n:'Test écoulement', t:'status', s:'apres' }
+      ]},
+      'plomberie-debouchage-wc': { id:'plomberie-debouchage-wc', title:'Débouchage WC', category:'plomberie', equipmentType:'wc', controls:[
+        { n:'Bouchon visible', t:'boolean', s:'avant' },
+        { n:'Niveau eau cuvette', t:'select', s:'avant', o:['Normal','Haut','Débordement'] },
+        { n:'Débouchage effectué', t:'status', s:'apres' },
+        { n:'Méthode utilisée', t:'select', s:'apres', o:['Furet','Ventouse','Pompe'] },
+        { n:'Test de chasse', t:'status', s:'apres' },
+        { n:'Écoulement final', t:'status', s:'apres' }
+      ]},
+      'plomberie-seche-serviette': { id:'plomberie-seche-serviette', title:'Pose sèche-serviettes', category:'plomberie', equipmentType:'radiateur', controls:[
+        { n:'Emplacement prévu', t:'text', s:'avant' },
+        { n:'Alimentation existante', t:'status', s:'avant' },
+        { n:'Sèche-serviettes posé', t:'status', s:'apres' },
+        { n:'Raccordement hydraulique/électrique', t:'status', s:'apres' },
+        { n:'Fixation murale', t:'status', s:'apres' },
+        { n:'Purge', t:'status', s:'apres' },
+        { n:'Test de chauffe', t:'status', s:'apres' }
+      ]},
+      'plomberie-colonne-douche': { id:'plomberie-colonne-douche', title:'Pose colonne de douche', category:'plomberie', equipmentType:'robinetterie', controls:[
+        { n:'Alimentation eau chaude/froide', t:'status', s:'avant' },
+        { n:'Pression disponible', t:'number', s:'avant', u:'bar' },
+        { n:'Colonne posée', t:'status', s:'apres' },
+        { n:'Étanchéité des raccords', t:'status', s:'apres' },
+        { n:'Test du mitigeur', t:'status', s:'apres' },
+        { n:'Fixation', t:'status', s:'apres' }
+      ]},
+      'plomberie-paroi-douche': { id:'plomberie-paroi-douche', title:'Pose paroi de douche', category:'plomberie', equipmentType:'sanitaire_autre', controls:[
+        { n:'Receveur/bac existant', t:'status', s:'avant' },
+        { n:'Aplomb du mur', t:'status', s:'avant' },
+        { n:'Paroi posée', t:'status', s:'apres' },
+        { n:'Étanchéité des joints', t:'status', s:'apres' },
+        { n:'Fonctionnement coulissant/battant', t:'status', s:'apres' },
+        { n:'Fixation', t:'status', s:'apres' }
+      ]},
+      'plomberie-receveur': { id:'plomberie-receveur', title:'Pose receveur de douche', category:'plomberie', equipmentType:'sanitaire_autre', controls:[
+        { n:'Évacuation existante', t:'status', s:'avant' },
+        { n:'État du support', t:'status', s:'avant' },
+        { n:'Receveur posé', t:'status', s:'apres' },
+        { n:"Pente d'évacuation vérifiée", t:'status', s:'apres' },
+        { n:'Étanchéité', t:'status', s:'apres' },
+        { n:'Test écoulement', t:'status', s:'apres' }
+      ]},
+      'plomberie-baignoire': { id:'plomberie-baignoire', title:'Pose baignoire', category:'plomberie', equipmentType:'sanitaire_autre', controls:[
+        { n:'Évacuation existante', t:'status', s:'avant' },
+        { n:'Accès / portage', t:'status', s:'avant' },
+        { n:'Baignoire posée', t:'status', s:'apres' },
+        { n:'Étanchéité', t:'status', s:'apres' },
+        { n:'Test remplissage/écoulement', t:'status', s:'apres' },
+        { n:'Fixation', t:'status', s:'apres' }
+      ]},
+
+      'multi': { id:'multi', title:'Entretien Multi-Services', category:'multi', equipmentType:'autre', controls:[
+        { n:'Équipement climatisation/chauffage contrôlé', t:'select', s:'avant', o:['Climatisation','Chaudière gaz','Chaudière fioul','Aucun'] },
+        { n:'État général climatisation/chauffage', t:'status', s:'controles' },
+        { n:'Contrôle plomberie général', t:'status', s:'controles' },
+        { n:'Robinetterie', t:'status', s:'controles' },
+        { n:'Évacuations', t:'status', s:'controles' },
+        { n:'Observations générales', t:'textarea', s:'apres' }
+      ]},
+      'devis': { id:'devis', title:'Devis gratuit', category:'devis', equipmentType:'autre', controls:[
+        { n:'Projet décrit par le client', t:'textarea', s:'avant' },
+        { n:'Faisabilité technique', t:'select', s:'apres', o:['Faisable','À valider','Non faisable'] },
+        { n:'Contraintes identifiées', t:'textarea', s:'apres' },
+        { n:'Estimation communiquée sur place', t:'boolean', s:'apres' }
+      ]},
+      'pro-check-express': proCheckTemplate('pro-check-express', 'Check Technique — Pack Express', false),
+      'pro-check-complet': proCheckTemplate('pro-check-complet', 'Check Technique — Pack Complet', false),
+      'pro-check-premium': proCheckTemplate('pro-check-premium', 'Check Technique — Pack Premium', true)
+    };
+
+    function proCheckTemplate(id, title, detailed){
+      var controls = [
+        { n:'Climatisation présente', t:'boolean', s:'avant' },
+        { n:'État climatisation', t:'status', s:'controles' },
+        { n:'Chauffage présent', t:'boolean', s:'avant' },
+        { n:'État chauffage', t:'status', s:'controles' },
+        { n:'Plomberie générale', t:'status', s:'controles' },
+        { n:'Robinetterie', t:'status', s:'controles' },
+        { n:'Sécurité électrique visible', t:'status', s:'controles' }
+      ];
+      if (detailed) controls.push({ n:'Priorisation des anomalies', t:'textarea', s:'apres' });
+      controls.push({ n:'Anomalies relevées', t:'textarea', s:'apres' });
+      return { id:id, title:title, category:'pro', equipmentType:'autre', controls:controls };
+    }
+
+    // ---- Repli par catégorie métier (prestation non trouvée par slug exact
+    // — ex. nouvelle prestation ajoutée sans template dédié) : TOUJOURS de
+    // la même famille, jamais climatisation pour une autre catégorie. ----
+    var DIAGNOSTIC_TEMPLATES_BY_CATEGORY = {
+      climatisation: climTemplate('generic-climatisation', 'Diagnostic climatisation', CLIM_CONTROLES_BASE),
+      chauffage: { id:'generic-chauffage', title:'Diagnostic chauffage', category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
+        { n:'Équipement concerné', t:'select', s:'avant', o:['Chaudière gaz','Chaudière fioul','Radiateur','Circulateur','Autre'] },
+        { n:'Symptôme signalé', t:'textarea', s:'avant' },
+        { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+        { n:'Action réalisée', t:'textarea', s:'apres' },
+        { n:'Test final', t:'status', s:'apres' }
+      ]},
+      plomberie: { id:'generic-plomberie', title:'Diagnostic plomberie', category:'plomberie', equipmentType:'autre', controls:[
+        { n:'Équipement concerné', t:'text', s:'avant' },
+        { n:'Symptôme signalé', t:'textarea', s:'avant' },
+        { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+        { n:'Action réalisée', t:'textarea', s:'apres' },
+        { n:'Test final', t:'status', s:'apres' }
+      ]},
+      multi: { id:'generic-multi', title:'Diagnostic multi-services', category:'multi', equipmentType:'autre', controls:[
+        { n:'Équipements contrôlés', t:'textarea', s:'avant' },
+        { n:'État général', t:'status', s:'controles' },
+        { n:'Observations générales', t:'textarea', s:'apres' }
+      ]},
+      pro: proCheckTemplate('generic-pro', 'Check technique', false),
+      devis: DIAGNOSTIC_TEMPLATES_BY_SLUG['devis']
+    };
+
+    // ---- Dernier repli, neutre, sans AUCUN contrôle propre à un métier
+    // (jamais climatisation) — utilisé seulement si la catégorie elle-même
+    // est absente/inconnue (ne doit normalement jamais arriver : services.
+    // category est NOT NULL en base, voir 0001_init.sql). ----
+    var DIAGNOSTIC_TEMPLATE_GENERIC = { id:'generic-custom', title:'Diagnostic personnalisé', category:null, equipmentType:'autre', controls:[
+      { n:'Symptôme signalé', t:'textarea', s:'avant' },
+      { n:'Équipement concerné', t:'text', s:'avant' },
+      { n:'État initial', t:'textarea', s:'avant' },
+      { n:'Contrôles réalisés', t:'textarea', s:'controles' },
+      { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+      { n:'Action réalisée', t:'textarea', s:'apres' },
+      { n:'Pièce remplacée', t:'text', s:'apres' }
+    ]};
+
+    // ---- Sélection du template : identifiants stables en priorité
+    // (service.slug puis service.category), JAMAIS le texte libre du titre
+    // en premier recours (voir booking.services.name, seulement utilisé en
+    // toute dernière extrémité pour une très ancienne réservation qui
+    // n'aurait pas encore ce join — normalement impossible ici puisque
+    // bookings.service_id est NOT NULL depuis l'origine). Garde-fou de
+    // cohérence : un template dont la catégorie ne correspond pas à celle
+    // du service réservé est REFUSÉ (log + repli catégorie), pour ne
+        // jamais pouvoir répéter le bug corrigé ici même via une erreur future
+    // dans le catalogue ci-dessus.
+    function getDiagnosticTemplate(booking){
+      var svc = (booking && booking.services) || {};
+      var category = svc.category || null;
+      var bySlug = svc.slug && DIAGNOSTIC_TEMPLATES_BY_SLUG[svc.slug];
+      if (bySlug){
+        if (category && bySlug.category !== category){
+          console.error('[HAYEVA] Incohérence catalogue diagnostic : template "' + bySlug.id + '" (' + bySlug.category + ') ne correspond pas au métier réservé (' + category + ') — repli catégorie appliqué.');
+        } else {
+          return bySlug;
+        }
+      }
+      if (category && DIAGNOSTIC_TEMPLATES_BY_CATEGORY[category]) return DIAGNOSTIC_TEMPLATES_BY_CATEGORY[category];
+      if (!category){
+        // Repli ultime uniquement si books.services.category est vraiment
+        // absent (ancienne donnée orpheline) : mot-clé sur le titre, sans
+        // jamais retomber sur la climatisation par défaut.
+        var name = (svc.name || '').toLowerCase();
+        if (/clim/.test(name)) return DIAGNOSTIC_TEMPLATES_BY_CATEGORY.climatisation;
+        if (/chaudi|radiateur|circulateur|chauffage/.test(name)) return DIAGNOSTIC_TEMPLATES_BY_CATEGORY.chauffage;
+        if (/wc|plomb|robinet|evier|douche|baignoire|fuite/.test(name)) return DIAGNOSTIC_TEMPLATES_BY_CATEGORY.plomberie;
+      }
+      return DIAGNOSTIC_TEMPLATE_GENERIC;
+    }
     var admIv = null; // état de la fiche ouverte (reset à chaque ouverture/fermeture)
     var admIvSaveTimer = null;
 
@@ -14254,6 +14622,21 @@ if ('serviceWorker' in navigator){
         '.adm-iv-status-btn.is-active[data-status="NOT_APPLICABLE"]{background:var(--adm-grey,#7C8AA0);border-color:var(--adm-grey,#7C8AA0);color:#fff;}' +
         '.adm-iv-item input.adm-iv-value{width:90px;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
         '.adm-iv-item input.adm-iv-obs{flex:1 1 160px;min-width:0;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
+        '.adm-iv-item select.adm-iv-value{flex:1 1 160px;min-width:0;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;background:#fff;}' +
+        '.adm-iv-item textarea.adm-iv-textarea{flex:1 1 100%;min-width:0;font-size:0.82rem;padding:7px 9px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;resize:vertical;min-height:44px;}' +
+        '.adm-iv-number-wrap{display:flex;align-items:center;gap:5px;flex:1 1 130px;min-width:0;}' +
+        '.adm-iv-number-wrap input.adm-iv-value{width:90px;flex:none;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
+        '.adm-iv-unit{font-size:0.76rem;color:var(--adm-ink-soft,#5B6B78);font-weight:600;white-space:nowrap;}' +
+        '.adm-iv-section > summary{cursor:pointer;font-weight:700;font-size:0.92rem;list-style:none;display:flex;align-items:center;gap:6px;}' +
+        '.adm-iv-section > summary::-webkit-details-marker{display:none;}' +
+        '.adm-iv-section > summary::before{content:"▸";font-size:0.7rem;transition:transform 0.15s;}' +
+        '.adm-iv-section[open] > summary::before{transform:rotate(90deg);}' +
+        '.adm-iv-section > summary + *{margin-top:10px;}' +
+        '.adm-iv-parts-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--adm-line,#E5E1D6);}' +
+        '.adm-iv-parts-row span.adm-iv-parts-label{flex:1 1 200px;font-size:0.82rem;}' +
+        '.adm-iv-parts-add{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}' +
+        '.adm-iv-parts-add input{flex:1 1 110px;min-width:0;font-size:0.8rem;padding:7px 9px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;}' +
+        '.adm-iv-sheet select#admIvCompletionStatus{font-family:inherit;font-size:0.85rem;padding:9px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);box-sizing:border-box;width:100%;background:#fff;}' +
         '.adm-iv-photo-btn{border:1.5px dashed var(--adm-line,#E5E1D6);background:transparent;border-radius:6px;padding:5px 8px;font-size:0.72rem;cursor:pointer;}' +
         '.adm-iv-photo-thumbs{display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:4px;}' +
         '.adm-iv-photo-thumb{position:relative;width:56px;height:56px;border-radius:6px;overflow:hidden;background:#eee;}' +
@@ -14481,14 +14864,17 @@ if ('serviceWorker' in navigator){
         var loadIv = sb.client.from('interventions').select('*').eq('id', interventionId).maybeSingle();
         var loadItems = sb.client.from('intervention_items').select('*, intervention_photos(*)').eq('intervention_id', interventionId).order('sort_order', { ascending:true });
         var loadGeneralPhotos = sb.client.from('intervention_photos').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
+        var loadParts = sb.client.from('intervention_parts').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
 
-        return Promise.all([loadEquip, loadIv, loadItems, loadGeneralPhotos]).then(function(results){
+        return Promise.all([loadEquip, loadIv, loadItems, loadGeneralPhotos, loadParts]).then(function(results){
           if (results[0].error) throw results[0].error;
           if (results[1].error) throw results[1].error;
           if (results[2].error) throw results[2].error;
           if (results[3].error) throw results[3].error;
+          if (results[4].error) throw results[4].error;
           var equipList = results[0].data || [];
           var generalPhotos = results[3].data || [];
+          var parts = results[4].data || [];
           // Garde défensive : une intervention introuvable (cas normalement
           // impossible puisqu'on vient de la créer/retrouver ci-dessus) ne
           // doit jamais faire planter silencieusement l'ouverture de la
@@ -14497,30 +14883,54 @@ if ('serviceWorker' in navigator){
           var existingItems = results[2].data || [];
           admIvDebugLog('Données chargées', { equipements: equipList.length, checklistExistante: existingItems.length });
 
-          var missing = CLIM_CHECKLIST_TEMPLATE.filter(function(label){
-            return !existingItems.some(function(it){ return it.name === label; });
-          });
+          // Sélection du diagnostic adapté au MÉTIER réel de la prestation
+          // réservée (voir getDiagnosticTemplate) — jamais un repli
+          // climatisation arbitraire. Le template n'est déterminé qu'une
+          // seule fois par intervention (dès que diagnostic_template_id est
+          // posé en base, on le respecte tel quel — voir section 17 du
+          // cahier des charges : une évolution future du catalogue ne doit
+          // jamais modifier rétroactivement une fiche déjà commencée).
+          var template = ivRow.diagnostic_snapshot || getDiagnosticTemplate(booking);
+          var isNewTemplateSelection = !ivRow.diagnostic_template_id;
+          var templateSaveP = isNewTemplateSelection
+            ? sb.client.from('interventions').update({
+                diagnostic_template_id: template.id, diagnostic_template_version: DIAGNOSTIC_TEMPLATES_VERSION,
+                diagnostic_snapshot: template
+              }).eq('id', interventionId)
+            : Promise.resolve({ error: null });
+
+          var missing = existingItems.length ? [] : template.controls.map(function(c){ return c; });
           // upsert(...ignoreDuplicates) plutôt qu'un simple insert() : même
           // en cas de course encore possible (deux onglets admin ouverts en
           // même temps, par ex.), la contrainte unique (intervention_id,
           // name) posée par la migration 0047 empêche tout doublon d'être
           // réellement écrit — deuxième filet, indépendant de admIvOpening.
+          // (N'insère que si la checklist n'existe pas ENCORE DU TOUT : une
+          // fois créée avec le bon template, elle ne doit plus jamais être
+          // recalculée même si le catalogue évolue — instantané figé.)
           var insertPromise = missing.length
-            ? sb.client.from('intervention_items').upsert(missing.map(function(label, i){
-                return { intervention_id: interventionId, name: label, status: 'NOT_APPLICABLE',
-                  visibility: 'customer_visible', sort_order: existingItems.length + i };
+            ? sb.client.from('intervention_items').upsert(missing.map(function(c, i){
+                return { intervention_id: interventionId, name: c.n,
+                  field_type: c.t, field_meta: (c.u || c.o) ? { unit: c.u || null, options: c.o || null } : null,
+                  section: c.s || 'controles',
+                  status: c.t === 'status' ? 'NOT_APPLICABLE' : null,
+                  visibility: 'customer_visible', sort_order: i };
               }), { onConflict: 'intervention_id,name', ignoreDuplicates: true }).select('*, intervention_photos(*)')
             : Promise.resolve({ data: [] });
 
-          return insertPromise.then(function(insRes){
+          return Promise.all([templateSaveP, insertPromise]).then(function(pair){
+            if (pair[0].error) throw pair[0].error;
+            var insRes = pair[1];
             if (insRes.error) throw insRes.error;
             var allItems = existingItems.concat(insRes.data || []);
             allItems.sort(function(a,b){ return (a.sort_order||0) - (b.sort_order||0); });
             admIv = {
               bookingId: bookingId, interventionId: interventionId, booking: booking, contact: contact,
+              template: template, equipmentTypeDefault: template.equipmentType || 'autre',
               equipList: equipList, selectedEquipmentId: ivRow.equipment_id || (equipList[0] && equipList[0].id) || null,
               items: allItems, observations: ivRow.observations || '', recommendations: ivRow.recommendations || '',
-              generalPhotos: generalPhotos,
+              generalPhotos: generalPhotos, parts: parts,
+              completionStatus: ivRow.completion_status || null,
               technicianName: ivRow.technician_name || technicianName,
               reportStatus: ivRow.report_status, clientSignatureData: ivRow.client_signature_data,
               technicianSignatureData: ivRow.technician_signature_data
@@ -14617,23 +15027,54 @@ if ('serviceWorker' in navigator){
         observations: admIv.observations || null,
         recommendations: admIv.recommendations || null,
         equipment_id: admIv.selectedEquipmentId || null,
-        technician_name: admIv.technicianName || null
+        technician_name: admIv.technicianName || null,
+        completion_status: admIv.completionStatus || null
       }).eq('id', admIv.interventionId));
       Promise.all(updates).catch(function(err){ console.warn('admIvPersistDraft: échec autosave', err); });
     }
 
+    // Rendu d'un contrôle selon son field_type (voir DIAGNOSTIC_TEMPLATES
+    // plus haut) : 'status' est l'historique OK/À surveiller/Anomalie/N/A,
+    // les autres types (text/number/boolean/select/textarea) ne doivent
+    // JAMAIS afficher ces 4 boutons — un champ "Marque" ou "Pression (bar)"
+    // n'a pas de statut, seulement une valeur (mesure ou remplacement voir
+    // section 8 du cahier des charges).
     function admIvItemHtml(it){
-      var statusBtns = IV_STATUS_OPTIONS.map(function(o){
-        return '<button type="button" class="adm-iv-status-btn' + (it.status === o[0] ? ' is-active' : '') + '" data-status="' + o[0] + '" data-item-id="' + it.id + '">' + o[1] + '</button>';
-      }).join('');
+      var ft = it.field_type || 'status';
+      var meta = it.field_meta || {};
+      var controlHtml;
+      if (ft === 'status'){
+        var statusBtns = IV_STATUS_OPTIONS.map(function(o){
+          return '<button type="button" class="adm-iv-status-btn' + (it.status === o[0] ? ' is-active' : '') + '" data-status="' + o[0] + '" data-item-id="' + it.id + '">' + o[1] + '</button>';
+        }).join('');
+        controlHtml = '<div class="adm-iv-status-group">' + statusBtns + '</div>' +
+          '<input type="text" class="adm-iv-value" placeholder="Valeur" value="' + admEscape(it.measured_value || '') + '" data-item-id="' + it.id + '">';
+      } else if (ft === 'boolean'){
+        var boolBtns = ['Oui', 'Non'].map(function(v){
+          return '<button type="button" class="adm-iv-status-btn adm-iv-bool-btn' + (it.measured_value === v ? ' is-active' : '') + '" data-bool-value="' + v + '" data-item-id="' + it.id + '">' + v + '</button>';
+        }).join('');
+        controlHtml = '<div class="adm-iv-status-group">' + boolBtns + '</div>';
+      } else if (ft === 'select'){
+        var opts = (meta.options || []).map(function(o){
+          return '<option value="' + admEscape(o) + '"' + (it.measured_value === o ? ' selected' : '') + '>' + admEscape(o) + '</option>';
+        }).join('');
+        controlHtml = '<select class="adm-iv-value" data-item-id="' + it.id + '"><option value="">—</option>' + opts + '</select>';
+      } else if (ft === 'number'){
+        controlHtml = '<span class="adm-iv-number-wrap"><input type="number" inputmode="decimal" class="adm-iv-value" placeholder="Valeur" value="' + admEscape(it.measured_value || '') + '" data-item-id="' + it.id + '">' +
+          (meta.unit ? '<span class="adm-iv-unit">' + admEscape(meta.unit) + '</span>' : '') + '</span>';
+      } else if (ft === 'textarea'){
+        controlHtml = '<textarea class="adm-iv-value adm-iv-textarea" placeholder="Détail…" data-item-id="' + it.id + '">' + admEscape(it.measured_value || '') + '</textarea>';
+      } else {
+        controlHtml = '<input type="text" class="adm-iv-value" placeholder="Valeur" value="' + admEscape(it.measured_value || '') + '" data-item-id="' + it.id + '">';
+      }
+      var obsHtml = ft === 'textarea' ? '' :
+        '<input type="text" class="adm-iv-obs" placeholder="Observation" value="' + admEscape(it.observation || '') + '" data-item-id="' + it.id + '">';
       var thumbs = (it.intervention_photos || []).map(function(p){
         return '<div class="adm-iv-photo-thumb" data-photo-id="' + p.id + '"><img src="" data-storage-path="' + admEscape(p.storage_path) + '" alt=""><button type="button" data-iv-del-photo="' + p.id + '" aria-label="Supprimer">×</button></div>';
       }).join('');
       return '<div class="adm-iv-item" data-item-id="' + it.id + '">' +
         '<span class="adm-iv-item-label">' + admEscape(it.name) + '</span>' +
-        '<div class="adm-iv-status-group">' + statusBtns + '</div>' +
-        '<input type="text" class="adm-iv-value" placeholder="Valeur" value="' + admEscape(it.measured_value || '') + '" data-item-id="' + it.id + '">' +
-        '<input type="text" class="adm-iv-obs" placeholder="Observation" value="' + admEscape(it.observation || '') + '" data-item-id="' + it.id + '">' +
+        controlHtml + obsHtml +
         '<label class="adm-iv-photo-btn">📷 Photo<input type="file" accept="image/*" capture="environment" hidden data-item-id="' + it.id + '" class="adm-iv-photo-input"></label>' +
         '<div class="adm-iv-photo-thumbs">' + thumbs + '</div>' +
         '</div>';
@@ -14672,6 +15113,30 @@ if ('serviceWorker' in navigator){
         '</div>';
     }
 
+    // Pièces / consommables utilisés (section 12 du cahier des charges) —
+    // générique, indépendant du template de diagnostic : une pièce est une
+    // pièce quel que soit le métier (mécanisme WC, circulateur, filtre…).
+    function admIvPartsHtml(){
+      var rows = (admIv.parts || []).map(function(p){
+        var bits = [p.designation];
+        if (p.brand) bits.push(p.brand);
+        if (p.reference) bits.push('réf. ' + p.reference);
+        var label = admEscape(bits.join(' — ')) + (p.quantity > 1 ? ' × ' + p.quantity : '');
+        return '<div class="adm-iv-parts-row" data-part-id="' + p.id + '">' +
+          '<span class="adm-iv-parts-label">' + label + '</span>' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-del-part="' + p.id + '">Supprimer</button>' +
+          '</div>';
+      }).join('');
+      return '<div class="adm-iv-section"><h4>Pièces / consommables utilisés</h4>' + rows +
+        '<div class="adm-iv-parts-add">' +
+          '<input type="text" id="admIvPartDesignation" placeholder="Désignation (ex. Mécanisme WC SIAMP)">' +
+          '<input type="text" id="admIvPartBrand" placeholder="Marque">' +
+          '<input type="text" id="admIvPartRef" placeholder="Référence">' +
+          '<input type="number" id="admIvPartQty" placeholder="Qté" min="1" value="1" style="max-width:70px;">' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admIvPartAddBtn">+ Ajouter une pièce</button>' +
+        '</div></div>';
+    }
+
     function admIvSignatureBoxHtml(role, signatureData){
       return '<div class="adm-iv-signature-box" data-role="' + role + '">' +
         '<input type="text" class="adm-iv-sig-name" placeholder="Nom du signataire" data-role="' + role + '" value="' + admEscape((role === 'client' ? admIv.contact.name : admIv.technicianName) || '') + '">' +
@@ -14683,14 +15148,32 @@ if ('serviceWorker' in navigator){
         '</div>';
     }
 
+    // Regroupe les contrôles par section (avant/contrôles/après) et
+    // n'affiche QUE les sections réellement utilisées par ce template — une
+    // fiche WC n'a par exemple aucun contrôle "avant" de type climatisation
+    // puisqu'ils n'existent tout simplement pas dans ses items (section 9 du
+    // cahier des charges : ne pas surcharger la fiche de sections vides).
+    function admIvSectionsHtml(){
+      var order = ['avant', 'controles', 'apres'];
+      return order.map(function(sec){
+        var items = admIv.items.filter(function(it){ return (it.section || 'controles') === sec; });
+        if (!items.length) return '';
+        return '<details class="adm-iv-section" open><summary>' + admEscape(IV_SECTION_LABEL[sec]) + '</summary>' +
+          items.map(admIvItemHtml).join('') + '</details>';
+      }).join('');
+    }
+
     function admIvRender(){
       var overlay = admIvOverlayEl();
       overlay.setAttribute('data-testid', 'intervention-page');
       overlay.setAttribute('data-intervention-id', admIv.interventionId);
       var b = admIv.booking, c = admIv.contact;
-      var svcName = (b.services && b.services.name) || 'Intervention';
+      var svcName = (b.services && b.services.name) || (admIv.template && admIv.template.title) || 'Intervention';
       var isFinalized = admIv.reportStatus === 'FINALIZED';
       var statusLabel = isFinalized ? 'TERMINÉ' : (b.status === 'IN_PROGRESS' ? 'EN INTERVENTION' : admEscape(b.status));
+      var completionOpts = IV_COMPLETION_OPTIONS.map(function(o){
+        return '<option value="' + o[0] + '"' + (admIv.completionStatus === o[0] ? ' selected' : '') + '>' + admEscape(o[1]) + '</option>';
+      }).join('');
       overlay.innerHTML = '<div class="adm-iv-sheet">' +
         '<div class="adm-iv-header">' +
           '<button type="button" class="adm-iv-back-btn" data-iv-close>← Retour au planning</button>' +
@@ -14701,9 +15184,11 @@ if ('serviceWorker' in navigator){
         '<div class="adm-iv-section"><h4>Technicien</h4><input type="text" id="admIvTechName" placeholder="Nom du technicien" value="' + admEscape(admIv.technicianName || '') + '"></div>' +
         '<div class="adm-iv-section"><h4>Équipement</h4>' + admIvEquipHtml() + '</div>' +
         admIvGeneralPhotosHtml() +
-        '<div class="adm-iv-section"><h4>Contrôles effectués</h4>' + admIv.items.map(admIvItemHtml).join('') + '</div>' +
+        admIvSectionsHtml() +
+        admIvPartsHtml() +
         '<div class="adm-iv-section"><h4>Observations du technicien</h4><textarea id="admIvObs" placeholder="Observations libres…">' + admEscape(admIv.observations) + '</textarea></div>' +
         '<div class="adm-iv-section"><h4>Recommandations</h4><textarea id="admIvReco" placeholder="Recommandations pour le client…">' + admEscape(admIv.recommendations) + '</textarea></div>' +
+        '<div class="adm-iv-section"><h4>Résultat de l\'intervention</h4><select id="admIvCompletionStatus"><option value="">— À définir —</option>' + completionOpts + '</select></div>' +
         (isFinalized ?
           '<div class="adm-iv-section"><h4>Fiche validée</h4><p class="adm-iv-msg is-success">Cette fiche a été finalisée et signée — elle n\'est plus modifiable depuis cet écran.</p></div>'
           : '<div class="adm-iv-section"><h4>Signature du client</h4>' + admIvSignatureBoxHtml('client', admIv.clientSignatureData) + '</div>' +
@@ -14763,6 +15248,18 @@ if ('serviceWorker' in navigator){
     var admIvOverlayRef = admIvOverlayEl();
     admIvOverlayRef.addEventListener('click', function(e){
       if (e.target.closest('[data-iv-close]')){ admIvCloseSheet(); return; }
+      // Boutons Oui/Non (field_type 'boolean') AVANT les boutons de statut :
+      // ils partagent la même classe .adm-iv-status-btn pour l'apparence,
+      // mais n'ont pas de data-status — les laisser tomber dans le bloc
+      // suivant écrirait silencieusement null dans item.status.
+      var boolBtn = e.target.closest('.adm-iv-bool-btn');
+      if (boolBtn && admIv){
+        var boolItemId = boolBtn.getAttribute('data-item-id');
+        var boolVal = boolBtn.getAttribute('data-bool-value');
+        var boolItem = admIv.items.filter(function(it){ return it.id === boolItemId; })[0];
+        if (boolItem){ boolItem.measured_value = boolVal; admIvRender(); admIvScheduleSave(); }
+        return;
+      }
       var statusBtn = e.target.closest('.adm-iv-status-btn');
       if (statusBtn && admIv){
         var itemId = statusBtn.getAttribute('data-item-id');
@@ -14798,8 +15295,13 @@ if ('serviceWorker' in navigator){
       if (e.target.id === 'admIvNewEquipSave'){
         var brand = document.getElementById('admIvNewEquipBrand').value.trim();
         var model = document.getElementById('admIvNewEquipModel').value.trim();
+        // Type d'équipement dérivé du template de la prestation en cours
+        // (ex. 'wc' pour un remplacement de mécanisme WC), plus jamais
+        // 'climatisation' forcé quel que soit le métier réel — c'était
+        // exactement la même famille de bug que la checklist elle-même.
         sb.client.from('customer_equipment').insert({
-          customer_user_id: admIv.booking.customer_user_id, equipment_type: 'climatisation', brand: brand || null, model: model || null
+          customer_user_id: admIv.booking.customer_user_id, equipment_type: admIv.equipmentTypeDefault || 'autre',
+          brand: brand || null, model: model || null
         }).select('*').then(function(res){
           if (res.error){ window.alert('Impossible d\'enregistrer cet équipement.'); return; }
           var eq = res.data[0];
@@ -14807,6 +15309,32 @@ if ('serviceWorker' in navigator){
           admIv.selectedEquipmentId = eq.id;
           admIvRender();
           admIvScheduleSave();
+        });
+        return;
+      }
+      if (e.target.id === 'admIvPartAddBtn'){
+        var pDesignation = document.getElementById('admIvPartDesignation').value.trim();
+        if (!pDesignation){ window.alert('Merci de renseigner au moins une désignation.'); return; }
+        var pBrand = document.getElementById('admIvPartBrand').value.trim();
+        var pRef = document.getElementById('admIvPartRef').value.trim();
+        var pQty = parseInt(document.getElementById('admIvPartQty').value, 10) || 1;
+        sb.client.from('intervention_parts').insert({
+          intervention_id: admIv.interventionId, designation: pDesignation,
+          brand: pBrand || null, reference: pRef || null, quantity: pQty
+        }).select('*').then(function(res){
+          if (res.error){ window.alert('Impossible d\'enregistrer cette pièce.'); return; }
+          admIv.parts = (admIv.parts || []).concat([res.data[0]]);
+          admIvRender();
+        });
+        return;
+      }
+      var delPartBtn = e.target.closest('[data-iv-del-part]');
+      if (delPartBtn && admIv){
+        var partId = delPartBtn.getAttribute('data-iv-del-part');
+        sb.client.from('intervention_parts').delete().eq('id', partId).then(function(res){
+          if (res.error){ window.alert('Impossible de supprimer cette pièce.'); return; }
+          admIv.parts = (admIv.parts || []).filter(function(p){ return p.id !== partId; });
+          admIvRender();
         });
         return;
       }
@@ -14839,6 +15367,7 @@ if ('serviceWorker' in navigator){
       }
       if (e.target.id === 'admIvObs'){ admIv.observations = e.target.value; admIvScheduleSave(); return; }
       if (e.target.id === 'admIvReco'){ admIv.recommendations = e.target.value; admIvScheduleSave(); return; }
+      if (e.target.id === 'admIvCompletionStatus'){ admIv.completionStatus = e.target.value || null; admIvScheduleSave(); return; }
       if (e.target.id === 'admIvTechName'){
         admIv.technicianName = e.target.value;
         window.localStorage.setItem('admTechnicianName', e.target.value);
@@ -14913,6 +15442,7 @@ if ('serviceWorker' in navigator){
         recommendations: admIv.recommendations || null,
         equipment_id: admIv.selectedEquipmentId || null,
         technician_name: techName,
+        completion_status: admIv.completionStatus || null,
         ended_at: new Date().toISOString(),
         report_status: 'FINALIZED',
         report_number: reportNumber,

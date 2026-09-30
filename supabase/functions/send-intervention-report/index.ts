@@ -34,6 +34,30 @@ const ITEM_STATUS_LABEL: Record<string, string> = {
   INTERVENTION_RECOMMENDED: 'Anomalie', NOT_APPLICABLE: 'N/A',
 };
 
+const COMPLETION_STATUS_LABEL: Record<string, string> = {
+  CONFORME: 'Intervention terminée — fonctionnement conforme',
+  SURVEILLANCE: 'Intervention terminée — surveillance recommandée',
+  PROVISOIRE: 'Intervention provisoire',
+  PIECE_A_COMMANDER: 'Pièce à commander',
+  DEVIS_COMPLEMENTAIRE: 'Devis complémentaire nécessaire',
+  NOUVELLE_INTERVENTION: 'Nouvelle intervention nécessaire',
+};
+
+// Valeur affichée pour un contrôle donné, selon son field_type — un contrôle
+// 'status' garde le libellé OK/À surveiller/Anomalie historique, tout autre
+// type (text/number/boolean/select/textarea) affiche sa valeur saisie telle
+// quelle (avec l'unité éventuelle), jamais un statut qui n'a pas de sens
+// pour lui (voir DIAGNOSTIC_TEMPLATES côté frontend, section 8 du cahier
+// des charges HAYEVA).
+function itemDisplayValue(it: { field_type?: string; status?: string; measured_value?: string; field_meta?: any }): string {
+  const ft = it.field_type || 'status';
+  if (ft === 'status') return ITEM_STATUS_LABEL[it.status || ''] || it.status || '—';
+  const unit = it.field_meta?.unit;
+  const val = it.measured_value;
+  if (!val) return '—';
+  return unit ? `${val} ${unit}` : val;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -66,11 +90,12 @@ Deno.serve(async (req: Request) => {
     const { data: iv } = await supabase
       .from('interventions')
       .select(`
-        id, report_status, report_number, observations, recommendations, ended_at,
+        id, report_status, report_number, observations, recommendations, ended_at, completion_status,
         client_signature_name, technician_signature_name,
         bookings(reference, date, start_time, customer_user_id, guest_name, guest_email,
           customer_addresses(address, postal_code, city), services(name)),
-        intervention_items(name, status, observation, measured_value, visibility, sort_order)
+        intervention_items(name, status, observation, measured_value, visibility, sort_order, field_type, field_meta),
+        intervention_parts(designation, brand, reference, quantity)
       `)
       .eq('id', interventionId)
       .maybeSingle();
@@ -112,9 +137,21 @@ Deno.serve(async (req: Request) => {
           ${items.map((it) => `
             <tr>
               <td style="padding:5px 0;border-bottom:1px solid #EFE9DB;">${escapeHtml(it.name)}</td>
-              <td style="padding:5px 0;border-bottom:1px solid #EFE9DB;text-align:right;white-space:nowrap;">${escapeHtml(ITEM_STATUS_LABEL[it.status] || it.status)}</td>
+              <td style="padding:5px 0;border-bottom:1px solid #EFE9DB;text-align:right;white-space:nowrap;">${escapeHtml(itemDisplayValue(it))}</td>
             </tr>`).join('')}
         </table>`
+      : '';
+
+    const parts = (iv.intervention_parts as any[]) || [];
+    const partsHtml = parts.length
+      ? `<p><strong>Pièces / consommables utilisés :</strong></p>
+         <ul style="margin:4px 0 12px;padding-left:18px;font-size:13px;">
+           ${parts.map((p) => `<li>${escapeHtml([p.designation, p.brand, p.reference ? `réf. ${p.reference}` : null].filter(Boolean).join(' — '))}${p.quantity > 1 ? ` × ${p.quantity}` : ''}</li>`).join('')}
+         </ul>`
+      : '';
+
+    const completionHtml = iv.completion_status && COMPLETION_STATUS_LABEL[iv.completion_status]
+      ? `<p><strong>Résultat :</strong> ${escapeHtml(COMPLETION_STATUS_LABEL[iv.completion_status])}</p>`
       : '';
 
     const bodyHtml = `
@@ -122,6 +159,8 @@ Deno.serve(async (req: Request) => {
       <h2 style="color:#101B24;margin:0 0 14px;">Bonjour ${escapeHtml(contactName)},</h2>
       <p>Voici le compte rendu de votre intervention <strong>${escapeHtml(svcName)}</strong>${iv.report_number ? ` (réf. ${escapeHtml(iv.report_number)})` : ''}${address ? ` au ${escapeHtml(address)}` : ''}, réalisée le ${booking?.date ? escapeHtml(booking.date.split('-').reverse().join('/')) : ''}.</p>
       ${itemsHtml}
+      ${partsHtml}
+      ${completionHtml}
       ${iv.observations ? `<p><strong>Observations du technicien :</strong><br>${escapeHtml(iv.observations)}</p>` : ''}
       ${iv.recommendations ? `<p><strong>Recommandations :</strong><br>${escapeHtml(iv.recommendations)}</p>` : ''}
       <p style="margin-top:20px;color:#5B6B78;font-size:13px;">
