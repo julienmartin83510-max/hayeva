@@ -14211,9 +14211,13 @@ if ('serviceWorker' in navigator){
     // section/diagnostic_snapshot/intervention_parts) — aucune nouvelle
     // table pour les contrôles eux-mêmes.
     // ============================================================
+    // 5 statuts : NOT_CHECKED ("Non contrôlé / inaccessible") est DISTINCT
+    // de NOT_APPLICABLE ("Non applicable") — le premier dit "pertinent mais
+    // pas pu être vérifié", jamais transformé en "Conforme" automatiquement.
     var IV_STATUS_OPTIONS = [
-      ['OK', '✓ OK'], ['WATCH', '⚠ À surveiller'],
-      ['ANOMALY', '✕ Anomalie'], ['NOT_APPLICABLE', 'N/A']
+      ['OK', '✓ Conforme'], ['WATCH', '⚠ À surveiller'],
+      ['ANOMALY', '✕ Non conforme'], ['NOT_APPLICABLE', 'N/A'],
+      ['NOT_CHECKED', '⊘ Non contrôlé']
     ];
     var IV_TAG_OPTIONS = [
       ['PENDANT', 'Pendant'], ['AVANT', 'Avant'], ['APRES', 'Après'],
@@ -14235,7 +14239,8 @@ if ('serviceWorker' in navigator){
       ['PROVISOIRE', 'Intervention provisoire'],
       ['PIECE_A_COMMANDER', 'Pièce à commander'],
       ['DEVIS_COMPLEMENTAIRE', 'Devis complémentaire nécessaire'],
-      ['NOUVELLE_INTERVENTION', 'Nouvelle intervention nécessaire']
+      ['NOUVELLE_INTERVENTION', 'Nouvelle intervention nécessaire'],
+      ['MISE_EN_SECURITE', 'Mise à l\'arrêt / sécurité']
     ];
 
     // ---- Blocs de contrôles réutilisés tels quels par plusieurs templates ----
@@ -14265,30 +14270,243 @@ if ('serviceWorker' in navigator){
         controls: CLIM_IDENTIFICATION.concat(controles).concat(CLIM_ESSAIS) };
     }
 
-    var CHAUDIERE_ENTRETIEN_BASE = [
-      { n:'Marque chaudière', t:'text', s:'avant' }, { n:'Modèle', t:'text', s:'avant' },
-      { n:'Pression circuit avant entretien', t:'number', s:'avant', u:'bar' },
-      { n:'Corps de chauffe / brûleur', t:'status', s:'controles' },
-      { n:'Évacuation des fumées', t:'status', s:'controles' },
-      { n:'Étanchéité des raccords', t:'status', s:'controles' },
-      { n:'Sécurités (pressostat, sonde…)', t:'status', s:'controles' },
-      { n:'Combustion / réglage', t:'status', s:'controles' }
+    // ============================================================
+    // ENTRETIEN CHAUDIÈRE GAZ / FIOUL — fiches techniques complètes et
+    // distinctes (jamais une fiche générique commune). La bonne fiche est
+    // chargée automatiquement par getDiagnosticTemplate() dès que le
+    // technicien démarre l'intervention, à partir de la prestation réservée
+    // (slug 'chauffage-chaudiere-gaz-*' / 'chauffage-chaudiere-fioul-*').
+    //
+    // Logique conditionnelle (section 16 du cahier des charges) : un
+    // contrôle peut porter `cond` (ex. 'condensation', 'ecs') — il n'est
+    // affiché que si l'équipement sélectionné a bien cette caractéristique
+    // (voir admIvItemVisible, basé sur customer_equipment.specs saisi à
+    // l'identification de la chaudière). Tant qu'aucun équipement n'est
+    // sélectionné/caractérisé, TOUS les contrôles restent visibles — on ne
+    // masque jamais par défaut, le technicien tranche avec "Non applicable".
+    //
+    // 5 statuts disponibles pour 'status' : OK/WATCH/ANOMALY/NOT_APPLICABLE/
+    // NOT_CHECKED (ce dernier = "Non contrôlé / inaccessible", distinct de
+    // "Non applicable" — jamais transformé en "Conforme" automatiquement).
+    // ============================================================
+
+    // ---- Contrôle visuel + circuit hydraulique : COMMUNS gaz et fioul ----
+    var CHAUDIERE_VISUEL = [
+      { n:'État général chaudière', t:'status', s:'avant' },
+      { n:"Traces de fuite d'eau", t:'status', s:'avant' },
+      { n:'Traces de corrosion', t:'status', s:'avant' },
+      { n:'Bruits/vibrations anormaux', t:'status', s:'avant' },
+      { n:'État raccordements hydrauliques', t:'status', s:'avant' },
+      { n:'État raccordements électriques', t:'status', s:'avant' },
+      { n:'État isolation', t:'status', s:'avant' },
+      { n:'Accessibilité appareil', t:'status', s:'avant' },
+      { n:'État général', t:'select', s:'avant', o:['Bon','Moyen','Mauvais'] }
     ];
-    var CHAUDIERE_ESSAIS = [
-      { n:'Test de fonctionnement', t:'status', s:'apres' },
-      { n:'Pression circuit après entretien', t:'number', s:'apres', u:'bar' },
-      { n:'Attestation remise au client', t:'boolean', s:'apres' }
+    var CHAUDIERE_HYDRAULIQUE = [
+      { n:'Pression installation avant intervention', t:'number', s:'controles', u:'bar' },
+      { n:'Pression installation après intervention', t:'number', s:'controles', u:'bar' },
+      { n:'Statut pression installation', t:'status', s:'controles' },
+      { n:"Vase d'expansion — présence contrôlée", t:'status', s:'controles' },
+      { n:"Vase d'expansion — état visuel", t:'status', s:'controles' },
+      { n:"Vase d'expansion — recherche de fuite", t:'status', s:'controles' },
+      { n:"Vase d'expansion — membrane/comportement vérifié", t:'status', s:'controles' },
+      { n:'Pression de gonflage mesurée', t:'number', s:'controles', u:'bar' },
+      { n:'Pression de gonflage après réglage', t:'number', s:'controles', u:'bar' },
+      { n:'Regonflage effectué si nécessaire', t:'boolean', s:'controles' },
+      { n:'Purgeur automatique présent', t:'boolean', s:'controles' },
+      { n:'Purgeur — fonctionnement contrôlé', t:'status', s:'controles' },
+      { n:'Purge du circuit réalisée si nécessaire', t:'boolean', s:'controles' },
+      { n:'Circulateur — fonctionnement', t:'status', s:'controles' },
+      { n:'Circulateur — bruit/vibrations', t:'status', s:'controles' },
+      { n:'Circulateur — absence de fuite', t:'status', s:'controles' },
+      { n:'Circulateur — déblocage si nécessaire', t:'boolean', s:'controles' },
+      { n:'État du circuit (embouage)', t:'select', s:'controles', o:['Propre','Légèrement chargé','Embué','Non vérifiable'] },
+      { n:"Observation sur l'eau du circuit", t:'text', s:'controles' },
+      { n:'Recommandation désembouage', t:'select', s:'controles', o:['Non','À prévoir','Recommandé'] },
+      { n:'Soupape de sécurité', t:'status', s:'controles' },
+      { n:'Manomètre', t:'status', s:'controles' },
+      { n:'Robinets/vannes', t:'status', s:'controles' },
+      { n:'Disconnecteur si présent', t:'status', s:'controles' },
+      { n:'Filtre chauffage si présent', t:'status', s:'controles' },
+      { n:'Pot à boues si présent', t:'status', s:'controles' },
+      { n:"Séparateur d'air si présent", t:'status', s:'controles' }
     ];
-    function chaudiereTemplate(id, title, equipmentType, withRegulation){
-      var controles = CHAUDIERE_ENTRETIEN_BASE.slice();
-      if (withRegulation){
-        controles = controles.concat([
-          { n:'Thermostat / régulation', t:'status', s:'controles' },
-          { n:'Programmation vérifiée', t:'status', s:'controles' }
-        ]);
-      }
-      return { id:id, title:title, category:'chauffage', equipmentType:equipmentType,
-        controls: controles.concat(CHAUDIERE_ESSAIS) };
+    // ---- Régulation + essai final : COMMUNS, avec contrôles ECS
+    // conditionnés à production incluant l'ECS (cond:'ecs'). ----
+    var CHAUDIERE_REGULATION = [
+      { n:'Thermostat ambiance', t:'status', s:'apres' },
+      { n:'Programmation', t:'status', s:'apres' },
+      { n:'Sonde extérieure si présente', t:'status', s:'apres' },
+      { n:'Régulation chaudière', t:'status', s:'apres' },
+      { n:'Aquastat si applicable', t:'status', s:'apres' },
+      { n:'Mode chauffage', t:'status', s:'apres' },
+      { n:'Mode ECS', t:'status', s:'apres', cond:'ecs' },
+      { n:'Température départ', t:'number', s:'apres', u:'°C' },
+      { n:'Température retour si mesurée', t:'number', s:'apres', u:'°C' }
+    ];
+    var CHAUDIERE_ESSAI_FINAL = [
+      { n:'Remise en service', t:'status', s:'apres' },
+      { n:'Démarrage correct', t:'status', s:'apres' },
+      { n:'Allumage correct', t:'status', s:'apres' },
+      { n:'Montée en température', t:'status', s:'apres' },
+      { n:'Circulateur opérationnel', t:'status', s:'apres' },
+      { n:'Absence fuite eau', t:'status', s:'apres' },
+      { n:'Absence fuite combustible constatée', t:'status', s:'apres' },
+      { n:'Absence bruit anormal', t:'status', s:'apres' },
+      { n:'Régulation opérationnelle', t:'status', s:'apres' },
+      { n:'Production ECS testée si applicable', t:'status', s:'apres', cond:'ecs' },
+      { n:'Chauffage testé', t:'status', s:'apres' }
+    ];
+
+    // ---- GAZ (section 4) ----
+    var CHAUDIERE_GAZ_BRULEUR = [
+      { n:'État brûleur', t:'status', s:'controles' },
+      { n:'Nettoyage brûleur si nécessaire', t:'boolean', s:'controles' },
+      { n:'État rampe brûleur selon appareil', t:'status', s:'controles' },
+      { n:"Électrodes d'allumage", t:'status', s:'controles' },
+      { n:"Électrode d'ionisation", t:'status', s:'controles' },
+      { n:'Nettoyage électrodes si nécessaire', t:'boolean', s:'controles' },
+      { n:'Contrôle allumage', t:'status', s:'controles' },
+      { n:'Contrôle stabilité flamme', t:'status', s:'controles' },
+      { n:'Contrôle dispositif de surveillance de flamme', t:'status', s:'controles' },
+      { n:'Ventilateur si présent', t:'status', s:'controles' },
+      { n:'Venturi si présent', t:'status', s:'controles' },
+      { n:'Bloc gaz — contrôle fonctionnel adapté', t:'status', s:'controles' },
+      { n:'Joints contrôlés', t:'status', s:'controles' },
+      { n:'État échangeur', t:'status', s:'controles' },
+      { n:'Nettoyage échangeur si nécessaire', t:'boolean', s:'controles' },
+      { n:"Absence d'encrassement anormal", t:'status', s:'controles' },
+      { n:'Absence de détérioration visible', t:'status', s:'controles' }
+    ];
+    var CHAUDIERE_GAZ_CONDENSATION = [
+      { n:'Siphon condensats', t:'status', s:'controles', cond:'condensation' },
+      { n:'Nettoyage siphon', t:'boolean', s:'controles', cond:'condensation' },
+      { n:'Évacuation condensats', t:'status', s:'controles', cond:'condensation' },
+      { n:"Absence d'obstruction (condensats)", t:'status', s:'controles', cond:'condensation' },
+      { n:'Étanchéité circuit condensats', t:'status', s:'controles', cond:'condensation' }
+    ];
+    var CHAUDIERE_GAZ_EVACUATION = [
+      { n:'Type évacuation des produits de combustion', t:'select', s:'controles', o:['Ventouse','Conduit','Autre'] },
+      { n:'État raccordement évacuation', t:'status', s:'controles' },
+      { n:'Étanchéité apparente évacuation', t:'status', s:'controles' },
+      { n:'Fixations évacuation', t:'status', s:'controles' },
+      { n:"Absence d'obstruction apparente évacuation", t:'status', s:'controles' },
+      { n:'Terminal accessible contrôlé si applicable', t:'status', s:'controles' },
+      { n:'Ventilation du local présente', t:'boolean', s:'controles' },
+      { n:'Entrées/sorties ventilation non obstruées', t:'status', s:'controles' },
+      { n:'Environnement compatible', t:'status', s:'controles' }
+    ];
+    var CHAUDIERE_GAZ_COMBUSTION = [
+      { n:'Température fumées', t:'number', s:'apres', u:'°C' },
+      { n:'O₂', t:'number', s:'apres', u:'%' },
+      { n:'CO₂', t:'number', s:'apres', u:'%' },
+      { n:'CO fumées', t:'number', s:'apres', u:'ppm' },
+      { n:'CO corrigé / non dilué si fourni', t:'number', s:'apres', u:'ppm' },
+      { n:'Rendement calculé/estimé', t:'number', s:'apres', u:'%' },
+      { n:'Excès d\'air / lambda si fourni', t:'text', s:'apres' },
+      { n:'Analyseur — marque', t:'text', s:'apres' },
+      { n:'Analyseur — modèle/référence', t:'text', s:'apres' },
+      { n:'CO ambiant', t:'number', s:'apres', u:'ppm', safety:'CO_AMBIENT' },
+      { n:'Heure de la mesure CO ambiant', t:'text', s:'apres' }
+    ];
+    var CHAUDIERE_GAZ_TEMPLATE = {
+      id:'chaudiere-gaz-entretien', title:'Entretien chaudière gaz', category:'chauffage', equipmentType:'chaudiere_gaz',
+      controls: [].concat(CHAUDIERE_VISUEL, CHAUDIERE_HYDRAULIQUE, CHAUDIERE_GAZ_BRULEUR, CHAUDIERE_GAZ_CONDENSATION,
+        CHAUDIERE_GAZ_EVACUATION, CHAUDIERE_GAZ_COMBUSTION, CHAUDIERE_REGULATION, CHAUDIERE_ESSAI_FINAL)
+    };
+
+    // ---- FIOUL (section 5) ----
+    var CHAUDIERE_FIOUL_BRULEUR = [
+      { n:'Marque brûleur', t:'text', s:'controles' },
+      { n:'Modèle brûleur', t:'text', s:'controles' },
+      { n:'État général brûleur', t:'status', s:'controles' },
+      { n:'Nettoyage brûleur', t:'boolean', s:'controles' },
+      { n:'Nettoyage tête de combustion', t:'boolean', s:'controles' },
+      { n:'Contrôle accroche-flamme', t:'status', s:'controles' },
+      { n:'Contrôle électrodes', t:'status', s:'controles' },
+      { n:'Nettoyage/réglage électrodes', t:'boolean', s:'controles' },
+      { n:'Contrôle câbles HT', t:'status', s:'controles' },
+      { n:'Contrôle transformateur/allumage', t:'status', s:'controles' },
+      { n:'Contrôle cellule de détection flamme', t:'status', s:'controles' },
+      { n:'Contrôle moteur', t:'status', s:'controles' },
+      { n:'Contrôle ventilateur/turbine', t:'status', s:'controles' },
+      { n:'Contrôle pompe fioul', t:'status', s:'controles' },
+      { n:'Recherche fuite fioul', t:'status', s:'controles' },
+      { n:'Contrôle flexibles fioul', t:'status', s:'controles' },
+      { n:'Contrôle filtre fioul', t:'status', s:'controles' },
+      { n:'Nettoyage/remplacement filtre si nécessaire', t:'boolean', s:'controles' }
+    ];
+    var CHAUDIERE_FIOUL_GICLEUR = [
+      { n:'Gicleur — marque', t:'text', s:'controles' },
+      { n:'Gicleur — débit', t:'number', s:'controles', u:'USgal/h' },
+      { n:'Gicleur — angle', t:'number', s:'controles', u:'°' },
+      { n:'Gicleur — type/cône', t:'text', s:'controles' },
+      { n:'Gicleur — état', t:'select', s:'controles', o:['Conservé','Nettoyé si applicable','Remplacé'] },
+      { n:'Gicleur — ancienne référence si remplacé', t:'text', s:'controles' },
+      { n:'Gicleur — nouvelle référence si remplacé', t:'text', s:'controles' }
+    ];
+    var CHAUDIERE_FIOUL_POMPE = [
+      { n:'Pompe fioul — fonctionnement', t:'status', s:'controles' },
+      { n:'Pompe fioul — étanchéité', t:'status', s:'controles' },
+      { n:'Pression pompe mesurée', t:'number', s:'controles', u:'bar' },
+      { n:'Pression pompe après réglage', t:'number', s:'controles', u:'bar' }
+    ];
+    var CHAUDIERE_FIOUL_CORPS = [
+      { n:'Ouverture foyer si nécessaire', t:'boolean', s:'controles' },
+      { n:'Nettoyage corps de chauffe', t:'boolean', s:'controles' },
+      { n:"Nettoyage surfaces d'échange", t:'boolean', s:'controles' },
+      { n:'Suies retirées', t:'boolean', s:'controles' },
+      { n:'État réfractaire si présent', t:'status', s:'controles' },
+      { n:'État joints', t:'status', s:'controles' },
+      { n:'Remontage correct', t:'status', s:'controles' },
+      { n:'Conduit — état raccordement', t:'status', s:'controles' },
+      { n:'Conduit — étanchéité', t:'status', s:'controles' },
+      { n:'Conduit — tirage contrôlé si nécessaire', t:'status', s:'controles' },
+      { n:"Conduit — absence d'anomalie visible", t:'status', s:'controles' }
+    ];
+    var CHAUDIERE_FIOUL_COMBUSTION = [
+      { n:'Température fumées', t:'number', s:'apres', u:'°C' },
+      { n:'O₂', t:'number', s:'apres', u:'%' },
+      { n:'CO₂', t:'number', s:'apres', u:'%' },
+      { n:'CO', t:'number', s:'apres', u:'ppm' },
+      { n:'Rendement', t:'number', s:'apres', u:'%' },
+      { n:"Excès d'air / lambda", t:'text', s:'apres' },
+      { n:'Indice de fumée / opacité si mesuré', t:'text', s:'apres' },
+      { n:'Analyseur — marque', t:'text', s:'apres' },
+      { n:'Analyseur — référence', t:'text', s:'apres' },
+      { n:'CO ambiant', t:'number', s:'apres', u:'ppm', safety:'CO_AMBIENT' },
+      { n:'Heure de la mesure CO ambiant', t:'text', s:'apres' }
+    ];
+    var CHAUDIERE_FIOUL_TEMPLATE = {
+      id:'chaudiere-fioul-entretien', title:'Entretien chaudière fioul', category:'chauffage', equipmentType:'chaudiere_fioul',
+      controls: [].concat(CHAUDIERE_VISUEL, CHAUDIERE_HYDRAULIQUE, CHAUDIERE_FIOUL_BRULEUR, CHAUDIERE_FIOUL_GICLEUR,
+        CHAUDIERE_FIOUL_POMPE, CHAUDIERE_FIOUL_CORPS, CHAUDIERE_FIOUL_COMBUSTION, CHAUDIERE_REGULATION, CHAUDIERE_ESSAI_FINAL)
+    };
+
+    // Seuil réglementaire (arrêté du 15/09/2009 relatif aux chaudières) —
+    // PAS une valeur constructeur : un seuil de sécurité national, le seul
+    // type de seuil que ce module se permet de coder en dur (voir section 17
+    // du cahier des charges : aucune valeur constructeur n'est jamais
+    // inventée ni affichée comme une norme).
+    var CO_AMBIENT_DANGER_THRESHOLD_PPM = 50;
+
+    // Un contrôle conditionnel (`cond`) n'est affiché que si l'équipement
+    // sélectionné a la caractéristique correspondante — tant que rien n'est
+    // encore renseigné (pas d'équipement, ou specs incomplètes), il reste
+    // visible par défaut : on ne masque jamais un contrôle par excès de
+    // confiance, le technicien choisit "Non applicable" si besoin.
+    function admIvItemVisible(it, equipSpecs){
+      var cond = it.field_meta && it.field_meta.cond;
+      if (!cond) return true;
+      if (!equipSpecs) return true;
+      if (cond === 'condensation') return equipSpecs.chaudiere_type ? equipSpecs.chaudiere_type === 'condensation' : true;
+      if (cond === 'ecs') return equipSpecs.production ? equipSpecs.production !== 'chauffage_seul' : true;
+      return true;
+    }
+    function withTemplateId(template, id){
+      var copy = Object.assign({}, template);
+      copy.id = id;
+      return copy;
     }
 
     // ---- Catalogue complet : une entrée par prestation réservable (voir
@@ -14304,12 +14522,17 @@ if ('serviceWorker' in navigator){
         { n:"Bilan général de l'installation", t:'textarea', s:'apres' }
       ])),
 
-      'chauffage-chaudiere-gaz-essentiel': chaudiereTemplate('chauffage-chaudiere-gaz-essentiel', 'Chaudière gaz — Pack Essentiel', 'chaudiere_gaz', false),
-      'chauffage-chaudiere-gaz-confort': chaudiereTemplate('chauffage-chaudiere-gaz-confort', 'Chaudière gaz — Pack Confort', 'chaudiere_gaz', false),
-      'chauffage-chaudiere-gaz-premium': chaudiereTemplate('chauffage-chaudiere-gaz-premium', 'Chaudière gaz — Pack Premium', 'chaudiere_gaz', true),
-      'chauffage-chaudiere-fioul-essentiel': chaudiereTemplate('chauffage-chaudiere-fioul-essentiel', 'Chaudière fioul — Pack Essentiel', 'chaudiere_fioul', false),
-      'chauffage-chaudiere-fioul-confort': chaudiereTemplate('chauffage-chaudiere-fioul-confort', 'Chaudière fioul — Pack Confort', 'chaudiere_fioul', false),
-      'chauffage-chaudiere-fioul-premium': chaudiereTemplate('chauffage-chaudiere-fioul-premium', 'Chaudière fioul — Pack Premium', 'chaudiere_fioul', true),
+      // Même fiche technique complète pour les 3 formules (Essentiel/Confort/
+      // Premium) d'un même combustible — la profondeur de l'entretien payé
+      // ne change pas la nature des contrôles pertinents pour CETTE
+      // chaudière ; seul un identifiant propre à chaque slug est conservé
+      // pour la traçabilité (diagnostic_template_id).
+      'chauffage-chaudiere-gaz-essentiel': withTemplateId(CHAUDIERE_GAZ_TEMPLATE, 'chauffage-chaudiere-gaz-essentiel'),
+      'chauffage-chaudiere-gaz-confort': withTemplateId(CHAUDIERE_GAZ_TEMPLATE, 'chauffage-chaudiere-gaz-confort'),
+      'chauffage-chaudiere-gaz-premium': withTemplateId(CHAUDIERE_GAZ_TEMPLATE, 'chauffage-chaudiere-gaz-premium'),
+      'chauffage-chaudiere-fioul-essentiel': withTemplateId(CHAUDIERE_FIOUL_TEMPLATE, 'chauffage-chaudiere-fioul-essentiel'),
+      'chauffage-chaudiere-fioul-confort': withTemplateId(CHAUDIERE_FIOUL_TEMPLATE, 'chauffage-chaudiere-fioul-confort'),
+      'chauffage-chaudiere-fioul-premium': withTemplateId(CHAUDIERE_FIOUL_TEMPLATE, 'chauffage-chaudiere-fioul-premium'),
 
       'chauffage-depannage': { id:'chauffage-depannage', title:'Dépannage chauffage', category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
         { n:'Équipement concerné', t:'select', s:'avant', o:['Chaudière gaz','Chaudière fioul','Radiateur','Circulateur','Chauffe-eau','Autre'] },
@@ -14614,12 +14837,14 @@ if ('serviceWorker' in navigator){
         '.adm-iv-section h4{margin:0 0 10px;font-size:0.92rem;}' +
         '.adm-iv-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--adm-line,#E5E1D6);}' +
         '.adm-iv-item-label{flex:1 1 220px;font-size:0.84rem;font-weight:600;min-width:0;}' +
+        '.adm-iv-prior-hint{display:block;font-weight:500;font-style:italic;color:var(--adm-ink-soft,#5B6B78);font-size:0.72rem;margin-top:2px;}' +
         '.adm-iv-status-group{display:flex;gap:4px;flex-wrap:wrap;}' +
         '.adm-iv-status-btn{border:1.5px solid var(--adm-line,#E5E1D6);background:transparent;border-radius:7px;padding:5px 9px;font-size:0.72rem;font-weight:700;cursor:pointer;color:var(--adm-ink,#16222c);}' +
         '.adm-iv-status-btn.is-active[data-status="OK"]{background:var(--adm-green,#3F9463);border-color:var(--adm-green,#3F9463);color:#fff;}' +
         '.adm-iv-status-btn.is-active[data-status="WATCH"]{background:var(--adm-amber,#C4862A);border-color:var(--adm-amber,#C4862A);color:#fff;}' +
         '.adm-iv-status-btn.is-active[data-status="ANOMALY"]{background:var(--adm-red,#C1503B);border-color:var(--adm-red,#C1503B);color:#fff;}' +
         '.adm-iv-status-btn.is-active[data-status="NOT_APPLICABLE"]{background:var(--adm-grey,#7C8AA0);border-color:var(--adm-grey,#7C8AA0);color:#fff;}' +
+        '.adm-iv-status-btn.is-active[data-status="NOT_CHECKED"]{background:#8B7FB8;border-color:#8B7FB8;color:#fff;}' +
         '.adm-iv-item input.adm-iv-value{width:90px;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
         '.adm-iv-item input.adm-iv-obs{flex:1 1 160px;min-width:0;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);}' +
         '.adm-iv-item select.adm-iv-value{flex:1 1 160px;min-width:0;font-size:0.78rem;padding:5px 7px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;background:#fff;}' +
@@ -14636,6 +14861,12 @@ if ('serviceWorker' in navigator){
         '.adm-iv-parts-row span.adm-iv-parts-label{flex:1 1 200px;font-size:0.82rem;}' +
         '.adm-iv-parts-add{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}' +
         '.adm-iv-parts-add input{flex:1 1 110px;min-width:0;font-size:0.8rem;padding:7px 9px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;}' +
+        '.adm-iv-parts-add select{flex:1 1 140px;min-width:0;font-size:0.8rem;padding:7px 9px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;background:#fff;}' +
+        '.adm-iv-anomaly-safety{background:rgba(193,80,59,0.08);border-radius:8px;padding-left:8px;padding-right:8px;}' +
+        '.adm-iv-safety-alert{background:var(--adm-red,#C1503B);color:#fff;font-weight:700;font-size:0.84rem;padding:12px 14px;border-radius:10px;margin:12px 0;line-height:1.4;}' +
+        '.adm-iv-progress{height:8px;border-radius:999px;background:var(--adm-line,#E5E1D6);overflow:hidden;margin-top:10px;}' +
+        '.adm-iv-progress-bar{height:100%;background:var(--adm-green,#3F9463);transition:width 0.2s;}' +
+        '.adm-iv-progress-label{font-size:0.74rem;color:var(--adm-ink-soft,#5B6B78);margin:4px 0 0;}' +
         '.adm-iv-sheet select#admIvCompletionStatus{font-family:inherit;font-size:0.85rem;padding:9px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);box-sizing:border-box;width:100%;background:#fff;}' +
         '.adm-iv-photo-btn{border:1.5px dashed var(--adm-line,#E5E1D6);background:transparent;border-radius:6px;padding:5px 8px;font-size:0.72rem;cursor:pointer;}' +
         '.adm-iv-photo-thumbs{display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:4px;}' +
@@ -14865,16 +15096,19 @@ if ('serviceWorker' in navigator){
         var loadItems = sb.client.from('intervention_items').select('*, intervention_photos(*)').eq('intervention_id', interventionId).order('sort_order', { ascending:true });
         var loadGeneralPhotos = sb.client.from('intervention_photos').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
         var loadParts = sb.client.from('intervention_parts').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
+        var loadAnomalies = sb.client.from('intervention_anomalies').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
 
-        return Promise.all([loadEquip, loadIv, loadItems, loadGeneralPhotos, loadParts]).then(function(results){
+        return Promise.all([loadEquip, loadIv, loadItems, loadGeneralPhotos, loadParts, loadAnomalies]).then(function(results){
           if (results[0].error) throw results[0].error;
           if (results[1].error) throw results[1].error;
           if (results[2].error) throw results[2].error;
           if (results[3].error) throw results[3].error;
           if (results[4].error) throw results[4].error;
+          if (results[5].error) throw results[5].error;
           var equipList = results[0].data || [];
           var generalPhotos = results[3].data || [];
           var parts = results[4].data || [];
+          var anomalies = results[5].data || [];
           // Garde défensive : une intervention introuvable (cas normalement
           // impossible puisqu'on vient de la créer/retrouver ci-dessus) ne
           // doit jamais faire planter silencieusement l'ouverture de la
@@ -14911,7 +15145,7 @@ if ('serviceWorker' in navigator){
           var insertPromise = missing.length
             ? sb.client.from('intervention_items').upsert(missing.map(function(c, i){
                 return { intervention_id: interventionId, name: c.n,
-                  field_type: c.t, field_meta: (c.u || c.o) ? { unit: c.u || null, options: c.o || null } : null,
+                  field_type: c.t, field_meta: (c.u || c.o || c.cond || c.safety) ? { unit: c.u || null, options: c.o || null, cond: c.cond || null, safety: c.safety || null } : null,
                   section: c.s || 'controles',
                   status: c.t === 'status' ? 'NOT_APPLICABLE' : null,
                   visibility: 'customer_visible', sort_order: i };
@@ -14929,14 +15163,20 @@ if ('serviceWorker' in navigator){
               template: template, equipmentTypeDefault: template.equipmentType || 'autre',
               equipList: equipList, selectedEquipmentId: ivRow.equipment_id || (equipList[0] && equipList[0].id) || null,
               items: allItems, observations: ivRow.observations || '', recommendations: ivRow.recommendations || '',
-              generalPhotos: generalPhotos, parts: parts,
+              generalPhotos: generalPhotos, parts: parts, anomalies: anomalies,
               completionStatus: ivRow.completion_status || null,
               technicianName: ivRow.technician_name || technicianName,
               reportStatus: ivRow.report_status, clientSignatureData: ivRow.client_signature_data,
-              technicianSignatureData: ivRow.technician_signature_data
+              technicianSignatureData: ivRow.technician_signature_data,
+              priorValues: null, priorDate: null
             };
             admIvRender();
             admIvForceRepaint(overlay);
+            // Amélioration purement indicative (comparaison avec le dernier
+            // entretien) : protégée pour ne JAMAIS faire échouer l'ouverture
+            // de la fiche elle-même si elle lève une erreur (réseau, etc.) —
+            // la fiche est déjà rendue et visible à ce stade.
+            try { admIvLoadPriorValues(); } catch (e) { console.warn('admIvLoadPriorValues', e); }
             admIvDebugLog('INTERVENTION PAGE MOUNTED ✓', { interventionId: interventionId });
             admIvDebugLog('DATA LOADED ✓', { items: allItems.length });
             admIvDebugLog('NAVIGATION REQUESTED', '/admin/interventions/' + interventionId);
@@ -15039,6 +15279,33 @@ if ('serviceWorker' in navigator){
     // JAMAIS afficher ces 4 boutons — un champ "Marque" ou "Pression (bar)"
     // n'a pas de statut, seulement une valeur (mesure ou remplacement voir
     // section 8 du cahier des charges).
+    // Comparaison avec le dernier entretien du MÊME équipement (sections 1
+    // et 15 du cahier des charges chaudière) : non bloquant, purement
+    // indicatif — récupéré après le premier rendu pour ne jamais retarder
+    // l'ouverture de la fiche, puis affiché via un second rendu léger.
+    function admIvLoadPriorValues(){
+      if (!admIv || !admIv.selectedEquipmentId) return;
+      sb.client.from('interventions')
+        .select('ended_at, intervention_items(name, measured_value)')
+        .eq('equipment_id', admIv.selectedEquipmentId)
+        .eq('report_status', 'FINALIZED')
+        .neq('id', admIv.interventionId)
+        .order('ended_at', { ascending:false })
+        .limit(1)
+        .then(function(res){
+          if (!admIv || res.error || !res.data || !res.data.length) return;
+          var prior = res.data[0];
+          var map = {};
+          (prior.intervention_items || []).forEach(function(it){
+            if (it.measured_value) map[it.name] = it.measured_value;
+          });
+          if (!Object.keys(map).length) return;
+          admIv.priorValues = map;
+          admIv.priorDate = prior.ended_at;
+          admIvRender();
+        }).catch(function(){});
+    }
+
     function admIvItemHtml(it){
       var ft = it.field_type || 'status';
       var meta = it.field_meta || {};
@@ -15072,8 +15339,10 @@ if ('serviceWorker' in navigator){
       var thumbs = (it.intervention_photos || []).map(function(p){
         return '<div class="adm-iv-photo-thumb" data-photo-id="' + p.id + '"><img src="" data-storage-path="' + admEscape(p.storage_path) + '" alt=""><button type="button" data-iv-del-photo="' + p.id + '" aria-label="Supprimer">×</button></div>';
       }).join('');
+      var priorVal = admIv.priorValues && admIv.priorValues[it.name];
+      var priorHtml = priorVal ? '<small class="adm-iv-prior-hint">Dernier relevé' + (admIv.priorDate ? ' (' + admFmtDate(admIv.priorDate.slice(0,10)) + ')' : '') + ' : ' + admEscape(priorVal) + '</small>' : '';
       return '<div class="adm-iv-item" data-item-id="' + it.id + '">' +
-        '<span class="adm-iv-item-label">' + admEscape(it.name) + '</span>' +
+        '<span class="adm-iv-item-label">' + admEscape(it.name) + priorHtml + '</span>' +
         controlHtml + obsHtml +
         '<label class="adm-iv-photo-btn">📷 Photo<input type="file" accept="image/*" capture="environment" hidden data-item-id="' + it.id + '" class="adm-iv-photo-input"></label>' +
         '<div class="adm-iv-photo-thumbs">' + thumbs + '</div>' +
@@ -15094,22 +15363,56 @@ if ('serviceWorker' in navigator){
         '</div>';
     }
 
+    var IV_CHAUDIERE_COMBUSTIBLE = [['gaz_naturel','Gaz naturel'],['propane','Propane'],['fioul','Fioul']];
+    var IV_CHAUDIERE_TYPE = [['standard','Standard'],['basse_temperature','Basse température'],['condensation','Condensation']];
+    var IV_CHAUDIERE_PRODUCTION = [['chauffage_seul','Chauffage seul'],['chauffage_ecs','Chauffage + ECS'],['ecs_separee','ECS séparée']];
+
+    // Équipement chaudière : identification complète (section 1 du cahier
+    // des charges), conservée dans customer_equipment.specs et proposée
+    // automatiquement à la prochaine intervention sur ce même équipement —
+    // jamais ressaisie de zéro, jamais de valeur technique déduite.
+    function admIvEquipSpecsSummary(eq){
+      var s = eq.specs || {};
+      var bits = [];
+      if (s.combustible) bits.push({gaz_naturel:'Gaz naturel',propane:'Propane',fioul:'Fioul'}[s.combustible] || s.combustible);
+      if (s.chaudiere_type) bits.push({standard:'Standard',basse_temperature:'Basse température',condensation:'Condensation'}[s.chaudiere_type] || s.chaudiere_type);
+      if (s.power_kw) bits.push(s.power_kw + ' kW');
+      if (s.serial_number) bits.push('n° série ' + s.serial_number);
+      return bits.join(' · ');
+    }
+
     function admIvEquipHtml(){
       if (!admIv.booking.customer_user_id){
         return '<p class="ec-row-meta">Réservation invité : équipement non enregistré dans l\'espace client.</p>';
       }
+      var isChaudiere = admIv.equipmentTypeDefault === 'chaudiere_gaz' || admIv.equipmentTypeDefault === 'chaudiere_fioul';
       var opts = admIv.equipList.map(function(eq){
         var label = (IV_EQUIPMENT_LABEL[eq.equipment_type] || eq.equipment_type) + (eq.brand ? ' — ' + eq.brand : '') + (eq.model ? ' ' + eq.model : '');
+        var specsLine = admIvEquipSpecsSummary(eq);
         return '<label class="adm-iv-equip-option' + (admIv.selectedEquipmentId === eq.id ? ' is-selected' : '') + '">' +
-          '<input type="radio" name="admIvEquip" value="' + eq.id + '"' + (admIv.selectedEquipmentId === eq.id ? ' checked' : '') + '> ' + admEscape(label) + '</label>';
+          '<input type="radio" name="admIvEquip" value="' + eq.id + '"' + (admIv.selectedEquipmentId === eq.id ? ' checked' : '') + '> ' + admEscape(label) +
+          (specsLine ? '<br><small>' + admEscape(specsLine) + '</small>' : '') +
+          '</label>';
       }).join('');
+      var chaudiereFields = isChaudiere ? (
+        '<select id="admIvNewEquipCombustible">' + IV_CHAUDIERE_COMBUSTIBLE.map(function(o){
+          return '<option value="' + o[0] + '"' + ((admIv.equipmentTypeDefault === 'chaudiere_fioul') === (o[0] === 'fioul') ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select>' +
+        '<select id="admIvNewEquipType"><option value="">Type chaudière —</option>' + IV_CHAUDIERE_TYPE.map(function(o){ return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>' +
+        '<input type="text" id="admIvNewEquipSerial" placeholder="N° de série">' +
+        '<input type="text" id="admIvNewEquipYear" placeholder="Année approx.">' +
+        '<input type="number" id="admIvNewEquipPower" placeholder="Puissance (kW)" step="0.1">' +
+        '<select id="admIvNewEquipProduction"><option value="">Production —</option>' + IV_CHAUDIERE_PRODUCTION.map(function(o){ return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>'
+      ) : '';
       return '<div class="adm-iv-equip-list">' + opts +
         '<label class="adm-iv-equip-option"><input type="radio" name="admIvEquip" value="__new__"' + (!admIv.selectedEquipmentId ? ' checked' : '') + '> + Ajouter un nouvel équipement</label>' +
         '</div>' +
         '<div id="admIvNewEquipForm" hidden style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">' +
           '<input type="text" id="admIvNewEquipBrand" placeholder="Marque">' +
           '<input type="text" id="admIvNewEquipModel" placeholder="Modèle">' +
+          chaudiereFields +
           '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admIvNewEquipSave">Enregistrer cet équipement</button>' +
+          (isChaudiere ? '<p class="ec-row-meta" style="flex:1 1 100%;">Photo de la plaque signalétique : utilisez "Photos de l\'intervention" ci-dessous.</p>' : '') +
         '</div>';
     }
 
@@ -15137,6 +15440,41 @@ if ('serviceWorker' in navigator){
         '</div></div>';
     }
 
+    var IV_ANOMALY_SEVERITY = [
+      ['INFO', 'Information'], ['WATCH', 'À surveiller'],
+      ['RECOMMENDED', 'Intervention recommandée'], ['SAFETY', 'Sécurité']
+    ];
+    var IV_ANOMALY_ACTION = [
+      ['FIXED_ON_SITE', 'Corrigée pendant l\'entretien'], ['QUOTE_NEEDED', 'Devis nécessaire'],
+      ['MONITOR', 'Surveillance'], ['SAFETY_SHUTDOWN', 'Mise en sécurité']
+    ];
+    // Liste d'anomalies structurée (section 8) — générique, réutilisable
+    // pour tout métier, pas seulement chaudière. La photo d'une anomalie
+    // s'ajoute via la section "Photos de l'intervention" déjà existante.
+    function admIvAnomaliesHtml(){
+      var severityLabel = {}; IV_ANOMALY_SEVERITY.forEach(function(o){ severityLabel[o[0]] = o[1]; });
+      var actionLabel = {}; IV_ANOMALY_ACTION.forEach(function(o){ actionLabel[o[0]] = o[1]; });
+      var rows = (admIv.anomalies || []).map(function(a){
+        var bits = [a.description];
+        if (a.equipment_label) bits.unshift(a.equipment_label + ' — ');
+        var meta = [severityLabel[a.severity] || a.severity, a.action ? (actionLabel[a.action] || a.action) : null].filter(Boolean).join(' · ');
+        return '<div class="adm-iv-parts-row' + (a.severity === 'SAFETY' ? ' adm-iv-anomaly-safety' : '') + '" data-anomaly-id="' + a.id + '">' +
+          '<span class="adm-iv-parts-label">' + admEscape(bits.join('')) + '<br><small>' + admEscape(meta) + '</small></span>' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-del-anomaly="' + a.id + '">Supprimer</button>' +
+          '</div>';
+      }).join('');
+      var sevOpts = IV_ANOMALY_SEVERITY.map(function(o){ return '<option value="' + o[0] + '">' + admEscape(o[1]) + '</option>'; }).join('');
+      var actOpts = IV_ANOMALY_ACTION.map(function(o){ return '<option value="' + o[0] + '">' + admEscape(o[1]) + '</option>'; }).join('');
+      return '<div class="adm-iv-section"><h4>Anomalies</h4>' + rows +
+        '<div class="adm-iv-parts-add">' +
+          '<input type="text" id="admIvAnomalyEquip" placeholder="Équipement concerné">' +
+          '<input type="text" id="admIvAnomalyDesc" placeholder="Description de l\'anomalie" style="flex:1 1 220px;">' +
+          '<select id="admIvAnomalySeverity">' + sevOpts + '</select>' +
+          '<select id="admIvAnomalyAction"><option value="">Action —</option>' + actOpts + '</select>' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admIvAnomalyAddBtn">+ Ajouter une anomalie</button>' +
+        '</div></div>';
+    }
+
     function admIvSignatureBoxHtml(role, signatureData){
       return '<div class="adm-iv-signature-box" data-role="' + role + '">' +
         '<input type="text" class="adm-iv-sig-name" placeholder="Nom du signataire" data-role="' + role + '" value="' + admEscape((role === 'client' ? admIv.contact.name : admIv.technicianName) || '') + '">' +
@@ -15153,14 +15491,55 @@ if ('serviceWorker' in navigator){
     // fiche WC n'a par exemple aucun contrôle "avant" de type climatisation
     // puisqu'ils n'existent tout simplement pas dans ses items (section 9 du
     // cahier des charges : ne pas surcharger la fiche de sections vides).
+    // Specs de l'équipement actuellement sélectionné (combustible, type de
+    // chaudière, production…) — pilote l'affichage des contrôles
+    // conditionnels (siphon condensats, contrôles ECS...). null tant
+    // qu'aucun équipement n'est choisi : tout reste alors visible.
+    function admIvCurrentEquipSpecs(){
+      var eq = (admIv.equipList || []).filter(function(e){ return e.id === admIv.selectedEquipmentId; })[0];
+      return (eq && eq.specs) || null;
+    }
+
     function admIvSectionsHtml(){
       var order = ['avant', 'controles', 'apres'];
+      var specs = admIvCurrentEquipSpecs();
       return order.map(function(sec){
-        var items = admIv.items.filter(function(it){ return (it.section || 'controles') === sec; });
+        var items = admIv.items.filter(function(it){
+          return (it.section || 'controles') === sec && admIvItemVisible(it, specs);
+        });
         if (!items.length) return '';
         return '<details class="adm-iv-section" open><summary>' + admEscape(IV_SECTION_LABEL[sec]) + '</summary>' +
           items.map(admIvItemHtml).join('') + '</details>';
       }).join('');
+    }
+
+    // Alerte sécurité CO ambiant (section 4 du cahier des charges) — seuil
+    // réglementaire national (CO_AMBIENT_DANGER_THRESHOLD_PPM), jamais une
+    // valeur constructeur. Ne peut pas être masquée/fermée : "ne jamais
+    // masquer une alerte".
+    function admIvSafetyBannerHtml(){
+      var dangerItem = admIv.items.filter(function(it){
+        return it.field_meta && it.field_meta.safety === 'CO_AMBIENT' && it.measured_value;
+      }).filter(function(it){
+        var v = parseFloat(String(it.measured_value).replace(',', '.'));
+        return !isNaN(v) && v >= CO_AMBIENT_DANGER_THRESHOLD_PPM;
+      })[0];
+      if (!dangerItem) return '';
+      return '<div class="adm-iv-safety-alert">⚠ CO ambiant mesuré à ' + admEscape(dangerItem.measured_value) + ' ppm — seuil de sécurité réglementaire (' +
+        CO_AMBIENT_DANGER_THRESHOLD_PPM + ' ppm) atteint ou dépassé. Procédure de mise en sécurité de l\'appareil à appliquer sans délai, conformément à la réglementation en vigueur.</div>';
+    }
+
+    // Progression = part des contrôles (visibles compte tenu des specs de
+    // l'équipement sélectionné) déjà renseignés — statut posé OU valeur
+    // saisie. Purement indicatif pour le technicien (section 18).
+    function admIvProgressPercent(){
+      var specs = admIvCurrentEquipSpecs();
+      var visible = admIv.items.filter(function(it){ return admIvItemVisible(it, specs); });
+      if (!visible.length) return 100;
+      var done = visible.filter(function(it){
+        return (it.status && it.status !== 'NOT_APPLICABLE') || (it.measured_value && String(it.measured_value).trim());
+      }).length;
+      return Math.round((done / visible.length) * 100);
     }
 
     function admIvRender(){
@@ -15171,6 +15550,7 @@ if ('serviceWorker' in navigator){
       var svcName = (b.services && b.services.name) || (admIv.template && admIv.template.title) || 'Intervention';
       var isFinalized = admIv.reportStatus === 'FINALIZED';
       var statusLabel = isFinalized ? 'TERMINÉ' : (b.status === 'IN_PROGRESS' ? 'EN INTERVENTION' : admEscape(b.status));
+      var progress = admIvProgressPercent();
       var completionOpts = IV_COMPLETION_OPTIONS.map(function(o){
         return '<option value="' + o[0] + '"' + (admIv.completionStatus === o[0] ? ' selected' : '') + '>' + admEscape(o[1]) + '</option>';
       }).join('');
@@ -15179,12 +15559,16 @@ if ('serviceWorker' in navigator){
           '<button type="button" class="adm-iv-back-btn" data-iv-close>← Retour au planning</button>' +
           '<span class="adm-iv-status-pill">' + statusLabel + '</span>' +
         '</div>' +
+        admIvSafetyBannerHtml() +
         '<h3>Fiche d\'intervention — ' + admEscape(svcName) + '</h3>' +
         '<p class="adm-iv-sub">' + admEscape(c.name) + (c.address ? ' · ' + admEscape(c.address) : '') + (c.phone ? ' · ' + admEscape(c.phone) : '') + ' · ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + ' · Réf. ' + admEscape(b.reference) + '</p>' +
+        '<div class="adm-iv-progress"><div class="adm-iv-progress-bar" style="width:' + progress + '%"></div></div>' +
+        '<p class="adm-iv-progress-label">Progression : ' + progress + '%</p>' +
         '<div class="adm-iv-section"><h4>Technicien</h4><input type="text" id="admIvTechName" placeholder="Nom du technicien" value="' + admEscape(admIv.technicianName || '') + '"></div>' +
         '<div class="adm-iv-section"><h4>Équipement</h4>' + admIvEquipHtml() + '</div>' +
         admIvGeneralPhotosHtml() +
         admIvSectionsHtml() +
+        admIvAnomaliesHtml() +
         admIvPartsHtml() +
         '<div class="adm-iv-section"><h4>Observations du technicien</h4><textarea id="admIvObs" placeholder="Observations libres…">' + admEscape(admIv.observations) + '</textarea></div>' +
         '<div class="adm-iv-section"><h4>Recommandations</h4><textarea id="admIvReco" placeholder="Recommandations pour le client…">' + admEscape(admIv.recommendations) + '</textarea></div>' +
@@ -15299,11 +15683,29 @@ if ('serviceWorker' in navigator){
         // (ex. 'wc' pour un remplacement de mécanisme WC), plus jamais
         // 'climatisation' forcé quel que soit le métier réel — c'était
         // exactement la même famille de bug que la checklist elle-même.
+        var newEquipType = admIv.equipmentTypeDefault || 'autre';
+        var specs = null;
+        if (newEquipType === 'chaudiere_gaz' || newEquipType === 'chaudiere_fioul'){
+          var elCombustible = document.getElementById('admIvNewEquipCombustible');
+          var elType = document.getElementById('admIvNewEquipType');
+          var elSerial = document.getElementById('admIvNewEquipSerial');
+          var elYear = document.getElementById('admIvNewEquipYear');
+          var elPower = document.getElementById('admIvNewEquipPower');
+          var elProduction = document.getElementById('admIvNewEquipProduction');
+          specs = {
+            combustible: (elCombustible && elCombustible.value) || null,
+            chaudiere_type: (elType && elType.value) || null,
+            serial_number: (elSerial && elSerial.value.trim()) || null,
+            year_approx: (elYear && elYear.value.trim()) || null,
+            power_kw: (elPower && elPower.value) || null,
+            production: (elProduction && elProduction.value) || null
+          };
+        }
         sb.client.from('customer_equipment').insert({
-          customer_user_id: admIv.booking.customer_user_id, equipment_type: admIv.equipmentTypeDefault || 'autre',
-          brand: brand || null, model: model || null
+          customer_user_id: admIv.booking.customer_user_id, equipment_type: newEquipType,
+          brand: brand || null, model: model || null, specs: specs
         }).select('*').then(function(res){
-          if (res.error){ window.alert('Impossible d\'enregistrer cet équipement.'); return; }
+          if (res.error || !res.data || !res.data[0]){ window.alert('Impossible d\'enregistrer cet équipement.'); return; }
           var eq = res.data[0];
           admIv.equipList.unshift(eq);
           admIv.selectedEquipmentId = eq.id;
@@ -15322,7 +15724,7 @@ if ('serviceWorker' in navigator){
           intervention_id: admIv.interventionId, designation: pDesignation,
           brand: pBrand || null, reference: pRef || null, quantity: pQty
         }).select('*').then(function(res){
-          if (res.error){ window.alert('Impossible d\'enregistrer cette pièce.'); return; }
+          if (res.error || !res.data || !res.data[0]){ window.alert('Impossible d\'enregistrer cette pièce.'); return; }
           admIv.parts = (admIv.parts || []).concat([res.data[0]]);
           admIvRender();
         });
@@ -15334,6 +15736,32 @@ if ('serviceWorker' in navigator){
         sb.client.from('intervention_parts').delete().eq('id', partId).then(function(res){
           if (res.error){ window.alert('Impossible de supprimer cette pièce.'); return; }
           admIv.parts = (admIv.parts || []).filter(function(p){ return p.id !== partId; });
+          admIvRender();
+        });
+        return;
+      }
+      if (e.target.id === 'admIvAnomalyAddBtn'){
+        var aDesc = document.getElementById('admIvAnomalyDesc').value.trim();
+        if (!aDesc){ window.alert('Merci de décrire l\'anomalie.'); return; }
+        var aEquip = document.getElementById('admIvAnomalyEquip').value.trim();
+        var aSeverity = document.getElementById('admIvAnomalySeverity').value || 'INFO';
+        var aAction = document.getElementById('admIvAnomalyAction').value || null;
+        sb.client.from('intervention_anomalies').insert({
+          intervention_id: admIv.interventionId, equipment_label: aEquip || null,
+          description: aDesc, severity: aSeverity, action: aAction
+        }).select('*').then(function(res){
+          if (res.error || !res.data || !res.data[0]){ window.alert('Impossible d\'enregistrer cette anomalie.'); return; }
+          admIv.anomalies = (admIv.anomalies || []).concat([res.data[0]]);
+          admIvRender();
+        });
+        return;
+      }
+      var delAnomalyBtn = e.target.closest('[data-iv-del-anomaly]');
+      if (delAnomalyBtn && admIv){
+        var anomalyId = delAnomalyBtn.getAttribute('data-iv-del-anomaly');
+        sb.client.from('intervention_anomalies').delete().eq('id', anomalyId).then(function(res){
+          if (res.error){ window.alert('Impossible de supprimer cette anomalie.'); return; }
+          admIv.anomalies = (admIv.anomalies || []).filter(function(a){ return a.id !== anomalyId; });
           admIvRender();
         });
         return;
@@ -15357,7 +15785,16 @@ if ('serviceWorker' in navigator){
       }
       if (e.target.classList.contains('adm-iv-value')){
         var vItem = admIv.items.filter(function(it){ return it.id === e.target.getAttribute('data-item-id'); })[0];
-        if (vItem){ vItem.measured_value = e.target.value; admIvScheduleSave(); }
+        if (vItem){
+          vItem.measured_value = e.target.value;
+          admIvScheduleSave();
+          // Un contrôle marqué "safety" (ex. CO ambiant) doit déclencher son
+          // alerte immédiatement — jamais attendre une autre action pour
+          // qu'elle apparaisse ("ne jamais masquer une alerte", cahier des
+          // charges chaudière). Les autres champs ne forcent pas de
+          // re-rendu à chaque saisie pour ne pas perdre le focus inutilement.
+          if (vItem.field_meta && vItem.field_meta.safety) admIvRender();
+        }
         return;
       }
       if (e.target.classList.contains('adm-iv-obs')){
@@ -15386,6 +15823,7 @@ if ('serviceWorker' in navigator){
             }).select('*');
           });
         }).then(function(insRes){
+          if (!insRes.data || !insRes.data[0]) throw new Error('Insertion photo sans résultat');
           var photo = insRes.data[0];
           var item = admIv.items.filter(function(it){ return it.id === itemIdForPhoto; })[0];
           if (item){ item.intervention_photos = (item.intervention_photos || []).concat([photo]); }
@@ -15407,6 +15845,7 @@ if ('serviceWorker' in navigator){
             }).select('*');
           });
         }).then(function(insRes){
+          if (!insRes.data || !insRes.data[0]) throw new Error('Insertion photo sans résultat');
           admIv.generalPhotos = (admIv.generalPhotos || []).concat([insRes.data[0]]);
           admIvRender();
         }).catch(function(err){
@@ -15416,6 +15855,33 @@ if ('serviceWorker' in navigator){
         return;
       }
     });
+
+    // Résumé automatique (section 11 du cahier des charges) : UNIQUEMENT à
+    // partir des contrôles réellement renseignés (statut posé autre que
+    // "Non applicable"/"Non contrôlé", ou valeur saisie) — jamais une
+    // opération non cochée n'apparaît ici.
+    function admIvBuildAutoSummary(){
+      var specs = admIvCurrentEquipSpecs();
+      var lines = [];
+      lines.push((admIv.template && admIv.template.title) || 'Intervention réalisée.');
+      admIv.items.forEach(function(it){
+        if (!admIvItemVisible(it, specs)) return;
+        if (it.field_type === 'status'){
+          if (it.status === 'ANOMALY') lines.push(it.name + ' : non conforme' + (it.observation ? ' (' + it.observation + ')' : '') + '.');
+        } else if (it.measured_value && String(it.measured_value).trim()){
+          var unit = it.field_meta && it.field_meta.unit ? ' ' + it.field_meta.unit : '';
+          lines.push(it.name + ' : ' + it.measured_value + unit + '.');
+        }
+      });
+      (admIv.parts || []).forEach(function(p){
+        lines.push('Pièce remplacée : ' + p.designation + (p.reference ? ' (réf. ' + p.reference + ')' : '') + '.');
+      });
+      (admIv.anomalies || []).forEach(function(a){
+        lines.push('Anomalie relevée' + (a.equipment_label ? ' sur ' + a.equipment_label : '') + ' : ' + a.description + '.');
+      });
+      lines.push('Installation remise en fonctionnement.');
+      return lines.join(' ');
+    }
 
     function admIvFinalize(){
       var clientCanvas = admIvOverlayRef.querySelector('.adm-iv-sig-canvas[data-role="client"]');
@@ -15443,6 +15909,7 @@ if ('serviceWorker' in navigator){
         equipment_id: admIv.selectedEquipmentId || null,
         technician_name: techName,
         completion_status: admIv.completionStatus || null,
+        auto_summary: admIvBuildAutoSummary(),
         ended_at: new Date().toISOString(),
         report_status: 'FINALIZED',
         report_number: reportNumber,

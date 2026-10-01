@@ -41,6 +41,11 @@ const COMPLETION_STATUS_LABEL: Record<string, string> = {
   PIECE_A_COMMANDER: 'Pièce à commander',
   DEVIS_COMPLEMENTAIRE: 'Devis complémentaire nécessaire',
   NOUVELLE_INTERVENTION: 'Nouvelle intervention nécessaire',
+  MISE_EN_SECURITE: "Mise à l'arrêt / sécurité",
+};
+
+const ANOMALY_SEVERITY_LABEL: Record<string, string> = {
+  INFO: 'Information', WATCH: 'À surveiller', RECOMMENDED: 'Intervention recommandée', SAFETY: 'Sécurité',
 };
 
 // Valeur affichée pour un contrôle donné, selon son field_type — un contrôle
@@ -90,12 +95,13 @@ Deno.serve(async (req: Request) => {
     const { data: iv } = await supabase
       .from('interventions')
       .select(`
-        id, report_status, report_number, observations, recommendations, ended_at, completion_status,
+        id, report_status, report_number, observations, recommendations, ended_at, completion_status, auto_summary,
         client_signature_name, technician_signature_name,
         bookings(reference, date, start_time, customer_user_id, guest_name, guest_email,
           customer_addresses(address, postal_code, city), services(name)),
         intervention_items(name, status, observation, measured_value, visibility, sort_order, field_type, field_meta),
-        intervention_parts(designation, brand, reference, quantity)
+        intervention_parts(designation, brand, reference, quantity),
+        intervention_anomalies(equipment_label, description, severity)
       `)
       .eq('id', interventionId)
       .maybeSingle();
@@ -128,8 +134,17 @@ Deno.serve(async (req: Request) => {
     const address = booking?.customer_addresses
       ? [booking.customer_addresses.address, booking.customer_addresses.postal_code, booking.customer_addresses.city].filter(Boolean).join(', ')
       : '';
+    // Une fiche chaudière compte ~90 contrôles : n'afficher dans le compte
+    // rendu client QUE ceux réellement renseignés par le technicien (jamais
+    // un mur de "—" pour les contrôles non pertinents/non effectués) — même
+    // principe que l'auto_summary : rien d'inventé, rien de non coché.
     const items = ((iv.intervention_items as any[]) || [])
       .filter((it) => it.visibility === 'customer_visible')
+      .filter((it) => {
+        const ft = it.field_type || 'status';
+        if (ft === 'status') return it.status && it.status !== 'NOT_APPLICABLE' && it.status !== 'NOT_CHECKED';
+        return !!(it.measured_value && String(it.measured_value).trim());
+      })
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
     const itemsHtml = items.length
@@ -154,12 +169,26 @@ Deno.serve(async (req: Request) => {
       ? `<p><strong>Résultat :</strong> ${escapeHtml(COMPLETION_STATUS_LABEL[iv.completion_status])}</p>`
       : '';
 
+    const anomalies = (iv.intervention_anomalies as any[]) || [];
+    const anomaliesHtml = anomalies.length
+      ? `<p><strong>Anomalies relevées :</strong></p>
+         <ul style="margin:4px 0 12px;padding-left:18px;font-size:13px;">
+           ${anomalies.map((a) => `<li>${escapeHtml([a.equipment_label, a.description].filter(Boolean).join(' — '))} (${escapeHtml(ANOMALY_SEVERITY_LABEL[a.severity] || a.severity)})</li>`).join('')}
+         </ul>`
+      : '';
+
+    const summaryHtml = iv.auto_summary
+      ? `<p><strong>Résumé de l'intervention :</strong><br>${escapeHtml(iv.auto_summary)}</p>`
+      : '';
+
     const bodyHtml = `
       ${statusBadgeHtml('Compte rendu d\'intervention', 'confirmed')}
       <h2 style="color:#101B24;margin:0 0 14px;">Bonjour ${escapeHtml(contactName)},</h2>
       <p>Voici le compte rendu de votre intervention <strong>${escapeHtml(svcName)}</strong>${iv.report_number ? ` (réf. ${escapeHtml(iv.report_number)})` : ''}${address ? ` au ${escapeHtml(address)}` : ''}, réalisée le ${booking?.date ? escapeHtml(booking.date.split('-').reverse().join('/')) : ''}.</p>
+      ${summaryHtml}
       ${itemsHtml}
       ${partsHtml}
+      ${anomaliesHtml}
       ${completionHtml}
       ${iv.observations ? `<p><strong>Observations du technicien :</strong><br>${escapeHtml(iv.observations)}</p>` : ''}
       ${iv.recommendations ? `<p><strong>Recommandations :</strong><br>${escapeHtml(iv.recommendations)}</p>` : ''}
