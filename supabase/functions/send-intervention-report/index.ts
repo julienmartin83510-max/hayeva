@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
     const { data: iv } = await supabase
       .from('interventions')
       .select(`
-        id, report_status, report_number, observations, recommendations, ended_at, completion_status, auto_summary,
+        id, report_status, report_number, email_status, observations, recommendations, ended_at, completion_status, auto_summary,
         client_signature_name, technician_signature_name,
         bookings(reference, date, start_time, customer_user_id, guest_name, guest_email,
           customer_addresses(address, postal_code, city), services(name)),
@@ -109,6 +109,25 @@ Deno.serve(async (req: Request) => {
 
     if (!iv) return json({ error: 'not_found' }, 404);
     if (iv.report_status !== 'FINALIZED') return json({ error: 'not_finalized' }, 422);
+    // Idempotence : un double-clic sur "Terminer l'intervention", un retry
+    // réseau ou un second appel à admIvSendReportEmail ne doit JAMAIS
+    // renvoyer un second e-mail pour la même intervention. Un envoi déjà
+    // réussi ('SENT') est un succès silencieux ici, pas une erreur.
+    if (iv.email_status === 'SENT') return json({ ok: true, already_sent: true });
+
+    // Verrou atomique côté serveur (compare-and-swap sur la valeur lue
+    // ci-dessus) : si deux requêtes concurrentes (deux onglets, double-tap)
+    // arrivent avec le même état de départ, une seule gagne la course sur
+    // cette ligne — l'autre trouve 0 ligne affectée et s'arrête ici, sans
+    // jamais envoyer un second e-mail.
+    const { data: claimed } = await supabase
+      .from('interventions')
+      .update({ email_status: 'PENDING' })
+      .eq('id', interventionId)
+      .eq('email_status', iv.email_status)
+      .select('id')
+      .maybeSingle();
+    if (!claimed) return json({ ok: true, already_sent: true });
 
     const booking = iv.bookings as any;
     let contactEmail: string | null = booking?.guest_email || null;
