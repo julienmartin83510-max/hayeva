@@ -85,6 +85,11 @@
      tâche 14). Chargée globalement mais n'est utilisée que par l'admin. -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- Génération PDF réelle (exports Statistiques/Archives, section 1 du
+     cahier des charges HAYEVA du 03/10/2026) — remplace l'impression
+     navigateur, qui ne produit pas un vrai fichier PDF téléchargeable. -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script>
 (function(){
   // ---------- Configuration Supabase ----------
@@ -3505,6 +3510,10 @@ if ('serviceWorker' in navigator){
     border-bottom:1px solid var(--adm-line); cursor:pointer; font-family:"Poppins",sans-serif; font-size:0.85rem;
   }
   .admin-bk-search-result:hover{ background:var(--adm-sand); }
+  .admin-search-cat-badge{
+    display:inline-block; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+    background:var(--adm-ocean-soft); color:var(--adm-ocean); border-radius:999px; padding:2px 8px; margin-right:8px;
+  }
   .admin-bk-main-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
   .admin-bk-main-tab{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem; padding:10px 16px;
@@ -3537,6 +3546,23 @@ if ('serviceWorker' in navigator){
     letter-spacing:0.03em; color:var(--adm-ink-soft); margin:20px 0 10px; border-top:1px solid var(--adm-line); padding-top:16px;
   }
   .admin-client-fiche-equip{ padding:8px 0; border-bottom:1px dashed var(--adm-line); }
+  .admin-client-fiche-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 6px; border-bottom:1px solid var(--adm-line); padding-bottom:10px; }
+  .admin-client-fiche-tab{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; padding:10px 14px; min-height:40px;
+    border-radius:999px; border:1.5px solid var(--adm-line); background:#fff; color:var(--adm-ink); cursor:pointer;
+  }
+  .admin-client-fiche-tab.is-active{ background:var(--adm-ink); color:#fff; border-color:var(--adm-ink); }
+  .admin-client-fiche-panel{ padding-top:6px; }
+  .admin-equip-form{ display:flex; flex-direction:column; gap:12px; margin-top:12px; }
+  .admin-equip-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.85rem; font-weight:600; color:var(--adm-ink-soft); }
+  .admin-equip-form input, .admin-equip-form select, .admin-equip-form textarea{
+    padding:10px 12px; border-radius:8px; border:1.5px solid var(--adm-line); font-family:"Poppins",sans-serif; font-size:0.9rem; min-height:44px; box-sizing:border-box;
+  }
+  .admin-equip-form textarea{ min-height:70px; }
+  .admin-equip-msg{ color:var(--adm-red); font-size:0.85rem; }
+  @media (max-width:600px){
+    .admin-client-fiche-tab{ flex:1 1 44%; text-align:center; }
+  }
   .admin-cancel-reason-form{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
   .admin-cancel-reason-option{ display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; }
   .admin-cancel-reason-detail-wrap textarea{ width:100%; min-height:70px; box-sizing:border-box; }
@@ -6111,6 +6137,13 @@ if ('serviceWorker' in navigator){
     <div id="adminClientFicheBody"></div>
   </div>
 </div>
+<!-- Éditeur d'équipement (ajout/modification), voir admOpenEquipmentEditor(). -->
+<div class="admin-bk-modal-overlay" id="adminEquipEditorOverlay" hidden>
+  <div class="admin-bk-modal" role="dialog" aria-modal="true" aria-labelledby="adminEquipEditorBody">
+    <button type="button" class="admin-bk-modal-close admin-equip-editor-close" aria-label="Fermer">✕</button>
+    <div id="adminEquipEditorBody"></div>
+  </div>
+</div>
 <!-- Chronologie des changements de statut d'un rendez-vous (section 20),
      voir admOpenStatusHistoryModal(). -->
 <div class="admin-bk-modal-overlay" id="adminStatusHistoryOverlay" hidden>
@@ -8490,6 +8523,10 @@ if ('serviceWorker' in navigator){
                   <input type="search" id="adminAccountsSearch" class="admin-accounts-search" placeholder="Rechercher par nom, téléphone ou e-mail…" autocomplete="off">
                 </div>
                 <div id="adminAccountsList"></div>
+                <h3 class="adm-subhead" style="margin-top:28px;">Doublons clients (section 6)</h3>
+                <p class="adm-page-sub" style="margin-top:-8px;">Deux fiches client partageant le même e-mail ou téléphone — jamais fusionnées automatiquement sur le seul nom. Vérifiez l'aperçu avant de fusionner.</p>
+                <button type="button" class="admin-bk-action-btn" id="adminFindDuplicatesBtn">Rechercher les doublons</button>
+                <div id="adminDuplicatesList"></div>
               </section>
 
               <section class="adm-page" id="admPageQuotes" data-adm-page="quotes" hidden>
@@ -13691,7 +13728,7 @@ if ('serviceWorker' in navigator){
 
   function admContactFor(b, profileMap){
     if (b.guest_name){
-      return { name: b.guest_name, phone: b.guest_phone, email: b.guest_email, address: b.guest_address, userId: null };
+      return { name: b.guest_name, phone: b.guest_phone, email: b.guest_email, address: b.guest_address, userId: null, clientId: b.client_id || null };
     }
     if (b.customer_user_id && profileMap[b.customer_user_id]){
       var p = profileMap[b.customer_user_id];
@@ -13700,15 +13737,15 @@ if ('serviceWorker' in navigator){
         : '';
       return {
         name: ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || 'Client',
-        phone: p.phone, email: p.email, address: addr, userId: b.customer_user_id
+        phone: p.phone, email: p.email, address: addr, userId: b.customer_user_id, clientId: b.client_id || null
       };
     }
     if (b.professional_accounts){
       var pa = b.professional_accounts;
       var paddr = [pa.address_line1, pa.address_line2, pa.postal_code, pa.city].filter(Boolean).join(', ');
-      return { name: pa.legal_name, phone: pa.phone, email: '', address: paddr, userId: null };
+      return { name: pa.legal_name, phone: pa.phone, email: '', address: paddr, userId: null, clientId: b.client_id || null };
     }
-    return { name:'Client', phone:'', email:'', address:'', userId: null };
+    return { name:'Client', phone:'', email:'', address:'', userId: null, clientId: b.client_id || null };
   }
 
   function admFilterBookings(rows, mode){
@@ -14034,7 +14071,7 @@ if ('serviceWorker' in navigator){
         (b.notes ? '<span class="admin-bk-note">' + admEscape(b.notes) + '</span>' : '') +
         '<span class="ec-row-meta">' + admEmailStatusHtml(b, adminBookingsCache.emails) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
-        (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
+        (contact.clientId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.clientId) + '">Voir client</button>' : '') +
         (b.status === 'PENDING' ?
           '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">Accepter</button>' +
           '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">Refuser</button>' +
@@ -14185,7 +14222,7 @@ if ('serviceWorker' in navigator){
         (contact.address ? '<span class="ec-row-meta">' + admEscape(contact.address) + '</span>' : '') +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
-        (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
+        (contact.clientId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.clientId) + '">Voir client</button>' : '') +
         '<button type="button" class="admin-bk-action-btn admin-bk-view-detail-btn" data-booking-id="' + b.id + '">Voir le compte rendu</button>' +
         '<button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button>' +
         '</div></div>';
@@ -14245,7 +14282,7 @@ if ('serviceWorker' in navigator){
         reasonLine +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
-        (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
+        (contact.clientId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.clientId) + '">Voir client</button>' : '') +
         '<button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button>' +
         (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">Supprimer définitivement</button>' : '') +
         '</div></div>';
@@ -14509,32 +14546,47 @@ if ('serviceWorker' in navigator){
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
   }
+  // Génération PDF RÉELLE (jsPDF + jspdf-autotable, chargés en CDN plus
+  // haut dans le document) — un vrai fichier .pdf téléchargeable, jamais
+  // une impression navigateur présentée comme un export.
+  function admJsPdfDoc(title, periodLabel, rowCount){
+    if (!window.jspdf || !window.jspdf.jsPDF){
+      window.alert('Le générateur PDF n\'a pas pu se charger (connexion réseau ?). Réessayez.');
+      return null;
+    }
+    var doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt' });
+    doc.setFillColor(16, 27, 36);
+    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 56, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+    doc.text('HAYEVA — ' + title, 28, 34);
+    doc.setTextColor(16, 27, 36);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text('Période : ' + periodLabel + '   ·   ' + rowCount + ' ligne(s)   ·   généré le ' + admFmtDateTime(new Date().toISOString()), 28, 72);
+    return doc;
+  }
+  function admDownloadPdfDoc(doc, filename){
+    if (!doc) return;
+    doc.save(filename);
+  }
   function admOpenPrintableReport(title, periodLabel, data){
-    var win = window.open('', '_blank');
-    if (!win){ window.alert('Autorisez les fenêtres pop-up pour générer le PDF (impression du navigateur).'); return; }
-    var rowsHtml = data.rows.map(function(b){
+    var doc = admJsPdfDoc(title, periodLabel, data.rows.length);
+    if (!doc) return;
+    var body = data.rows.map(function(b){
       var contact = admContactFor(b, data.profiles);
       var motif = b.cancellation_type ? (CANCELLATION_REASON_LABELS[b.cancellation_reason_code] || '') + (b.cancellation_reason_detail ? ' — ' + b.cancellation_reason_detail : '') : '';
-      return '<tr><td>' + admEscape(b.reference) + '</td><td>' + admFmtDate(b.date) + '</td><td>' + admEscape(contact.name) + '</td>' +
-        '<td>' + admEscape(contact.phone || '') + '</td><td>' + admEscape((b.services && b.services.name) || '') + '</td>' +
-        '<td>' + admEscape(EXPORT_STATUS_LABELS[b.status] || b.status) + '</td><td>' + admEscape(motif) + '</td>' +
-        '<td>' + (b.total_cents != null ? admFmtEuros(b.total_cents) : '—') + '</td></tr>';
-    }).join('');
-    win.document.write(
-      '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>' + title + '</title><style>' +
-      'body{font-family:Poppins,Arial,sans-serif;color:#101B24;padding:32px;}' +
-      'h1{font-size:1.4rem;margin-bottom:2px;}p.sub{color:#5B6B78;margin-top:0;margin-bottom:24px;}' +
-      'table{width:100%;border-collapse:collapse;font-size:0.82rem;} th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;}' +
-      'th{background:#101B24;color:#fff;} tr:nth-child(even){background:#f7f7f7;}' +
-      '@media print{ body{padding:12px;} }' +
-      '</style></head><body>' +
-      '<h1>HAYEVA — ' + title + '</h1><p class="sub">Période : ' + periodLabel + ' · ' + data.rows.length + ' rendez-vous · généré le ' + admFmtDateTime(new Date().toISOString()) + '</p>' +
-      '<table><thead><tr><th>Réf.</th><th>Date</th><th>Client</th><th>Téléphone</th><th>Prestation</th><th>Statut</th><th>Motif</th><th>Montant</th></tr></thead><tbody>' +
-      rowsHtml + '</tbody></table>' +
-      '<script>window.onload = function(){ window.print(); };<' + '/script>' +
-      '</body></html>'
-    );
-    win.document.close();
+      return [b.reference, admFmtDate(b.date), contact.name, contact.phone || '', (b.services && b.services.name) || '',
+        EXPORT_STATUS_LABELS[b.status] || b.status, motif, b.total_cents != null ? admFmtEuros(b.total_cents) : '—'];
+    });
+    doc.autoTable({
+      startY: 88,
+      head: [['Réf.', 'Date', 'Client', 'Téléphone', 'Prestation', 'Statut', 'Motif', 'Montant']],
+      body: body,
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [16, 27, 36], textColor: 255 },
+      alternateRowStyles: { fillColor: [247, 247, 247] }
+    });
+    admDownloadPdfDoc(doc, 'hayeva-rendezvous_' + periodLabel.replace(/\s+/g, '-') + '.pdf');
   }
   var adminStatsExportCsvBtnEl = document.getElementById('adminStatsExportCsvBtn');
   if (adminStatsExportCsvBtnEl){
@@ -14627,26 +14679,38 @@ if ('serviceWorker' in navigator){
         });
       });
   }
+  // Barre de recherche persistante, sur TOUT l'historique (toutes
+  // années/mois confondus), via le RPC admin_search_archives — corrige la
+  // limitation signalée (recherche auparavant restreinte au seul mois
+  // ouvert). Affichée en permanence au-dessus de la navigation
+  // années/mois, quel que soit le niveau courant.
+  function admArchiveSearchBarHtml(){
+    return '<div class="admin-bk-search admin-archive-global-search">' +
+      '<input type="search" class="admin-bk-search-input" id="adminArchiveGlobalSearchInput" placeholder="Rechercher dans tout l\'historique — nom, téléphone, e-mail, adresse, référence…" autocomplete="off">' +
+      '<div id="adminArchiveGlobalSearchResults" class="admin-bk-search-results" hidden></div>' +
+      '</div>';
+  }
   function admRenderYearMonthArchives(containerId){
     var el = document.getElementById(containerId);
     if (!el) return;
+    var searchBar = admArchiveSearchBarHtml();
     if (adminArchiveYear == null){
-      el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+      el.innerHTML = searchBar + '<p class="ec-loading">Chargement…</p>';
       admLoadArchiveYears(function(years){
-        if (!years){ el.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les archives</strong></div>'; return; }
+        if (!years){ el.innerHTML = searchBar + '<div class="ec-empty"><strong>Impossible de charger les archives</strong></div>'; return; }
         var ys = Object.keys(years).map(Number).sort(function(a,b){ return b - a; });
-        if (!ys.length){ el.innerHTML = '<div class="ec-empty"><strong>Aucune archive</strong>Aucune intervention terminée pour le moment.</div>'; return; }
-        el.innerHTML = '<div class="admin-bk-archive-years">' + ys.map(function(y){
+        if (!ys.length){ el.innerHTML = searchBar + '<div class="ec-empty"><strong>Aucune archive</strong>Aucune intervention terminée pour le moment.</div>'; return; }
+        el.innerHTML = searchBar + '<div class="admin-bk-archive-years">' + ys.map(function(y){
           return '<button type="button" class="admin-bk-archive-year-btn" data-archive-year="' + y + '">' + y + ' <span class="admin-bk-archive-count">' + years[y] + '</span></button>';
         }).join('') + '</div>';
       });
       return;
     }
     if (adminArchiveMonth == null){
-      el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+      el.innerHTML = searchBar + '<p class="ec-loading">Chargement…</p>';
       admLoadArchiveMonths(adminArchiveYear, function(months){
-        if (!months){ el.innerHTML = '<div class="ec-empty"><strong>Impossible de charger ' + adminArchiveYear + '</strong></div>'; return; }
-        el.innerHTML = '<button type="button" class="admin-bk-archive-back-btn" data-archive-action="years">← Toutes les années</button>' +
+        if (!months){ el.innerHTML = searchBar + '<div class="ec-empty"><strong>Impossible de charger ' + adminArchiveYear + '</strong></div>'; return; }
+        el.innerHTML = searchBar + '<button type="button" class="admin-bk-archive-back-btn" data-archive-action="years">← Toutes les années</button>' +
           '<h3 class="admin-bk-archive-year-heading">' + adminArchiveYear + '</h3>' +
           '<div class="admin-bk-archive-months">' + months.map(function(count, i){
             return '<button type="button" class="admin-bk-archive-month-btn"' + (count === 0 ? ' disabled' : '') + ' data-archive-month="' + i + '">' +
@@ -14655,12 +14719,45 @@ if ('serviceWorker' in navigator){
       });
       return;
     }
-    el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    el.innerHTML = searchBar + '<p class="ec-loading">Chargement…</p>';
     admLoadArchiveMonthDetail(adminArchiveYear, adminArchiveMonth, function(rows){
       adminArchivesMonthDetailCache = rows;
       admRenderArchiveMonthDetail(containerId);
     });
   }
+  var admArchiveGlobalSearchDebounce = null;
+  var admArchiveGlobalSearchSeq = 0;
+  document.addEventListener('input', function(e){
+    if (e.target.id !== 'adminArchiveGlobalSearchInput') return;
+    var input = e.target;
+    var resultsEl = input.parentElement.querySelector('#adminArchiveGlobalSearchResults');
+    var q = input.value;
+    clearTimeout(admArchiveGlobalSearchDebounce);
+    if (!q.trim()){ resultsEl.hidden = true; resultsEl.innerHTML = ''; return; }
+    resultsEl.innerHTML = '<p class="admin-accounts-hint">Recherche…</p>'; resultsEl.hidden = false;
+    admArchiveGlobalSearchDebounce = setTimeout(function(){
+      var mySeq = ++admArchiveGlobalSearchSeq;
+      sb.client.rpc('admin_search_archives', { p_query: q, p_limit: 30, p_offset: 0 }).then(function(res){
+        if (mySeq !== admArchiveGlobalSearchSeq) return;
+        if (res.error){ resultsEl.innerHTML = '<p class="admin-accounts-hint">Recherche indisponible.</p>'; return; }
+        var rows = res.data || [];
+        if (!rows.length){ resultsEl.innerHTML = '<p class="admin-accounts-hint">Aucun résultat dans tout l\'historique.</p>'; return; }
+        resultsEl.innerHTML = rows.map(function(r){
+          return '<button type="button" class="admin-bk-search-result" data-booking-id="' + r.booking_id + '">' +
+            '<strong>' + admEscape(r.contact_name) + '</strong> · ' + admEscape(r.service_name || '') +
+            ' <span class="ec-row-meta">' + admFmtDateTime(r.ended_at) + (r.report_number ? ' · ' + admEscape(r.report_number) : '') + '</span>' +
+            '</button>';
+        }).join('');
+      });
+    }, 300);
+  });
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#adminArchiveGlobalSearchResults .admin-bk-search-result');
+    if (!btn) return;
+    var resultsEl = btn.closest('.admin-bk-search-results');
+    if (resultsEl) resultsEl.hidden = true;
+    admOpenBookingModal(btn.getAttribute('data-booking-id'));
+  });
   var adminArchiveClientFilter = '';
   function admRenderArchiveMonthDetail(containerId){
     var el = document.getElementById(containerId);
@@ -14799,30 +14896,23 @@ if ('serviceWorker' in navigator){
     admDownloadTextFile('hayeva-archives_' + periodLabel.replace(/\s+/g, '-') + '.csv', admArchiveExportCsv(rows), 'text/csv;charset=utf-8');
   }
   function admExportArchiveRowsPdf(rows, periodLabel){
-    var win = window.open('', '_blank');
-    if (!win){ window.alert('Autorisez les fenêtres pop-up pour générer le PDF (impression du navigateur).'); return; }
-    var rowsHtml = rows.map(function(iv){
+    var doc = admJsPdfDoc('Archives', periodLabel, rows.length);
+    if (!doc) return;
+    var body = rows.map(function(iv){
       var b = iv.bookings || {};
       var name = b.resolved_name || b.guest_name || 'Client';
-      return '<tr><td>' + admEscape(b.reference || '') + '</td><td>' + admFmtDateTime(iv.ended_at) + '</td><td>' + admEscape(name) + '</td>' +
-        '<td>' + admEscape((b.services && b.services.name) || '') + '</td><td>' + admEscape(iv.report_number || '') + '</td>' +
-        '<td>' + (iv.total_cents && iv.total_cents.total_cents != null ? admFmtEuros(iv.total_cents.total_cents) : '—') + '</td></tr>';
-    }).join('');
-    win.document.write(
-      '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Archives ' + periodLabel + '</title><style>' +
-      'body{font-family:Poppins,Arial,sans-serif;color:#101B24;padding:32px;}' +
-      'h1{font-size:1.4rem;margin-bottom:2px;}p.sub{color:#5B6B78;margin-top:0;margin-bottom:24px;}' +
-      'table{width:100%;border-collapse:collapse;font-size:0.82rem;} th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;}' +
-      'th{background:#101B24;color:#fff;} tr:nth-child(even){background:#f7f7f7;}' +
-      '@media print{ body{padding:12px;} }' +
-      '</style></head><body>' +
-      '<h1>HAYEVA — Archives</h1><p class="sub">' + admEscape(periodLabel) + ' · ' + rows.length + ' interventions terminées · généré le ' + admFmtDateTime(new Date().toISOString()) + '</p>' +
-      '<table><thead><tr><th>Réf.</th><th>Terminée le</th><th>Client</th><th>Prestation</th><th>Compte rendu</th><th>Montant</th></tr></thead><tbody>' +
-      rowsHtml + '</tbody></table>' +
-      '<script>window.onload = function(){ window.print(); };<' + '/script>' +
-      '</body></html>'
-    );
-    win.document.close();
+      return [b.reference || '', admFmtDateTime(iv.ended_at), name, (b.services && b.services.name) || '', iv.report_number || '',
+        iv.total_cents && iv.total_cents.total_cents != null ? admFmtEuros(iv.total_cents.total_cents) : '—'];
+    });
+    doc.autoTable({
+      startY: 88,
+      head: [['Réf.', 'Terminée le', 'Client', 'Prestation', 'Compte rendu', 'Montant']],
+      body: body,
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [16, 27, 36], textColor: 255 },
+      alternateRowStyles: { fillColor: [247, 247, 247] }
+    });
+    admDownloadPdfDoc(doc, 'hayeva-archives_' + periodLabel.replace(/\s+/g, '-') + '.pdf');
   }
 
   // ---------- Recherche globale (section 14) ----------
@@ -14834,12 +14924,21 @@ if ('serviceWorker' in navigator){
   // caractère tapé.
   var adminBkSearchDebounceTimer = null;
   var adminBkSearchRequestSeq = 0;
+  var GLOBAL_SEARCH_CATEGORY_LABELS = { client: 'Client', intervention: 'Intervention', equipment: 'Équipement', quote: 'Devis', invoice: 'Facture', contract: 'Contrat' };
   function admBkSearchRemote(query, cb){
     var mySeq = ++adminBkSearchRequestSeq;
-    sb.client.rpc('admin_search_bookings', { p_query: query, p_limit: 20 }).then(function(res){
-      if (mySeq !== adminBkSearchRequestSeq) return; // réponse obsolète (une frappe plus récente a déjà relancé une requête)
-      if (res.error){ cb(null, res.error); return; }
-      cb(res.data || [], null);
+    // Deux RPC en parallèle (section 5) : admin_search_bookings pour les
+    // rendez-vous/clients avec un historique de réservation, admin_global_
+    // search pour les catégories qu'un rendez-vous seul ne révèle pas
+    // (devis/factures/contrats/équipements, ou un client sans réservation
+    // à venir). Jamais limité aux éléments déjà chargés côté client.
+    Promise.all([
+      sb.client.rpc('admin_search_bookings', { p_query: query, p_limit: 20 }),
+      sb.client.rpc('admin_global_search', { p_query: query, p_limit_per_category: 6 })
+    ]).then(function(results){
+      if (mySeq !== adminBkSearchRequestSeq) return;
+      if (results[0].error){ cb(null, null, results[0].error); return; }
+      cb(results[0].data || [], results[1].error ? [] : (results[1].data || []), null);
     });
   }
   var adminBkSearchInputEl = document.getElementById('adminBkSearchInput');
@@ -14852,25 +14951,42 @@ if ('serviceWorker' in navigator){
       adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Recherche…</p>';
       adminBkSearchResultsEl.hidden = false;
       adminBkSearchDebounceTimer = setTimeout(function(){
-        admBkSearchRemote(q, function(results, err){
+        admBkSearchRemote(q, function(bookingResults, globalResults, err){
           if (err){
             console.error('admBkSearchRemote', err);
             adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Recherche indisponible. Réessayez.</p>';
             return;
           }
-          if (!results.length){
+          // Les clients déjà représentés par un résultat "rendez-vous" ne
+          // sont pas répétés comme résultat "Client" séparé (même
+          // personne, information redondante).
+          var seenClientIds = {};
+          bookingResults.forEach(function(r){ if (r.client_id) seenClientIds[r.client_id] = true; });
+          var globalFiltered = (globalResults || []).filter(function(r){
+            return !(r.category === 'client' && seenClientIds[r.item_id]);
+          });
+          if (!bookingResults.length && !globalFiltered.length){
             adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Aucun résultat.</p>';
             return;
           }
-          adminBkSearchResultsEl.innerHTML = results.map(function(r){
+          var html = bookingResults.map(function(r){
             var equip = [r.equipment_brand, r.equipment_model].filter(Boolean).join(' ');
-            return '<button type="button" class="admin-bk-search-result" data-client-id="' + admEscape(r.customer_user_id || '') + '" data-booking-id="' + r.booking_id + '">' +
-              '<strong>' + admEscape(r.contact_name) + '</strong>' +
+            return '<button type="button" class="admin-bk-search-result" data-category="booking" data-client-id="' + admEscape(r.client_id || '') + '" data-booking-id="' + r.booking_id + '">' +
+              '<span class="admin-search-cat-badge">RDV</span><strong>' + admEscape(r.contact_name) + '</strong>' +
               (r.contact_phone ? ' · ' + admEscape(r.contact_phone) : '') +
               (equip ? ' · ' + admEscape(equip) : '') +
               ' <span class="ec-row-meta">' + admFmtDate(r.date) + '</span>' +
               '</button>';
           }).join('');
+          html += globalFiltered.map(function(r){
+            return '<button type="button" class="admin-bk-search-result" data-category="' + r.category + '"' +
+              (r.category === 'client' ? ' data-client-id="' + admEscape(r.item_id) + '"' : '') + '>' +
+              '<span class="admin-search-cat-badge">' + (GLOBAL_SEARCH_CATEGORY_LABELS[r.category] || r.category) + '</span>' +
+              '<strong>' + admEscape(r.title) + '</strong>' + (r.subtitle ? ' · ' + admEscape(r.subtitle) : '') +
+              (r.item_date ? ' <span class="ec-row-meta">' + admFmtDate(r.item_date) + '</span>' : '') +
+              '</button>';
+          }).join('');
+          adminBkSearchResultsEl.innerHTML = html;
         });
       }, 300);
     });
@@ -14881,82 +14997,305 @@ if ('serviceWorker' in navigator){
       adminBkSearchResultsEl.hidden = true;
       adminBkSearchInputEl.value = '';
       if (clientId) admOpenClientFiche(clientId);
-      else admOpenBookingModal(btn.getAttribute('data-booking-id'));
+      else if (btn.getAttribute('data-booking-id')) admOpenBookingModal(btn.getAttribute('data-booking-id'));
+      // Devis/factures/contrats/équipements : pas encore de fiche dédiée
+      // ouvrable depuis ici — le résultat reste au moins trouvable (section
+      // 5), limite réelle documentée dans le rapport final.
     });
   }
 
-  // ---------- Fiche client centrale (section 15) ----------
-  // Une seule fenêtre : coordonnées, équipements, prochain rendez-vous et
-  // historique — reconstituée à partir des données déjà en mémoire
-  // (adminBookingsCache) + une requête dédiée customer_equipment/
-  // customer_profiles pour ce client précis (jamais tout le portefeuille
-  // client téléchargé pour en afficher un seul, section 24).
-  function admOpenClientFiche(userId){
+  // ---------- Dossier client 360° (sections 2-4 du cahier des charges
+  // HAYEVA du 03/10/2026) ----------
+  // UNE fiche par client (table clients, 0056_client_360.sql) — couvre
+  // aussi bien un compte enregistré qu'un client invité, qui n'avait
+  // jusqu'ici aucune fiche persistante ni équipement possible. Chargée une
+  // seule fois (pas de requête par onglet), les onglets ne font que
+  // basculer l'affichage d'un contenu déjà en mémoire.
+  var adminClientFicheCache = null;
+  var adminClientFicheTab = 'overview';
+  function admOpenClientFiche(clientId){
     var overlay = document.getElementById('adminClientFicheOverlay');
     var body = document.getElementById('adminClientFicheBody');
-    if (!overlay || !body || !userId) return;
+    if (!overlay || !body || !clientId) return;
+    adminClientFicheTab = 'overview';
     body.innerHTML = '<p class="ec-loading">Chargement…</p>';
     overlay.hidden = false;
     Promise.all([
-      sb.client.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', userId).maybeSingle(),
-      sb.client.from('profiles').select('email').eq('user_id', userId).maybeSingle(),
-      sb.client.from('customer_equipment').select('id,equipment_type,brand,model,specs,installed_at,last_service_at').eq('customer_user_id', userId),
-      // Requête directe par client (jamais via adminBookingsCache, plafonné)
-      // : un historique de plusieurs années pour CE client précis reste
-      // complet, quelle que soit son ancienneté — voir section 24/priorité
-      // absolue de la restructuration du 01/10/2026.
-      sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS).eq('customer_user_id', userId)
-        .order('date', { ascending:false }).order('start_time', { ascending:false }).limit(500)
+      sb.client.from('clients').select('*').eq('id', clientId).maybeSingle(),
+      sb.client.from('customer_equipment').select('*').eq('client_id', clientId).order('created_at', { ascending:false }),
+      sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS).eq('client_id', clientId)
+        .order('date', { ascending:false }).order('start_time', { ascending:false }).limit(500),
+      sb.client.from('service_contracts').select('id,contract_type,energy_type,status,start_date,end_date,annual_price_cents').eq('client_id', clientId),
+      sb.client.from('quotes').select('id,reference,title,status,total_cents,created_at').eq('client_id', clientId),
+      sb.client.from('invoices').select('id,reference,status,total_cents,created_at').eq('client_id', clientId)
     ]).then(function(results){
-      var cp = results[0].data, prof = results[1].data, equipRows = results[2].data || [];
-      var bookings = results[3].data || [];
-      var name = cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : 'Client';
-      var today = new Date(); today.setHours(0,0,0,0);
-      var nextBooking = bookings.filter(function(b){
-        return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() >= today.getTime();
-      }).sort(function(a, b){
-        var da = a.date + 'T' + (a.start_time || '00:00'); var db = b.date + 'T' + (b.start_time || '00:00');
-        return da < db ? -1 : 1;
-      })[0];
-      var history = bookings.filter(function(b){ return b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'NO_SHOW'; });
-
-      var html = '<h2 class="admin-client-fiche-name">' + admEscape(name).toUpperCase() + '</h2>' +
-        '<div class="admin-client-fiche-contact">' +
-          (cp && cp.phone ? '<span>' + admEscape(cp.phone) + '</span>' : '') +
-          (prof && prof.email ? '<span>' + admEscape(prof.email) + '</span>' : '') +
-        '</div>' +
-        '<div class="admin-client-fiche-actions">' +
-          (cp && cp.phone ? '<a class="admin-bk-action-btn" href="tel:' + admEscape(cp.phone) + '">Appeler</a>' : '') +
-          (prof && prof.email ? '<a class="admin-bk-action-btn" href="mailto:' + admEscape(prof.email) + '">E-mail</a>' : '') +
-        '</div>' +
-        '<h3 class="admin-client-fiche-section-title">Équipements</h3>' +
-        (equipRows.length ? equipRows.map(function(eq){
-          return '<div class="admin-client-fiche-equip">' + admEscape([eq.equipment_type, eq.brand, eq.model].filter(Boolean).join(' — ')) +
-            (eq.last_service_at ? '<span class="ec-row-meta">Dernier entretien : ' + admFmtDate(eq.last_service_at.slice(0,10)) + '</span>' : '') +
-            '</div>';
-        }).join('') : '<p class="admin-accounts-hint">Aucun équipement enregistré.</p>') +
-        '<h3 class="admin-client-fiche-section-title">Prochain rendez-vous</h3>' +
-        (nextBooking ? '<p>' + admFmtDate(nextBooking.date) + ' — ' + admFmtTime(nextBooking.start_time) + '</p>' : '<p class="admin-accounts-hint">Aucun rendez-vous à venir.</p>') +
-        '<h3 class="admin-client-fiche-section-title">Historique</h3>' +
-        (history.length ? '<div class="ec-list">' + history.map(function(b){
-          var svcName = (b.services && b.services.name) || 'Intervention';
-          return '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info admin-bk-archive-row">' +
-            '<span class="ec-row-title">' + admEscape(svcName) + '</span>' +
-            '<span class="ec-row-meta">' + admFmtDate(b.date) + ' — ' + (b.status === 'COMPLETED' ? 'Terminée' : b.status === 'NO_SHOW' ? 'Absence' : 'Annulée') + '</span>' +
-            '</div><div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button></div></div>';
-        }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun historique pour le moment.</p>');
-      body.innerHTML = html;
+      var client = results[0].data;
+      var equipRows = results[1].data || [];
+      var bookings = results[2].data || [];
+      var contracts = results[3].data || [];
+      var quotesRows = results[4].data || [];
+      var invoiceRows = results[5].data || [];
+      var bookingIds = bookings.map(function(b){ return b.id; });
+      var ivQuery = bookingIds.length
+        ? sb.client.from('interventions').select('id,booking_id,ended_at,report_number,report_status,completion_status,observations').in('booking_id', bookingIds)
+        : Promise.resolve({ data: [] });
+      ivQuery.then(function(ivRes){
+        adminClientFicheCache = {
+          client: client, equipment: equipRows, bookings: bookings,
+          interventions: Array.isArray(ivRes.data) ? ivRes.data : [], contracts: contracts, quotes: quotesRows, invoices: invoiceRows
+        };
+        admPaintClientFiche();
+      });
     }).catch(function(err){
       console.error('admOpenClientFiche', err);
       body.innerHTML = '<div class="ec-empty"><strong>Impossible de charger cette fiche</strong></div>';
     });
   }
+  var CLIENT_FICHE_TABS = [
+    ['overview', 'Vue d\'ensemble'], ['equipment', 'Équipements'], ['interventions', 'Interventions'],
+    ['documents', 'Documents'], ['contracts', 'Contrats'], ['history', 'Historique']
+  ];
+  function admEquipmentLabel(eq){
+    return [eq.equipment_type, eq.brand, eq.model, eq.power_capacity].filter(Boolean).join(' ');
+  }
+  function admPaintClientFiche(){
+    var body = document.getElementById('adminClientFicheBody');
+    if (!body || !adminClientFicheCache) return;
+    var d = adminClientFicheCache;
+    var client = d.client || {};
+    var name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Client';
+    var today = new Date(); today.setHours(0,0,0,0);
+    var nextBooking = d.bookings.filter(function(b){
+      return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() >= today.getTime();
+    }).sort(function(a, b){
+      var da = a.date + 'T' + (a.start_time || '00:00'); var db = b.date + 'T' + (b.start_time || '00:00');
+      return da < db ? -1 : 1;
+    })[0];
+    var lastCompleted = d.bookings.filter(function(b){ return b.status === 'COMPLETED'; })
+      .sort(function(a,b){ return a.date < b.date ? 1 : -1; })[0];
+    var ivByBooking = {};
+    d.interventions.forEach(function(iv){ ivByBooking[iv.booking_id] = iv; });
+
+    var tabsHtml = '<div class="admin-client-fiche-tabs">' + CLIENT_FICHE_TABS.map(function(t){
+      return '<button type="button" class="admin-client-fiche-tab' + (adminClientFicheTab === t[0] ? ' is-active' : '') + '" data-client-tab="' + t[0] + '">' + t[1] + '</button>';
+    }).join('') + '</div>';
+
+    var head = '<h2 class="admin-client-fiche-name">' + admEscape(name).toUpperCase() +
+      ' <span class="adm-badge adm-badge-' + (client.client_type === 'professionnel' ? 'confirmed' : 'pending') + '">' + (client.client_type === 'professionnel' ? 'Professionnel' : 'Particulier') + '</span></h2>' +
+      '<div class="admin-client-fiche-contact">' +
+        (client.phone ? '<span>' + admEscape(client.phone) + '</span>' : '') +
+        (client.email ? '<span>' + admEscape(client.email) + '</span>' : '') +
+        (client.address ? '<span>' + admEscape(client.address) + '</span>' : '') +
+        '<span class="ec-row-meta">Client depuis ' + admFmtDate((client.created_at || '').slice(0,10)) + '</span>' +
+      '</div>' +
+      '<div class="admin-client-fiche-actions">' +
+        (client.phone ? '<a class="admin-bk-action-btn" href="tel:' + admEscape(client.phone) + '">Appeler</a>' : '') +
+        (client.email ? '<a class="admin-bk-action-btn" href="mailto:' + admEscape(client.email) + '">E-mail</a>' : '') +
+      '</div>' + tabsHtml;
+
+    var panel = '';
+    if (adminClientFicheTab === 'overview'){
+      panel =
+        '<h3 class="admin-client-fiche-section-title">Prochain rendez-vous</h3>' +
+        (nextBooking ? '<p>' + admFmtDate(nextBooking.date) + ' — ' + admFmtTime(nextBooking.start_time) + ' (' + admEscape((nextBooking.services && nextBooking.services.name) || '') + ')</p>' : '<p class="admin-accounts-hint">Aucun rendez-vous à venir.</p>') +
+        '<h3 class="admin-client-fiche-section-title">Dernière intervention</h3>' +
+        (lastCompleted ? '<p>' + admFmtDate(lastCompleted.date) + ' — ' + admEscape((lastCompleted.services && lastCompleted.services.name) || '') +
+          (ivByBooking[lastCompleted.id] && ivByBooking[lastCompleted.id].observations ? '<br><span class="ec-row-meta">' + admEscape(ivByBooking[lastCompleted.id].observations) + '</span>' : '') + '</p>'
+          : '<p class="admin-accounts-hint">Aucune intervention terminée pour le moment.</p>') +
+        '<h3 class="admin-client-fiche-section-title">Équipements connus (' + d.equipment.length + ')</h3>' +
+        (d.equipment.length ? d.equipment.map(function(eq){ return '<div class="admin-client-fiche-equip">' + admEscape(admEquipmentLabel(eq)) + '</div>'; }).join('') : '<p class="admin-accounts-hint">Aucun équipement enregistré.</p>') +
+        (client.notes ? '<h3 class="admin-client-fiche-section-title">Notes internes</h3><p>' + admEscape(client.notes) + '</p>' : '');
+    } else if (adminClientFicheTab === 'equipment'){
+      panel = '<button type="button" class="admin-bk-action-btn" id="adminClientAddEquipBtn">+ Ajouter un équipement</button>' +
+        (d.equipment.length ? '<div class="ec-list">' + d.equipment.map(function(eq){
+          return '<div class="ec-row"><div class="ec-row-info">' +
+            '<span class="ec-row-title">' + admEscape(admEquipmentLabel(eq)) + '</span>' +
+            (eq.serial_number ? '<span class="ec-row-meta">N° série : ' + admEscape(eq.serial_number) + '</span>' : '') +
+            (eq.reference ? '<span class="ec-row-meta">Réf. ' + admEscape(eq.reference) + '</span>' : '') +
+            (eq.location ? '<span class="ec-row-meta">' + admEscape(eq.location) + '</span>' : '') +
+            (eq.installed_at ? '<span class="ec-row-meta">Installé le ' + admFmtDate(eq.installed_at) + '</span>' : (eq.approx_year ? '<span class="ec-row-meta">Année approx. ' + eq.approx_year + '</span>' : '')) +
+            (eq.notes ? '<span class="ec-row-meta">' + admEscape(eq.notes) + '</span>' : '') +
+            '</div><div class="admin-bk-row-actions">' +
+            '<button type="button" class="admin-bk-action-btn admin-client-edit-equip-btn" data-equip-id="' + eq.id + '">Modifier</button>' +
+            '</div></div>';
+        }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun équipement enregistré.</p>');
+    } else if (adminClientFicheTab === 'interventions'){
+      var ivRows = d.bookings.filter(function(b){ return ivByBooking[b.id]; });
+      panel = ivRows.length ? '<div class="ec-list">' + ivRows.map(function(b){
+        var iv = ivByBooking[b.id];
+        var equip = b.customer_equipment ? admEscape([b.customer_equipment.brand, b.customer_equipment.model].filter(Boolean).join(' ')) : '';
+        return '<div class="ec-row admin-bk-archive-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+          '<span class="ec-row-title">' + admEscape((b.services && b.services.name) || 'Intervention') + (equip ? ' — ' + equip : '') + '</span>' +
+          '<span class="ec-row-meta">' + admFmtDateTime(iv.ended_at) + (iv.report_number ? ' · ' + admEscape(iv.report_number) : '') + '</span>' +
+          '</div></div>';
+      }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucune intervention terminée pour le moment.</p>';
+    } else if (adminClientFicheTab === 'documents'){
+      panel = '<h3 class="admin-client-fiche-section-title">Devis</h3>' +
+        (d.quotes.length ? '<div class="ec-list">' + d.quotes.map(function(q){
+          return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">' + admEscape(q.title || q.reference) + '</span>' +
+            '<span class="ec-row-meta">' + admFmtDate((q.created_at||'').slice(0,10)) + ' · ' + admEscape(q.status) + (q.total_cents != null ? ' · ' + admFmtEuros(q.total_cents) : '') + '</span></div></div>';
+        }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun devis.</p>') +
+        '<h3 class="admin-client-fiche-section-title">Factures</h3>' +
+        (d.invoices.length ? '<div class="ec-list">' + d.invoices.map(function(i){
+          return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">Facture ' + admEscape(i.reference) + '</span>' +
+            '<span class="ec-row-meta">' + admFmtDate((i.created_at||'').slice(0,10)) + ' · ' + admEscape(i.status) + (i.total_cents != null ? ' · ' + admFmtEuros(i.total_cents) : '') + '</span></div></div>';
+        }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucune facture.</p>');
+    } else if (adminClientFicheTab === 'contracts'){
+      panel = d.contracts.length ? '<div class="ec-list">' + d.contracts.map(function(c){
+        return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">Contrat ' + admEscape(c.contract_type) + ' (' + admEscape(c.energy_type || '') + ')</span>' +
+          '<span class="ec-row-meta">' + admEscape(c.status) + (c.start_date ? ' · depuis ' + admFmtDate(c.start_date) : '') + (c.end_date ? ' · jusqu\'au ' + admFmtDate(c.end_date) : '') + '</span></div></div>';
+      }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun contrat.</p>';
+    } else if (adminClientFicheTab === 'history'){
+      var history = d.bookings.filter(function(b){ return b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'NO_SHOW'; });
+      panel = history.length ? '<div class="ec-list">' + history.map(function(b){
+        var svcName = (b.services && b.services.name) || 'Intervention';
+        return '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info admin-bk-archive-row">' +
+          '<span class="ec-row-title">' + admEscape(svcName) + '</span>' +
+          '<span class="ec-row-meta">' + admFmtDate(b.date) + ' — ' + (b.status === 'COMPLETED' ? 'Terminée' : b.status === 'NO_SHOW' ? 'Absence' : 'Annulée') + '</span>' +
+          '</div><div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button></div></div>';
+      }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun historique pour le moment.</p>';
+    }
+
+    body.innerHTML = head + '<div class="admin-client-fiche-panel">' + panel + '</div>';
+  }
   var adminClientFicheOverlayEl = document.getElementById('adminClientFicheOverlay');
   if (adminClientFicheOverlayEl){
     adminClientFicheOverlayEl.addEventListener('click', function(e){
       if (e.target.closest('.admin-client-fiche-close') || e.target === adminClientFicheOverlayEl) adminClientFicheOverlayEl.hidden = true;
+      var tabBtn = e.target.closest('.admin-client-fiche-tab');
+      if (tabBtn){ adminClientFicheTab = tabBtn.getAttribute('data-client-tab'); admPaintClientFiche(); return; }
+      if (e.target.closest('#adminClientAddEquipBtn')){ admOpenEquipmentEditor(null); return; }
+      var editEquipBtn = e.target.closest('.admin-client-edit-equip-btn');
+      if (editEquipBtn){ admOpenEquipmentEditor(editEquipBtn.getAttribute('data-equip-id')); return; }
       var row = e.target.closest('.admin-bk-archive-row');
       if (row && row.getAttribute('data-booking-id')){ adminClientFicheOverlayEl.hidden = true; admOpenBookingModal(row.getAttribute('data-booking-id')); }
+    });
+  }
+
+  // ---------- Éditeur d'équipement (section 3) ----------
+  // Aucun champ obligatoire hormis la catégorie — un technicien pressé doit
+  // pouvoir enregistrer "Climatisation Mitsubishi" sans renseigner le
+  // numéro de série tout de suite, et compléter plus tard.
+  var EQUIPMENT_CATEGORIES = ['Climatisation', 'Chaudière gaz', 'Chaudière fioul', 'Chauffage', 'Chauffe-eau', 'Plomberie', 'Sanitaire', 'Autre'];
+  function admOpenEquipmentEditor(equipId){
+    var overlay = document.getElementById('adminEquipEditorOverlay');
+    var body = document.getElementById('adminEquipEditorBody');
+    if (!overlay || !body) return;
+    var eq = equipId ? (adminClientFicheCache.equipment || []).filter(function(e){ return e.id === equipId; })[0] : null;
+    var v = function(f){ return eq && eq[f] != null ? admEscape(eq[f]) : ''; };
+    body.innerHTML = '<h2>' + (eq ? 'Modifier l\'équipement' : 'Nouvel équipement') + '</h2>' +
+      '<form id="adminEquipForm" class="admin-equip-form">' +
+        '<label>Catégorie<select name="equipment_type">' + EQUIPMENT_CATEGORIES.map(function(c){ return '<option' + (eq && eq.equipment_type === c ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></label>' +
+        '<label>Marque<input name="brand" value="' + v('brand') + '"></label>' +
+        '<label>Modèle<input name="model" value="' + v('model') + '"></label>' +
+        '<label>Référence<input name="reference" value="' + v('reference') + '"></label>' +
+        '<label>N° de série<input name="serial_number" value="' + v('serial_number') + '"></label>' +
+        '<label>Puissance / capacité<input name="power_capacity" placeholder="ex. 2,5 kW ou 200 L" value="' + v('power_capacity') + '"></label>' +
+        '<label>Année approximative<input name="approx_year" type="number" min="1950" max="2100" value="' + v('approx_year') + '"></label>' +
+        '<label>Date d\'installation<input name="installed_at" type="date" value="' + v('installed_at') + '"></label>' +
+        '<label>Emplacement<input name="location" placeholder="ex. Garage, combles…" value="' + v('location') + '"></label>' +
+        '<label>Observations<textarea name="notes">' + v('notes') + '</textarea></label>' +
+        '<div class="admin-bk-propose-form-row">' +
+          '<button type="submit" class="admin-bk-action-btn">Enregistrer</button>' +
+          '<button type="button" class="admin-equip-cancel-btn">Annuler</button>' +
+        '</div>' +
+        '<p class="admin-equip-msg" hidden></p>' +
+      '</form>';
+    overlay.hidden = false;
+    var form = document.getElementById('adminEquipForm');
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var fd = new FormData(form);
+      var payload = {
+        equipment_type: fd.get('equipment_type'), brand: fd.get('brand') || null, model: fd.get('model') || null,
+        reference: fd.get('reference') || null, serial_number: fd.get('serial_number') || null,
+        power_capacity: fd.get('power_capacity') || null, approx_year: fd.get('approx_year') ? Number(fd.get('approx_year')) : null,
+        installed_at: fd.get('installed_at') || null, location: fd.get('location') || null, notes: fd.get('notes') || null,
+        client_id: adminClientFicheCache.client.id
+      };
+      var msgEl = form.querySelector('.admin-equip-msg');
+      var submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      var req = equipId
+        ? sb.client.from('customer_equipment').update(payload).eq('id', equipId).select().maybeSingle()
+        : sb.client.from('customer_equipment').insert(payload).select().maybeSingle();
+      req.then(function(res){
+        submitBtn.disabled = false;
+        if (res.error){ msgEl.hidden = false; msgEl.textContent = 'Impossible d\'enregistrer : ' + res.error.message; return; }
+        if (equipId){
+          var idx = adminClientFicheCache.equipment.findIndex(function(e){ return e.id === equipId; });
+          if (idx !== -1) adminClientFicheCache.equipment[idx] = res.data;
+        } else {
+          adminClientFicheCache.equipment.unshift(res.data);
+        }
+        overlay.hidden = true;
+        adminClientFicheTab = 'equipment';
+        admPaintClientFiche();
+      });
+    });
+    var cancelBtn = body.querySelector('.admin-equip-cancel-btn');
+    if (cancelBtn) cancelBtn.addEventListener('click', function(){ overlay.hidden = true; });
+  }
+  var adminEquipEditorOverlayEl = document.getElementById('adminEquipEditorOverlay');
+  if (adminEquipEditorOverlayEl){
+    adminEquipEditorOverlayEl.addEventListener('click', function(e){
+      if (e.target.closest('.admin-equip-editor-close') || e.target === adminEquipEditorOverlayEl) adminEquipEditorOverlayEl.hidden = true;
+    });
+  }
+
+  // ---------- Doublons clients (section 6) ----------
+  // admin_find_duplicate_clients ne regroupe JAMAIS sur le seul nom —
+  // uniquement e-mail ou téléphone identiques, un signal fiable. La
+  // fusion elle-même (admin_merge_clients) n'est déclenchée qu'après un
+  // aperçu explicite et une confirmation, jamais automatiquement.
+  var adminDuplicatesCache = [];
+  function admLoadDuplicateClients(){
+    var listEl = document.getElementById('adminDuplicatesList');
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="ec-loading">Recherche…</p>';
+    sb.client.rpc('admin_find_duplicate_clients').then(function(res){
+      if (res.error){ listEl.innerHTML = '<div class="ec-empty"><strong>Recherche indisponible</strong></div>'; return; }
+      var groups = res.data || [];
+      if (!groups.length){ listEl.innerHTML = '<p class="admin-accounts-hint">Aucun doublon détecté.</p>'; return; }
+      var ids = [];
+      groups.forEach(function(g){ ids = ids.concat(g.client_ids); });
+      sb.client.from('clients').select('id,first_name,last_name,email,phone,created_at').in('id', ids).then(function(cres){
+        var map = {};
+        (cres.data || []).forEach(function(c){ map[c.id] = c; });
+        adminDuplicatesCache = groups.map(function(g){ return { shared: g.shared_value, clients: g.client_ids.map(function(id){ return map[id]; }).filter(Boolean) }; });
+        listEl.innerHTML = adminDuplicatesCache.map(function(g, gi){
+          return '<div class="ec-row"><div class="ec-row-info">' +
+            '<span class="ec-row-title">Partagent : ' + admEscape(g.shared) + '</span>' +
+            g.clients.map(function(c){
+              return '<label class="admin-cancel-reason-option"><input type="radio" name="dup-keep-' + gi + '" value="' + c.id + '"' + (c === g.clients[0] ? ' checked' : '') + '> Garder ' +
+                admEscape([c.first_name, c.last_name].filter(Boolean).join(' ') || 'Client') + ' (' + admEscape(c.email || c.phone || '') + ', depuis ' + admFmtDate((c.created_at||'').slice(0,10)) + ')</label>';
+            }).join('') +
+            '</div><div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn admin-merge-dup-btn" data-group-index="' + gi + '">Fusionner</button></div></div>';
+        }).join('');
+      });
+    });
+  }
+  var adminFindDuplicatesBtnEl = document.getElementById('adminFindDuplicatesBtn');
+  if (adminFindDuplicatesBtnEl) adminFindDuplicatesBtnEl.addEventListener('click', admLoadDuplicateClients);
+  var adminDuplicatesListEl = document.getElementById('adminDuplicatesList');
+  if (adminDuplicatesListEl){
+    adminDuplicatesListEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.admin-merge-dup-btn');
+      if (!btn) return;
+      var gi = Number(btn.getAttribute('data-group-index'));
+      var group = adminDuplicatesCache[gi];
+      var checked = adminDuplicatesListEl.querySelector('input[name="dup-keep-' + gi + '"]:checked');
+      if (!group || !checked) return;
+      var keepId = checked.value;
+      var others = group.clients.filter(function(c){ return c.id !== keepId; });
+      if (!window.confirm('Fusionner ' + others.length + ' fiche(s) dans celle sélectionnée ? Tous leurs rendez-vous, équipements, devis, factures et contrats seront rattachés au client conservé. Action réversible uniquement par un admin via la base.')) return;
+      btn.disabled = true;
+      Promise.all(others.map(function(c){ return sb.client.rpc('admin_merge_clients', { p_keep_id: keepId, p_merge_id: c.id }); }))
+        .then(function(results){
+          var err = results.filter(function(r){ return r.error; })[0];
+          if (err){ window.alert('Échec de la fusion : ' + err.error.message); btn.disabled = false; return; }
+          admLoadDuplicateClients();
+        });
     });
   }
   // Bouton "Voir client" : délégué au document car il apparaît dans
@@ -15081,7 +15420,7 @@ if ('serviceWorker' in navigator){
     });
   }
 
-  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, equipment_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, cancelled_by, cancelled_at, cancellation_type, cancellation_reason_code, cancellation_reason_detail, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city), customer_equipment(brand,model,equipment_type)';
+  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, equipment_id, client_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, cancelled_by, cancelled_at, cancellation_type, cancellation_reason_code, cancellation_reason_detail, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city), customer_equipment(brand,model,equipment_type)';
 
   var CANCELLATION_REASON_LABELS = {
     creneau_indisponible: 'Créneau indisponible',
