@@ -6846,6 +6846,36 @@ if ('serviceWorker' in navigator){
           <h3>Chauffage — gaz ou fioul</h3>
 
           <h4 class="fuel-heading">Entretien chaudière</h4>
+          <p class="pack-tagline" style="margin-bottom:14px;">Deux façons de faire entretenir votre chaudière : une visite ponctuelle, ou un contrat annuel pour ne plus y penser.</p>
+          <div class="pack-grid" id="contractComparisonCards" style="margin-bottom:28px;">
+            <div class="pack-card">
+              <h4>Entretien ponctuel</h4>
+              <p class="pack-tagline">Une visite, sans engagement.</p>
+              <ul class="pack-features">
+                <li>1 entretien complet selon combustible</li>
+                <li>Attestation d'entretien</li>
+                <li>Déplacement offert dans la zone de 25 km</li>
+              </ul>
+              <p class="pack-price" id="ccPonctuelPrice">— €<small>TTC</small></p>
+              <button type="button" class="pack-cta-service" data-contract-scroll="ponctuel">Voir les packs ponctuels</button>
+            </div>
+            <div class="pack-card pack-featured">
+              <span class="pack-badge">Votre chaudière suivie toute l'année</span>
+              <h4>Contrat Sérénité HAYEVA</h4>
+              <p class="pack-tagline">Votre chaudière suivie toute l'année.</p>
+              <ul class="pack-features">
+                <li>1 entretien annuel inclus</li>
+                <li>Fiche technique + contrôles réglementaires + attestation</li>
+                <li>Historique équipement &amp; rappel automatique</li>
+                <li>Priorité dépannage</li>
+                <li>✓ Déplacement offert dans la zone de 25 km (y compris en dépannage)</li>
+                <li class="pack-feature-highlight">Hors contrat : pièces, main-d'œuvre de réparation, ramonage, désembouage non inclus</li>
+              </ul>
+              <p class="pack-price" id="ccSerenitePrice">— €<small>TTC</small> / an</p>
+              <button type="button" class="pack-cta-service" id="ccSouscrireBtn">Souscrire au Contrat Sérénité</button>
+            </div>
+          </div>
+
           <div class="fuel-toggle" id="fuelToggle" role="group" aria-label="Type de chaudière">
             <button type="button" class="fuel-toggle-btn is-active" data-fuel="gaz">Chaudière Gaz</button>
             <button type="button" class="fuel-toggle-btn" data-fuel="fioul">Chaudière Fioul</button>
@@ -7158,6 +7188,42 @@ if ('serviceWorker' in navigator){
           void incoming.offsetWidth;
           incoming.classList.remove('is-fading');
         }, 260);
+      });
+    }catch(e){}
+
+    // Cartes de comparaison "Entretien ponctuel / Contrat Sérénité" —
+    // tarifs lus en direct depuis contract_products (jamais codés en dur,
+    // administrables depuis l'admin, voir 0052_chaudiere_contracts.sql).
+    try{
+      var ccPrices = null;
+      function ccCurrentFuel(){
+        var active = document.querySelector('#fuelToggle .fuel-toggle-btn.is-active');
+        return (active && active.getAttribute('data-fuel')) || 'gaz';
+      }
+      function ccRenderPrices(){
+        if (!ccPrices) return;
+        var fuel = ccCurrentFuel();
+        var ponctuel = ccPrices.filter(function(p){ return p.contract_type === 'ponctuel' && p.energy_type === fuel; })[0];
+        var serenite = ccPrices.filter(function(p){ return p.contract_type === 'serenite' && p.energy_type === fuel; })[0];
+        var elP = document.getElementById('ccPonctuelPrice'), elS = document.getElementById('ccSerenitePrice');
+        if (elP && ponctuel) elP.innerHTML = (ponctuel.price_cents / 100).toLocaleString('fr-FR', {minimumFractionDigits:0}) + ' €<small>TTC</small>';
+        if (elS && serenite) elS.innerHTML = (serenite.price_cents / 100).toLocaleString('fr-FR', {minimumFractionDigits:0}) + ' €<small>TTC</small> / an';
+      }
+      if (window.sudSupabase && window.sudSupabase.client){
+        window.sudSupabase.client.from('contract_products').select('*').then(function(res){
+          if (!res.error) { ccPrices = res.data || []; ccRenderPrices(); }
+        });
+      }
+      var fuelToggleEl = document.getElementById('fuelToggle');
+      if (fuelToggleEl) fuelToggleEl.addEventListener('click', function(){ setTimeout(ccRenderPrices, 0); });
+      var scrollBtn = document.querySelector('[data-contract-scroll="ponctuel"]');
+      if (scrollBtn) scrollBtn.addEventListener('click', function(){
+        var target = document.getElementById('fuelToggle');
+        if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+      var souscrireBtn = document.getElementById('ccSouscrireBtn');
+      if (souscrireBtn) souscrireBtn.addEventListener('click', function(){
+        if (window.ecOpenContractSubscription) window.ecOpenContractSubscription(ccCurrentFuel());
       });
     }catch(e){}
   </script>
@@ -8125,6 +8191,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="launch-campaign" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Jeu de lancement</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="contracts" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Contrats chaudière</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="stats" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Statistiques</span>
                 </button>
@@ -8320,6 +8389,51 @@ if ('serviceWorker' in navigator){
                 <h3 class="adm-subhead" style="margin-top:32px;">Préparer le tirage</h3>
                 <p class="adm-page-sub" style="margin-top:-8px;">Le tirage réel (31 janvier 2027) ne peut être lancé qu'explicitement depuis cette page, et reste bloqué automatiquement avant cette date même en cas de clic accidentel.</p>
                 <div id="lcDrawReadiness"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <!-- ============================================================
+                   CONTRATS CHAUDIÈRE — HAYEVA Sérénité (gaz/fioul). Tarifs
+                   administrables (contract_products, 0052), tableau de bord,
+                   filtres, recherche, liste des contrats. Aucun paiement en
+                   ligne réel : un contrat "pending" est activé par un admin
+                   une fois le règlement reçu hors ligne, comme le reste du
+                   site (voir 0052_chaudiere_contracts.sql).
+                   ============================================================ -->
+              <section class="adm-page" id="admPageContracts" data-adm-page="contracts" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">Contrats chaudière — HAYEVA Sérénité</h2>
+                  <p class="adm-page-sub">Entretien ponctuel ET contrat annuel coexistent — le contrat est une offre en plus, jamais un remplacement.</p>
+                </div>
+
+                <h3 class="adm-subhead">Tarifs (administrables — jamais codés en dur)</h3>
+                <div id="admContractPricesList"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead" style="margin-top:24px;">Rappels d'entretien (délais configurables)</h3>
+                <div id="admReminderConfigForm"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead" style="margin-top:24px;">Tableau de bord</h3>
+                <div class="adm-stats-grid" id="admContractsDashboard"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead" style="margin-top:24px;">Contrats</h3>
+                <div class="adm-quicklinks" style="flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                  <input type="search" id="admContractSearchInput" class="bk-search" placeholder="Client, téléphone, e-mail, adresse, marque, modèle, n° série…" style="flex:1 1 240px;">
+                  <select id="admContractFilterEnergy">
+                    <option value="">Gaz + Fioul</option>
+                    <option value="gaz">Gaz</option>
+                    <option value="fioul">Fioul</option>
+                  </select>
+                  <select id="admContractFilterStatus">
+                    <option value="">Tous statuts</option>
+                    <option value="pending">En attente</option>
+                    <option value="active">Actif</option>
+                    <option value="payment_failed">Paiement en échec</option>
+                    <option value="expiring">À renouveler</option>
+                    <option value="cancelled">Résilié</option>
+                    <option value="expired">Expiré</option>
+                  </select>
+                </div>
+                <div id="admContractsList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageStats" data-adm-page="stats" hidden>
@@ -8716,6 +8830,7 @@ if ('serviceWorker' in navigator){
                 </button>
               </div>
               <div class="hv-more-list">
+                <button type="button" class="hv-more-item" data-hv-nav="contracts">Contrats chaudière</button>
                 <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
                 <button type="button" class="hv-more-item" data-hv-nav="launch-campaign">Jeu de lancement</button>
@@ -8884,6 +8999,7 @@ if ('serviceWorker' in navigator){
             <button type="button" class="ec-tab" data-ec-tab="appointments">Mes rendez-vous</button>
             <button type="button" class="ec-tab" data-ec-tab="interventions">Mes interventions</button>
             <button type="button" class="ec-tab" data-ec-tab="equipment">Mes équipements</button>
+            <button type="button" class="ec-tab" data-ec-tab="contracts">Mes contrats</button>
             <button type="button" class="ec-tab" data-ec-tab="quotes">Mes devis</button>
             <button type="button" class="ec-tab" data-ec-tab="invoices">Mes factures</button>
             <button type="button" class="ec-tab" data-ec-tab="documents">Mes documents</button>
@@ -8897,6 +9013,7 @@ if ('serviceWorker' in navigator){
             <section class="ec-panel" id="ecPanelAppointments" data-ec-panel="appointments" hidden></section>
             <section class="ec-panel" id="ecPanelInterventions" data-ec-panel="interventions" hidden></section>
             <section class="ec-panel" id="ecPanelEquipment" data-ec-panel="equipment" hidden></section>
+            <section class="ec-panel" id="ecPanelContracts" data-ec-panel="contracts" hidden></section>
             <section class="ec-panel" id="ecPanelQuotes" data-ec-panel="quotes" hidden></section>
             <section class="ec-panel" id="ecPanelInvoices" data-ec-panel="invoices" hidden></section>
             <section class="ec-panel" id="ecPanelDocuments" data-ec-panel="documents" hidden></section>
@@ -13810,6 +13927,212 @@ if ('serviceWorker' in navigator){
   }
 
   var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)';
+  // ============================================================
+  // CONTRATS CHAUDIÈRE — HAYEVA Sérénité (gaz/fioul), voir
+  // 0052_chaudiere_contracts.sql. Tarifs administrables (contract_products),
+  // tableau de bord, filtres/recherche, actions (activer/résilier).
+  // Aucun paiement en ligne réel sur ce site (voir CGV) : un contrat
+  // 'pending' est activé manuellement par un admin une fois le règlement
+  // reçu hors ligne — jamais un encaissement carte simulé ici.
+  // ============================================================
+  var ADM_CONTRACT_STATUS_LABEL = {
+    pending:'En attente', active:'Actif', payment_failed:'Paiement en échec',
+    expiring:'À renouveler', cancelled:'Résilié', expired:'Expiré'
+  };
+  var admContractsInitDone = false;
+
+  function admContractsInit(){
+    admContractsLoadPrices();
+    admContractsLoadReminderConfig();
+    admContractsLoadDashboardAndList();
+    if (!admContractsInitDone){
+      admContractsInitDone = true;
+      admContractsWireEvents();
+    }
+  }
+
+  function admContractsLoadPrices(){
+    var el = document.getElementById('admContractPricesList');
+    sb.client.from('contract_products').select('*').order('energy_type').order('contract_type').then(function(res){
+      if (res.error){ el.innerHTML = '<p class="ec-empty">Impossible de charger les tarifs.</p>'; return; }
+      var rows = res.data || [];
+      el.innerHTML = rows.map(function(p){
+        var label = (p.contract_type === 'serenite' ? 'Contrat Sérénité' : 'Entretien ponctuel') + ' — ' + (p.energy_type === 'gaz' ? 'Gaz' : 'Fioul');
+        return '<div class="adm-iv-parts-row" data-product-id="' + p.id + '">' +
+          '<span class="adm-iv-parts-label">' + admEscape(label) + (p.contract_type === 'serenite' ? ' / an' : '') + '</span>' +
+          '<input type="number" step="0.01" class="adm-contract-price-input" data-product-id="' + p.id + '" value="' + (p.price_cents / 100).toFixed(2) + '" style="max-width:100px;">' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-save-price="' + p.id + '">Enregistrer</button>' +
+          '</div>';
+      }).join('');
+    });
+  }
+
+  function admContractsLoadReminderConfig(){
+    var el = document.getElementById('admReminderConfigForm');
+    sb.client.from('contract_reminder_config').select('*').limit(1).maybeSingle().then(function(res){
+      if (res.error || !res.data){ el.innerHTML = '<p class="ec-empty">Impossible de charger la configuration.</p>'; return; }
+      var c = res.data;
+      el.innerHTML =
+        '<div class="adm-iv-parts-add">' +
+          '<label style="flex:1 1 140px;">Rappel 1 (jours avant)<input type="number" id="admReminder1Days" value="' + c.reminder_1_days + '" min="1"></label>' +
+          '<label style="flex:1 1 140px;">Rappel 2 (jours avant)<input type="number" id="admReminder2Days" value="' + c.reminder_2_days + '" min="1"></label>' +
+          '<label style="flex:1 1 140px;">Rappel final (jours avant)<input type="number" id="admReminderFinalDays" value="' + c.reminder_final_days + '" min="1"></label>' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admReminderConfigSaveBtn" data-config-id="' + c.id + '">Enregistrer</button>' +
+        '</div>';
+    });
+  }
+
+  var admContractsAllRows = [];
+  function admContractsLoadDashboardAndList(){
+    var dashEl = document.getElementById('admContractsDashboard');
+    var listEl = document.getElementById('admContractsList');
+    sb.client.from('service_contracts')
+      .select('*, customer_equipment(brand, model, specs)')
+      .order('created_at', { ascending:false })
+      .then(function(res){
+        if (res.error){
+          console.error('admContractsLoadDashboardAndList', res.error);
+          dashEl.innerHTML = '<p class="ec-empty">Impossible de charger les contrats.</p>';
+          listEl.innerHTML = '';
+          return;
+        }
+        var rows = res.data || [];
+        var custIds = Array.prototype.filter.call(rows, function(c){ return c.customer_user_id; })
+          .map(function(c){ return c.customer_user_id; });
+        var loadProfiles = custIds.length
+          ? sb.client.from('profiles').select('user_id,email').in('user_id', custIds)
+          : Promise.resolve({ data: [] });
+        return loadProfiles.then(function(profRes){
+          var profileByUserId = {};
+          (profRes.data || []).forEach(function(p){ profileByUserId[p.user_id] = p; });
+          rows.forEach(function(c){ c.profiles = profileByUserId[c.customer_user_id] || null; });
+          admContractsAllRows = rows;
+          admContractsFinishDashboard();
+        });
+      });
+  }
+
+  function admContractsFinishDashboard(){
+    var dashEl = document.getElementById('admContractsDashboard');
+    var counts = { active:0, pending:0, expiring:0, cancelled:0, dueSoon:0 };
+    var in30 = new Date(); in30.setDate(in30.getDate() + 30);
+    admContractsAllRows.forEach(function(c){
+      if (c.status === 'active') counts.active++;
+      if (c.status === 'pending') counts.pending++;
+      if (c.status === 'expiring') counts.expiring++;
+      if (c.status === 'cancelled') counts.cancelled++;
+      if (c.end_date && c.status === 'active' && new Date(c.end_date) <= in30) counts.dueSoon++;
+    });
+    dashEl.innerHTML =
+      '<div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-value">' + counts.active + '</span><span class="adm-stat-label">Contrats actifs</span></div>' +
+      '<div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-value">' + counts.pending + '</span><span class="adm-stat-label">Nouveaux (en attente)</span></div>' +
+      '<div class="adm-stat-card adm-stat-coral"><span class="adm-stat-value">' + counts.dueSoon + '</span><span class="adm-stat-label">Échéance &lt; 30 jours</span></div>' +
+      '<div class="adm-stat-card adm-stat-sand"><span class="adm-stat-value">' + counts.cancelled + '</span><span class="adm-stat-label">Résiliés</span></div>';
+    admContractsRenderList();
+  }
+
+  function admContractsRenderList(){
+    var listEl = document.getElementById('admContractsList');
+    var q = (document.getElementById('admContractSearchInput').value || '').trim().toLowerCase();
+    var energyFilter = document.getElementById('admContractFilterEnergy').value;
+    var statusFilter = document.getElementById('admContractFilterStatus').value;
+    var rows = admContractsAllRows.filter(function(c){
+      if (energyFilter && c.energy_type !== energyFilter) return false;
+      if (statusFilter && c.status !== statusFilter) return false;
+      if (q){
+        var eq = c.customer_equipment || {};
+        var hay = [(c.profiles && c.profiles.email), eq.brand, eq.model].filter(Boolean).join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    if (!rows.length){ listEl.innerHTML = '<p class="ec-empty">Aucun contrat ne correspond.</p>'; return; }
+    listEl.innerHTML = rows.map(function(c){
+      var eq = c.customer_equipment || {};
+      var equipLabel = [eq.brand, eq.model].filter(Boolean).join(' ') || 'Équipement';
+      var statusBadge = '<span class="adm-iv-status-pill" style="background:' +
+        (c.status === 'active' ? 'var(--adm-green,#3F9463)' : c.status === 'pending' ? 'var(--adm-amber,#C4862A)' : c.status === 'cancelled' || c.status === 'expired' ? 'var(--adm-red,#C1503B)' : 'var(--adm-grey,#7C8AA0)') +
+        ';">' + admEscape(ADM_CONTRACT_STATUS_LABEL[c.status] || c.status) + '</span>';
+      var price = (c.annual_price_cents / 100).toFixed(2) + ' € / ' + (c.payment_frequency === 'mensuel' ? 'mois' : 'an');
+      var actions = '';
+      if (c.status === 'pending') actions += '<button type="button" class="adm-iv-btn adm-iv-btn-primary" data-activate-contract="' + c.id + '">Marquer payé / Activer</button>';
+      if (c.status === 'active' || c.status === 'expiring') actions += '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-cancel-contract="' + c.id + '">Résilier</button>';
+      return '<div class="adm-iv-item" style="flex-direction:column;align-items:flex-start;" data-contract-id="' + c.id + '">' +
+        '<div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:6px;">' +
+          '<strong>' + admEscape(equipLabel) + ' — ' + (c.energy_type === 'gaz' ? 'Gaz' : 'Fioul') + '</strong>' + statusBadge +
+        '</div>' +
+        '<small>' + admEscape((c.profiles && c.profiles.email) || 'Client') + ' · ' + price +
+          (c.start_date ? ' · Début ' + admFmtDate(c.start_date) : '') + (c.end_date ? ' · Échéance ' + admFmtDate(c.end_date) : '') + '</small>' +
+        '<div class="adm-iv-footer" style="margin-top:6px;">' + actions + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function admContractsWireEvents(){
+    document.getElementById('admContractSearchInput').addEventListener('input', admContractsRenderList);
+    document.getElementById('admContractFilterEnergy').addEventListener('change', admContractsRenderList);
+    document.getElementById('admContractFilterStatus').addEventListener('change', admContractsRenderList);
+
+    document.getElementById('admContractPricesList').addEventListener('click', function(e){
+      var btn = e.target.closest('[data-save-price]');
+      if (!btn) return;
+      var id = btn.getAttribute('data-save-price');
+      var input = document.querySelector('.adm-contract-price-input[data-product-id="' + id + '"]');
+      var euros = parseFloat(input.value.replace(',', '.'));
+      if (isNaN(euros) || euros < 0){ window.alert('Prix invalide.'); return; }
+      sb.client.from('contract_products').update({ price_cents: Math.round(euros * 100), updated_at: new Date().toISOString() }).eq('id', id).then(function(res){
+        if (res.error){ window.alert('Échec de l\'enregistrement du tarif.'); return; }
+        btn.textContent = 'Enregistré ✓';
+        setTimeout(function(){ btn.textContent = 'Enregistrer'; }, 1500);
+      });
+    });
+
+    document.getElementById('admReminderConfigForm').addEventListener('click', function(e){
+      if (e.target.id !== 'admReminderConfigSaveBtn') return;
+      var id = e.target.getAttribute('data-config-id');
+      var payload = {
+        reminder_1_days: parseInt(document.getElementById('admReminder1Days').value, 10) || 30,
+        reminder_2_days: parseInt(document.getElementById('admReminder2Days').value, 10) || 14,
+        reminder_final_days: parseInt(document.getElementById('admReminderFinalDays').value, 10) || 3,
+        updated_at: new Date().toISOString()
+      };
+      sb.client.from('contract_reminder_config').update(payload).eq('id', id).then(function(res){
+        if (res.error){ window.alert('Échec de l\'enregistrement.'); return; }
+        e.target.textContent = 'Enregistré ✓';
+        setTimeout(function(){ e.target.textContent = 'Enregistrer'; }, 1500);
+      });
+    });
+
+    document.getElementById('admContractsList').addEventListener('click', function(e){
+      var activateBtn = e.target.closest('[data-activate-contract]');
+      if (activateBtn){
+        var cid = activateBtn.getAttribute('data-activate-contract');
+        var today = new Date();
+        var end = new Date(today); end.setFullYear(end.getFullYear() + 1);
+        var iso = function(d){ return d.toISOString().slice(0,10); };
+        sb.client.from('service_contracts').update({
+          status: 'active', start_date: iso(today), end_date: iso(end), updated_at: new Date().toISOString()
+        }).eq('id', cid).then(function(res){
+          if (res.error){ window.alert('Échec de l\'activation.'); return; }
+          return sb.client.from('contract_events').insert({ contract_id: cid, event_type: 'ACTIVATED', detail: 'Paiement reçu hors ligne, contrat activé par un administrateur.' });
+        }).then(function(){ admContractsLoadDashboardAndList(); });
+        return;
+      }
+      var cancelBtn = e.target.closest('[data-cancel-contract]');
+      if (cancelBtn){
+        var cancelId = cancelBtn.getAttribute('data-cancel-contract');
+        var reason = window.prompt('Motif de résiliation (facultatif) :') || null;
+        sb.client.from('service_contracts').update({
+          status: 'cancelled', cancellation_date: new Date().toISOString().slice(0,10), cancellation_reason: reason, updated_at: new Date().toISOString()
+        }).eq('id', cancelId).then(function(res){
+          if (res.error){ window.alert('Échec de la résiliation.'); return; }
+          return sb.client.from('contract_events').insert({ contract_id: cancelId, event_type: 'CANCELLED', detail: reason || null });
+        }).then(function(){ admContractsLoadDashboardAndList(); });
+        return;
+      }
+    });
+  }
+
   function admLoadBookings(){
     admSetBkLoadingState();
     sb.client.from('bookings')
@@ -14489,6 +14812,12 @@ if ('serviceWorker' in navigator){
     // du cahier des charges : aucune valeur constructeur n'est jamais
     // inventée ni affichée comme une norme).
     var CO_AMBIENT_DANGER_THRESHOLD_PPM = 50;
+    // < 10 ppm : situation normale (aucun message). 10-49 ppm : situation
+    // anormale, procédure à afficher mais n'empêche pas la finalisation.
+    // >= 50 ppm (constante ci-dessus) : DANGER GRAVE ET IMMÉDIAT, alerte
+    // plein écran bloquante avec confirmation obligatoire de la procédure
+    // appliquée avant toute clôture de l'intervention (section 12).
+    var CO_AMBIENT_ABNORMAL_THRESHOLD_PPM = 10;
 
     // Un contrôle conditionnel (`cond`) n'est affiché que si l'équipement
     // sélectionné a la caractéristique correspondante — tant que rien n'est
@@ -14864,6 +15193,11 @@ if ('serviceWorker' in navigator){
         '.adm-iv-parts-add select{flex:1 1 140px;min-width:0;font-size:0.8rem;padding:7px 9px;border-radius:6px;border:1.5px solid var(--adm-line,#E5E1D6);font-family:inherit;background:#fff;}' +
         '.adm-iv-anomaly-safety{background:rgba(193,80,59,0.08);border-radius:8px;padding-left:8px;padding-right:8px;}' +
         '.adm-iv-safety-alert{background:var(--adm-red,#C1503B);color:#fff;font-weight:700;font-size:0.84rem;padding:12px 14px;border-radius:10px;margin:12px 0;line-height:1.4;}' +
+        '.adm-iv-safety-alert-watch{background:var(--adm-amber,#C4862A);}' +
+        '.adm-iv-co-danger-overlay{position:fixed;inset:0;background:rgba(140,20,10,0.97);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;}' +
+        '.adm-iv-co-danger-box{color:#fff;max-width:480px;font-family:"Poppins",sans-serif;}' +
+        '.adm-iv-co-danger-title{font-size:1.5rem;font-weight:800;margin:0 0 14px;}' +
+        '.adm-iv-co-danger-box p{line-height:1.5;margin:0 0 12px;}' +
         '.adm-iv-progress{height:8px;border-radius:999px;background:var(--adm-line,#E5E1D6);overflow:hidden;margin-top:10px;}' +
         '.adm-iv-progress-bar{height:100%;background:var(--adm-green,#3F9463);transition:width 0.2s;}' +
         '.adm-iv-progress-label{font-size:0.74rem;color:var(--adm-ink-soft,#5B6B78);margin:4px 0 0;}' +
@@ -15513,20 +15847,48 @@ if ('serviceWorker' in navigator){
       }).join('');
     }
 
-    // Alerte sécurité CO ambiant (section 4 du cahier des charges) — seuil
-    // réglementaire national (CO_AMBIENT_DANGER_THRESHOLD_PPM), jamais une
-    // valeur constructeur. Ne peut pas être masquée/fermée : "ne jamais
-    // masquer une alerte".
-    function admIvSafetyBannerHtml(){
-      var dangerItem = admIv.items.filter(function(it){
+    // CO ambiant mesuré sur CETTE fiche (ou null) — un seul item par
+    // template porte field_meta.safety==='CO_AMBIENT' (gaz ou fioul).
+    function admIvCoAmbientValue(){
+      var item = admIv.items.filter(function(it){
         return it.field_meta && it.field_meta.safety === 'CO_AMBIENT' && it.measured_value;
-      }).filter(function(it){
-        var v = parseFloat(String(it.measured_value).replace(',', '.'));
-        return !isNaN(v) && v >= CO_AMBIENT_DANGER_THRESHOLD_PPM;
       })[0];
-      if (!dangerItem) return '';
-      return '<div class="adm-iv-safety-alert">⚠ CO ambiant mesuré à ' + admEscape(dangerItem.measured_value) + ' ppm — seuil de sécurité réglementaire (' +
-        CO_AMBIENT_DANGER_THRESHOLD_PPM + ' ppm) atteint ou dépassé. Procédure de mise en sécurité de l\'appareil à appliquer sans délai, conformément à la réglementation en vigueur.</div>';
+      if (!item) return null;
+      var v = parseFloat(String(item.measured_value).replace(',', '.'));
+      return isNaN(v) ? null : v;
+    }
+
+    // Alerte sécurité CO ambiant (section 12 du cahier des charges) — seuils
+    // réglementaires nationaux (jamais une valeur constructeur) :
+    // < 10 ppm situation normale (rien à afficher) ; 10-49 ppm situation
+    // anormale (bandeau, non bloquant) ; >= 50 ppm DANGER GRAVE ET IMMÉDIAT
+    // (alerte plein écran bloquante, voir admIvCoDangerOverlayHtml).
+    // Ne peut JAMAIS être masquée/fermée sans confirmation explicite.
+    function admIvSafetyBannerHtml(){
+      var v = admIvCoAmbientValue();
+      if (v === null || v >= CO_AMBIENT_DANGER_THRESHOLD_PPM) return '';
+      if (v < CO_AMBIENT_ABNORMAL_THRESHOLD_PPM) return '';
+      return '<div class="adm-iv-safety-alert adm-iv-safety-alert-watch">⚠ CO ambiant mesuré à ' + admEscape(v) + ' ppm — situation anormale (seuil de vigilance : ' +
+        CO_AMBIENT_ABNORMAL_THRESHOLD_PPM + ' ppm). Procédure réglementaire de vérification à appliquer avant de considérer l\'appareil conforme.</div>';
+    }
+
+    // Overlay PLEIN ÉCRAN bloquant (>= 50 ppm) — distinct du bandeau
+    // ci-dessus. Exige une confirmation explicite de la procédure de mise
+    // en sécurité appliquée avant de pouvoir continuer à utiliser la fiche
+    // (la finalisation reste bloquée tant que admIv.coDangerConfirmed
+    // n'est pas true, voir admIvFinalize).
+    function admIvCoDangerOverlayHtml(){
+      var v = admIvCoAmbientValue();
+      if (v === null || v < CO_AMBIENT_DANGER_THRESHOLD_PPM || admIv.coDangerConfirmed) return '';
+      return '<div class="adm-iv-co-danger-overlay">' +
+        '<div class="adm-iv-co-danger-box">' +
+          '<p class="adm-iv-co-danger-title">⚠ DANGER GRAVE ET IMMÉDIAT</p>' +
+          '<p>CO ambiant mesuré : <strong>' + admEscape(v) + ' ppm</strong> — seuil réglementaire de danger grave et immédiat (' + CO_AMBIENT_DANGER_THRESHOLD_PPM + ' ppm) atteint ou dépassé.</p>' +
+          '<p>Appliquez immédiatement la procédure réglementaire de mise en sécurité de l\'appareil (arrêt de l\'appareil, aération des locaux, information de l\'occupant, non-remise en service tant que la cause n\'est pas traitée).</p>' +
+          '<label class="ec-cs-checkbox" style="color:#fff;"><input type="checkbox" id="admIvCoDangerCheckbox"> Je confirme avoir appliqué la procédure de mise en sécurité réglementaire.</label>' +
+          '<button type="button" class="adm-iv-btn adm-iv-btn-primary" id="admIvCoDangerConfirmBtn" style="margin-top:12px;" disabled>Confirmer et continuer</button>' +
+        '</div>' +
+      '</div>';
     }
 
     // Progression = part des contrôles (visibles compte tenu des specs de
@@ -15582,7 +15944,25 @@ if ('serviceWorker' in navigator){
           '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-close>Fermer (garder le brouillon)</button>' +
           (isFinalized ? '' : '<button type="button" class="adm-iv-btn adm-iv-btn-primary" id="admIvFinishBtn">Terminer l\'intervention</button>') +
         '</div>' +
-        '</div>';
+        '</div>' +
+        admIvCoDangerOverlayHtml();
+
+      var coCheckbox = document.getElementById('admIvCoDangerCheckbox');
+      var coConfirmBtn = document.getElementById('admIvCoDangerConfirmBtn');
+      if (coCheckbox && coConfirmBtn){
+        coCheckbox.addEventListener('change', function(){ coConfirmBtn.disabled = !coCheckbox.checked; });
+        coConfirmBtn.addEventListener('click', function(){
+          admIv.coDangerConfirmed = true;
+          // Retrait direct du DOM plutôt qu'un admIvRender() complet : un
+          // re-rendu reconstruit TOUT le HTML de la fiche, y compris les
+          // <canvas> de signature (admIvSetupCanvas en pose des neufs,
+          // vierges) — si le technicien avait déjà fait signer le client
+          // avant de traiter cette alerte, sa signature disparaîtrait
+          // silencieusement. Un simple retrait de l'overlay suffit ici.
+          var overlayEl = overlay.querySelector('.adm-iv-co-danger-overlay');
+          if (overlayEl) overlayEl.remove();
+        });
+      }
 
       // Charge les vignettes photo (signedUrl privé, jamais public).
       Array.prototype.forEach.call(overlay.querySelectorAll('.adm-iv-photo-thumb img'), function(img){
@@ -15793,7 +16173,12 @@ if ('serviceWorker' in navigator){
           // qu'elle apparaisse ("ne jamais masquer une alerte", cahier des
           // charges chaudière). Les autres champs ne forcent pas de
           // re-rendu à chaque saisie pour ne pas perdre le focus inutilement.
-          if (vItem.field_meta && vItem.field_meta.safety) admIvRender();
+          if (vItem.field_meta && vItem.field_meta.safety){
+            // Une confirmation déjà donnée ne couvre QUE la valeur qui l'a
+            // déclenchée — toute nouvelle saisie exige une reconfirmation.
+            admIv.coDangerConfirmed = false;
+            admIvRender();
+          }
         }
         return;
       }
@@ -15894,6 +16279,16 @@ if ('serviceWorker' in navigator){
       }
       if (!clientName || admIvCanvasIsBlank(clientCanvas)){ showMsg('Merci de faire signer le client avant de valider.', false); return; }
       if (!techName || admIvCanvasIsBlank(techCanvas)){ showMsg('Merci de renseigner et signer en tant que technicien avant de valider.', false); return; }
+      var coVal = admIvCoAmbientValue();
+      if (coVal !== null && coVal >= CO_AMBIENT_DANGER_THRESHOLD_PPM && !admIv.coDangerConfirmed){
+        // Pas de admIvRender() ici : l'alerte plein écran est déjà affichée
+        // depuis la saisie de la valeur CO (voir le handler .adm-iv-value) —
+        // un re-rendu supplémentaire effacerait à nouveau les signatures
+        // déjà dessinées, exactement le bug corrigé pour le bouton de
+        // confirmation lui-même juste au-dessus.
+        showMsg('CO ambiant en danger grave et immédiat : confirmez la procédure de mise en sécurité avant de clôturer cette intervention.', false);
+        return;
+      }
 
       var finishBtn = document.getElementById('admIvFinishBtn');
       finishBtn.disabled = true; finishBtn.textContent = 'Validation…';
@@ -15924,6 +16319,21 @@ if ('serviceWorker' in navigator){
         return sb.client.rpc('finalize_intervention_booking', { p_booking_id: admIv.bookingId });
       }).then(function(res){
         if (res.error) throw res.error;
+        // Attestation réglementaire d'entretien (section 13), DISTINCTE du
+        // compte rendu commercial — uniquement pour un entretien chaudière
+        // gaz/fioul (document réglementaire sans objet pour une plomberie
+        // ou un dépannage, jamais généré hors de ce cas précis).
+        var isChaudiereMaintenance = admIv.template && admIv.template.category === 'chauffage' &&
+          (admIv.template.equipmentType === 'chaudiere_gaz' || admIv.template.equipmentType === 'chaudiere_fioul');
+        var attestationPromise = isChaudiereMaintenance
+          ? sb.client.from('intervention_attestations').insert({
+              intervention_id: admIv.interventionId,
+              attestation_number: 'ATT-' + new Date().getFullYear() + '-' + admIv.interventionId.slice(0, 8).toUpperCase()
+            })
+          : Promise.resolve({ error: null });
+        return attestationPromise;
+      }).then(function(res){
+        if (res && res.error) console.warn('admIvFinalize: échec génération attestation (non bloquant)', res.error);
         showMsg('Fiche validée et rendez-vous marqué Terminé.', true);
         admLoadBookings();
         admIvSendReportEmail(admIv.interventionId);
@@ -17067,6 +17477,7 @@ if ('serviceWorker' in navigator){
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (window.hvSyncBottomNav) window.hvSyncBottomNav(document.getElementById('admBottomNav'), key, ['dashboard', 'planning', 'requests', 'quotes']);
+    if (key === 'contracts' && typeof admContractsInit === 'function') admContractsInit();
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
@@ -20310,6 +20721,7 @@ if ('serviceWorker' in navigator){
     else if (tab === 'appointments') ecLoadAppointments();
     else if (tab === 'interventions') ecLoadInterventions();
     else if (tab === 'equipment') ecLoadEquipment();
+    else if (tab === 'contracts') ecLoadContracts();
     else if (tab === 'quotes') ecLoadQuotes();
     else if (tab === 'invoices') ecLoadInvoices();
     else if (tab === 'documents') ecLoadDocuments();
@@ -21052,6 +21464,336 @@ if ('serviceWorker' in navigator){
       }
     }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
+
+  // ============================================================
+  // MES CONTRATS — HAYEVA Sérénité chaudière (gaz/fioul), voir
+  // 0052_chaudiere_contracts.sql. L'entretien ponctuel reste disponible par
+  // ailleurs (onglet "Prestations") : cette carte est une offre en plus.
+  // ============================================================
+  var EC_CONTRACT_STATUS_BADGE = {
+    pending:'🟡 EN ATTENTE', active:'🟢 ACTIF', payment_failed:'🔴 PAIEMENT EN ÉCHEC',
+    expiring:'🟠 À RENOUVELER', cancelled:'⚪ RÉSILIÉ', expired:'⚪ EXPIRÉ'
+  };
+  function ecLoadContracts(){
+    var panel = document.getElementById('ecPanelContracts');
+    panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    sb.client.from('service_contracts')
+      .select('*, customer_equipment(brand, model)')
+      .eq('customer_user_id', ecUser.id)
+      .order('created_at', { ascending:false })
+      .then(function(res){
+        if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
+        var rows = res.data || [];
+        var html = '<p class="ec-section-title">Mes contrats</p><p class="ec-section-sub">Suivi annuel de votre chaudière : 1 entretien par an, priorité dépannage, déplacement offert dans la zone gratuite HAYEVA.</p>';
+        if (!rows.length){
+          html += '<div class="ec-empty"><strong>Aucun contrat pour le moment</strong>Découvrez le Contrat Sérénité chaudière dans l\'onglet Prestations.</div>';
+          panel.innerHTML = html;
+          return;
+        }
+        var lastIvPromises = rows.map(function(c){
+          return sb.client.from('interventions').select('ended_at').eq('contract_id', c.id).eq('report_status', 'FINALIZED')
+            .order('ended_at', { ascending:false }).limit(1);
+        });
+        Promise.all(lastIvPromises).then(function(ivResults){
+          rows.forEach(function(c, i){
+            var eq = c.customer_equipment || {};
+            var equipLabel = [eq.brand, eq.model].filter(Boolean).join(' ') || 'Chaudière';
+            var lastIv = ivResults[i] && ivResults[i].data && ivResults[i].data[0];
+            html += '<div class="ecx-equip-card" style="flex-direction:column;align-items:flex-start;gap:8px;" data-contract-id="' + c.id + '">' +
+              '<div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:6px;">' +
+                '<strong>CONTRAT SÉRÉNITÉ CHAUDIÈRE — ' + (c.energy_type === 'gaz' ? 'Gaz' : 'Fioul') + '</strong>' +
+                '<span>' + (EC_CONTRACT_STATUS_BADGE[c.status] || c.status) + '</span>' +
+              '</div>' +
+              '<p class="ecx-equip-card-meta">Chaudière : ' + ecEscape(equipLabel) + '</p>' +
+              (c.start_date ? '<p class="ecx-equip-card-meta">Début : ' + ecFmtDate(c.start_date) + '</p>' : '') +
+              (c.end_date ? '<p class="ecx-equip-card-meta">Échéance : ' + ecFmtDate(c.end_date) + '</p>' : '') +
+              '<p class="ecx-equip-card-meta">Dernier entretien : ' + (lastIv ? ecFmtDate(lastIv.ended_at) : 'Aucun pour le moment') + '</p>' +
+              '<p class="ecx-equip-card-meta">Prochain entretien : À programmer</p>' +
+              '<div class="ec-form-full" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">' +
+                (c.status === 'active' ? '<a href="#rdv" class="btn-primary">Programmer mon entretien</a>' : '') +
+                (c.status === 'active' ? '<button type="button" class="btn-secondary" data-contract-breakdown="' + c.id + '">Ma chaudière est en panne</button>' : '') +
+                '<button type="button" class="btn-secondary" data-contract-view="' + c.id + '">Voir mon contrat</button>' +
+                '<button type="button" class="btn-secondary" data-ec-goto-tab="interventions">Mes interventions</button>' +
+                '<button type="button" class="btn-secondary" data-contract-attestations="' + c.id + '">Mes attestations</button>' +
+                '<button type="button" class="btn-secondary" data-ec-goto-tab="invoices">Mes factures</button>' +
+              '</div>' +
+            '</div>';
+          });
+          panel.innerHTML = html;
+          ecWireContractActions(panel, rows);
+        });
+      }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
+  }
+
+  function ecWireContractActions(panel, rows){
+    panel.addEventListener('click', function(e){
+      var gotoBtn = e.target.closest('[data-ec-goto-tab]');
+      if (gotoBtn){ ecShowTab(gotoBtn.getAttribute('data-ec-goto-tab')); return; }
+      var viewBtn = e.target.closest('[data-contract-view]');
+      if (viewBtn){
+        var c = rows.filter(function(r){ return r.id === viewBtn.getAttribute('data-contract-view'); })[0];
+        if (c) ecShowContractDetails(c);
+        return;
+      }
+      var breakdownBtn = e.target.closest('[data-contract-breakdown]');
+      if (breakdownBtn){ ecOpenBreakdownRequest(breakdownBtn.getAttribute('data-contract-breakdown')); return; }
+      var attBtn = e.target.closest('[data-contract-attestations]');
+      if (attBtn){ ecShowAttestations(attBtn.getAttribute('data-contract-attestations')); return; }
+    });
+  }
+
+  function ecShowContractDetails(c){
+    var priceLabel = (c.annual_price_cents / 100).toFixed(2) + ' € TTC / ' + (c.payment_frequency === 'mensuel' ? 'mois' : 'an');
+    window.alert(
+      'CONTRAT SÉRÉNITÉ CHAUDIÈRE ' + (c.energy_type === 'gaz' ? 'GAZ' : 'FIOUL') + '\n\n' +
+      'Prix : ' + priceLabel + '\n' +
+      'Statut : ' + (EC_CONTRACT_STATUS_BADGE[c.status] || c.status) + '\n' +
+      (c.start_date ? 'Début : ' + ecFmtDate(c.start_date) + '\n' : '') +
+      (c.end_date ? 'Échéance : ' + ecFmtDate(c.end_date) + '\n' : '') +
+      'Renouvellement : ' + (c.renewal_type === 'automatic' ? 'Automatique' : 'Manuel') + '\n\n' +
+      'Inclus : 1 entretien annuel, fiche technique complète, contrôles réglementaires, analyse de combustion si applicable, attestation réglementaire, rapport numérique, historique équipement, priorité dépannage, déplacement offert dans la zone gratuite HAYEVA (25 km autour de Fréjus).\n\n' +
+      'Non inclus : pièces détachées, main-d\'œuvre de réparation hors entretien, ramonage, désembouage, modification d\'installation, remplacement de chaudière.\n\n' +
+      'Conditions générales version ' + c.terms_version + '.'
+    );
+  }
+
+  function ecShowAttestations(contractId){
+    sb.client.from('interventions').select('id, report_number, ended_at, intervention_attestations(attestation_number, generated_at)')
+      .eq('contract_id', contractId).eq('report_status', 'FINALIZED').order('ended_at', { ascending:false })
+      .then(function(res){
+        if (res.error || !res.data || !res.data.length){ window.alert('Aucune attestation disponible pour le moment.'); return; }
+        var lines = res.data.map(function(iv){
+          var att = (iv.intervention_attestations || [])[0];
+          return (iv.ended_at ? ecFmtDate(iv.ended_at) : '') + ' — ' + (att ? 'Attestation n° ' + att.attestation_number : 'Attestation non générée');
+        });
+        window.alert('Mes attestations :\n\n' + lines.join('\n'));
+      });
+  }
+
+  // ---- Demande de dépannage rapide (section 8) — réservée aux contrats
+  // actifs : réutilise bookings (aucun nouveau système de réservation),
+  // avec contract_id posé pour que l'admin voie immédiatement "sous
+  // contrat" (priorité + déplacement offert dans la zone gratuite). ----
+  var EC_BREAKDOWN_SYMPTOMS = [
+    'Plus de chauffage', "Plus d'eau chaude", 'Fuite', 'Code erreur', 'Bruit', 'Arrêt chaudière', 'Autre'
+  ];
+  function ecBreakdownInjectStyles(){
+    if (document.getElementById('ecBreakdownStyles')) return;
+    var st = document.createElement('style');
+    st.id = 'ecBreakdownStyles';
+    st.textContent =
+      '#ecBreakdownOverlay{position:fixed;inset:0;background:rgba(16,27,36,0.6);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;box-sizing:border-box;}' +
+      '#ecBreakdownOverlay[hidden]{display:none;}' +
+      '.ec-bd-sheet{background:#fff;border-radius:16px;max-width:520px;width:100%;margin:24px auto;padding:22px;box-sizing:border-box;font-family:"Poppins",sans-serif;}' +
+      '.ec-bd-symptoms{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}' +
+      '.ec-bd-symptom-btn{border:1.5px solid var(--adm-line,#E5E1D6);background:#fff;border-radius:999px;padding:9px 14px;font-size:0.84rem;cursor:pointer;min-height:44px;}' +
+      '.ec-bd-symptom-btn.is-active{background:var(--terracotta,#E85A12);border-color:var(--terracotta,#E85A12);color:#fff;}' +
+      '.ec-bd-sheet textarea, .ec-bd-sheet input[type=text]{width:100%;box-sizing:border-box;font-family:inherit;font-size:0.9rem;padding:10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);margin-top:6px;}' +
+      '.ec-bd-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}';
+    document.head.appendChild(st);
+  }
+  function ecOpenBreakdownRequest(contractId){
+    ecBreakdownInjectStyles();
+    var overlay = document.getElementById('ecBreakdownOverlay');
+    if (!overlay){
+      overlay = document.createElement('div');
+      overlay.id = 'ecBreakdownOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = '<div class="ec-bd-sheet">' +
+      '<h3>Ma chaudière est en panne</h3>' +
+      '<p class="ec-row-meta">Contrat actif : déplacement offert dans la zone gratuite HAYEVA, priorité dépannage. La main-d\'œuvre de réparation et les pièces restent hors contrat (devis si nécessaire).</p>' +
+      '<p><strong>Quel problème rencontrez-vous ?</strong></p>' +
+      '<div class="ec-bd-symptoms">' + EC_BREAKDOWN_SYMPTOMS.map(function(s){
+        return '<button type="button" class="ec-bd-symptom-btn" data-symptom="' + ecEscape(s) + '">' + ecEscape(s) + '</button>';
+      }).join('') + '</div>' +
+      '<label>Code erreur (si affiché)<input type="text" id="ecBdErrorCode" placeholder="Ex. F28"></label>' +
+      '<label>Description<textarea id="ecBdDescription" rows="3" placeholder="Décrivez ce qui se passe…"></textarea></label>' +
+      '<p class="ec-row-meta" id="ecBdMsg" hidden></p>' +
+      '<div class="ec-bd-footer">' +
+        '<button type="button" class="btn-secondary" id="ecBdCancel">Annuler</button>' +
+        '<button type="button" class="btn-primary" id="ecBdSubmit">Envoyer ma demande</button>' +
+      '</div>' +
+    '</div>';
+    overlay.hidden = false;
+    var selectedSymptom = null;
+    overlay.querySelectorAll('.ec-bd-symptom-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        overlay.querySelectorAll('.ec-bd-symptom-btn').forEach(function(b){ b.classList.remove('is-active'); });
+        btn.classList.add('is-active');
+        selectedSymptom = btn.getAttribute('data-symptom');
+      });
+    });
+    document.getElementById('ecBdCancel').addEventListener('click', function(){ overlay.hidden = true; });
+    document.getElementById('ecBdSubmit').addEventListener('click', function(){
+      var msgEl = document.getElementById('ecBdMsg');
+      if (!selectedSymptom){ msgEl.textContent = 'Merci de choisir un problème.'; msgEl.hidden = false; return; }
+      var errorCode = document.getElementById('ecBdErrorCode').value.trim();
+      var description = document.getElementById('ecBdDescription').value.trim();
+      var submitBtn = document.getElementById('ecBdSubmit');
+      submitBtn.disabled = true; submitBtn.textContent = 'Envoi…';
+      var notes = 'Demande de dépannage (contrat Sérénité) — ' + selectedSymptom +
+        (errorCode ? ' — Code erreur : ' + errorCode : '') + (description ? ' — ' + description : '');
+      sb.client.from('service_contracts').select('equipment_id').eq('id', contractId).maybeSingle().then(function(cRes){
+        var equipmentId = cRes.data && cRes.data.equipment_id;
+        return sb.client.from('services').select('id, base_price_cents, duration_minutes').eq('slug', 'chauffage-depannage').maybeSingle().then(function(svcRes){
+          if (svcRes.error || !svcRes.data) throw new Error('Service dépannage introuvable');
+          var svc = svcRes.data;
+          var today = new Date();
+          return sb.client.from('bookings').insert({
+            customer_user_id: ecUser.id, equipment_id: equipmentId || null, contract_id: contractId,
+            service_id: svc.id, date: today.toISOString().slice(0,10), start_time: '09:00:00',
+            status: 'PENDING', service_duration_minutes: svc.duration_minutes || 90,
+            service_price_cents: svc.base_price_cents || 7500, travel_fee_cents: 0, discount_cents: 0,
+            total_cents: svc.base_price_cents || 7500, notes: notes
+          });
+        });
+      }).then(function(res){
+        if (res && res.error) throw res.error;
+        msgEl.className = 'ec-row-meta'; msgEl.style.color = 'var(--adm-green,#3F9463)';
+        msgEl.textContent = 'Demande envoyée — HAYEVA vous recontacte pour planifier l\'intervention (priorité contrat).';
+        msgEl.hidden = false;
+        setTimeout(function(){ overlay.hidden = true; }, 1800);
+      }).catch(function(err){
+        console.error('ecOpenBreakdownRequest', err);
+        submitBtn.disabled = false; submitBtn.textContent = 'Envoyer ma demande';
+        msgEl.textContent = 'Échec de l\'envoi. Réessayez.'; msgEl.hidden = false;
+      });
+    });
+  }
+
+  // ============================================================
+  // SOUSCRIPTION Contrat Sérénité (section 4). Parcours condensé en un seul
+  // écran (plutôt qu'un assistant à plusieurs pages, pour rester livrable
+  // et testable dans cette passe) : choix déjà fait (gaz/fioul) →
+  // identification chaudière → acceptation des conditions → confirmation.
+  //
+  // IMPORTANT (voir rapport) : aucun paiement en ligne n'existe sur ce site
+  // (CGV actuelles). La demande crée un contrat 'pending' ; un admin
+  // l'active après règlement reçu hors ligne — jamais un faux encaissement
+  // simulé ici. Le texte contractuel ci-dessous est un MODÈLE, marqué
+  // explicitement comme non validé juridiquement (droit de la consommation
+  // français : rétractation, reconduction tacite, résiliation en ligne) —
+  // voir section 14 du cahier des charges, jamais improvisé par ce code.
+  // ============================================================
+  var EC_CONTRACT_TERMS_VERSION = 'v1-modele-non-valide-juridiquement';
+  function ecContractSubscriptionInjectStyles(){
+    if (document.getElementById('ecContractSubStyles')) return;
+    var st = document.createElement('style');
+    st.id = 'ecContractSubStyles';
+    st.textContent =
+      '#ecContractSubOverlay{position:fixed;inset:0;background:rgba(16,27,36,0.6);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;box-sizing:border-box;}' +
+      '#ecContractSubOverlay[hidden]{display:none;}' +
+      '.ec-cs-sheet{background:#fff;border-radius:16px;max-width:560px;width:100%;margin:24px auto;padding:22px;box-sizing:border-box;font-family:"Poppins",sans-serif;}' +
+      '.ec-cs-sheet label{display:block;font-size:0.84rem;font-weight:600;margin-top:10px;}' +
+      '.ec-cs-sheet input[type=text],.ec-cs-sheet input[type=number],.ec-cs-sheet select{width:100%;box-sizing:border-box;font-family:inherit;font-size:0.9rem;padding:9px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);margin-top:4px;}' +
+      '.ec-cs-terms{max-height:160px;overflow-y:auto;font-size:0.76rem;color:var(--ink-soft,#5B6B78);border:1px solid var(--adm-line,#E5E1D6);border-radius:8px;padding:10px;margin-top:10px;background:#FAFAF7;}' +
+      '.ec-cs-checkbox{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:0.82rem;font-weight:500;}' +
+      '.ec-cs-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}';
+    document.head.appendChild(st);
+  }
+  function ecOpenContractSubscription(fuel){
+    if (!ecUser){
+      window.alert('Connectez-vous ou créez votre compte client pour souscrire au Contrat Sérénité.');
+      if (window.sudOpenEspace) window.sudOpenEspace('espaceClient');
+      return;
+    }
+    ecContractSubscriptionInjectStyles();
+    var overlay = document.getElementById('ecContractSubOverlay');
+    if (!overlay){ overlay = document.createElement('div'); overlay.id = 'ecContractSubOverlay'; document.body.appendChild(overlay); }
+    Promise.all([
+      sb.client.from('contract_products').select('*').eq('contract_type', 'serenite').eq('energy_type', fuel).maybeSingle(),
+      ecFetchEquipment()
+    ]).then(function(results){
+      var product = results[0].data;
+      var equipList = (results[1] || []).filter(function(eq){ return eq.equipment_type === (fuel === 'gaz' ? 'chaudiere_gaz' : 'chaudiere_fioul'); });
+      if (!product){ window.alert('Offre indisponible pour le moment.'); return; }
+      var priceLabel = (product.price_cents / 100).toLocaleString('fr-FR') + ' € TTC / an';
+      var equipOptions = equipList.map(function(eq){
+        return '<option value="' + eq.id + '">' + ecEscape([eq.brand, eq.model].filter(Boolean).join(' ') || 'Chaudière') + '</option>';
+      }).join('');
+      overlay.innerHTML = '<div class="ec-cs-sheet">' +
+        '<h3>Contrat Sérénité chaudière ' + (fuel === 'gaz' ? 'Gaz' : 'Fioul') + '</h3>' +
+        '<p class="pack-price" style="margin:4px 0 14px;">' + priceLabel + '</p>' +
+        '<label>Chaudière concernée' +
+          '<select id="csEquipSelect">' + equipOptions + '<option value="__new__">+ Nouvelle chaudière</option></select>' +
+        '</label>' +
+        '<div id="csNewEquipFields"' + (equipList.length ? ' hidden' : '') + '>' +
+          '<label>Marque<input type="text" id="csBrand"></label>' +
+          '<label>Modèle<input type="text" id="csModel"></label>' +
+          '<label>N° de série<input type="text" id="csSerial"></label>' +
+          '<label>Puissance (kW)<input type="number" step="0.1" id="csPower"></label>' +
+          '<label>Production<select id="csProduction"><option value="chauffage_seul">Chauffage seul</option><option value="chauffage_ecs">Chauffage + ECS</option><option value="ecs_separee">ECS séparée</option></select></label>' +
+        '</div>' +
+        '<label>Adresse d\'installation<input type="text" id="csAddress" placeholder="Adresse complète"></label>' +
+        '<div class="ec-cs-terms"><strong>Contenu du contrat</strong> : 1 entretien annuel, fiche technique complète, contrôles réglementaires, analyse de combustion si applicable, contrôle CO, contrôle hydraulique, attestation réglementaire, rapport numérique, historique équipement, rappel automatique, priorité dépannage, déplacement offert dans la zone gratuite HAYEVA (25 km autour de Fréjus).<br><br>' +
+          '<strong>Non inclus</strong> : pièces détachées, pièces d\'usure, main-d\'œuvre de réparation hors entretien, ramonage, désembouage, modification d\'installation, remplacement de chaudière.<br><br>' +
+          '<strong>Durée</strong> : 1 an à compter de l\'activation. <strong>Renouvellement</strong> : manuel (vous serez contacté·e avant l\'échéance, aucune reconduction automatique). <strong>Résiliation</strong> : sur simple demande auprès de HAYEVA.<br><br>' +
+          '<em>⚠ Modèle de conditions à titre indicatif (version ' + EC_CONTRACT_TERMS_VERSION + ') — en attente de validation juridique définitive avant commercialisation effective.</em></div>' +
+        '<label class="ec-cs-checkbox"><input type="checkbox" id="csAcceptTerms"> J\'ai lu et j\'accepte les conditions ci-dessus, et je demande la souscription de ce contrat (le règlement s\'effectue hors ligne, comme pour le reste des prestations HAYEVA).</label>' +
+        '<p class="ec-row-meta" id="csMsg" hidden></p>' +
+        '<div class="ec-cs-footer">' +
+          '<button type="button" class="btn-secondary" id="csCancel">Annuler</button>' +
+          '<button type="button" class="btn-primary" id="csSubmit">Souscrire</button>' +
+        '</div>' +
+      '</div>';
+      overlay.hidden = false;
+      var equipSelect = document.getElementById('csEquipSelect');
+      equipSelect.addEventListener('change', function(){
+        document.getElementById('csNewEquipFields').hidden = equipSelect.value !== '__new__';
+      });
+      document.getElementById('csCancel').addEventListener('click', function(){ overlay.hidden = true; });
+      document.getElementById('csSubmit').addEventListener('click', function(){
+        var msgEl = document.getElementById('csMsg');
+        if (!document.getElementById('csAcceptTerms').checked){
+          msgEl.textContent = 'Merci d\'accepter les conditions pour continuer.'; msgEl.hidden = false; return;
+        }
+        var submitBtn = document.getElementById('csSubmit');
+        submitBtn.disabled = true; submitBtn.textContent = 'Envoi…';
+        var equipmentIdPromise;
+        if (equipSelect.value === '__new__'){
+          equipmentIdPromise = sb.client.from('customer_equipment').insert({
+            customer_user_id: ecUser.id, equipment_type: fuel === 'gaz' ? 'chaudiere_gaz' : 'chaudiere_fioul',
+            brand: document.getElementById('csBrand').value.trim() || null,
+            model: document.getElementById('csModel').value.trim() || null,
+            notes: document.getElementById('csAddress').value.trim() || null,
+            specs: {
+              combustible: fuel === 'gaz' ? 'gaz_naturel' : 'fioul',
+              serial_number: document.getElementById('csSerial').value.trim() || null,
+              power_kw: document.getElementById('csPower').value || null,
+              production: document.getElementById('csProduction').value
+            }
+          }).select('id').then(function(res){
+            if (res.error || !res.data || !res.data[0]) throw new Error('Impossible d\'enregistrer la chaudière.');
+            return res.data[0].id;
+          });
+        } else {
+          equipmentIdPromise = Promise.resolve(equipSelect.value);
+        }
+        equipmentIdPromise.then(function(equipmentId){
+          return sb.client.from('service_contracts').insert({
+            customer_user_id: ecUser.id, equipment_id: equipmentId, contract_type: 'serenite', energy_type: fuel,
+            status: 'pending', annual_price_cents: product.price_cents, payment_frequency: product.payment_frequency,
+            renewal_type: 'manual', terms_version: EC_CONTRACT_TERMS_VERSION, terms_accepted_at: new Date().toISOString()
+          }).select('id').then(function(res){
+            if (res.error || !res.data || !res.data[0]) throw new Error('Impossible d\'enregistrer le contrat.');
+            return sb.client.from('contract_events').insert({ contract_id: res.data[0].id, event_type: 'CREATED', detail: 'Souscription en ligne, en attente de règlement hors ligne.' });
+          });
+        }).then(function(){
+          msgEl.className = 'ec-row-meta'; msgEl.style.color = 'var(--adm-green,#3F9463)';
+          msgEl.textContent = 'Demande envoyée — HAYEVA vous contacte pour finaliser le règlement et activer votre contrat.';
+          msgEl.hidden = false;
+          ecLoaded.contracts = false;
+          setTimeout(function(){ overlay.hidden = true; ecShowTab('contracts'); }, 1800);
+        }).catch(function(err){
+          console.error('ecOpenContractSubscription', err);
+          submitBtn.disabled = false; submitBtn.textContent = 'Souscrire';
+          msgEl.textContent = (err && err.message) || 'Échec de la souscription. Réessayez.'; msgEl.hidden = false;
+        });
+      });
+    });
+  }
+  window.ecOpenContractSubscription = ecOpenContractSubscription;
 
   function ecLoadQuotes(){
     var panel = document.getElementById('ecPanelQuotes');
