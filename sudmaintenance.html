@@ -3540,9 +3540,35 @@ if ('serviceWorker' in navigator){
   .admin-cancel-reason-form{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
   .admin-cancel-reason-option{ display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; }
   .admin-cancel-reason-detail-wrap textarea{ width:100%; min-height:70px; box-sizing:border-box; }
+  .admin-status-history-timeline{ display:flex; flex-direction:column; gap:14px; margin-top:16px; padding-left:18px; border-left:2px solid var(--adm-line); }
+  .admin-status-history-item{ display:flex; flex-direction:column; gap:2px; position:relative; }
+  .admin-status-history-item::before{ content:''; position:absolute; left:-23px; top:4px; width:9px; height:9px; border-radius:50%; background:var(--adm-ocean); }
+  .admin-status-history-date{ font-size:0.78rem; color:var(--adm-ink-soft); }
+  .admin-status-history-label{ font-weight:700; font-family:"Poppins",sans-serif; }
+  .admin-status-history-reason, .admin-status-history-author{ font-size:0.82rem; color:var(--adm-ink-soft); }
+  .admin-bk-load-more-btn{
+    display:block; width:100%; margin:16px 0; padding:12px; border-radius:10px; border:1.5px solid var(--adm-line);
+    background:#fff; font-family:"Poppins",sans-serif; font-weight:700; cursor:pointer;
+  }
+  .admin-bk-load-more-btn[disabled]{ opacity:0.6; cursor:wait; }
+  .admin-bk-export-bar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:14px 0; }
+  .admin-bk-export-bar select, .admin-bk-export-bar input[type="date"]{
+    padding:8px 10px; border-radius:8px; border:1.5px solid var(--adm-line); font-family:"Poppins",sans-serif; font-size:0.85rem;
+  }
+  .admin-stats-grid{ display:flex; flex-wrap:wrap; gap:10px; margin:14px 0; }
+  .admin-stats-grid .admin-bk-dash-card{ flex:1 1 150px; }
   @media (max-width:600px){
     .admin-bk-dash-card{ flex:1 1 44%; }
-    .admin-bk-main-tabs{ overflow-x:auto; flex-wrap:nowrap; }
+    /* BUG RÉEL trouvé en audit tactile (iPhone, 390px) : overflow-x:auto +
+       flex-wrap:nowrap faisait défiler les 5 onglets hors écran sans
+       aucune indication visuelle qu'il fallait balayer — l'onglet
+       "Archives" devenait injoignable pour qui ne devinait pas qu'il
+       fallait swiper. Les onglets doivent s'empiler en grille (comme
+       demandé : 2 colonnes), jamais nécessiter un défilement horizontal
+       caché. flex-wrap:wrap (règle de base) suffit, chaque onglet prenant
+       une largeur minimale pour se répartir sur 2 colonnes.
+    */
+    .admin-bk-main-tab{ flex:1 1 44%; text-align:center; min-height:44px; padding-top:12px; padding-bottom:12px; }
   }
   .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
   @media (max-width:760px){
@@ -6083,6 +6109,38 @@ if ('serviceWorker' in navigator){
   <div class="admin-bk-modal admin-bk-modal-wide" role="dialog" aria-modal="true" aria-labelledby="adminClientFicheBody">
     <button type="button" class="admin-bk-modal-close admin-client-fiche-close" aria-label="Fermer">✕</button>
     <div id="adminClientFicheBody"></div>
+  </div>
+</div>
+<!-- Chronologie des changements de statut d'un rendez-vous (section 20),
+     voir admOpenStatusHistoryModal(). -->
+<div class="admin-bk-modal-overlay" id="adminStatusHistoryOverlay" hidden>
+  <div class="admin-bk-modal" role="dialog" aria-modal="true" aria-labelledby="adminStatusHistoryBody">
+    <button type="button" class="admin-bk-modal-close admin-status-history-close" aria-label="Fermer">✕</button>
+    <div id="adminStatusHistoryBody"></div>
+  </div>
+</div>
+<!-- Statistiques détaillées, toute période (aujourd'hui/semaine/mois/
+     année/personnalisée), calculées 100% côté serveur. Voir admOpenStats(). -->
+<div class="admin-bk-modal-overlay" id="adminStatsOverlay" hidden>
+  <div class="admin-bk-modal admin-bk-modal-wide" role="dialog" aria-modal="true" aria-labelledby="adminStatsBody">
+    <button type="button" class="admin-bk-modal-close admin-stats-close" aria-label="Fermer">✕</button>
+    <h2>Statistiques</h2>
+    <div class="admin-bk-export-bar">
+      <select id="adminStatsPeriodSelect">
+        <option value="today">Aujourd'hui</option>
+        <option value="week">Cette semaine</option>
+        <option value="month" selected>Ce mois</option>
+        <option value="year">Cette année</option>
+        <option value="custom">Personnalisé</option>
+      </select>
+      <span id="adminStatsCustomRange" hidden>
+        <label>Du <input type="date" id="adminStatsStart"></label>
+        <label>Au <input type="date" id="adminStatsEnd"></label>
+      </span>
+      <button type="button" class="admin-bk-action-btn" id="adminStatsExportCsvBtn">Exporter CSV</button>
+      <button type="button" class="admin-bk-action-btn" id="adminStatsExportPdfBtn">Exporter PDF</button>
+    </div>
+    <div id="adminStatsBody"></div>
   </div>
 </div>
 <!-- Créateur/éditeur de devis chiffré (options + pièces jointes), voir
@@ -14042,22 +14100,82 @@ if ('serviceWorker' in navigator){
   // ici : admIvFinalize (voir plus bas) pose déjà status=COMPLETED et
   // interventions.ended_at au moment de la validation — cette liste ne fait
   // que lire ce qui existe déjà, jamais une seconde écriture.
+  // ---------- Pagination serveur Terminées/Annulées-Refusées ----------
+  // Remplace le filtrage sur adminBookingsCache (plafonné à 500 lignes,
+  // chargées en ORDER BY date ASCENDING — donc potentiellement les plus
+  // ANCIENNES, pas les plus récentes) par une requête Supabase directe,
+  // triée et filtrée côté serveur, avec chargement progressif ("Charger
+  // plus") — jamais tout l'historique de plusieurs années téléchargé d'un
+  // coup (section 24, priorité absolue de la restructuration du 01/10/2026).
+  var ADMIN_BK_PAGE_SIZE = 50;
+  var adminCompletedPage = { rows: [], profiles: {}, offset: 0, done: false, loading: false };
+  var adminCancelledPage = { rows: [], profiles: {}, offset: 0, done: false, loading: false, filterAtLoad: null };
+
+  function admFetchCompletedPage(reset){
+    if (reset) adminCompletedPage = { rows: [], profiles: {}, offset: 0, done: false, loading: false };
+    if (adminCompletedPage.loading || adminCompletedPage.done) return Promise.resolve();
+    adminCompletedPage.loading = true;
+    return sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS)
+      .eq('status', 'COMPLETED')
+      .order('date', { ascending:false }).order('start_time', { ascending:false })
+      .range(adminCompletedPage.offset, adminCompletedPage.offset + ADMIN_BK_PAGE_SIZE - 1)
+      .then(function(res){
+        adminCompletedPage.loading = false;
+        if (res.error){ console.error('admFetchCompletedPage', res.error); return; }
+        var rows = res.data || [];
+        return admBuildProfileMap(rows).then(function(map){
+          adminCompletedPage.rows = adminCompletedPage.rows.concat(rows);
+          Object.assign(adminCompletedPage.profiles, map);
+          adminCompletedPage.offset += rows.length;
+          if (rows.length < ADMIN_BK_PAGE_SIZE) adminCompletedPage.done = true;
+        });
+      });
+  }
+  function admFetchCancelledPage(reset){
+    if (reset) adminCancelledPage = { rows: [], profiles: {}, offset: 0, done: false, loading: false, filterAtLoad: adminCancelFilter };
+    if (adminCancelledPage.loading || adminCancelledPage.done) return Promise.resolve();
+    adminCancelledPage.loading = true;
+    var q = sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS);
+    if (adminCancelFilter === 'no_show') q = q.eq('status', 'NO_SHOW');
+    else if (adminCancelFilter === 'all') q = q.in('status', ['CANCELLED', 'NO_SHOW']);
+    else q = q.eq('status', 'CANCELLED').eq('cancellation_type', adminCancelFilter);
+    return q.order('cancelled_at', { ascending:false, nullsFirst:false }).order('date', { ascending:false })
+      .range(adminCancelledPage.offset, adminCancelledPage.offset + ADMIN_BK_PAGE_SIZE - 1)
+      .then(function(res){
+        adminCancelledPage.loading = false;
+        if (res.error){ console.error('admFetchCancelledPage', res.error); return; }
+        var rows = res.data || [];
+        return admBuildProfileMap(rows).then(function(map){
+          adminCancelledPage.rows = adminCancelledPage.rows.concat(rows);
+          Object.assign(adminCancelledPage.profiles, map);
+          adminCancelledPage.offset += rows.length;
+          if (rows.length < ADMIN_BK_PAGE_SIZE) adminCancelledPage.done = true;
+        });
+      });
+  }
+  function admLoadMoreHtml(done){
+    return done ? '' : '<button type="button" class="admin-bk-load-more-btn" id="adminBkLoadMoreBtn">Charger plus</button>';
+  }
+
   function admRenderCompletedTab(){
     var listEl = document.getElementById('adminBkList');
-    if (!listEl || !adminBookingsCache) return;
-    var rows = adminBookingsCache.rows.filter(function(b){ return b.status === 'COMPLETED'; })
-      .slice().sort(function(a, b){
-        var da = a.date + 'T' + (a.start_time || '00:00');
-        var db = b.date + 'T' + (b.start_time || '00:00');
-        return da < db ? 1 : (da > db ? -1 : 0);
-      });
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    admFetchCompletedPage(true).then(function(){
+      admPaintCompletedTab();
+    });
+  }
+  function admPaintCompletedTab(){
+    var listEl = document.getElementById('adminBkList');
+    if (!listEl) return;
+    var rows = adminCompletedPage.rows;
     if (!rows.length){
       listEl.innerHTML = '<div class="ec-empty"><strong>Aucune intervention terminée</strong>Les rendez-vous validés apparaîtront ici automatiquement.</div>';
       return;
     }
     var html = '<div class="ec-list">';
     rows.forEach(function(b){
-      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var contact = admContactFor(b, adminCompletedPage.profiles);
       var svcName = (b.services && b.services.name) || 'Intervention';
       var equip = b.customer_equipment;
       html += '<div class="ec-row admin-bk-archive-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
@@ -14069,9 +14187,10 @@ if ('serviceWorker' in navigator){
         '</div><div class="admin-bk-row-actions">' +
         (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
         '<button type="button" class="admin-bk-action-btn admin-bk-view-detail-btn" data-booking-id="' + b.id + '">Voir le compte rendu</button>' +
+        '<button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button>' +
         '</div></div>';
     });
-    html += '</div>';
+    html += '</div>' + admLoadMoreHtml(adminCompletedPage.done);
     listEl.innerHTML = html;
   }
 
@@ -14083,23 +14202,23 @@ if ('serviceWorker' in navigator){
   // hasard (section 25 : ne jamais deviner).
   function admRenderCancelledTab(){
     var listEl = document.getElementById('adminBkList');
-    if (!listEl || !adminBookingsCache) return;
-    var rows = adminBookingsCache.rows.filter(function(b){
-      if (b.status === 'NO_SHOW') return adminCancelFilter === 'all' || adminCancelFilter === 'no_show';
-      if (b.status !== 'CANCELLED') return false;
-      if (adminCancelFilter === 'all') return true;
-      return (b.cancellation_type || null) === adminCancelFilter;
-    }).slice().sort(function(a, b){
-      var da = a.cancelled_at || a.date; var db = b.cancelled_at || b.date;
-      return da < db ? 1 : (da > db ? -1 : 0);
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    admFetchCancelledPage(true).then(function(){
+      admPaintCancelledTab();
     });
+  }
+  function admPaintCancelledTab(){
+    var listEl = document.getElementById('adminBkList');
+    if (!listEl) return;
+    var rows = adminCancelledPage.rows;
     if (!rows.length){
       listEl.innerHTML = '<div class="ec-empty"><strong>Aucune entrée</strong>Aucune annulation ni demande refusée pour ce filtre.</div>';
       return;
     }
     var html = '<div class="ec-list">';
     rows.forEach(function(b){
-      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var contact = admContactFor(b, adminCancelledPage.profiles);
       var svcName = (b.services && b.services.name) || 'Intervention';
       var statusBadge, reasonLine;
       if (b.status === 'NO_SHOW'){
@@ -14127,12 +14246,24 @@ if ('serviceWorker' in navigator){
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
         (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
+        '<button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button>' +
         (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">Supprimer définitivement</button>' : '') +
         '</div></div>';
     });
-    html += '</div>';
+    html += '</div>' + admLoadMoreHtml(adminCancelledPage.done);
     listEl.innerHTML = html;
   }
+  // "Charger plus" : délégué (les boutons sont recréés à chaque rendu).
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#adminBkLoadMoreBtn');
+    if (!btn) return;
+    btn.disabled = true; btn.textContent = 'Chargement…';
+    if (adminFilter === 'completed'){
+      admFetchCompletedPage(false).then(admPaintCompletedTab);
+    } else if (adminFilter === 'cancelled'){
+      admFetchCancelledPage(false).then(admPaintCancelledTab);
+    }
+  });
 
   // ---------- Fenêtre "Pourquoi ?" (section 9) ----------
   // Remplace l'ancien window.prompt() texte libre : motif structuré
@@ -14205,38 +14336,225 @@ if ('serviceWorker' in navigator){
   // (adminBookingsCache, limité aux 500 derniers rendez-vous) — jamais un
   // chiffre inventé : le CA n'est affiché que s'il existe au moins une
   // intervention terminée avec un total_cents renseigné ce mois-ci.
+  // Compteurs calculés 100% côté serveur (RPC admin_booking_stats, voir
+  // 0055_full_scale_search_and_history.sql) — plus aucune dépendance à
+  // adminBookingsCache : exacts quel que soit le nombre total de rendez-vous
+  // en base, aujourd'hui comme dans 5 ans (priorité absolue, restructuration
+  // du 01/10/2026). "Aujourd'hui"/"À venir" restent deux comptages directs
+  // et indépendants (jamais un sous-ensemble d'un tableau plafonné).
+  function admFmtDateInput(d){
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
   function admRenderDashboardCounters(){
     var el = document.getElementById('adminBkDashboard');
-    if (!el || !adminBookingsCache) return;
+    if (!el) return;
+    el.innerHTML = '<p class="ec-loading">Chargement…</p>';
     var today = new Date(); today.setHours(0,0,0,0);
     var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    var rows = adminBookingsCache.rows;
-    var todayCount = rows.filter(function(b){
-      return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() === today.getTime();
-    }).length;
-    var upcomingCount = rows.filter(function(b){
-      return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() > today.getTime();
-    }).length;
-    var completedThisMonth = rows.filter(function(b){
-      return b.status === 'COMPLETED' && new Date(b.date + 'T00:00:00').getTime() >= monthStart.getTime();
+    var todayStr = admFmtDateInput(today);
+    var monthStartStr = admFmtDateInput(monthStart);
+
+    Promise.all([
+      sb.client.from('bookings').select('id', { count:'exact', head:true }).in('status', ['PENDING','CONFIRMED','IN_PROGRESS']).eq('date', todayStr),
+      sb.client.from('bookings').select('id', { count:'exact', head:true }).in('status', ['PENDING','CONFIRMED','IN_PROGRESS']).gt('date', todayStr),
+      sb.client.rpc('admin_booking_stats', { p_start: monthStartStr, p_end: admFmtDateInput(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)) })
+    ]).then(function(results){
+      if (results[0].error || results[1].error || results[2].error){
+        console.error('admRenderDashboardCounters', results[0].error, results[1].error, results[2].error);
+        el.innerHTML = '<div class="ec-empty"><strong>Compteurs indisponibles</strong></div>';
+        return;
+      }
+      var todayCount = results[0].count || 0;
+      var upcomingCount = results[1].count || 0;
+      var stats = (results[2].data && results[2].data[0]) || {};
+      var caCents = (stats.revenue_countable > 0 && stats.revenue_countable === stats.completed) ? Number(stats.revenue_cents) : null;
+      el.innerHTML =
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + todayCount + '</span><span class="admin-bk-dash-label">Aujourd\'hui</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + upcomingCount + '</span><span class="admin-bk-dash-label">À venir</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (stats.completed || 0) + '</span><span class="admin-bk-dash-label">Terminées ce mois</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (stats.cancelled_client || 0) + '</span><span class="admin-bk-dash-label">Annulées client ce mois</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (stats.refused || 0) + '</span><span class="admin-bk-dash-label">Refusées HAYEVA ce mois</span></div>' +
+        (caCents != null ? '<div class="admin-bk-dash-card admin-bk-dash-card-ca"><span class="admin-bk-dash-value">' + admFmtEuros(caCents) + '</span><span class="admin-bk-dash-label">CA du mois</span></div>' : '') +
+        '<button type="button" class="admin-bk-action-btn" id="adminBkOpenStatsBtn">Statistiques détaillées →</button>';
     });
-    var cancelledClientThisMonth = rows.filter(function(b){
-      return b.cancellation_type === 'cancelled_client' && b.cancelled_at && new Date(b.cancelled_at).getTime() >= monthStart.getTime();
-    }).length;
-    var refusedThisMonth = rows.filter(function(b){
-      return (b.cancellation_type === 'cancelled_admin' || b.cancellation_type === 'refused') && b.cancelled_at && new Date(b.cancelled_at).getTime() >= monthStart.getTime();
-    }).length;
-    var caCents = null;
-    if (completedThisMonth.length && completedThisMonth.every(function(b){ return b.total_cents != null; })){
-      caCents = completedThisMonth.reduce(function(sum, b){ return sum + b.total_cents; }, 0);
+  }
+  document.addEventListener('click', function(e){
+    if (e.target.closest('#adminBkOpenStatsBtn')) admOpenStats();
+  });
+
+  // ---------- Statistiques détaillées, toute période (section 12) ----------
+  // "confirmé" et "terminé" sont deux choses différentes (jamais comptées
+  // l'une pour l'autre) : admin_booking_stats calcule chaque compteur avec
+  // sa propre requête indépendante, jamais par addition/déduction entre
+  // catégories.
+  function admStatsPeriodRange(period){
+    var today = new Date(); today.setHours(0,0,0,0);
+    if (period === 'today') return [today, today];
+    if (period === 'week'){ var mon = admMondayOf(today); return [mon, admAddDays(mon, 6)]; }
+    if (period === 'year') return [new Date(today.getFullYear(), 0, 1), new Date(today.getFullYear(), 11, 31)];
+    // 'month' par défaut
+    return [new Date(today.getFullYear(), today.getMonth(), 1), new Date(today.getFullYear(), today.getMonth() + 1, 0)];
+  }
+  var adminStatsLastRange = null;
+  function admOpenStats(){
+    var overlay = document.getElementById('adminStatsOverlay');
+    if (!overlay) return;
+    overlay.hidden = false;
+    admRefreshStats();
+  }
+  function admRefreshStats(){
+    var body = document.getElementById('adminStatsBody');
+    var periodSel = document.getElementById('adminStatsPeriodSelect');
+    var customWrap = document.getElementById('adminStatsCustomRange');
+    if (!body || !periodSel) return;
+    var period = periodSel.value;
+    customWrap.hidden = period !== 'custom';
+    var start, end;
+    if (period === 'custom'){
+      var sVal = document.getElementById('adminStatsStart').value;
+      var eVal = document.getElementById('adminStatsEnd').value;
+      if (!sVal || !eVal){ body.innerHTML = '<p class="admin-accounts-hint">Choisissez une date de début et de fin.</p>'; return; }
+      start = sVal; end = eVal;
+    } else {
+      var range = admStatsPeriodRange(period);
+      start = admFmtDateInput(range[0]); end = admFmtDateInput(range[1]);
     }
-    el.innerHTML =
-      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + todayCount + '</span><span class="admin-bk-dash-label">Aujourd\'hui</span></div>' +
-      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + upcomingCount + '</span><span class="admin-bk-dash-label">À venir</span></div>' +
-      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + completedThisMonth.length + '</span><span class="admin-bk-dash-label">Terminées ce mois</span></div>' +
-      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + cancelledClientThisMonth + '</span><span class="admin-bk-dash-label">Annulées client ce mois</span></div>' +
-      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + refusedThisMonth + '</span><span class="admin-bk-dash-label">Refusées HAYEVA ce mois</span></div>' +
-      (caCents != null ? '<div class="admin-bk-dash-card admin-bk-dash-card-ca"><span class="admin-bk-dash-value">' + admFmtEuros(caCents) + '</span><span class="admin-bk-dash-label">CA du mois</span></div>' : '');
+    adminStatsLastRange = { start: start, end: end };
+    body.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    sb.client.rpc('admin_booking_stats', { p_start: start, p_end: end }).then(function(res){
+      if (res.error){
+        console.error('admRefreshStats', res.error);
+        body.innerHTML = '<div class="ec-empty"><strong>Statistiques indisponibles</strong></div>';
+        return;
+      }
+      var s = (res.data && res.data[0]) || {};
+      var caCents = (s.revenue_countable > 0 && s.revenue_countable === s.completed) ? Number(s.revenue_cents) : null;
+      // Taux de transformation = interventions terminées / demandes reçues
+      // sur la période — jamais confirmées comptées comme réalisées.
+      var transformRate = s.requests_received > 0 ? Math.round((s.completed / s.requests_received) * 1000) / 10 : null;
+      body.innerHTML = '<div class="admin-stats-grid">' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.requests_received || 0) + '</span><span class="admin-bk-dash-label">Demandes reçues</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.confirmed || 0) + '</span><span class="admin-bk-dash-label">Rendez-vous confirmés</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.completed || 0) + '</span><span class="admin-bk-dash-label">Interventions terminées</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.cancelled_client || 0) + '</span><span class="admin-bk-dash-label">Annulations client</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.cancelled_admin || 0) + '</span><span class="admin-bk-dash-label">Annulations HAYEVA</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.refused || 0) + '</span><span class="admin-bk-dash-label">Refus HAYEVA</span></div>' +
+        '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + (s.no_show || 0) + '</span><span class="admin-bk-dash-label">Clients absents</span></div>' +
+        (caCents != null ? '<div class="admin-bk-dash-card admin-bk-dash-card-ca"><span class="admin-bk-dash-value">' + admFmtEuros(caCents) + '</span><span class="admin-bk-dash-label">CA interventions terminées</span></div>' : '') +
+        (transformRate != null ? '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + transformRate + ' %</span><span class="admin-bk-dash-label">Taux de transformation</span></div>' : '') +
+        '</div>' +
+        (caCents == null ? '<p class="admin-accounts-hint">CA non affiché : au moins une intervention terminée de la période n\'a pas de montant renseigné.</p>' : '');
+    });
+  }
+  var adminStatsOverlayEl = document.getElementById('adminStatsOverlay');
+  if (adminStatsOverlayEl){
+    adminStatsOverlayEl.addEventListener('click', function(e){
+      if (e.target.closest('.admin-stats-close') || e.target === adminStatsOverlayEl) adminStatsOverlayEl.hidden = true;
+    });
+  }
+  var adminStatsPeriodSelectEl = document.getElementById('adminStatsPeriodSelect');
+  if (adminStatsPeriodSelectEl) adminStatsPeriodSelectEl.addEventListener('change', admRefreshStats);
+  var adminStatsStartEl = document.getElementById('adminStatsStart');
+  var adminStatsEndEl = document.getElementById('adminStatsEnd');
+  if (adminStatsStartEl) adminStatsStartEl.addEventListener('change', admRefreshStats);
+  if (adminStatsEndEl) adminStatsEndEl.addEventListener('change', admRefreshStats);
+
+  // ---------- Exports CSV / PDF (section 23) ----------
+  // CSV : généré côté client à partir d'une requête directe sur la période
+  // choisie (jamais limitée à adminBookingsCache). PDF : pas de librairie
+  // binaire côté client — un rapport HTML imprimable est ouvert dans un
+  // nouvel onglet et window.print() délègue à la fonction "Enregistrer en
+  // PDF" du navigateur, qui produit un vrai PDF propre sans jamais fabriquer
+  // de dépendance non vérifiable.
+  function admFetchBookingsForExport(start, end, onDone){
+    sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS)
+      .gte('date', start).lte('date', end)
+      .order('date', { ascending:true }).order('start_time', { ascending:true })
+      .limit(5000)
+      .then(function(res){
+        if (res.error){ onDone(null, res.error); return; }
+        var rows = res.data || [];
+        admBuildProfileMap(rows).then(function(map){ onDone({ rows: rows, profiles: map }, null); });
+      });
+  }
+  function admCsvEscape(v){
+    var s = v == null ? '' : String(v);
+    if (/[",\n;]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  var EXPORT_STATUS_LABELS = {
+    PENDING: 'En attente', CONFIRMED: 'Confirmé', IN_PROGRESS: 'En intervention',
+    COMPLETED: 'Terminée', CANCELLED: 'Annulée/refusée', NO_SHOW: 'Absence client'
+  };
+  function admExportRowsToCsv(data){
+    var header = ['Référence', 'Date', 'Heure', 'Client', 'Téléphone', 'Email', 'Adresse', 'Prestation', 'Statut', 'Motif', 'Montant (€)'];
+    var lines = [header.map(admCsvEscape).join(';')];
+    data.rows.forEach(function(b){
+      var contact = admContactFor(b, data.profiles);
+      var motif = b.cancellation_type ? (CANCELLATION_REASON_LABELS[b.cancellation_reason_code] || '') + (b.cancellation_reason_detail ? ' — ' + b.cancellation_reason_detail : '') : '';
+      lines.push([
+        b.reference, b.date, b.start_time ? String(b.start_time).slice(0,5) : '',
+        contact.name, contact.phone || '', contact.email || '', contact.address || '',
+        (b.services && b.services.name) || '', EXPORT_STATUS_LABELS[b.status] || b.status, motif,
+        b.total_cents != null ? (b.total_cents / 100).toFixed(2) : ''
+      ].map(admCsvEscape).join(';'));
+    });
+    return '﻿' + lines.join('\r\n');
+  }
+  function admDownloadTextFile(filename, content, mime){
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+  function admOpenPrintableReport(title, periodLabel, data){
+    var win = window.open('', '_blank');
+    if (!win){ window.alert('Autorisez les fenêtres pop-up pour générer le PDF (impression du navigateur).'); return; }
+    var rowsHtml = data.rows.map(function(b){
+      var contact = admContactFor(b, data.profiles);
+      var motif = b.cancellation_type ? (CANCELLATION_REASON_LABELS[b.cancellation_reason_code] || '') + (b.cancellation_reason_detail ? ' — ' + b.cancellation_reason_detail : '') : '';
+      return '<tr><td>' + admEscape(b.reference) + '</td><td>' + admFmtDate(b.date) + '</td><td>' + admEscape(contact.name) + '</td>' +
+        '<td>' + admEscape(contact.phone || '') + '</td><td>' + admEscape((b.services && b.services.name) || '') + '</td>' +
+        '<td>' + admEscape(EXPORT_STATUS_LABELS[b.status] || b.status) + '</td><td>' + admEscape(motif) + '</td>' +
+        '<td>' + (b.total_cents != null ? admFmtEuros(b.total_cents) : '—') + '</td></tr>';
+    }).join('');
+    win.document.write(
+      '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>' + title + '</title><style>' +
+      'body{font-family:Poppins,Arial,sans-serif;color:#101B24;padding:32px;}' +
+      'h1{font-size:1.4rem;margin-bottom:2px;}p.sub{color:#5B6B78;margin-top:0;margin-bottom:24px;}' +
+      'table{width:100%;border-collapse:collapse;font-size:0.82rem;} th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;}' +
+      'th{background:#101B24;color:#fff;} tr:nth-child(even){background:#f7f7f7;}' +
+      '@media print{ body{padding:12px;} }' +
+      '</style></head><body>' +
+      '<h1>HAYEVA — ' + title + '</h1><p class="sub">Période : ' + periodLabel + ' · ' + data.rows.length + ' rendez-vous · généré le ' + admFmtDateTime(new Date().toISOString()) + '</p>' +
+      '<table><thead><tr><th>Réf.</th><th>Date</th><th>Client</th><th>Téléphone</th><th>Prestation</th><th>Statut</th><th>Motif</th><th>Montant</th></tr></thead><tbody>' +
+      rowsHtml + '</tbody></table>' +
+      '<script>window.onload = function(){ window.print(); };<' + '/script>' +
+      '</body></html>'
+    );
+    win.document.close();
+  }
+  var adminStatsExportCsvBtnEl = document.getElementById('adminStatsExportCsvBtn');
+  if (adminStatsExportCsvBtnEl){
+    adminStatsExportCsvBtnEl.addEventListener('click', function(){
+      if (!adminStatsLastRange) return;
+      admFetchBookingsForExport(adminStatsLastRange.start, adminStatsLastRange.end, function(data, err){
+        if (err || !data){ window.alert('Export impossible.'); return; }
+        admDownloadTextFile('hayeva-rendezvous_' + adminStatsLastRange.start + '_' + adminStatsLastRange.end + '.csv', admExportRowsToCsv(data), 'text/csv;charset=utf-8');
+      });
+    });
+  }
+  var adminStatsExportPdfBtnEl = document.getElementById('adminStatsExportPdfBtn');
+  if (adminStatsExportPdfBtnEl){
+    adminStatsExportPdfBtnEl.addEventListener('click', function(){
+      if (!adminStatsLastRange) return;
+      admFetchBookingsForExport(adminStatsLastRange.start, adminStatsLastRange.end, function(data, err){
+        if (err || !data){ window.alert('Export impossible.'); return; }
+        admOpenPrintableReport('Rapport de période', adminStatsLastRange.start + ' au ' + adminStatsLastRange.end, data);
+      });
+    });
   }
 
   // ---------- Archives année/mois (sections 6, 7, 13, 22) ----------
@@ -14287,7 +14605,27 @@ if ('serviceWorker' in navigator){
       .eq('report_status', 'FINALIZED')
       .gte('ended_at', start).lt('ended_at', end)
       .order('ended_at', { ascending:false })
-      .then(function(res){ onDone(res.error ? null : (res.data || [])); });
+      .then(function(res){
+        if (res.error){ onDone(null); return; }
+        var rows = res.data || [];
+        // customer_profiles n'est pas jointe automatiquement par PostgREST
+        // depuis interventions->bookings (relation indirecte) : résolue ici
+        // pour que le filtre/export par client fonctionne aussi pour les
+        // comptes enregistrés, pas seulement les invités (guest_name).
+        var custIds = rows.map(function(iv){ return iv.bookings && iv.bookings.customer_user_id; }).filter(Boolean);
+        custIds = custIds.filter(function(id, i){ return custIds.indexOf(id) === i; });
+        if (!custIds.length){ onDone(rows); return; }
+        sb.client.from('customer_profiles').select('user_id,first_name,last_name').in('user_id', custIds).then(function(pres){
+          var map = {};
+          (pres.data || []).forEach(function(r){ map[r.user_id] = [r.first_name, r.last_name].filter(Boolean).join(' '); });
+          rows.forEach(function(iv){
+            if (iv.bookings && iv.bookings.customer_user_id && map[iv.bookings.customer_user_id]){
+              iv.bookings.resolved_name = map[iv.bookings.customer_user_id];
+            }
+          });
+          onDone(rows);
+        });
+      });
   }
   function admRenderYearMonthArchives(containerId){
     var el = document.getElementById(containerId);
@@ -14323,6 +14661,7 @@ if ('serviceWorker' in navigator){
       admRenderArchiveMonthDetail(containerId);
     });
   }
+  var adminArchiveClientFilter = '';
   function admRenderArchiveMonthDetail(containerId){
     var el = document.getElementById(containerId);
     if (!el) return;
@@ -14332,6 +14671,13 @@ if ('serviceWorker' in navigator){
       var cat = iv.bookings && iv.bookings.services && iv.bookings.services.category;
       return cat === adminArchiveCategory;
     });
+    if (adminArchiveClientFilter.trim()){
+      var needle = adminArchiveClientFilter.trim().toLowerCase();
+      filtered = filtered.filter(function(iv){
+        var name = (iv.bookings && (iv.bookings.resolved_name || iv.bookings.guest_name)) || '';
+        return name.toLowerCase().indexOf(needle) !== -1;
+      });
+    }
     var uniqueClients = {};
     rows.forEach(function(iv){
       var b = iv.bookings;
@@ -14357,13 +14703,18 @@ if ('serviceWorker' in navigator){
       '<div class="admin-bk-filters">' + catOptions.map(function(c){
         return '<button type="button" class="gallery-filter-btn' + (adminArchiveCategory === c ? ' is-active' : '') + '" data-archive-category="' + c + '">' +
           (c === 'all' ? 'Toutes' : (ARCHIVE_CATEGORY_LABELS[c] || 'Autres')) + '</button>';
-      }).join('') + '</div>';
+      }).join('') + '</div>' +
+      '<div class="admin-bk-export-bar">' +
+        '<input type="search" class="admin-bk-search-input" id="adminArchiveClientFilterInput" placeholder="Filtrer par client…" value="' + admEscape(adminArchiveClientFilter) + '">' +
+        '<button type="button" class="admin-bk-action-btn" data-archive-export="csv">Exporter CSV</button>' +
+        '<button type="button" class="admin-bk-action-btn" data-archive-export="pdf">Exporter PDF</button>' +
+      '</div>';
     if (!filtered.length){
       html += '<div class="ec-empty"><strong>Aucune intervention</strong>Aucune intervention pour ce filtre ce mois-ci.</div>';
     } else {
       html += '<div class="ec-list">' + filtered.map(function(iv){
         var b = iv.bookings || {};
-        var name = b.guest_name || 'Client';
+        var name = b.resolved_name || b.guest_name || 'Client';
         var svcName = (b.services && b.services.name) || 'Intervention';
         return '<div class="ec-row admin-bk-archive-row" data-booking-id="' + (b.id || '') + '"><div class="ec-row-info">' +
           '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(name) + '</span>' +
@@ -14388,6 +14739,24 @@ if ('serviceWorker' in navigator){
     if (monthBtn){ adminArchiveMonth = Number(monthBtn.getAttribute('data-archive-month')); adminArchiveCategory = 'all'; admRenderYearMonthArchives(containerId); return; }
     var catBtn = e.target.closest('[data-archive-category]');
     if (catBtn){ adminArchiveCategory = catBtn.getAttribute('data-archive-category'); admRenderArchiveMonthDetail(containerId); return; }
+    var exportBtn = e.target.closest('[data-archive-export]');
+    if (exportBtn){
+      var rows = (adminArchivesMonthDetailCache || []).filter(function(iv){
+        if (adminArchiveCategory !== 'all'){
+          var cat = iv.bookings && iv.bookings.services && iv.bookings.services.category;
+          if (cat !== adminArchiveCategory) return false;
+        }
+        if (adminArchiveClientFilter.trim()){
+          var name = (iv.bookings && (iv.bookings.resolved_name || iv.bookings.guest_name)) || '';
+          if (name.toLowerCase().indexOf(adminArchiveClientFilter.trim().toLowerCase()) === -1) return false;
+        }
+        return true;
+      });
+      var periodLabel = MONTH_LABELS_FR[adminArchiveMonth] + ' ' + adminArchiveYear;
+      if (exportBtn.getAttribute('data-archive-export') === 'csv') admExportArchiveRowsCsv(rows, periodLabel);
+      else admExportArchiveRowsPdf(rows, periodLabel);
+      return;
+    }
     var rowEl = e.target.closest('.admin-bk-archive-row');
     if (rowEl && rowEl.getAttribute('data-booking-id')){ admOpenBookingModal(rowEl.getAttribute('data-booking-id')); return; }
     var action = e.target.closest('[data-archive-action]');
@@ -14403,57 +14772,107 @@ if ('serviceWorker' in navigator){
   if (adminBkArchivesEl){
     adminBkArchivesEl.addEventListener('click', admHandleArchiveContainerClick);
   }
+  // Filtre client (texte libre) sur le mois d'archive ouvert — délégué
+  // puisque le champ est recréé à chaque rendu.
+  document.addEventListener('input', function(e){
+    if (e.target.id !== 'adminArchiveClientFilterInput') return;
+    adminArchiveClientFilter = e.target.value;
+    var containerId = e.target.closest('#adminBkArchives') ? 'adminBkArchives' : 'adminArchivesList';
+    admRenderArchiveMonthDetail(containerId);
+    var refreshed = document.getElementById('adminArchiveClientFilterInput');
+    if (refreshed) { refreshed.focus(); refreshed.setSelectionRange(refreshed.value.length, refreshed.value.length); }
+  });
+  function admArchiveExportCsv(rows){
+    var header = ['Référence', 'Date fin réelle', 'Client', 'Prestation', 'Compte rendu', 'Montant (€)'];
+    var lines = [header.map(admCsvEscape).join(';')];
+    rows.forEach(function(iv){
+      var b = iv.bookings || {};
+      var name = b.resolved_name || b.guest_name || 'Client';
+      lines.push([
+        b.reference || '', admFmtDateTime(iv.ended_at), name, (b.services && b.services.name) || '',
+        iv.report_number || '', iv.total_cents && iv.total_cents.total_cents != null ? (iv.total_cents.total_cents / 100).toFixed(2) : ''
+      ].map(admCsvEscape).join(';'));
+    });
+    return '﻿' + lines.join('\r\n');
+  }
+  function admExportArchiveRowsCsv(rows, periodLabel){
+    admDownloadTextFile('hayeva-archives_' + periodLabel.replace(/\s+/g, '-') + '.csv', admArchiveExportCsv(rows), 'text/csv;charset=utf-8');
+  }
+  function admExportArchiveRowsPdf(rows, periodLabel){
+    var win = window.open('', '_blank');
+    if (!win){ window.alert('Autorisez les fenêtres pop-up pour générer le PDF (impression du navigateur).'); return; }
+    var rowsHtml = rows.map(function(iv){
+      var b = iv.bookings || {};
+      var name = b.resolved_name || b.guest_name || 'Client';
+      return '<tr><td>' + admEscape(b.reference || '') + '</td><td>' + admFmtDateTime(iv.ended_at) + '</td><td>' + admEscape(name) + '</td>' +
+        '<td>' + admEscape((b.services && b.services.name) || '') + '</td><td>' + admEscape(iv.report_number || '') + '</td>' +
+        '<td>' + (iv.total_cents && iv.total_cents.total_cents != null ? admFmtEuros(iv.total_cents.total_cents) : '—') + '</td></tr>';
+    }).join('');
+    win.document.write(
+      '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Archives ' + periodLabel + '</title><style>' +
+      'body{font-family:Poppins,Arial,sans-serif;color:#101B24;padding:32px;}' +
+      'h1{font-size:1.4rem;margin-bottom:2px;}p.sub{color:#5B6B78;margin-top:0;margin-bottom:24px;}' +
+      'table{width:100%;border-collapse:collapse;font-size:0.82rem;} th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;}' +
+      'th{background:#101B24;color:#fff;} tr:nth-child(even){background:#f7f7f7;}' +
+      '@media print{ body{padding:12px;} }' +
+      '</style></head><body>' +
+      '<h1>HAYEVA — Archives</h1><p class="sub">' + admEscape(periodLabel) + ' · ' + rows.length + ' interventions terminées · généré le ' + admFmtDateTime(new Date().toISOString()) + '</p>' +
+      '<table><thead><tr><th>Réf.</th><th>Terminée le</th><th>Client</th><th>Prestation</th><th>Compte rendu</th><th>Montant</th></tr></thead><tbody>' +
+      rowsHtml + '</tbody></table>' +
+      '<script>window.onload = function(){ window.print(); };<' + '/script>' +
+      '</body></html>'
+    );
+    win.document.close();
+  }
 
   // ---------- Recherche globale (section 14) ----------
-  // Cherche dans les rendez-vous déjà chargés (adminBookingsCache, jusqu'à
-  // 500 lignes les plus récentes) : nom, téléphone, e-mail, adresse,
-  // référence, marque/modèle d'équipement. Limite réelle assumée : un
-  // client dont le dernier rendez-vous date d'avant ces 500 lignes ne sera
-  // pas trouvé ici (voir rapport final, section performance).
-  function admBkSearchMatches(query){
-    var needle = query.trim().toLowerCase();
-    if (!needle || !adminBookingsCache) return [];
-    var needlePhone = admNormalizePhone(needle);
-    var seen = {};
-    var results = [];
-    adminBookingsCache.rows.forEach(function(b){
-      var contact = admContactFor(b, adminBookingsCache.profiles);
-      var equip = b.customer_equipment;
-      var haystacks = [contact.name, contact.email, contact.address, b.reference, equip && equip.brand, equip && equip.model]
-        .filter(Boolean).map(function(s){ return String(s).toLowerCase(); });
-      var matched = haystacks.some(function(h){ return h.indexOf(needle) !== -1; });
-      if (!matched && needlePhone && contact.phone){
-        matched = admNormalizePhone(contact.phone).indexOf(needlePhone) !== -1;
-      }
-      if (!matched) return;
-      var key = contact.userId || contact.phone || contact.email || b.id;
-      if (seen[key]) return;
-      seen[key] = true;
-      results.push({ booking: b, contact: contact });
+  // Interroge DIRECTEMENT la base via le RPC admin_search_bookings
+  // (0055_full_scale_search_and_history.sql, index trigram) — plus aucune
+  // dépendance à adminBookingsCache : un client dont le dernier rendez-vous
+  // date de plusieurs années est retrouvé aussi vite qu'un client récent.
+  // Debounce 300ms : une requête par pause de frappe, jamais une par
+  // caractère tapé.
+  var adminBkSearchDebounceTimer = null;
+  var adminBkSearchRequestSeq = 0;
+  function admBkSearchRemote(query, cb){
+    var mySeq = ++adminBkSearchRequestSeq;
+    sb.client.rpc('admin_search_bookings', { p_query: query, p_limit: 20 }).then(function(res){
+      if (mySeq !== adminBkSearchRequestSeq) return; // réponse obsolète (une frappe plus récente a déjà relancé une requête)
+      if (res.error){ cb(null, res.error); return; }
+      cb(res.data || [], null);
     });
-    return results.slice(0, 20);
   }
   var adminBkSearchInputEl = document.getElementById('adminBkSearchInput');
   var adminBkSearchResultsEl = document.getElementById('adminBkSearchResults');
   if (adminBkSearchInputEl && adminBkSearchResultsEl){
     adminBkSearchInputEl.addEventListener('input', function(){
       var q = adminBkSearchInputEl.value;
+      clearTimeout(adminBkSearchDebounceTimer);
       if (!q.trim()){ adminBkSearchResultsEl.hidden = true; adminBkSearchResultsEl.innerHTML = ''; return; }
-      var results = admBkSearchMatches(q);
-      if (!results.length){
-        adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Aucun résultat.</p>';
-        adminBkSearchResultsEl.hidden = false;
-        return;
-      }
-      adminBkSearchResultsEl.innerHTML = results.map(function(r){
-        var equip = r.booking.customer_equipment;
-        return '<button type="button" class="admin-bk-search-result" data-client-id="' + admEscape(r.contact.userId || '') + '" data-booking-id="' + r.booking.id + '">' +
-          '<strong>' + admEscape(r.contact.name) + '</strong>' +
-          (r.contact.phone ? ' · ' + admEscape(r.contact.phone) : '') +
-          (equip ? ' · ' + admEscape([equip.brand, equip.model].filter(Boolean).join(' ')) : '') +
-          '</button>';
-      }).join('');
+      adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Recherche…</p>';
       adminBkSearchResultsEl.hidden = false;
+      adminBkSearchDebounceTimer = setTimeout(function(){
+        admBkSearchRemote(q, function(results, err){
+          if (err){
+            console.error('admBkSearchRemote', err);
+            adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Recherche indisponible. Réessayez.</p>';
+            return;
+          }
+          if (!results.length){
+            adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Aucun résultat.</p>';
+            return;
+          }
+          adminBkSearchResultsEl.innerHTML = results.map(function(r){
+            var equip = [r.equipment_brand, r.equipment_model].filter(Boolean).join(' ');
+            return '<button type="button" class="admin-bk-search-result" data-client-id="' + admEscape(r.customer_user_id || '') + '" data-booking-id="' + r.booking_id + '">' +
+              '<strong>' + admEscape(r.contact_name) + '</strong>' +
+              (r.contact_phone ? ' · ' + admEscape(r.contact_phone) : '') +
+              (equip ? ' · ' + admEscape(equip) : '') +
+              ' <span class="ec-row-meta">' + admFmtDate(r.date) + '</span>' +
+              '</button>';
+          }).join('');
+        });
+      }, 300);
     });
     adminBkSearchResultsEl.addEventListener('click', function(e){
       var btn = e.target.closest('.admin-bk-search-result');
@@ -14481,15 +14900,17 @@ if ('serviceWorker' in navigator){
     Promise.all([
       sb.client.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', userId).maybeSingle(),
       sb.client.from('profiles').select('email').eq('user_id', userId).maybeSingle(),
-      sb.client.from('customer_equipment').select('id,equipment_type,brand,model,specs,installed_at,last_service_at').eq('customer_user_id', userId)
+      sb.client.from('customer_equipment').select('id,equipment_type,brand,model,specs,installed_at,last_service_at').eq('customer_user_id', userId),
+      // Requête directe par client (jamais via adminBookingsCache, plafonné)
+      // : un historique de plusieurs années pour CE client précis reste
+      // complet, quelle que soit son ancienneté — voir section 24/priorité
+      // absolue de la restructuration du 01/10/2026.
+      sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS).eq('customer_user_id', userId)
+        .order('date', { ascending:false }).order('start_time', { ascending:false }).limit(500)
     ]).then(function(results){
       var cp = results[0].data, prof = results[1].data, equipRows = results[2].data || [];
+      var bookings = results[3].data || [];
       var name = cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : 'Client';
-      var bookings = adminBookingsCache.rows.filter(function(b){ return b.customer_user_id === userId; })
-        .slice().sort(function(a, b){
-          var da = a.date + 'T' + (a.start_time || '00:00'); var db = b.date + 'T' + (b.start_time || '00:00');
-          return da < db ? 1 : (da > db ? -1 : 0);
-        });
       var today = new Date(); today.setHours(0,0,0,0);
       var nextBooking = bookings.filter(function(b){
         return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() >= today.getTime();
@@ -14519,10 +14940,10 @@ if ('serviceWorker' in navigator){
         '<h3 class="admin-client-fiche-section-title">Historique</h3>' +
         (history.length ? '<div class="ec-list">' + history.map(function(b){
           var svcName = (b.services && b.services.name) || 'Intervention';
-          return '<div class="ec-row admin-bk-archive-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+          return '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info admin-bk-archive-row">' +
             '<span class="ec-row-title">' + admEscape(svcName) + '</span>' +
             '<span class="ec-row-meta">' + admFmtDate(b.date) + ' — ' + (b.status === 'COMPLETED' ? 'Terminée' : b.status === 'NO_SHOW' ? 'Absence' : 'Annulée') + '</span>' +
-            '</div></div>';
+            '</div><div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn admin-bk-view-history-btn" data-booking-id="' + b.id + '">Historique</button></div></div>';
         }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun historique pour le moment.</p>');
       body.innerHTML = html;
     }).catch(function(err){
@@ -14550,6 +14971,56 @@ if ('serviceWorker' in navigator){
     var btn = e.target.closest('.admin-bk-view-detail-btn');
     if (!btn) return;
     admOpenBookingModal(btn.getAttribute('data-booking-id'));
+  });
+
+  // ---------- Historique de statut d'un rendez-vous (section 20) ----------
+  // Chronologie simple en lecture seule, alimentée par
+  // admin_booking_status_history (0055, lit booking_status_history dont le
+  // trigger pose automatiquement une ligne à chaque changement de statut —
+  // aucune saisie manuelle requise).
+  var STATUS_HISTORY_LABELS = {
+    PENDING: 'Demande reçue', CONFIRMED: 'Confirmée', IN_PROGRESS: 'Intervention commencée',
+    COMPLETED: 'Intervention terminée', CANCELLED: 'Annulée/refusée', NO_SHOW: 'Client absent'
+  };
+  function admOpenStatusHistoryModal(bookingId){
+    var overlay = document.getElementById('adminStatusHistoryOverlay');
+    var body = document.getElementById('adminStatusHistoryBody');
+    if (!overlay || !body) return;
+    body.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    overlay.hidden = false;
+    sb.client.rpc('admin_booking_status_history', { p_booking_id: bookingId }).then(function(res){
+      if (res.error){
+        console.error('admOpenStatusHistoryModal', res.error);
+        body.innerHTML = '<div class="ec-empty"><strong>Historique indisponible</strong></div>';
+        return;
+      }
+      var rows = res.data || [];
+      if (!rows.length){
+        body.innerHTML = '<h2>Historique</h2><p class="admin-accounts-hint">Aucun changement enregistré pour ce rendez-vous.</p>';
+        return;
+      }
+      body.innerHTML = '<h2>Historique du rendez-vous</h2><div class="admin-status-history-timeline">' +
+        rows.map(function(r){
+          var label = STATUS_HISTORY_LABELS[r.new_status] || r.new_status;
+          return '<div class="admin-status-history-item">' +
+            '<span class="admin-status-history-date">' + admFmtDateTime(r.changed_at) + '</span>' +
+            '<span class="admin-status-history-label">' + admEscape(label) + '</span>' +
+            (r.reason ? '<span class="admin-status-history-reason">Motif : ' + admEscape(r.reason) + '</span>' : '') +
+            (r.changed_by_email ? '<span class="admin-status-history-author">Par ' + admEscape(r.changed_by_email) + '</span>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+    });
+  }
+  var adminStatusHistoryOverlayEl = document.getElementById('adminStatusHistoryOverlay');
+  if (adminStatusHistoryOverlayEl){
+    adminStatusHistoryOverlayEl.addEventListener('click', function(e){
+      if (e.target.closest('.admin-status-history-close') || e.target === adminStatusHistoryOverlayEl) adminStatusHistoryOverlayEl.hidden = true;
+    });
+  }
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.admin-bk-view-history-btn');
+    if (!btn) return;
+    admOpenStatusHistoryModal(btn.getAttribute('data-booking-id'));
   });
   // "Supprimer définitivement" (section 18) depuis l'onglet Annulées /
   // Refusées — réutilise exactement admHandleDeleteClick (même
@@ -14827,6 +15298,36 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // Construit la map user_id -> {first_name,last_name,phone,email} pour un
+  // lot de réservations donné — extrait de admLoadBookings pour être
+  // réutilisé par les onglets paginés (Terminées/Annulées, voir
+  // admFetchStatusPage) qui ne passent plus par adminBookingsCache.
+  function admBuildProfileMap(rows){
+    var custIds = Array.prototype.filter.call(rows, function(b){ return b.customer_user_id && !b.guest_name; })
+      .map(function(b){ return b.customer_user_id; });
+    custIds = custIds.filter(function(id, i){ return custIds.indexOf(id) === i; });
+    if (!custIds.length) return Promise.resolve({});
+    return Promise.all([
+      sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
+      sb.client.from('profiles').select('user_id,email').in('user_id', custIds)
+    ]).then(function(res2){
+      var cp = res2[0].data || [];
+      var pf = res2[1].data || [];
+      var map = {};
+      cp.forEach(function(r){
+        map[r.user_id] = map[r.user_id] || {};
+        map[r.user_id].first_name = r.first_name;
+        map[r.user_id].last_name = r.last_name;
+        map[r.user_id].phone = r.phone;
+      });
+      pf.forEach(function(r){
+        map[r.user_id] = map[r.user_id] || {};
+        map[r.user_id].email = r.email;
+      });
+      return map;
+    });
+  }
+
   function admLoadBookings(){
     admSetBkLoadingState();
     sb.client.from('bookings')
@@ -14841,9 +15342,6 @@ if ('serviceWorker' in navigator){
           return;
         }
         var rows = res.data || [];
-        var custIds = Array.prototype.filter.call(rows, function(b){ return b.customer_user_id && !b.guest_name; })
-          .map(function(b){ return b.customer_user_id; });
-        custIds = custIds.filter(function(id, i){ return custIds.indexOf(id) === i; });
         var bookingIds = rows.map(function(b){ return b.id; });
 
         function loadEmails(){
@@ -14869,36 +15367,8 @@ if ('serviceWorker' in navigator){
         // jamais jusqu'au .catch() global, et resterait une exception non
         // gérée silencieuse — exactement le genre de panne qui laissait
         // Demandes récentes bloqué sur "Chargement…" sans aucun message.
-        if (!custIds.length){
-          return loadEmails().then(function(emails){
-            adminBookingsCache = { rows: rows, profiles: {}, emails: emails };
-            admRenderBkArea();
-            admRenderRecentRequests();
-            admHandleDeepLink();
-            admRenderDashboardStats();
-            admRenderQuotesPage();
-          });
-        }
-        return Promise.all([
-          sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
-          sb.client.from('profiles').select('user_id,email').in('user_id', custIds),
-          loadEmails()
-        ]).then(function(res2){
-          var cp = res2[0].data || [];
-          var pf = res2[1].data || [];
-          var emails = res2[2];
-          var map = {};
-          cp.forEach(function(r){
-            map[r.user_id] = map[r.user_id] || {};
-            map[r.user_id].first_name = r.first_name;
-            map[r.user_id].last_name = r.last_name;
-            map[r.user_id].phone = r.phone;
-          });
-          pf.forEach(function(r){
-            map[r.user_id] = map[r.user_id] || {};
-            map[r.user_id].email = r.email;
-          });
-          adminBookingsCache = { rows: rows, profiles: map, emails: emails };
+        return Promise.all([admBuildProfileMap(rows), loadEmails()]).then(function(res2){
+          adminBookingsCache = { rows: rows, profiles: res2[0], emails: res2[1] };
           admRenderBkArea();
           admRenderRecentRequests();
           admHandleDeepLink();
@@ -17292,7 +17762,22 @@ if ('serviceWorker' in navigator){
   function admOpenBookingModal(id){
     if (!adminBookingsCache) return;
     var b = adminBookingsCache.rows.filter(function(x){ return x.id === id; })[0];
-    if (!b) return;
+    if (!b){
+      // Rendez-vous ancien, hors de la fenêtre de adminBookingsCache
+      // (plafonnée, voir admLoadBookings) — par exemple ouvert depuis la
+      // fiche client ou les Archives. Récupéré directement, puis injecté
+      // dans le cache pour que le reste de cette fiche (déjà écrite pour
+      // lire depuis adminBookingsCache) fonctionne sans autre changement.
+      sb.client.from('bookings').select(ADMIN_BOOKING_SELECT_COLUMNS).eq('id', id).maybeSingle().then(function(res){
+        if (res.error || !res.data) return;
+        admBuildProfileMap([res.data]).then(function(map){
+          adminBookingsCache.rows.push(res.data);
+          Object.assign(adminBookingsCache.profiles, map);
+          admOpenBookingModal(id);
+        });
+      });
+      return;
+    }
     var contact = admContactFor(b, adminBookingsCache.profiles);
     var svcName = (b.services && b.services.name) || 'Intervention';
     var overlay = document.getElementById('adminBkModalOverlay');
@@ -17450,6 +17935,8 @@ if ('serviceWorker' in navigator){
       if (adminBookingsCache){
         adminBookingsCache.rows = adminBookingsCache.rows.filter(function(b){ return b.id !== id; });
       }
+      adminCompletedPage.rows = adminCompletedPage.rows.filter(function(b){ return b.id !== id; });
+      adminCancelledPage.rows = adminCancelledPage.rows.filter(function(b){ return b.id !== id; });
       delete adminCancelledMetaCache[id];
       admRenderBkArea();
       admRenderDashboardStats();
