@@ -15211,7 +15211,13 @@ if ('serviceWorker' in navigator){
         reference: fd.get('reference') || null, serial_number: fd.get('serial_number') || null,
         power_capacity: fd.get('power_capacity') || null, approx_year: fd.get('approx_year') ? Number(fd.get('approx_year')) : null,
         installed_at: fd.get('installed_at') || null, location: fd.get('location') || null, notes: fd.get('notes') || null,
-        client_id: adminClientFicheCache.client.id
+        client_id: adminClientFicheCache.client.id,
+        // customer_user_id posé en plus quand le client a un compte — garde
+        // l'équipement visible dans "Mes équipements" (espace client) et
+        // dans le sélecteur d'équipement existant de la fiche
+        // d'intervention, qui filtraient encore uniquement sur cette
+        // colonne avant la fiche 360° (0056_client_360.sql).
+        customer_user_id: adminClientFicheCache.client.user_id || null
       };
       var msgEl = form.querySelector('.admin-equip-msg');
       var submitBtn = form.querySelector('button[type="submit"]');
@@ -16922,9 +16928,15 @@ if ('serviceWorker' in navigator){
         admIvDebugLog('start_intervention OK', { interventionId: interventionId });
         admIvDebugLog('INTERVENTION ID ✓', interventionId);
 
-        var loadEquip = booking.customer_user_id
-          ? sb.client.from('customer_equipment').select('*').eq('customer_user_id', booking.customer_user_id).order('created_at', { ascending:false })
-          : Promise.resolve({ data: [] });
+        // Par client_id (table clients, couvre comptes ET invités) plutôt
+        // que customer_user_id seul — un client invité n'a jamais pu
+        // enregistrer ni retrouver d'équipement avant la fiche 360°
+        // (0056_client_360.sql) : bug réel corrigé ici.
+        var loadEquip = booking.client_id
+          ? sb.client.from('customer_equipment').select('*').eq('client_id', booking.client_id).order('created_at', { ascending:false })
+          : (booking.customer_user_id
+              ? sb.client.from('customer_equipment').select('*').eq('customer_user_id', booking.customer_user_id).order('created_at', { ascending:false })
+              : Promise.resolve({ data: [] }));
         var loadIv = sb.client.from('interventions').select('*').eq('id', interventionId).maybeSingle();
         var loadItems = sb.client.from('intervention_items').select('*, intervention_photos(*)').eq('intervention_id', interventionId).order('sort_order', { ascending:true });
         var loadGeneralPhotos = sb.client.from('intervention_photos').select('*').eq('intervention_id', interventionId).order('created_at', { ascending:true });
