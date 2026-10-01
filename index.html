@@ -3480,6 +3480,70 @@ if ('serviceWorker' in navigator){
     background:var(--adm-green-soft); border-radius:999px; padding:6px 14px; font-size:0.85rem;
   }
   .admin-bk-filters{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
+  /* ---- RENDEZ-VOUS : tableau de bord, onglets, recherche, archives,
+     fiche client (restructuration cahier des charges du 01/10/2026) ---- */
+  .admin-bk-dashboard{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .admin-bk-dash-card{
+    flex:1 1 140px; background:var(--adm-sand); border:1.5px solid var(--adm-line); border-radius:12px;
+    padding:12px 14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .admin-bk-dash-card-ca{ border-color:var(--adm-green); background:var(--adm-green-soft); }
+  .admin-bk-dash-value{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.4rem; color:var(--adm-ink); }
+  .admin-bk-dash-label{ font-size:0.78rem; color:var(--adm-ink-soft); font-weight:600; }
+  .admin-bk-search{ position:relative; margin-bottom:16px; }
+  .admin-bk-search-input{
+    width:100%; padding:12px 14px; border-radius:10px; border:1.5px solid var(--adm-line);
+    font-family:"Poppins",sans-serif; font-size:0.9rem; box-sizing:border-box;
+  }
+  .admin-bk-search-results{
+    position:absolute; top:100%; left:0; right:0; z-index:40; background:#fff;
+    border:1.5px solid var(--adm-line); border-radius:10px; margin-top:4px; max-height:320px;
+    overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.12);
+  }
+  .admin-bk-search-result{
+    display:block; width:100%; text-align:left; padding:10px 14px; border:none; background:none;
+    border-bottom:1px solid var(--adm-line); cursor:pointer; font-family:"Poppins",sans-serif; font-size:0.85rem;
+  }
+  .admin-bk-search-result:hover{ background:var(--adm-sand); }
+  .admin-bk-main-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .admin-bk-main-tab{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.85rem; padding:10px 16px;
+    border-radius:999px; border:1.5px solid var(--adm-line); background:#fff; color:var(--adm-ink); cursor:pointer;
+  }
+  .admin-bk-main-tab.is-active{ background:var(--adm-ink); color:#fff; border-color:var(--adm-ink); }
+  .admin-bk-group-heading{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:0.9rem; color:var(--adm-ink-soft);
+    margin:18px 0 8px; text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .admin-bk-archive-years, .admin-bk-archive-months{ display:flex; flex-wrap:wrap; gap:10px; margin:14px 0; }
+  .admin-bk-archive-year-btn, .admin-bk-archive-month-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; padding:14px 18px; border-radius:12px;
+    border:1.5px solid var(--adm-line); background:#fff; cursor:pointer; min-width:90px; text-align:center;
+  }
+  .admin-bk-archive-month-btn[disabled]{ opacity:0.4; cursor:not-allowed; }
+  .admin-bk-archive-count{ display:block; font-size:1.1rem; font-weight:800; color:var(--adm-green); margin-top:4px; }
+  .admin-bk-archive-back-btn, .admin-bk-archive-nav-btn{
+    font-family:"Poppins",sans-serif; font-weight:600; font-size:0.85rem; border:none; background:none;
+    color:var(--adm-ink-soft); cursor:pointer; padding:6px 0;
+  }
+  .admin-bk-archive-nav{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0; flex-wrap:wrap; }
+  .admin-bk-archive-summary{ display:flex; flex-wrap:wrap; gap:18px; margin:10px 0 16px; font-size:0.9rem; }
+  .admin-bk-archive-row{ cursor:pointer; }
+  .admin-client-fiche-name{ font-family:"Poppins",sans-serif; font-weight:800; margin:0 0 6px; }
+  .admin-client-fiche-contact{ display:flex; flex-wrap:wrap; gap:14px; color:var(--adm-ink-soft); margin-bottom:10px; }
+  .admin-client-fiche-actions{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .admin-client-fiche-section-title{
+    font-family:"Poppins",sans-serif; font-weight:800; font-size:0.9rem; text-transform:uppercase;
+    letter-spacing:0.03em; color:var(--adm-ink-soft); margin:20px 0 10px; border-top:1px solid var(--adm-line); padding-top:16px;
+  }
+  .admin-client-fiche-equip{ padding:8px 0; border-bottom:1px dashed var(--adm-line); }
+  .admin-cancel-reason-form{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+  .admin-cancel-reason-option{ display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; }
+  .admin-cancel-reason-detail-wrap textarea{ width:100%; min-height:70px; box-sizing:border-box; }
+  @media (max-width:600px){
+    .admin-bk-dash-card{ flex:1 1 44%; }
+    .admin-bk-main-tabs{ overflow-x:auto; flex-wrap:nowrap; }
+  }
   .admin-bk-row-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto; }
   @media (max-width:760px){
     .admin-bk-row-actions{ flex:1 1 100%; min-width:0; }
@@ -5992,6 +6056,35 @@ if ('serviceWorker' in navigator){
     <div id="adminBkModalBody"></div>
   </div>
 </div>
+<!-- Fenêtre "Pourquoi ?" (section 9) — motif obligatoire pour refuser une
+     demande ou annuler un rendez-vous confirmé, voir admOpenCancelReasonModal. -->
+<div class="admin-bk-modal-overlay" id="adminCancelReasonOverlay" hidden>
+  <div class="admin-bk-modal" role="dialog" aria-modal="true" aria-labelledby="adminCancelReasonTitle">
+    <button type="button" class="admin-bk-modal-close admin-cancel-reason-close" aria-label="Fermer">✕</button>
+    <h2 id="adminCancelReasonTitle">Pourquoi ?</h2>
+    <form class="admin-cancel-reason-form">
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="creneau_indisponible" required> Créneau indisponible</label>
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="hors_zone"> Hors zone</label>
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="prestation_non_proposee"> Prestation non proposée</label>
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="client_injoignable"> Client injoignable</label>
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="doublon"> Doublon</label>
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="erreur_reservation"> Erreur de réservation</label>
+      <label class="admin-cancel-reason-option"><input type="radio" name="reason_code" value="autre"> Autre</label>
+      <div class="admin-cancel-reason-detail-wrap" hidden>
+        <label>Commentaire<textarea name="reason_detail" placeholder="Précisez…"></textarea></label>
+      </div>
+      <button type="submit" class="admin-bk-action-btn">Valider</button>
+    </form>
+  </div>
+</div>
+<!-- Fiche client centrale (section 15) — une seule fenêtre : coordonnées,
+     équipements, prochain rendez-vous, historique. Voir admOpenClientFiche. -->
+<div class="admin-bk-modal-overlay" id="adminClientFicheOverlay" hidden>
+  <div class="admin-bk-modal admin-bk-modal-wide" role="dialog" aria-modal="true" aria-labelledby="adminClientFicheBody">
+    <button type="button" class="admin-bk-modal-close admin-client-fiche-close" aria-label="Fermer">✕</button>
+    <div id="adminClientFicheBody"></div>
+  </div>
+</div>
 <!-- Créateur/éditeur de devis chiffré (options + pièces jointes), voir
      admOpenQuoteBuilder(). Même famille visuelle que la fiche rendez-vous
      ci-dessus (.admin-bk-modal), juste plus large. -->
@@ -8260,16 +8353,27 @@ if ('serviceWorker' in navigator){
               <section class="adm-page" id="admPagePlanning" data-adm-page="planning" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">Tous les rendez-vous</h2>
-                  <p class="adm-page-sub">Vue d'ensemble des réservations HAYEVA, tous clients confondus — statut et ajout au calendrier depuis chaque rendez-vous.</p>
+                  <h2 class="adm-page-title">Rendez-vous</h2>
+                  <p class="adm-page-sub">Aujourd'hui, à venir, terminées, annulées/refusées, archives — chaque rendez-vous apparaît dans une seule catégorie à la fois.</p>
                   <p class="admin-bk-pending-count" id="adminBkPendingCount" hidden></p>
                 </div>
-                <div class="admin-bk-toolbar">
+                <div class="admin-bk-dashboard" id="adminBkDashboard"></div>
+                <div class="admin-bk-search" id="adminBkSearchWrap">
+                  <input type="search" id="adminBkSearchInput" class="admin-bk-search-input" placeholder="Rechercher un client, téléphone, adresse, équipement, intervention…" autocomplete="off">
+                  <div id="adminBkSearchResults" class="admin-bk-search-results" hidden></div>
+                </div>
+                <div class="admin-bk-main-tabs" id="adminBkMainTabs" role="group" aria-label="Rendez-vous">
+                  <button type="button" class="admin-bk-main-tab is-active" data-admin-filter="today">Aujourd'hui</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="upcoming">À venir</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="completed">Terminées</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="cancelled">Annulées / Refusées</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="archives">Archives</button>
+                </div>
+                <div class="admin-bk-toolbar" id="adminBkOperationalToolbar">
                   <div class="admin-bk-view-toggle" id="adminBkViewToggle" role="group" aria-label="Mode d'affichage">
                     <button type="button" class="admin-bk-view-tab is-active" data-admin-bk-view="planning">Planning</button>
                     <button type="button" class="admin-bk-view-tab" data-admin-bk-view="liste">☰ Liste</button>
                   </div>
-                  <button type="button" class="admin-bk-history-btn" id="adminBkHistoryBtn">Historique (annulés / refusés)</button>
                 </div>
                 <div class="admin-bk-planning-nav" id="adminBkPlanningNav">
                   <button type="button" class="admin-bk-planning-nav-btn" data-admin-planning-nav="prev">← Semaine précédente</button>
@@ -8277,12 +8381,14 @@ if ('serviceWorker' in navigator){
                   <span class="admin-bk-planning-label" id="adminBkPlanningLabel"></span>
                   <button type="button" class="admin-bk-planning-nav-btn" data-admin-planning-nav="next">Semaine suivante →</button>
                 </div>
-                <div class="admin-bk-filters" id="adminBkFilters" role="group" aria-label="Filtrer par période" hidden>
-                  <button type="button" class="gallery-filter-btn" data-admin-filter="today">Aujourd'hui</button>
-                  <button type="button" class="gallery-filter-btn" data-admin-filter="week">Cette semaine</button>
-                  <button type="button" class="gallery-filter-btn is-active" data-admin-filter="upcoming">À venir</button>
-                  <button type="button" class="gallery-filter-btn" data-admin-filter="all">Tout</button>
+                <div class="admin-bk-filters" id="adminBkCancelledSubFilters" role="group" aria-label="Filtrer les annulations" hidden>
+                  <button type="button" class="gallery-filter-btn is-active" data-admin-cancel-filter="all">Toutes</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-cancel-filter="cancelled_client">Annulées client</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-cancel-filter="cancelled_admin">Annulées HAYEVA</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-cancel-filter="refused">Refusées</button>
+                  <button type="button" class="gallery-filter-btn" data-admin-cancel-filter="no_show">Client absent</button>
                 </div>
+                <div id="adminBkArchives" class="admin-bk-archives" hidden></div>
                 <div id="adminBkPlanning" class="admin-bk-planning"><p class="ec-loading">Chargement…</p></div>
                 <div id="adminBkList" hidden><p class="ec-loading">Chargement…</p></div>
               </section>
@@ -8307,7 +8413,7 @@ if ('serviceWorker' in navigator){
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
                   <h2 class="adm-page-title">Archives</h2>
-                  <p class="adm-page-sub">Demandes refusées ou annulées — la suppression définitive n'est possible que pour celles refusées par vous.</p>
+                  <p class="adm-page-sub">Interventions réellement terminées, classées par année et par mois de fin réelle. Les annulations et refus sont dans l'onglet « Annulées / Refusées » de Rendez-vous.</p>
                 </div>
                 <div id="adminArchivesList"><p class="ec-loading">Chargement…</p></div>
               </section>
@@ -13469,29 +13575,35 @@ if ('serviceWorker' in navigator){
   // Planning et les compteurs du tableau de bord, pour ne jamais avoir deux
   // définitions divergentes de ce qui est actif. CANCELLED/COMPLETED/NO_SHOW
   // ne sont jamais supprimés de Supabase : juste écartés d'ici, retrouvables
-  // dans l'Historique (adminBkShowHistory).
+  // dans les onglets dédiés "Terminées" / "Annulées-Refusées".
   function admIsOperationalBooking(b){
     return b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS';
   }
   var adminBookingsCache = null;
-  // "today" comme filtre par défaut cachait les toutes nouvelles demandes
-  // dès qu'un client choisissait une date différente d'aujourd'hui (cas le
-  // plus fréquent) — l'admin ouvrait le panneau et ne voyait rien, alors que
-  // la réservation existait bien en base. "upcoming" (aujourd'hui + futur)
-  // est un bien meilleur défaut pour repérer les nouvelles demandes.
-  var adminFilter = 'upcoming';
-  // Affichage principal de "Tous les rendez-vous" : planning hebdomadaire par
-  // défaut (adminBkViewMode='planning'), bascule possible vers la liste
-  // existante ('liste'). adminBkShowHistory est indépendant des deux : coché,
-  // il remplace le contenu affiché par les seuls rendez-vous CANCELLED (voir
-  // admRenderList) quel que soit l'onglet actif, jusqu'à décochage.
+  // Rubrique "RENDEZ-VOUS" restructurée (section 1 du cahier des charges
+  // HAYEVA du 01/10/2026) : 5 onglets de premier niveau, chacun montrant
+  // EXACTEMENT une catégorie de statut, jamais un mélange —
+  // 'today'/'upcoming' (opérationnel, via admIsOperationalBooking),
+  // 'completed', 'cancelled' (annulé-client/annulé-HAYEVA/refusé/absent,
+  // voir cancellation_type) et 'archives' (vue année/mois construite sur
+  // interventions.ended_at, jamais une copie physique des données —
+  // section 7). Remplace l'ancien filtre période (today/week/upcoming/all)
+  // + le bouton "Historique" séparé, qui mélangeaient ces notions.
+  var adminFilter = 'today';
+  var adminCancelFilter = 'all';
+  var adminArchiveYear = null;   // null = vue liste des années
+  var adminArchiveMonth = null;  // 1-12, null = vue des 12 mois de l'année
+  var adminArchiveCategory = 'all';
+  // Affichage principal des onglets "Aujourd'hui"/"À venir" uniquement :
+  // planning hebdomadaire par défaut (adminBkViewMode='planning'), bascule
+  // possible vers la liste existante ('liste'). Sans objet pour
+  // Terminées/Annulées-Refusées/Archives, qui ont chacun leur propre rendu.
   // Grille 7 colonnes (une par jour) illisible sans défiler horizontalement
   // sur téléphone (trouvé en audit) : "Liste" — déjà prévue, déjà utilisable
   // au doigt — devient la vue par défaut sous 880px, jamais reconstruite.
   // Le bouton "Planning" reste accessible en un tap pour qui préfère la
   // grille malgré le défilement.
   var adminBkViewMode = (window.innerWidth < 880) ? 'liste' : 'planning';
-  var adminBkShowHistory = false;
 
   function admEscape(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -13521,7 +13633,7 @@ if ('serviceWorker' in navigator){
 
   function admContactFor(b, profileMap){
     if (b.guest_name){
-      return { name: b.guest_name, phone: b.guest_phone, email: b.guest_email, address: b.guest_address };
+      return { name: b.guest_name, phone: b.guest_phone, email: b.guest_email, address: b.guest_address, userId: null };
     }
     if (b.customer_user_id && profileMap[b.customer_user_id]){
       var p = profileMap[b.customer_user_id];
@@ -13530,27 +13642,55 @@ if ('serviceWorker' in navigator){
         : '';
       return {
         name: ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || 'Client',
-        phone: p.phone, email: p.email, address: addr
+        phone: p.phone, email: p.email, address: addr, userId: b.customer_user_id
       };
     }
     if (b.professional_accounts){
       var pa = b.professional_accounts;
       var paddr = [pa.address_line1, pa.address_line2, pa.postal_code, pa.city].filter(Boolean).join(', ');
-      return { name: pa.legal_name, phone: pa.phone, email: '', address: paddr };
+      return { name: pa.legal_name, phone: pa.phone, email: '', address: paddr, userId: null };
     }
-    return { name:'Client', phone:'', email:'', address:'' };
+    return { name:'Client', phone:'', email:'', address:'', userId: null };
   }
 
   function admFilterBookings(rows, mode){
     var today = new Date(); today.setHours(0,0,0,0);
-    var in7 = new Date(today.getTime() + 7 * 86400000);
     return rows.filter(function(b){
       var d = new Date(b.date + 'T00:00:00');
       if (mode === 'today') return d.getTime() === today.getTime();
-      if (mode === 'week') return d.getTime() >= today.getTime() && d.getTime() < in7.getTime();
-      if (mode === 'upcoming') return d.getTime() >= today.getTime();
+      // "À venir" (section 3) exclut strictement aujourd'hui, qui a son
+      // propre onglet — sinon un même rendez-vous apparaîtrait dans les
+      // deux à la fois.
+      if (mode === 'upcoming') return d.getTime() > today.getTime();
       return true;
     });
+  }
+
+  // Sous-groupes "Demain / Cette semaine / Semaine prochaine / Plus tard"
+  // (section 3) — purement un regroupement d'affichage de l'onglet "À
+  // venir", jamais une seconde source de vérité : retourne le même tableau
+  // de bookings, étiqueté par groupe.
+  function admGroupUpcoming(rows){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var tomorrow = new Date(today.getTime() + 86400000);
+    var endOfWeek = admMondayOf(new Date()); endOfWeek = admAddDays(endOfWeek, 7);
+    var endOfNextWeek = admAddDays(endOfWeek, 7);
+    var groups = [
+      { key: 'tomorrow', label: 'Demain', items: [] },
+      { key: 'this_week', label: 'Cette semaine', items: [] },
+      { key: 'next_week', label: 'Semaine prochaine', items: [] },
+      { key: 'later', label: 'Plus tard', items: [] }
+    ];
+    rows.forEach(function(b){
+      var d = new Date(b.date + 'T00:00:00');
+      var g;
+      if (d.getTime() === tomorrow.getTime()) g = groups[0];
+      else if (d.getTime() < endOfWeek.getTime()) g = groups[1];
+      else if (d.getTime() < endOfNextWeek.getTime()) g = groups[2];
+      else g = groups[3];
+      g.items.push(b);
+    });
+    return groups.filter(function(g){ return g.items.length; });
   }
 
   // ---------- Administration : liste des inscriptions (comptes Particulier
@@ -13769,48 +13909,45 @@ if ('serviceWorker' in navigator){
     var listEl = document.getElementById('adminBkList');
     if (!listEl || !adminBookingsCache) return;
     admUpdatePendingCount();
-    // Seuls les rendez-vous opérationnels (PENDING/CONFIRMED/IN_PROGRESS,
-    // voir admIsOperationalBooking) restent dans la liste principale —
-    // CANCELLED, COMPLETED et NO_SHOW ne sont jamais supprimés de Supabase,
-    // juste filtrés ici, et ne réapparaissent que dans l'Historique
-    // (adminBkShowHistory), qui montre alors ceux-là, toutes périodes confondues.
-    var scoped = adminBookingsCache.rows.filter(function(b){
-      return adminBkShowHistory ? !admIsOperationalBooking(b) : admIsOperationalBooking(b);
+    // Onglets "Aujourd'hui" / "À venir" uniquement — toujours les rendez-vous
+    // opérationnels (PENDING/CONFIRMED/IN_PROGRESS, voir
+    // admIsOperationalBooking). CANCELLED/COMPLETED/NO_SHOW ont chacun leur
+    // propre onglet dédié (admRenderCompletedTab/admRenderCancelledTab),
+    // jamais mélangés ici (section 1 du cahier des charges HAYEVA).
+    var scoped = adminBookingsCache.rows.filter(admIsOperationalBooking);
+    var rows = admFilterBookings(scoped, adminFilter);
+    // Les demandes en attente remontent en premier : ce sont celles qui
+    // demandent une action, jamais enfouies sous des rendez-vous déjà
+    // confirmés.
+    rows.sort(function(a, b){
+      var pa = a.status === 'PENDING' ? 0 : 1;
+      var pb = b.status === 'PENDING' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      var da = a.date + 'T' + (a.start_time || '00:00');
+      var db = b.date + 'T' + (b.start_time || '00:00');
+      return da < db ? -1 : (da > db ? 1 : 0);
     });
-    var rows = adminBkShowHistory ? scoped.slice() : admFilterBookings(scoped, adminFilter);
-    if (adminBkShowHistory){
-      // Historique : plus récent en premier, indépendamment du filtre de
-      // période (masqué dans ce mode, voir admRenderBkArea).
-      rows.sort(function(a, b){
-        var da = new Date(a.date + 'T' + (a.start_time || '00:00'));
-        var db = new Date(b.date + 'T' + (b.start_time || '00:00'));
-        return db.getTime() - da.getTime();
-      });
-    }
-    if (adminBkShowHistory){
-      var histIds = rows.map(function(b){ return b.id; });
-      if (histIds.some(function(id){ return !(id in adminCancelledMetaCache); })){
-        admLoadCancelledMeta(histIds, function(){ if (adminBkShowHistory) admRenderList(); });
-      }
-    }
-    if (!adminBkShowHistory) {
-      // Les demandes en attente remontent en premier (période conservée par
-      // ailleurs) : ce sont celles qui demandent une action, jamais enfouies
-      // sous des rendez-vous déjà confirmés/traités.
-      rows.sort(function(a, b){
-        var pa = a.status === 'PENDING' ? 0 : 1;
-        var pb = b.status === 'PENDING' ? 0 : 1;
-        return pa - pb;
-      });
-    }
     if (!rows.length){
-      listEl.innerHTML = adminBkShowHistory
-        ? '<div class="ec-empty"><strong>Aucun historique</strong>Aucun rendez-vous annulé ni devis refusé.</div>'
-        : '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
       return;
     }
     var html = '<div class="ec-list">';
+    // Regroupement visuel "Demain / Cette semaine / Semaine prochaine / Plus
+    // tard" (section 3) — uniquement sur l'onglet "À venir" ; une simple
+    // étiquette insérée dès que le groupe change, les lignes restant déjà
+    // triées chronologiquement ci-dessus (aucune seconde source de vérité).
+    var lastGroupLabel = null;
+    var groupLookup = adminFilter === 'upcoming' ? admGroupUpcoming(rows) : null;
+    var idToGroupLabel = {};
+    if (groupLookup) groupLookup.forEach(function(g){ g.items.forEach(function(b){ idToGroupLabel[b.id] = g.label; }); });
     rows.forEach(function(b){
+      if (groupLookup){
+        var gl = idToGroupLabel[b.id] || 'Plus tard';
+        if (gl !== lastGroupLabel){
+          html += '<h3 class="admin-bk-group-heading">' + admEscape(gl) + '</h3>';
+          lastGroupLabel = gl;
+        }
+      }
       var contact = admContactFor(b, adminBookingsCache.profiles);
       var svcName = (b.services && b.services.name) || 'Intervention';
       var optionsHtml = ADMIN_STATUS_OPTIONS.map(function(o){
@@ -13829,21 +13966,17 @@ if ('serviceWorker' in navigator){
           'prestation ' + admFmtEuros(b.service_price_cents) +
           (b.travel_fee_cents > 0 ? ' + déplacement ' + admFmtEuros(b.travel_fee_cents) + ' (' + admFmtEuros(b.travel_rate_per_km_cents) + '/km)' : ' + déplacement inclus') +
           ' = <strong>' + admFmtEuros(b.total_cents) + '</strong></span>';
-      var cancelMeta = adminCancelledMetaCache[b.id];
-      var cancelledByLine = (b.status === 'CANCELLED' && cancelMeta && cancelMeta.cancelled_by === 'customer')
-        ? '<span class="ec-row-meta admin-bk-cancelled-by">Annulé par le client' + (cancelMeta.cancelled_at ? ' le ' + admFmtDateTime(cancelMeta.cancelled_at) : '') + '</span>'
-        : '';
       html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
         '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
         '<span class="ec-row-meta">' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
         (contact.address ? '<span class="ec-row-meta">' + admEscape(contact.address) + '</span>' : '') +
         (contact.phone ? '<span class="ec-row-meta">' + admEscape(contact.phone) + '</span>' : '') +
         travelLine +
-        cancelledByLine +
         '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
         (b.notes ? '<span class="admin-bk-note">' + admEscape(b.notes) + '</span>' : '') +
         '<span class="ec-row-meta">' + admEmailStatusHtml(b, adminBookingsCache.emails) + '</span>' +
         '</div><div class="admin-bk-row-actions">' +
+        (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
         (b.status === 'PENDING' ?
           '<button type="button" class="admin-bk-action-btn admin-bk-accept-btn" data-booking-id="' + b.id + '">Accepter</button>' +
           '<button type="button" class="admin-bk-action-btn admin-bk-refuse-btn" data-booking-id="' + b.id + '">Refuser</button>' +
@@ -13904,6 +14037,557 @@ if ('serviceWorker' in navigator){
     listEl.innerHTML = html;
   }
 
+  // ---------- Onglet "Terminées" (section 5) ----------
+  // Un rendez-vous COMPLETED n'a plus besoin d'aucune saisie pour apparaître
+  // ici : admIvFinalize (voir plus bas) pose déjà status=COMPLETED et
+  // interventions.ended_at au moment de la validation — cette liste ne fait
+  // que lire ce qui existe déjà, jamais une seconde écriture.
+  function admRenderCompletedTab(){
+    var listEl = document.getElementById('adminBkList');
+    if (!listEl || !adminBookingsCache) return;
+    var rows = adminBookingsCache.rows.filter(function(b){ return b.status === 'COMPLETED'; })
+      .slice().sort(function(a, b){
+        var da = a.date + 'T' + (a.start_time || '00:00');
+        var db = b.date + 'T' + (b.start_time || '00:00');
+        return da < db ? 1 : (da > db ? -1 : 0);
+      });
+    if (!rows.length){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucune intervention terminée</strong>Les rendez-vous validés apparaîtront ici automatiquement.</div>';
+      return;
+    }
+    var html = '<div class="ec-list">';
+    rows.forEach(function(b){
+      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var equip = b.customer_equipment;
+      html += '<div class="ec-row admin-bk-archive-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+        '<span class="ec-row-title"><span class="adm-badge adm-badge-completed">Terminé</span> ' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
+        '<span class="ec-row-meta">Prévu le ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+        (equip ? '<span class="ec-row-meta">' + admEscape([equip.brand, equip.model].filter(Boolean).join(' ')) + '</span>' : '') +
+        (contact.address ? '<span class="ec-row-meta">' + admEscape(contact.address) + '</span>' : '') +
+        '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
+        '</div><div class="admin-bk-row-actions">' +
+        (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
+        '<button type="button" class="admin-bk-action-btn admin-bk-view-detail-btn" data-booking-id="' + b.id + '">Voir le compte rendu</button>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  // ---------- Onglet "Annulées / Refusées" (section 8) ----------
+  // cancellation_type (0054_booking_lifecycle.sql) distingue désormais
+  // réellement annulé-client / annulé-HAYEVA / refusé — les rendez-vous
+  // CANCELLED antérieurs à cette migration et sans cancelled_by connu
+  // restent affichés avec la mention "à vérifier" plutôt que classés au
+  // hasard (section 25 : ne jamais deviner).
+  function admRenderCancelledTab(){
+    var listEl = document.getElementById('adminBkList');
+    if (!listEl || !adminBookingsCache) return;
+    var rows = adminBookingsCache.rows.filter(function(b){
+      if (b.status === 'NO_SHOW') return adminCancelFilter === 'all' || adminCancelFilter === 'no_show';
+      if (b.status !== 'CANCELLED') return false;
+      if (adminCancelFilter === 'all') return true;
+      return (b.cancellation_type || null) === adminCancelFilter;
+    }).slice().sort(function(a, b){
+      var da = a.cancelled_at || a.date; var db = b.cancelled_at || b.date;
+      return da < db ? 1 : (da > db ? -1 : 0);
+    });
+    if (!rows.length){
+      listEl.innerHTML = '<div class="ec-empty"><strong>Aucune entrée</strong>Aucune annulation ni demande refusée pour ce filtre.</div>';
+      return;
+    }
+    var html = '<div class="ec-list">';
+    rows.forEach(function(b){
+      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var svcName = (b.services && b.services.name) || 'Intervention';
+      var statusBadge, reasonLine;
+      if (b.status === 'NO_SHOW'){
+        statusBadge = '<span class="adm-badge adm-badge-pending">Client absent</span>';
+        reasonLine = '';
+      } else if (b.cancellation_type === 'cancelled_client'){
+        statusBadge = '<span class="adm-badge adm-badge-pending">Annulé par le client</span>';
+        reasonLine = b.cancellation_reason_detail ? '<span class="ec-row-meta">Motif : ' + admEscape(b.cancellation_reason_detail) + '</span>' : '';
+      } else if (b.cancellation_type === 'cancelled_admin'){
+        statusBadge = '<span class="adm-badge adm-badge-cancelled">Annulé par HAYEVA</span>';
+        reasonLine = '<span class="ec-row-meta">Motif : ' + admEscape((CANCELLATION_REASON_LABELS[b.cancellation_reason_code] || '') + (b.cancellation_reason_detail ? ' — ' + b.cancellation_reason_detail : '')) + '</span>';
+      } else if (b.cancellation_type === 'refused'){
+        statusBadge = '<span class="adm-badge adm-badge-cancelled">Refusé</span>';
+        reasonLine = '<span class="ec-row-meta">Motif : ' + admEscape((CANCELLATION_REASON_LABELS[b.cancellation_reason_code] || '') + (b.cancellation_reason_detail ? ' — ' + b.cancellation_reason_detail : '')) + '</span>';
+      } else {
+        statusBadge = '<span class="adm-badge adm-badge-pending">À vérifier (donnée ancienne)</span>';
+        reasonLine = '';
+      }
+      var canDelete = b.status === 'CANCELLED' && (b.cancellation_type === 'cancelled_admin' || b.cancellation_type === 'refused');
+      html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+        '<span class="ec-row-title">' + statusBadge + ' ' + admEscape(svcName) + ' — ' + admEscape(contact.name) + '</span>' +
+        '<span class="ec-row-meta">Date initialement prévue : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
+        (b.cancelled_at ? '<span class="ec-row-meta">Décision le ' + admFmtDateTime(b.cancelled_at) + '</span>' : '') +
+        reasonLine +
+        '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
+        '</div><div class="admin-bk-row-actions">' +
+        (contact.userId ? '<button type="button" class="admin-bk-action-btn admin-bk-view-client-btn" data-client-id="' + admEscape(contact.userId) + '">Voir client</button>' : '') +
+        (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">Supprimer définitivement</button>' : '') +
+        '</div></div>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+  }
+
+  // ---------- Fenêtre "Pourquoi ?" (section 9) ----------
+  // Remplace l'ancien window.prompt() texte libre : motif structuré
+  // obligatoire (+ commentaire libre uniquement pour "Autre"), conservé
+  // dans cancellation_type/cancellation_reason_code/cancellation_reason_detail.
+  var adminCancelReasonTargetId = null;
+  var adminCancelReasonTargetType = null; // 'cancelled_admin' | 'refused'
+  function admOpenCancelReasonModal(bookingId, cancellationType){
+    adminCancelReasonTargetId = bookingId;
+    adminCancelReasonTargetType = cancellationType;
+    var overlay = document.getElementById('adminCancelReasonOverlay');
+    if (!overlay) return;
+    var form = overlay.querySelector('form');
+    if (form) form.reset();
+    var detailWrap = overlay.querySelector('.admin-cancel-reason-detail-wrap');
+    if (detailWrap) detailWrap.hidden = true;
+    overlay.hidden = false;
+  }
+  var adminCancelReasonOverlayEl = document.getElementById('adminCancelReasonOverlay');
+  if (adminCancelReasonOverlayEl){
+    adminCancelReasonOverlayEl.addEventListener('change', function(e){
+      if (e.target.name === 'reason_code'){
+        var detailWrap = adminCancelReasonOverlayEl.querySelector('.admin-cancel-reason-detail-wrap');
+        if (detailWrap) detailWrap.hidden = e.target.value !== 'autre';
+      }
+    });
+    adminCancelReasonOverlayEl.addEventListener('click', function(e){
+      if (e.target.closest('.admin-cancel-reason-close') || e.target === adminCancelReasonOverlayEl) adminCancelReasonOverlayEl.hidden = true;
+    });
+    var cancelReasonForm = adminCancelReasonOverlayEl.querySelector('form');
+    if (cancelReasonForm){
+      cancelReasonForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        var fd = new FormData(cancelReasonForm);
+        var code = fd.get('reason_code');
+        var detail = (fd.get('reason_detail') || '').toString().trim();
+        if (!code){ window.alert('Merci de choisir un motif.'); return; }
+        var submitBtn = cancelReasonForm.querySelector('button[type="submit"]');
+        if (submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Validation…'; }
+        var id = adminCancelReasonTargetId;
+        var ctype = adminCancelReasonTargetType;
+        sb.client.from('bookings').update({
+          status: 'CANCELLED',
+          cancelled_by: 'admin',
+          cancelled_at: new Date().toISOString(),
+          cancellation_type: ctype,
+          cancellation_reason_code: code,
+          cancellation_reason_detail: code === 'autre' ? (detail || null) : null
+        }).eq('id', id).then(function(res){
+          if (submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Valider'; }
+          if (res.error){ window.alert('Impossible d\'enregistrer ce motif.'); return; }
+          var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+          if (row){
+            row.status = 'CANCELLED'; row.cancelled_by = 'admin'; row.cancelled_at = new Date().toISOString();
+            row.cancellation_type = ctype; row.cancellation_reason_code = code;
+            row.cancellation_reason_detail = code === 'autre' ? (detail || null) : null;
+          }
+          adminCancelReasonOverlayEl.hidden = true;
+          admRenderBkArea();
+          admRenderDashboardStats();
+          admRenderRecentRequests();
+          admRenderQuotesPage();
+        });
+      });
+    }
+  }
+
+  // ---------- Tableau de bord (section 11) ----------
+  // Compteurs calculés à partir des données déjà chargées en mémoire
+  // (adminBookingsCache, limité aux 500 derniers rendez-vous) — jamais un
+  // chiffre inventé : le CA n'est affiché que s'il existe au moins une
+  // intervention terminée avec un total_cents renseigné ce mois-ci.
+  function admRenderDashboardCounters(){
+    var el = document.getElementById('adminBkDashboard');
+    if (!el || !adminBookingsCache) return;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    var rows = adminBookingsCache.rows;
+    var todayCount = rows.filter(function(b){
+      return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() === today.getTime();
+    }).length;
+    var upcomingCount = rows.filter(function(b){
+      return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() > today.getTime();
+    }).length;
+    var completedThisMonth = rows.filter(function(b){
+      return b.status === 'COMPLETED' && new Date(b.date + 'T00:00:00').getTime() >= monthStart.getTime();
+    });
+    var cancelledClientThisMonth = rows.filter(function(b){
+      return b.cancellation_type === 'cancelled_client' && b.cancelled_at && new Date(b.cancelled_at).getTime() >= monthStart.getTime();
+    }).length;
+    var refusedThisMonth = rows.filter(function(b){
+      return (b.cancellation_type === 'cancelled_admin' || b.cancellation_type === 'refused') && b.cancelled_at && new Date(b.cancelled_at).getTime() >= monthStart.getTime();
+    }).length;
+    var caCents = null;
+    if (completedThisMonth.length && completedThisMonth.every(function(b){ return b.total_cents != null; })){
+      caCents = completedThisMonth.reduce(function(sum, b){ return sum + b.total_cents; }, 0);
+    }
+    el.innerHTML =
+      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + todayCount + '</span><span class="admin-bk-dash-label">Aujourd\'hui</span></div>' +
+      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + upcomingCount + '</span><span class="admin-bk-dash-label">À venir</span></div>' +
+      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + completedThisMonth.length + '</span><span class="admin-bk-dash-label">Terminées ce mois</span></div>' +
+      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + cancelledClientThisMonth + '</span><span class="admin-bk-dash-label">Annulées client ce mois</span></div>' +
+      '<div class="admin-bk-dash-card"><span class="admin-bk-dash-value">' + refusedThisMonth + '</span><span class="admin-bk-dash-label">Refusées HAYEVA ce mois</span></div>' +
+      (caCents != null ? '<div class="admin-bk-dash-card admin-bk-dash-card-ca"><span class="admin-bk-dash-value">' + admFmtEuros(caCents) + '</span><span class="admin-bk-dash-label">CA du mois</span></div>' : '');
+  }
+
+  // ---------- Archives année/mois (sections 6, 7, 13, 22) ----------
+  // AUCUNE table ni copie supplémentaire : une simple requête sur
+  // interventions.ended_at (date RÉELLE de fin, jamais bookings.date — un
+  // rendez-vous prévu le 31 janvier mais terminé le 1er février s'archive
+  // bien en février, voir section 6) avec report_status='FINALIZED'. Les
+  // compteurs par mois viennent d'une requête groupée, la liste détaillée
+  // d'une seconde requête filtrée au mois ouvert — jamais tout rapatrié
+  // d'un coup (section 24).
+  var adminArchivesMonthDetailCache = null;
+  function admLoadArchiveYears(onDone){
+    sb.client.from('interventions')
+      .select('ended_at')
+      .eq('report_status', 'FINALIZED')
+      .not('ended_at', 'is', null)
+      .then(function(res){
+        if (res.error){ onDone(null); return; }
+        var years = {};
+        (res.data || []).forEach(function(r){
+          var y = new Date(r.ended_at).getFullYear();
+          years[y] = (years[y] || 0) + 1;
+        });
+        onDone(years);
+      });
+  }
+  function admLoadArchiveMonths(year, onDone){
+    var start = new Date(year, 0, 1).toISOString();
+    var end = new Date(year + 1, 0, 1).toISOString();
+    sb.client.from('interventions')
+      .select('ended_at')
+      .eq('report_status', 'FINALIZED')
+      .gte('ended_at', start).lt('ended_at', end)
+      .then(function(res){
+        if (res.error){ onDone(null); return; }
+        var months = Array(12).fill(0);
+        (res.data || []).forEach(function(r){ months[new Date(r.ended_at).getMonth()]++; });
+        onDone(months);
+      });
+  }
+  var MONTH_LABELS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var ARCHIVE_CATEGORY_LABELS = { climatisation:'Climatisation', chauffage:'Chauffage', plomberie:'Plomberie', sanitaire:'Sanitaire', chaudiere_gaz:'Chaudière gaz', chaudiere_fioul:'Chaudière fioul' };
+  function admLoadArchiveMonthDetail(year, month, onDone){
+    var start = new Date(year, month, 1).toISOString();
+    var end = new Date(year, month + 1, 1).toISOString();
+    sb.client.from('interventions')
+      .select('id, booking_id, ended_at, report_number, completion_status, total_cents:bookings(total_cents), bookings(id, date, start_time, reference, guest_name, guest_email, customer_user_id, services(name,category))')
+      .eq('report_status', 'FINALIZED')
+      .gte('ended_at', start).lt('ended_at', end)
+      .order('ended_at', { ascending:false })
+      .then(function(res){ onDone(res.error ? null : (res.data || [])); });
+  }
+  function admRenderYearMonthArchives(containerId){
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    if (adminArchiveYear == null){
+      el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+      admLoadArchiveYears(function(years){
+        if (!years){ el.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les archives</strong></div>'; return; }
+        var ys = Object.keys(years).map(Number).sort(function(a,b){ return b - a; });
+        if (!ys.length){ el.innerHTML = '<div class="ec-empty"><strong>Aucune archive</strong>Aucune intervention terminée pour le moment.</div>'; return; }
+        el.innerHTML = '<div class="admin-bk-archive-years">' + ys.map(function(y){
+          return '<button type="button" class="admin-bk-archive-year-btn" data-archive-year="' + y + '">' + y + ' <span class="admin-bk-archive-count">' + years[y] + '</span></button>';
+        }).join('') + '</div>';
+      });
+      return;
+    }
+    if (adminArchiveMonth == null){
+      el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+      admLoadArchiveMonths(adminArchiveYear, function(months){
+        if (!months){ el.innerHTML = '<div class="ec-empty"><strong>Impossible de charger ' + adminArchiveYear + '</strong></div>'; return; }
+        el.innerHTML = '<button type="button" class="admin-bk-archive-back-btn" data-archive-action="years">← Toutes les années</button>' +
+          '<h3 class="admin-bk-archive-year-heading">' + adminArchiveYear + '</h3>' +
+          '<div class="admin-bk-archive-months">' + months.map(function(count, i){
+            return '<button type="button" class="admin-bk-archive-month-btn"' + (count === 0 ? ' disabled' : '') + ' data-archive-month="' + i + '">' +
+              MONTH_LABELS_FR[i].slice(0,3).toUpperCase() + ' <span class="admin-bk-archive-count">' + count + '</span></button>';
+          }).join('') + '</div>';
+      });
+      return;
+    }
+    el.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    admLoadArchiveMonthDetail(adminArchiveYear, adminArchiveMonth, function(rows){
+      adminArchivesMonthDetailCache = rows;
+      admRenderArchiveMonthDetail(containerId);
+    });
+  }
+  function admRenderArchiveMonthDetail(containerId){
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    var rows = adminArchivesMonthDetailCache;
+    if (!rows){ el.innerHTML = '<div class="ec-empty"><strong>Impossible de charger ce mois</strong></div>'; return; }
+    var filtered = adminArchiveCategory === 'all' ? rows : rows.filter(function(iv){
+      var cat = iv.bookings && iv.bookings.services && iv.bookings.services.category;
+      return cat === adminArchiveCategory;
+    });
+    var uniqueClients = {};
+    rows.forEach(function(iv){
+      var b = iv.bookings;
+      var key = (b && (b.customer_user_id || b.guest_email)) || iv.id;
+      uniqueClients[key] = true;
+    });
+    var caTotal = null;
+    if (rows.length && rows.every(function(iv){ return iv.total_cents && iv.total_cents.total_cents != null; })){
+      caTotal = rows.reduce(function(sum, iv){ return sum + iv.total_cents.total_cents; }, 0);
+    }
+    var catOptions = ['all', 'climatisation', 'chauffage', 'plomberie', 'sanitaire', 'chaudiere_gaz', 'chaudiere_fioul', 'autres'];
+    var html = '<button type="button" class="admin-bk-archive-back-btn" data-archive-action="months">← ' + adminArchiveYear + '</button>' +
+      '<div class="admin-bk-archive-nav">' +
+        '<button type="button" class="admin-bk-archive-nav-btn" data-archive-action="prev-month">← Mois précédent</button>' +
+        '<h3 class="admin-bk-archive-month-heading">' + MONTH_LABELS_FR[adminArchiveMonth] + ' ' + adminArchiveYear + '</h3>' +
+        '<button type="button" class="admin-bk-archive-nav-btn" data-archive-action="next-month">Mois suivant →</button>' +
+      '</div>' +
+      '<div class="admin-bk-archive-summary">' +
+        '<span>Interventions terminées : <strong>' + rows.length + '</strong></span>' +
+        '<span>Clients uniques : <strong>' + Object.keys(uniqueClients).length + '</strong></span>' +
+        (caTotal != null ? '<span>CA : <strong>' + admFmtEuros(caTotal) + '</strong></span>' : '') +
+      '</div>' +
+      '<div class="admin-bk-filters">' + catOptions.map(function(c){
+        return '<button type="button" class="gallery-filter-btn' + (adminArchiveCategory === c ? ' is-active' : '') + '" data-archive-category="' + c + '">' +
+          (c === 'all' ? 'Toutes' : (ARCHIVE_CATEGORY_LABELS[c] || 'Autres')) + '</button>';
+      }).join('') + '</div>';
+    if (!filtered.length){
+      html += '<div class="ec-empty"><strong>Aucune intervention</strong>Aucune intervention pour ce filtre ce mois-ci.</div>';
+    } else {
+      html += '<div class="ec-list">' + filtered.map(function(iv){
+        var b = iv.bookings || {};
+        var name = b.guest_name || 'Client';
+        var svcName = (b.services && b.services.name) || 'Intervention';
+        return '<div class="ec-row admin-bk-archive-row" data-booking-id="' + (b.id || '') + '"><div class="ec-row-info">' +
+          '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(name) + '</span>' +
+          '<span class="ec-row-meta">Terminée le ' + admFmtDateTime(iv.ended_at) + '</span>' +
+          (iv.report_number ? '<span class="ec-row-meta">Compte rendu ' + admEscape(iv.report_number) + '</span>' : '') +
+          (b.reference ? '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' : '') +
+          '</div></div>';
+      }).join('') + '</div>';
+    }
+    el.innerHTML = html;
+  }
+  // Partagée entre les deux points d'entrée des archives année/mois :
+  // l'onglet "Archives" de la rubrique RENDEZ-VOUS (#adminBkArchives) et la
+  // page de navigation gauche "Archives" (#adminArchivesList) — même
+  // fonction, même état (adminArchiveYear/Month/Category), aucune donnée
+  // dupliquée (section 7).
+  function admHandleArchiveContainerClick(e){
+    var containerId = e.currentTarget.id;
+    var yearBtn = e.target.closest('[data-archive-year]');
+    if (yearBtn){ adminArchiveYear = Number(yearBtn.getAttribute('data-archive-year')); adminArchiveMonth = null; admRenderYearMonthArchives(containerId); return; }
+    var monthBtn = e.target.closest('[data-archive-month]');
+    if (monthBtn){ adminArchiveMonth = Number(monthBtn.getAttribute('data-archive-month')); adminArchiveCategory = 'all'; admRenderYearMonthArchives(containerId); return; }
+    var catBtn = e.target.closest('[data-archive-category]');
+    if (catBtn){ adminArchiveCategory = catBtn.getAttribute('data-archive-category'); admRenderArchiveMonthDetail(containerId); return; }
+    var rowEl = e.target.closest('.admin-bk-archive-row');
+    if (rowEl && rowEl.getAttribute('data-booking-id')){ admOpenBookingModal(rowEl.getAttribute('data-booking-id')); return; }
+    var action = e.target.closest('[data-archive-action]');
+    if (!action) return;
+    var a = action.getAttribute('data-archive-action');
+    if (a === 'years'){ adminArchiveYear = null; adminArchiveMonth = null; }
+    else if (a === 'months'){ adminArchiveMonth = null; }
+    else if (a === 'prev-month'){ adminArchiveMonth--; if (adminArchiveMonth < 0){ adminArchiveMonth = 11; adminArchiveYear--; } adminArchiveCategory = 'all'; }
+    else if (a === 'next-month'){ adminArchiveMonth++; if (adminArchiveMonth > 11){ adminArchiveMonth = 0; adminArchiveYear++; } adminArchiveCategory = 'all'; }
+    admRenderYearMonthArchives(containerId);
+  }
+  var adminBkArchivesEl = document.getElementById('adminBkArchives');
+  if (adminBkArchivesEl){
+    adminBkArchivesEl.addEventListener('click', admHandleArchiveContainerClick);
+  }
+
+  // ---------- Recherche globale (section 14) ----------
+  // Cherche dans les rendez-vous déjà chargés (adminBookingsCache, jusqu'à
+  // 500 lignes les plus récentes) : nom, téléphone, e-mail, adresse,
+  // référence, marque/modèle d'équipement. Limite réelle assumée : un
+  // client dont le dernier rendez-vous date d'avant ces 500 lignes ne sera
+  // pas trouvé ici (voir rapport final, section performance).
+  function admBkSearchMatches(query){
+    var needle = query.trim().toLowerCase();
+    if (!needle || !adminBookingsCache) return [];
+    var needlePhone = admNormalizePhone(needle);
+    var seen = {};
+    var results = [];
+    adminBookingsCache.rows.forEach(function(b){
+      var contact = admContactFor(b, adminBookingsCache.profiles);
+      var equip = b.customer_equipment;
+      var haystacks = [contact.name, contact.email, contact.address, b.reference, equip && equip.brand, equip && equip.model]
+        .filter(Boolean).map(function(s){ return String(s).toLowerCase(); });
+      var matched = haystacks.some(function(h){ return h.indexOf(needle) !== -1; });
+      if (!matched && needlePhone && contact.phone){
+        matched = admNormalizePhone(contact.phone).indexOf(needlePhone) !== -1;
+      }
+      if (!matched) return;
+      var key = contact.userId || contact.phone || contact.email || b.id;
+      if (seen[key]) return;
+      seen[key] = true;
+      results.push({ booking: b, contact: contact });
+    });
+    return results.slice(0, 20);
+  }
+  var adminBkSearchInputEl = document.getElementById('adminBkSearchInput');
+  var adminBkSearchResultsEl = document.getElementById('adminBkSearchResults');
+  if (adminBkSearchInputEl && adminBkSearchResultsEl){
+    adminBkSearchInputEl.addEventListener('input', function(){
+      var q = adminBkSearchInputEl.value;
+      if (!q.trim()){ adminBkSearchResultsEl.hidden = true; adminBkSearchResultsEl.innerHTML = ''; return; }
+      var results = admBkSearchMatches(q);
+      if (!results.length){
+        adminBkSearchResultsEl.innerHTML = '<p class="admin-accounts-hint">Aucun résultat.</p>';
+        adminBkSearchResultsEl.hidden = false;
+        return;
+      }
+      adminBkSearchResultsEl.innerHTML = results.map(function(r){
+        var equip = r.booking.customer_equipment;
+        return '<button type="button" class="admin-bk-search-result" data-client-id="' + admEscape(r.contact.userId || '') + '" data-booking-id="' + r.booking.id + '">' +
+          '<strong>' + admEscape(r.contact.name) + '</strong>' +
+          (r.contact.phone ? ' · ' + admEscape(r.contact.phone) : '') +
+          (equip ? ' · ' + admEscape([equip.brand, equip.model].filter(Boolean).join(' ')) : '') +
+          '</button>';
+      }).join('');
+      adminBkSearchResultsEl.hidden = false;
+    });
+    adminBkSearchResultsEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.admin-bk-search-result');
+      if (!btn) return;
+      var clientId = btn.getAttribute('data-client-id');
+      adminBkSearchResultsEl.hidden = true;
+      adminBkSearchInputEl.value = '';
+      if (clientId) admOpenClientFiche(clientId);
+      else admOpenBookingModal(btn.getAttribute('data-booking-id'));
+    });
+  }
+
+  // ---------- Fiche client centrale (section 15) ----------
+  // Une seule fenêtre : coordonnées, équipements, prochain rendez-vous et
+  // historique — reconstituée à partir des données déjà en mémoire
+  // (adminBookingsCache) + une requête dédiée customer_equipment/
+  // customer_profiles pour ce client précis (jamais tout le portefeuille
+  // client téléchargé pour en afficher un seul, section 24).
+  function admOpenClientFiche(userId){
+    var overlay = document.getElementById('adminClientFicheOverlay');
+    var body = document.getElementById('adminClientFicheBody');
+    if (!overlay || !body || !userId) return;
+    body.innerHTML = '<p class="ec-loading">Chargement…</p>';
+    overlay.hidden = false;
+    Promise.all([
+      sb.client.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', userId).maybeSingle(),
+      sb.client.from('profiles').select('email').eq('user_id', userId).maybeSingle(),
+      sb.client.from('customer_equipment').select('id,equipment_type,brand,model,specs,installed_at,last_service_at').eq('customer_user_id', userId)
+    ]).then(function(results){
+      var cp = results[0].data, prof = results[1].data, equipRows = results[2].data || [];
+      var name = cp ? [cp.first_name, cp.last_name].filter(Boolean).join(' ') : 'Client';
+      var bookings = adminBookingsCache.rows.filter(function(b){ return b.customer_user_id === userId; })
+        .slice().sort(function(a, b){
+          var da = a.date + 'T' + (a.start_time || '00:00'); var db = b.date + 'T' + (b.start_time || '00:00');
+          return da < db ? 1 : (da > db ? -1 : 0);
+        });
+      var today = new Date(); today.setHours(0,0,0,0);
+      var nextBooking = bookings.filter(function(b){
+        return admIsOperationalBooking(b) && new Date(b.date + 'T00:00:00').getTime() >= today.getTime();
+      }).sort(function(a, b){
+        var da = a.date + 'T' + (a.start_time || '00:00'); var db = b.date + 'T' + (b.start_time || '00:00');
+        return da < db ? -1 : 1;
+      })[0];
+      var history = bookings.filter(function(b){ return b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'NO_SHOW'; });
+
+      var html = '<h2 class="admin-client-fiche-name">' + admEscape(name).toUpperCase() + '</h2>' +
+        '<div class="admin-client-fiche-contact">' +
+          (cp && cp.phone ? '<span>' + admEscape(cp.phone) + '</span>' : '') +
+          (prof && prof.email ? '<span>' + admEscape(prof.email) + '</span>' : '') +
+        '</div>' +
+        '<div class="admin-client-fiche-actions">' +
+          (cp && cp.phone ? '<a class="admin-bk-action-btn" href="tel:' + admEscape(cp.phone) + '">Appeler</a>' : '') +
+          (prof && prof.email ? '<a class="admin-bk-action-btn" href="mailto:' + admEscape(prof.email) + '">E-mail</a>' : '') +
+        '</div>' +
+        '<h3 class="admin-client-fiche-section-title">Équipements</h3>' +
+        (equipRows.length ? equipRows.map(function(eq){
+          return '<div class="admin-client-fiche-equip">' + admEscape([eq.equipment_type, eq.brand, eq.model].filter(Boolean).join(' — ')) +
+            (eq.last_service_at ? '<span class="ec-row-meta">Dernier entretien : ' + admFmtDate(eq.last_service_at.slice(0,10)) + '</span>' : '') +
+            '</div>';
+        }).join('') : '<p class="admin-accounts-hint">Aucun équipement enregistré.</p>') +
+        '<h3 class="admin-client-fiche-section-title">Prochain rendez-vous</h3>' +
+        (nextBooking ? '<p>' + admFmtDate(nextBooking.date) + ' — ' + admFmtTime(nextBooking.start_time) + '</p>' : '<p class="admin-accounts-hint">Aucun rendez-vous à venir.</p>') +
+        '<h3 class="admin-client-fiche-section-title">Historique</h3>' +
+        (history.length ? '<div class="ec-list">' + history.map(function(b){
+          var svcName = (b.services && b.services.name) || 'Intervention';
+          return '<div class="ec-row admin-bk-archive-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+            '<span class="ec-row-title">' + admEscape(svcName) + '</span>' +
+            '<span class="ec-row-meta">' + admFmtDate(b.date) + ' — ' + (b.status === 'COMPLETED' ? 'Terminée' : b.status === 'NO_SHOW' ? 'Absence' : 'Annulée') + '</span>' +
+            '</div></div>';
+        }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun historique pour le moment.</p>');
+      body.innerHTML = html;
+    }).catch(function(err){
+      console.error('admOpenClientFiche', err);
+      body.innerHTML = '<div class="ec-empty"><strong>Impossible de charger cette fiche</strong></div>';
+    });
+  }
+  var adminClientFicheOverlayEl = document.getElementById('adminClientFicheOverlay');
+  if (adminClientFicheOverlayEl){
+    adminClientFicheOverlayEl.addEventListener('click', function(e){
+      if (e.target.closest('.admin-client-fiche-close') || e.target === adminClientFicheOverlayEl) adminClientFicheOverlayEl.hidden = true;
+      var row = e.target.closest('.admin-bk-archive-row');
+      if (row && row.getAttribute('data-booking-id')){ adminClientFicheOverlayEl.hidden = true; admOpenBookingModal(row.getAttribute('data-booking-id')); }
+    });
+  }
+  // Bouton "Voir client" : délégué au document car il apparaît dans
+  // plusieurs listes (Aujourd'hui/À venir/Terminées/Annulées) qui se
+  // régénèrent indépendamment.
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.admin-bk-view-client-btn');
+    if (!btn) return;
+    admOpenClientFiche(btn.getAttribute('data-client-id'));
+  });
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.admin-bk-view-detail-btn');
+    if (!btn) return;
+    admOpenBookingModal(btn.getAttribute('data-booking-id'));
+  });
+  // "Supprimer définitivement" (section 18) depuis l'onglet Annulées /
+  // Refusées — réutilise exactement admHandleDeleteClick (même
+  // confirmation forte, même verrou anti-double-clic) déjà utilisée
+  // ailleurs dans l'admin.
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#adminBkList .admin-bk-delete-btn');
+    if (!btn || typeof admHandleDeleteClick !== 'function') return;
+    admHandleDeleteClick(btn);
+  });
+
+  // ---------- Onglets principaux "RENDEZ-VOUS" (section 1) ----------
+  var adminBkMainTabsEl = document.getElementById('adminBkMainTabs');
+  if (adminBkMainTabsEl){
+    adminBkMainTabsEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-admin-filter]');
+      if (!btn) return;
+      adminFilter = btn.getAttribute('data-admin-filter');
+      if (adminFilter === 'archives'){ adminArchiveYear = null; adminArchiveMonth = null; }
+      Array.prototype.forEach.call(adminBkMainTabsEl.querySelectorAll('[data-admin-filter]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      admRenderBkArea();
+    });
+  }
+  var adminBkCancelledSubFiltersEl = document.getElementById('adminBkCancelledSubFilters');
+  if (adminBkCancelledSubFiltersEl){
+    adminBkCancelledSubFiltersEl.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-admin-cancel-filter]');
+      if (!btn) return;
+      adminCancelFilter = btn.getAttribute('data-admin-cancel-filter');
+      Array.prototype.forEach.call(adminBkCancelledSubFiltersEl.querySelectorAll('[data-admin-cancel-filter]'), function(b){
+        b.classList.toggle('is-active', b === btn);
+      });
+      admRenderCancelledTab();
+    });
+  }
+
   // Conteneurs qui dépendent tous de la MÊME requête bookings ci-dessous
   // (Planning, Liste, Historique, Demandes récentes, Devis, cartes du
   // Tableau de bord) : si elle échoue, aucun des deux ne doit rester bloqué
@@ -13926,7 +14610,17 @@ if ('serviceWorker' in navigator){
     });
   }
 
-  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city)';
+  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, equipment_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, cancelled_by, cancelled_at, cancellation_type, cancellation_reason_code, cancellation_reason_detail, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city), customer_equipment(brand,model,equipment_type)';
+
+  var CANCELLATION_REASON_LABELS = {
+    creneau_indisponible: 'Créneau indisponible',
+    hors_zone: 'Hors zone',
+    prestation_non_proposee: 'Prestation non proposée',
+    client_injoignable: 'Client injoignable',
+    doublon: 'Doublon',
+    erreur_reservation: 'Erreur de réservation',
+    autre: 'Autre'
+  };
   // ============================================================
   // CONTRATS CHAUDIÈRE — HAYEVA Sérénité (gaz/fioul), voir
   // 0052_chaudiere_contracts.sql. Tarifs administrables (contract_products),
@@ -14229,18 +14923,9 @@ if ('serviceWorker' in navigator){
     else if (key === 'accounts') admLoadAccounts();
   });
 
-  var adminFiltersEl = document.getElementById('adminBkFilters');
-  if (adminFiltersEl){
-    adminFiltersEl.addEventListener('click', function(e){
-      var btn = e.target.closest('[data-admin-filter]');
-      if (!btn) return;
-      adminFilter = btn.getAttribute('data-admin-filter');
-      Array.prototype.forEach.call(adminFiltersEl.querySelectorAll('[data-admin-filter]'), function(b){
-        b.classList.toggle('is-active', b === btn);
-      });
-      admRenderList();
-    });
-  }
+  // Les anciens boutons de période (#adminBkFilters) ont été remplacés par
+  // les 5 onglets "RENDEZ-VOUS" (#adminBkMainTabs, voir plus bas) — leur
+  // gestionnaire vit maintenant avec le reste du nouveau routeur d'onglets.
 
   // Un seul point de mise à jour du statut, réutilisé par le menu déroulant
   // ET les boutons rapides Accepter/Refuser — même comportement partout
@@ -14258,26 +14943,37 @@ if ('serviceWorker' in navigator){
     });
   }
 
-  // Refus d'une demande PENDING depuis la fiche détaillée (correction
-  // 2026-09-24) : même changement de statut que admUpdateBookingStatus (pas
-  // de second système), plus cancelled_by='admin' (colonne déjà existante,
-  // voir 0017_customer_reschedule_cancel.sql, jusqu'ici jamais renseignée
-  // depuis l'admin) et, si un motif a été saisi, une écriture BEST-EFFORT du
-  // motif dans admin_cancel_reason. Cette colonne est facultative : si la
-  // migration qui l'ajoute n'a pas encore été exécutée, cette deuxième
-  // écriture échoue silencieusement sans jamais empêcher le refus lui-même
-  // (déjà effectif via le statut CANCELLED ci-dessus).
+  // Refus/annulation depuis la fiche détaillée (formulaire à motif libre
+  // .admin-bk-refuse-form) — écrit désormais dans le schéma structuré réel
+  // (cancellation_type/cancellation_reason_code/cancellation_reason_detail,
+  // voir 0054_booking_lifecycle.sql) plutôt que dans admin_cancel_reason,
+  // qui n'a jamais existé en base. Le type (refused si la demande était
+  // encore PENDING, cancelled_admin si elle était déjà CONFIRMED) est
+  // déterminé à partir du statut ACTUEL de la réservation, capturé avant
+  // l'écriture ci-dessous.
   function admRefuseBooking(id, reason, onDone){
-    admUpdateBookingStatus(id, 'CANCELLED', function(err){
-      if (err){ if (onDone) onDone(err); return; }
-      sb.client.from('bookings').update({ cancelled_by: 'admin' }).eq('id', id).then(function(){
-        if (reason){
-          sb.client.from('bookings').update({ admin_cancel_reason: reason }).eq('id', id).then(function(res){
-            if (res.error) console.warn('admRefuseBooking: motif non enregistré (colonne admin_cancel_reason absente ?)', res.error);
-          });
-        }
-        if (onDone) onDone(null);
-      });
+    var row = adminBookingsCache && adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+    var cancellationType = (row && row.status === 'PENDING') ? 'refused' : 'cancelled_admin';
+    sb.client.from('bookings').update({
+      status: 'CANCELLED',
+      cancelled_by: 'admin',
+      cancelled_at: new Date().toISOString(),
+      cancellation_type: cancellationType,
+      cancellation_reason_code: reason ? 'autre' : null,
+      cancellation_reason_detail: reason || null
+    }).eq('id', id).then(function(res){
+      if (res.error){ if (onDone) onDone(res.error); return; }
+      if (row){
+        row.status = 'CANCELLED'; row.cancelled_by = 'admin'; row.cancelled_at = new Date().toISOString();
+        row.cancellation_type = cancellationType;
+        row.cancellation_reason_code = reason ? 'autre' : null;
+        row.cancellation_reason_detail = reason || null;
+      }
+      admRenderBkArea();
+      admRenderDashboardStats();
+      admRenderQuotesPage();
+      admRenderRecentRequests();
+      if (onDone) onDone(null);
     });
   }
 
@@ -14309,22 +15005,16 @@ if ('serviceWorker' in navigator){
       }
       var refuseBtn = e.target.closest('.admin-bk-refuse-btn');
       if (refuseBtn){
-        refuseBtn.disabled = true;
-        // admRefuseBooking (pas admUpdateBookingStatus) : trace cancelled_by='admin'
-        // (voir commentaire sur admin-bk-cancel-confirmed-btn ci-dessous — même
-        // logique, corrige au passage ce bouton qui ne le faisait pas encore).
-        admRefuseBooking(refuseBtn.getAttribute('data-booking-id'), '', function(err){
-          if (err){ refuseBtn.disabled = false; window.alert('Impossible de refuser cette demande.'); }
-        });
+        // Motif obligatoire (section 9) : ouvre la fenêtre "Pourquoi ?"
+        // plutôt que de refuser immédiatement — admOpenCancelReasonModal
+        // effectue elle-même l'écriture (status=CANCELLED, cancellation_type,
+        // motif) une fois le formulaire validé.
+        admOpenCancelReasonModal(refuseBtn.getAttribute('data-booking-id'), 'refused');
         return;
       }
       var cancelConfirmedBtn = e.target.closest('.admin-bk-cancel-confirmed-btn');
       if (cancelConfirmedBtn){
-        if (!window.confirm('Annuler ce rendez-vous confirmé ? Le client sera automatiquement prévenu par e-mail.')) return;
-        cancelConfirmedBtn.disabled = true;
-        admRefuseBooking(cancelConfirmedBtn.getAttribute('data-booking-id'), '', function(err){
-          if (err){ cancelConfirmedBtn.disabled = false; window.alert('Impossible d\'annuler ce rendez-vous.'); }
-        });
+        admOpenCancelReasonModal(cancelConfirmedBtn.getAttribute('data-booking-id'), 'cancelled_admin');
         return;
       }
       var proposeBtn = e.target.closest('.admin-bk-propose-btn');
@@ -16545,20 +17235,29 @@ if ('serviceWorker' in navigator){
     var listEl = document.getElementById('adminBkList');
     var planningEl = document.getElementById('adminBkPlanning');
     var planningNavEl = document.getElementById('adminBkPlanningNav');
-    var periodFiltersEl = document.getElementById('adminBkFilters');
-    var historyBtn = document.getElementById('adminBkHistoryBtn');
+    var operationalToolbarEl = document.getElementById('adminBkOperationalToolbar');
+    var cancelledSubFiltersEl = document.getElementById('adminBkCancelledSubFilters');
+    var archivesEl = document.getElementById('adminBkArchives');
+
+    var isOperational = adminFilter === 'today' || adminFilter === 'upcoming';
+    var showPlanning = isOperational && adminBkViewMode === 'planning';
 
     Array.prototype.forEach.call(document.querySelectorAll('.admin-bk-view-tab'), function(btn){
-      btn.classList.toggle('is-active', !adminBkShowHistory && btn.getAttribute('data-admin-bk-view') === adminBkViewMode);
+      btn.classList.toggle('is-active', btn.getAttribute('data-admin-bk-view') === adminBkViewMode);
     });
-    if (historyBtn) historyBtn.classList.toggle('is-active', adminBkShowHistory);
 
-    var showPlanning = !adminBkShowHistory && adminBkViewMode === 'planning';
+    if (operationalToolbarEl) operationalToolbarEl.hidden = !isOperational;
     if (planningEl) planningEl.hidden = !showPlanning;
     if (planningNavEl) planningNavEl.hidden = !showPlanning;
-    if (listEl) listEl.hidden = showPlanning;
-    if (periodFiltersEl) periodFiltersEl.hidden = showPlanning || adminBkShowHistory;
+    if (listEl) listEl.hidden = showPlanning || adminFilter === 'archives';
+    if (cancelledSubFiltersEl) cancelledSubFiltersEl.hidden = adminFilter !== 'cancelled';
+    if (archivesEl) archivesEl.hidden = adminFilter !== 'archives';
 
+    admRenderDashboardCounters();
+
+    if (adminFilter === 'archives') { admRenderYearMonthArchives('adminBkArchives'); return; }
+    if (adminFilter === 'completed') { admRenderCompletedTab(); return; }
+    if (adminFilter === 'cancelled') { admRenderCancelledTab(); return; }
     if (showPlanning) admRenderPlanning();
     else admRenderList();
   }
@@ -16569,14 +17268,6 @@ if ('serviceWorker' in navigator){
       var btn = e.target.closest('.admin-bk-view-tab');
       if (!btn) return;
       adminBkViewMode = btn.getAttribute('data-admin-bk-view');
-      adminBkShowHistory = false;
-      admRenderBkArea();
-    });
-  }
-  var adminBkHistoryBtnEl = document.getElementById('adminBkHistoryBtn');
-  if (adminBkHistoryBtnEl){
-    adminBkHistoryBtnEl.addEventListener('click', function(){
-      adminBkShowHistory = !adminBkShowHistory;
       admRenderBkArea();
     });
   }
@@ -17075,52 +17766,20 @@ if ('serviceWorker' in navigator){
   // (portée validée explicitement avec l'utilisateur) — une annulation
   // faite par le client reste visible ici mais non supprimable depuis cet
   // onglet.
+  // Repurposé (restructuration du 01/10/2026, section 6) : cette page de
+  // navigation gauche "Archives" montrait auparavant les demandes annulées/
+  // refusées — ce contenu vit désormais dans l'onglet dédié "Annulées /
+  // Refusées" de la rubrique RENDEZ-VOUS (admRenderCancelledTab). "Archives"
+  // désigne maintenant, comme demandé, les interventions RÉELLEMENT
+  // terminées classées par année/mois de fin réelle (admRenderYearMonthArchives,
+  // partagée avec l'onglet "Archives" de RENDEZ-VOUS — même fonction, deux
+  // points d'entrée, aucune donnée dupliquée).
   function admRenderArchives(){
-    var listEl = document.getElementById('adminArchivesList');
-    if (!listEl || !adminBookingsCache) return;
-    var rows = adminBookingsCache.rows.filter(function(b){ return b.status === 'CANCELLED'; })
-      .slice().sort(function(a, b){
-        var da = a.date + 'T' + (a.start_time || '00:00');
-        var db = b.date + 'T' + (b.start_time || '00:00');
-        return da < db ? 1 : (da > db ? -1 : 0);
-      });
-    if (!rows.length){
-      listEl.innerHTML = '<div class="ec-empty"><strong>Aucune archive</strong>Aucune demande refusée ou annulée pour le moment.</div>';
-      return;
-    }
-    listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
-    admLoadCancelledMeta(rows.map(function(b){ return b.id; }), function(){
-      var html = '<div class="ec-list">';
-      rows.forEach(function(b){
-        var contact = admContactFor(b, adminBookingsCache.profiles);
-        var svcName = (b.services && b.services.name) || 'Intervention';
-        var meta = adminCancelledMetaCache[b.id];
-        var who = (meta && meta.cancelled_by === 'admin') ? '<span class="adm-badge adm-badge-cancelled">Refusé par vous</span>'
-          : (meta && meta.cancelled_by === 'customer') ? '<span class="adm-badge adm-badge-pending">Annulé par le client</span>'
-          : '<span class="adm-badge adm-badge-completed">Annulé</span>';
-        var canDelete = meta && meta.cancelled_by === 'admin';
-        html += '<div class="ec-row">' +
-          '<div class="ec-row-info">' +
-            '<span class="ec-row-title">' + admEscape(svcName) + ' — ' + admEscape(contact.name) + ' ' + who + '</span>' +
-            '<span class="ec-row-meta">Rendez-vous demandé : ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
-            (meta && meta.cancelled_at ? '<span class="ec-row-meta">Le ' + admFmtDateTime(meta.cancelled_at) + '</span>' : '') +
-            (meta && meta.admin_cancel_reason ? '<span class="ec-row-meta">Motif : ' + admEscape(meta.admin_cancel_reason) + '</span>' : '') +
-            '<span class="ec-row-meta">Réf. ' + admEscape(b.reference) + '</span>' +
-          '</div>' +
-          (canDelete ? '<button type="button" class="admin-bk-delete-btn" data-booking-id="' + b.id + '">Supprimer</button>' : '') +
-          '</div>';
-      });
-      html += '</div>';
-      listEl.innerHTML = html;
-    });
+    admRenderYearMonthArchives('adminArchivesList');
   }
   var adminArchivesListEl = document.getElementById('adminArchivesList');
   if (adminArchivesListEl){
-    adminArchivesListEl.addEventListener('click', function(e){
-      var deleteBtn = e.target.closest('.admin-bk-delete-btn');
-      if (!deleteBtn) return;
-      admHandleDeleteClick(deleteBtn);
-    });
+    adminArchivesListEl.addEventListener('click', admHandleArchiveContainerClick);
   }
 
   // État optimiste (badge/liste mis à jour avant la réponse serveur) : un
