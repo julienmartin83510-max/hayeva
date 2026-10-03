@@ -1087,6 +1087,34 @@ if ('serviceWorker' in navigator){
   }
   .btn-hero-secondary:hover{ transform:translateY(-2px); border-color:var(--hl-blue); background:var(--hl-bg-deep); }
 
+  /* MODE TEST — fond photo réutilisé depuis le portail d'entrée/la
+     connexion (voir .portal-bg-img/.auth-bg-img, même fichier
+     images/portal/portal-bg-*.jpg, aucun nouvel asset). Même principe que
+     la photo déjà posée derrière le tableau de bord Espace Client connecté
+     (#espaceClient.is-open:not(.gate-bg-active) .auth-bg-img, section
+     "auth-bg" ci-dessus) : photo très adoucie (opacité réduite, sans flou
+     ni désaturation puisque le thème ici reste clair) puis dégradé vers
+     --hl-bg (fond du hero lui-même) pour une continuité propre avec le
+     reste de la page — jamais un aplat d'image brut derrière le texte.
+     Reversible intégralement via le commit "backup-before-login-background-test". */
+  .hero-photo-bg{
+    position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+  }
+  .hero-photo-bg-img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:center 28%;
+    opacity:0.26;
+  }
+  .hero-photo-bg-overlay{
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:linear-gradient(180deg,
+      rgba(255,255,255,0) 0%,
+      transparent 20%,
+      color-mix(in srgb, var(--hl-bg) 55%, transparent) 52%,
+      color-mix(in srgb, var(--hl-bg) 90%, transparent) 78%,
+      var(--hl-bg) 96%,
+      var(--hl-bg) 100%);
+  }
   /* Décor : vagues abstraites très discrètes évoquant l'eau/l'air/la chaleur
      du logo, jamais une seconde silhouette de maison (pour ne pas dupliquer
      le logo lui-même). Dérive extrêmement lente, jamais gênante. */
@@ -6375,6 +6403,12 @@ if ('serviceWorker' in navigator){
 
 <main>
   <section class="hero" id="accueil">
+    <div class="hero-photo-bg" aria-hidden="true">
+      <img class="hero-photo-bg-img" src="images/portal/portal-bg-md.jpg"
+        srcset="images/portal/portal-bg-sm.jpg 800w, images/portal/portal-bg-md.jpg 1280w, images/portal/portal-bg-lg.jpg 1920w"
+        sizes="100vw" alt="" loading="eager" decoding="async" fetchpriority="low">
+    </div>
+    <div class="hero-photo-bg-overlay" aria-hidden="true"></div>
     <div class="hero-wave-decor" aria-hidden="true">
       <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
         <defs>
