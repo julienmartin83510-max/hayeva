@@ -16391,27 +16391,73 @@ if ('serviceWorker' in navigator){
 
       // "Dépannage chauffage" est un forfait UNIQUE qui sert indifféremment
       // chaudière gaz, chaudière fioul, radiateur, circulateur ou chauffe-
-      // eau (l'équipement réel en cause n'est souvent identifié que sur
-      // place — voir SERVICES/'chauffage-depannage'). Les contrôles
-      // spécifiques à chaque équipement (cond 'equip_*', voir
-      // admIvItemVisible) ne s'affichent qu'une fois le VRAI équipement
-      // sélectionné/créé via le sélecteur d'équipement de la fiche —
-      // jamais tous en même temps, jamais mélangés.
+      // eau (l'équipement réel en cause n'est souvent identifié/créé
+      // qu'EN COURS de visite, via le sélecteur d'équipement de la fiche —
+      // voir SERVICES/'chauffage-depannage'). Les contrôles spécifiques à
+      // chaque équipement (cond 'equip_*', voir admIvItemVisible) ne
+      // s'affichent dynamiquement qu'une fois le VRAI équipement
+      // sélectionné/créé — jamais tous en même temps, jamais mélangés (voir
+      // les tests qui vérifient qu'un dépannage gaz n'affiche jamais les
+      // contrôles fioul et inversement, et qu'aucun champ climatisation/
+      // plomberie/WC n'apparaît). Reprennent ici le jeu COMPLET de contrôles
+      // gaz/fioul (jamais le gros template d'entretien annuel
+      // CHAUDIERE_GAZ_TEMPLATE/CHAUDIERE_FIOUL_TEMPLATE, qui reste
+      // inchangé et réservé aux vrais forfaits d'entretien). Quand
+      // l'équipement gaz/fioul est déjà connu AVANT l'ouverture de la fiche
+      // (booking.equipment_id déjà renseigné à la réservation),
+      // getDiagnosticTemplate() charge directement la fiche dédiée
+      // CHAUDIERE_GAZ_DEPANNAGE_TEMPLATE/CHAUDIERE_FIOUL_DEPANNAGE_TEMPLATE
+      // (même contrôles, présentés sous un titre dédié) — même principe que
+      // CHAUFFE_EAU_TEMPLATE ci-dessous pour le chauffe-eau.
       'chauffage-depannage': { id:'chauffage-depannage', title:'Dépannage chauffage', category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
         { n:'Symptôme signalé par le client', t:'textarea', s:'avant' },
         { n:'Code erreur affiché', t:'text', s:'avant' },
 
         // -- Chaudière gaz --
-        { n:'Alimentation gaz', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
-        { n:'Allumage / veilleuse', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Alimentation électrique', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
         { n:'Pression circuit', t:'number', s:'controles', u:'bar', cond:'equip_chaudiere_gaz' },
-        { n:'Code défaut lu sur le tableau de bord', t:'text', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Alimentation gaz', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Allumage', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Électrode', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Ionisation', t:'number', s:'controles', u:'µA', cond:'equip_chaudiere_gaz' },
+        { n:'Circulateur', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:"Vase d'expansion", t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Soupape', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Purgeur', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Sonde', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Thermostat', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Évacuation condensats', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Fumisterie visible', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Code défaut', t:'text', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Température départ', t:'number', s:'controles', u:'°C', cond:'equip_chaudiere_gaz' },
+        { n:'Température retour', t:'number', s:'controles', u:'°C', cond:'equip_chaudiere_gaz' },
 
-        // -- Chaudière fioul --
-        { n:'Niveau de cuve', t:'select', s:'controles', o:['Suffisant','Bas','Vide'], cond:'equip_chaudiere_fioul' },
-        { n:'Allumage brûleur', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
-        { n:'Pression circuit', t:'number', s:'controles', u:'bar', cond:'equip_chaudiere_fioul' },
-        { n:'État gicleur', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        // -- Chaudière fioul (noms suffixés "(fioul)" quand ils
+        // coïncideraient avec un nom déjà utilisé ci-dessus pour le gaz —
+        // la contrainte unique (intervention_id, name) posée par la
+        // migration 0047 empêche deux contrôles de même nom d'exister
+        // comme lignes distinctes dans la MÊME intervention ; sans ce
+        // suffixe, un seul des deux survivrait et resterait bloqué sur le
+        // cond de l'autre énergie, qui ne s'afficherait alors plus jamais) --
+        { n:'Alimentation électrique (fioul)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Niveau fioul', t:'select', s:'controles', o:['Suffisant','Bas','Vide'], cond:'equip_chaudiere_fioul' },
+        { n:'Arrivée fioul', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Filtre', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Pompe', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Gicleur (si pertinent)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Électrodes', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Brûleur', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Cellule', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Circulateur (fioul)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Pression circuit (fioul)', t:'number', s:'controles', u:'bar', cond:'equip_chaudiere_fioul' },
+        { n:"Vase d'expansion (fioul)", t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Soupape (fioul)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Purgeur (fioul)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Thermostat (fioul)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Fumisterie visible (fioul)', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Code défaut (fioul)', t:'text', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Température départ (fioul)', t:'number', s:'controles', u:'°C', cond:'equip_chaudiere_fioul' },
+        { n:'Température retour (fioul)', t:'number', s:'controles', u:'°C', cond:'equip_chaudiere_fioul' },
 
         // -- Radiateur --
         { n:'Radiateur froid total/partiel', t:'select', s:'controles', o:['Froid total','Froid en partie haute','Froid en partie basse'], cond:'equip_radiateur' },
@@ -16421,7 +16467,7 @@ if ('serviceWorker' in navigator){
         // -- Circulateur --
         { n:'Circulateur à l\'arrêt', t:'boolean', s:'controles', cond:'equip_circulateur' },
         { n:'Bruit anormal', t:'boolean', s:'controles', cond:'equip_circulateur' },
-        { n:'Alimentation électrique', t:'status', s:'controles', cond:'equip_circulateur' },
+        { n:'Alimentation électrique (circulateur)', t:'status', s:'controles', cond:'equip_circulateur' },
 
         // -- Chauffe-eau (sous-ensemble dépannage — fiche complète dédiée
         // disponible, voir CHAUFFE_EAU_TEMPLATE, quand l'équipement est
@@ -16432,8 +16478,10 @@ if ('serviceWorker' in navigator){
         { n:'Entartrage constaté', t:'boolean', s:'controles', cond:'equip_chauffe_eau' },
 
         { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+        { n:'Pièce défectueuse ou suspectée', t:'text', s:'apres' },
         { n:'Action réalisée', t:'textarea', s:'apres' },
         { n:'Pièce remplacée', t:'text', s:'apres' },
+        { n:'Remise en service', t:'boolean', s:'apres' },
         { n:'Test de fonctionnement final', t:'status', s:'apres' }
       ]},
       'chauffage-radiateur': { id:'chauffage-radiateur', title:'Remplacement radiateur', category:'chauffage', equipmentType:'radiateur', controls:[
@@ -16687,6 +16735,82 @@ if ('serviceWorker' in navigator){
       { n:'Test de chauffe final', t:'status', s:'apres' }
     ]};
 
+    // ---- Dépannage chaudière gaz / fioul : fiches COURTES et DÉDIÉES,
+    // volontairement distinctes du gros template d'entretien annuel complet
+    // (CHAUDIERE_GAZ_TEMPLATE / CHAUDIERE_FIOUL_TEMPLATE, ~90 contrôles) qui
+    // n'a pas sa place pour une simple intervention de dépannage. Reprises
+    // par équipement sélectionné (equipment_type connu), jamais par le seul
+    // forfait réservé (voir getDiagnosticTemplate ci-dessous), exactement
+    // comme CHAUFFE_EAU_TEMPLATE ci-dessus. Les champs déjà couverts
+    // génériquement par la fiche (identité client/adresse, marque/modèle/
+    // référence/année — sélecteur d'équipement, photos, recommandations,
+    // "Résultat de l'intervention" qui couvre déjà terminé/à reprendre et
+    // devis complémentaire — voir IV_COMPLETION_OPTIONS — et les deux
+    // signatures) ne sont PAS dupliqués ici.
+    var CHAUDIERE_GAZ_DEPANNAGE_TEMPLATE = { id:'chaudiere-gaz-depannage', title:'Dépannage chaudière gaz', category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
+      { n:'Motif de l\'appel / panne signalée par le client', t:'textarea', s:'avant' },
+      { n:'État à l\'arrivée', t:'textarea', s:'avant' },
+      { n:'Code défaut éventuel', t:'text', s:'avant' },
+
+      { n:'Alimentation électrique', t:'status', s:'controles' },
+      { n:'Pression circuit', t:'number', s:'controles', u:'bar' },
+      { n:'Alimentation gaz', t:'status', s:'controles' },
+      { n:'Allumage', t:'status', s:'controles' },
+      { n:'Électrode', t:'status', s:'controles' },
+      { n:'Ionisation', t:'number', s:'controles', u:'µA' },
+      { n:'Circulateur', t:'status', s:'controles' },
+      { n:'Vase d\'expansion', t:'status', s:'controles' },
+      { n:'Soupape', t:'status', s:'controles' },
+      { n:'Purgeur', t:'status', s:'controles' },
+      { n:'Sonde', t:'status', s:'controles' },
+      { n:'Thermostat', t:'status', s:'controles' },
+      { n:'Évacuation condensats', t:'status', s:'controles' },
+      { n:'Fumisterie visible', t:'status', s:'controles' },
+      { n:'Code défaut', t:'text', s:'controles' },
+      { n:'Température départ', t:'number', s:'controles', u:'°C' },
+      { n:'Température retour', t:'number', s:'controles', u:'°C' },
+
+      { n:'Diagnostic', t:'textarea', s:'apres' },
+      { n:'Pièce défectueuse ou suspectée', t:'text', s:'apres' },
+      { n:'Action réalisée', t:'textarea', s:'apres' },
+      { n:'Pièce remplacée si applicable', t:'text', s:'apres' },
+      { n:'Remise en service', t:'boolean', s:'apres' },
+      { n:'Résultat des essais', t:'textarea', s:'apres' }
+    ]};
+
+    var CHAUDIERE_FIOUL_DEPANNAGE_TEMPLATE = { id:'chaudiere-fioul-depannage', title:'Dépannage chaudière fioul', category:'chauffage', equipmentType:'chaudiere_fioul', controls:[
+      { n:'Motif de l\'appel / panne signalée par le client', t:'textarea', s:'avant' },
+      { n:'État à l\'arrivée', t:'textarea', s:'avant' },
+      { n:'Code défaut éventuel', t:'text', s:'avant' },
+
+      { n:'Alimentation électrique', t:'status', s:'controles' },
+      { n:'Niveau fioul', t:'select', s:'controles', o:['Suffisant','Bas','Vide'] },
+      { n:'Arrivée fioul', t:'status', s:'controles' },
+      { n:'Filtre', t:'status', s:'controles' },
+      { n:'Pompe', t:'status', s:'controles' },
+      { n:'Gicleur (si pertinent)', t:'status', s:'controles' },
+      { n:'Électrodes', t:'status', s:'controles' },
+      { n:'Brûleur', t:'status', s:'controles' },
+      { n:'Cellule', t:'status', s:'controles' },
+      { n:'Circulateur', t:'status', s:'controles' },
+      { n:'Pression circuit', t:'number', s:'controles', u:'bar' },
+      { n:'Vase d\'expansion', t:'status', s:'controles' },
+      { n:'Soupape', t:'status', s:'controles' },
+      { n:'Purgeur', t:'status', s:'controles' },
+      { n:'Thermostat', t:'status', s:'controles' },
+      { n:'Fumisterie visible', t:'status', s:'controles' },
+      { n:'Code défaut', t:'text', s:'controles' },
+      { n:'Température départ', t:'number', s:'controles', u:'°C' },
+      { n:'Température retour', t:'number', s:'controles', u:'°C' },
+
+      { n:'Diagnostic', t:'textarea', s:'apres' },
+      { n:'Pièce défectueuse ou suspectée', t:'text', s:'apres' },
+      { n:'Action réalisée', t:'textarea', s:'apres' },
+      { n:'Pièce remplacée si applicable', t:'text', s:'apres' },
+      { n:'Remise en service', t:'boolean', s:'apres' },
+      { n:'Résultat des essais', t:'textarea', s:'apres' }
+    ]};
+
     var DIAGNOSTIC_TEMPLATE_GENERIC = { id:'generic-custom', title:'Diagnostic personnalisé', category:null, equipmentType:'autre', controls:[
       { n:'Symptôme signalé', t:'textarea', s:'avant' },
       { n:'Équipement concerné', t:'text', s:'avant' },
@@ -16721,6 +16845,17 @@ if ('serviceWorker' in navigator){
       var linkedEquipType = booking && booking.customer_equipment && booking.customer_equipment.equipment_type;
       if (linkedEquipType === 'chauffe_eau' && (category === 'chauffage' || category === 'plomberie')){
         return CHAUFFE_EAU_TEMPLATE;
+      }
+      // Dépannage chaudière gaz/fioul : fiche dédiée COURTE, jamais le gros
+      // template d'entretien complet. Volontairement restreint au seul
+      // forfait de dépannage ('chauffage-depannage') pour ne JAMAIS pouvoir
+      // intercepter les vrais forfaits d'entretien annuel
+      // ('chauffage-chaudiere-gaz/fioul-essentiel/confort/premium'), qui
+      // doivent continuer à charger CHAUDIERE_GAZ_TEMPLATE/
+      // CHAUDIERE_FIOUL_TEMPLATE en entier via bySlug ci-dessous.
+      if (svc.slug === 'chauffage-depannage'){
+        if (linkedEquipType === 'chaudiere_gaz') return CHAUDIERE_GAZ_DEPANNAGE_TEMPLATE;
+        if (linkedEquipType === 'chaudiere_fioul') return CHAUDIERE_FIOUL_DEPANNAGE_TEMPLATE;
       }
       var bySlug = svc.slug && DIAGNOSTIC_TEMPLATES_BY_SLUG[svc.slug];
       if (bySlug){
