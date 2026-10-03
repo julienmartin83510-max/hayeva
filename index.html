@@ -16329,9 +16329,30 @@ if ('serviceWorker' in navigator){
     // encore renseigné (pas d'équipement, ou specs incomplètes), il reste
     // visible par défaut : on ne masque jamais un contrôle par excès de
     // confiance, le technicien choisit "Non applicable" si besoin.
+    // cond 'equip_*' (ajouté pour le dépannage chauffage, section "Phase 4"
+    // du 03/10/2026) : contrairement à condensation/ecs (caractéristiques
+    // d'UNE chaudière déjà typée), ce sont les seuls cond qui dépendent du
+    // TYPE d'équipement sélectionné plutôt que de ses caractéristiques —
+    // "chauffage-depannage" sert indifféremment chaudière gaz, chaudière
+    // fioul, radiateur, circulateur ou chauffe-eau (un seul forfait
+    // "Dépannage chauffage", l'équipement réel n'étant souvent identifié
+    // que sur place) : sans ce mécanisme, TOUS ces contrôles différents
+    // s'affichaient en même temps, mélangés, quel que soit l'équipement —
+    // exactement le défaut signalé ("aucun contrôle climatisation dans un
+    // WC") mais côté chauffage.
+    var EQUIP_TYPE_COND_PREFIX = 'equip_';
     function admIvItemVisible(it, equipSpecs){
       var cond = it.field_meta && it.field_meta.cond;
       if (!cond) return true;
+      if (cond.indexOf(EQUIP_TYPE_COND_PREFIX) === 0){
+        var wantedType = cond.slice(EQUIP_TYPE_COND_PREFIX.length);
+        // Tant qu'aucun équipement n'est sélectionné, un contrôle propre à
+        // un type précis reste masqué (pas affiché "par défaut" comme les
+        // cond existants) : afficher les contrôles gaz ET fioul ET
+        // radiateur en même temps avant tout choix serait justement le
+        // mélange à éviter.
+        return !!(equipSpecs && equipSpecs.equipment_type === wantedType);
+      }
       if (!equipSpecs) return true;
       if (cond === 'condensation') return equipSpecs.chaudiere_type ? equipSpecs.chaudiere_type === 'condensation' : true;
       if (cond === 'ecs') return equipSpecs.production ? equipSpecs.production !== 'chauffage_seul' : true;
@@ -16368,14 +16389,51 @@ if ('serviceWorker' in navigator){
       'chauffage-chaudiere-fioul-confort': withTemplateId(CHAUDIERE_FIOUL_TEMPLATE, 'chauffage-chaudiere-fioul-confort'),
       'chauffage-chaudiere-fioul-premium': withTemplateId(CHAUDIERE_FIOUL_TEMPLATE, 'chauffage-chaudiere-fioul-premium'),
 
+      // "Dépannage chauffage" est un forfait UNIQUE qui sert indifféremment
+      // chaudière gaz, chaudière fioul, radiateur, circulateur ou chauffe-
+      // eau (l'équipement réel en cause n'est souvent identifié que sur
+      // place — voir SERVICES/'chauffage-depannage'). Les contrôles
+      // spécifiques à chaque équipement (cond 'equip_*', voir
+      // admIvItemVisible) ne s'affichent qu'une fois le VRAI équipement
+      // sélectionné/créé via le sélecteur d'équipement de la fiche —
+      // jamais tous en même temps, jamais mélangés.
       'chauffage-depannage': { id:'chauffage-depannage', title:'Dépannage chauffage', category:'chauffage', equipmentType:'chaudiere_gaz', controls:[
-        { n:'Équipement concerné', t:'select', s:'avant', o:['Chaudière gaz','Chaudière fioul','Radiateur','Circulateur','Chauffe-eau','Autre'] },
         { n:'Symptôme signalé par le client', t:'textarea', s:'avant' },
         { n:'Code erreur affiché', t:'text', s:'avant' },
-        { n:'Alimentation électrique', t:'status', s:'controles' },
-        { n:'Pression circuit', t:'number', s:'controles', u:'bar' },
+
+        // -- Chaudière gaz --
+        { n:'Alimentation gaz', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Allumage / veilleuse', t:'status', s:'controles', cond:'equip_chaudiere_gaz' },
+        { n:'Pression circuit', t:'number', s:'controles', u:'bar', cond:'equip_chaudiere_gaz' },
+        { n:'Code défaut lu sur le tableau de bord', t:'text', s:'controles', cond:'equip_chaudiere_gaz' },
+
+        // -- Chaudière fioul --
+        { n:'Niveau de cuve', t:'select', s:'controles', o:['Suffisant','Bas','Vide'], cond:'equip_chaudiere_fioul' },
+        { n:'Allumage brûleur', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+        { n:'Pression circuit', t:'number', s:'controles', u:'bar', cond:'equip_chaudiere_fioul' },
+        { n:'État gicleur', t:'status', s:'controles', cond:'equip_chaudiere_fioul' },
+
+        // -- Radiateur --
+        { n:'Radiateur froid total/partiel', t:'select', s:'controles', o:['Froid total','Froid en partie haute','Froid en partie basse'], cond:'equip_radiateur' },
+        { n:"Présence d'air (purge)", t:'boolean', s:'controles', cond:'equip_radiateur' },
+        { n:'Robinet thermostatique', t:'status', s:'controles', cond:'equip_radiateur' },
+
+        // -- Circulateur --
+        { n:'Circulateur à l\'arrêt', t:'boolean', s:'controles', cond:'equip_circulateur' },
+        { n:'Bruit anormal', t:'boolean', s:'controles', cond:'equip_circulateur' },
+        { n:'Alimentation électrique', t:'status', s:'controles', cond:'equip_circulateur' },
+
+        // -- Chauffe-eau (sous-ensemble dépannage — fiche complète dédiée
+        // disponible, voir CHAUFFE_EAU_TEMPLATE, quand l'équipement est
+        // déjà connu à la réservation) --
+        { n:'Fuite constatée', t:'boolean', s:'controles', cond:'equip_chauffe_eau' },
+        { n:'Groupe de sécurité', t:'status', s:'controles', cond:'equip_chauffe_eau' },
+        { n:'Résistance', t:'status', s:'controles', cond:'equip_chauffe_eau' },
+        { n:'Entartrage constaté', t:'boolean', s:'controles', cond:'equip_chauffe_eau' },
+
         { n:'Diagnostic technicien', t:'textarea', s:'apres' },
         { n:'Action réalisée', t:'textarea', s:'apres' },
+        { n:'Pièce remplacée', t:'text', s:'apres' },
         { n:'Test de fonctionnement final', t:'status', s:'apres' }
       ]},
       'chauffage-radiateur': { id:'chauffage-radiateur', title:'Remplacement radiateur', category:'chauffage', equipmentType:'radiateur', controls:[
@@ -16599,6 +16657,36 @@ if ('serviceWorker' in navigator){
     // (jamais climatisation) — utilisé seulement si la catégorie elle-même
     // est absente/inconnue (ne doit normalement jamais arriver : services.
     // category est NOT NULL en base, voir 0001_init.sql). ----
+    // ---- Chauffe-eau : jusqu'ici sans fiche dédiée — un dépannage chauffe-
+    // eau utilisait le même questionnaire générique que chaudière/
+    // radiateur/circulateur (voir 'chauffage-depannage' ci-dessus), avec
+    // des contrôles non pertinents pour cet appareil (aucune notion de
+    // pression circuit ou d'alimentation gaz). Contrôles propres à ses
+    // vraies pannes/entretiens réels (entartrage, groupe de sécurité,
+    // anode, résistance). Repris par équipement sélectionné, jamais par
+    // service réservé seul (voir getDiagnosticTemplate ci-dessous).
+    var CHAUFFE_EAU_TEMPLATE = { id:'chauffe-eau-intervention', title:'Chauffe-eau', category:'chauffage', equipmentType:'chauffe_eau', controls:[
+      { n:"Type d'appareil", t:'select', s:'avant', o:['Électrique', 'Thermodynamique', 'Solaire', 'Gaz'] },
+      { n:'Capacité', t:'number', s:'avant', u:'L' },
+      { n:'Symptôme signalé par le client', t:'textarea', s:'avant' },
+      { n:'Fuite constatée', t:'boolean', s:'avant' },
+      { n:'Groupe de sécurité', t:'status', s:'controles' },
+      { n:'Résistance', t:'status', s:'controles' },
+      { n:'Thermostat', t:'status', s:'controles' },
+      { n:'État anode (sacrificielle/titane)', t:'status', s:'controles' },
+      { n:'Entartrage constaté', t:'boolean', s:'controles' },
+      { n:'Pression réseau', t:'number', s:'controles', u:'bar' },
+      { n:'Température de consigne', t:'number', s:'controles', u:'°C' },
+      { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+      { n:'Action réalisée', t:'textarea', s:'apres' },
+      { n:'Pièce remplacée', t:'text', s:'apres' },
+      { n:'Détartrage effectué', t:'status', s:'apres' },
+      { n:'Vidange effectuée', t:'status', s:'apres' },
+      { n:'Température mesurée en sortie', t:'number', s:'apres', u:'°C' },
+      { n:'Test du groupe de sécurité', t:'status', s:'apres' },
+      { n:'Test de chauffe final', t:'status', s:'apres' }
+    ]};
+
     var DIAGNOSTIC_TEMPLATE_GENERIC = { id:'generic-custom', title:'Diagnostic personnalisé', category:null, equipmentType:'autre', controls:[
       { n:'Symptôme signalé', t:'textarea', s:'avant' },
       { n:'Équipement concerné', t:'text', s:'avant' },
@@ -16622,6 +16710,18 @@ if ('serviceWorker' in navigator){
     function getDiagnosticTemplate(booking){
       var svc = (booking && booking.services) || {};
       var category = svc.category || null;
+      // Équipement déjà rattaché à la réservation (booking.equipment_id) :
+      // prioritaire sur le slug du forfait réservé pour un chauffe-eau, qui
+      // n'a jamais eu de forfait dédié et utilisait jusqu'ici le même
+      // questionnaire générique que chaudière/radiateur/circulateur (voir
+      // 'chauffage-depannage') — contrôles non pertinents pour cet
+      // appareil. Garde-fou identique : seulement dans une catégorie où un
+      // chauffe-eau peut plausiblement être réservé (jamais en
+      // climatisation), pour ne jamais faire fuir ce contrôle ailleurs.
+      var linkedEquipType = booking && booking.customer_equipment && booking.customer_equipment.equipment_type;
+      if (linkedEquipType === 'chauffe_eau' && (category === 'chauffage' || category === 'plomberie')){
+        return CHAUFFE_EAU_TEMPLATE;
+      }
       var bySlug = svc.slug && DIAGNOSTIC_TEMPLATES_BY_SLUG[svc.slug];
       if (bySlug){
         if (category && bySlug.category !== category){
@@ -17227,8 +17327,15 @@ if ('serviceWorker' in navigator){
     }
 
     function admIvEquipHtml(){
-      if (!admIv.booking.customer_user_id){
-        return '<p class="ec-row-meta">Réservation invité : équipement non enregistré dans l\'espace client.</p>';
+      // Bug réel corrigé (Phase 4, 03/10/2026) : ce test ne portait que sur
+      // customer_user_id (compte enregistré), alors que la fiche client
+      // 360° (0056_client_360.sql) rattache désormais TOUT rendez-vous — y
+      // compris un client invité — à un client_id. Avant ce correctif, un
+      // client invité ne pouvait jamais enregistrer ni sélectionner
+      // d'équipement pendant une intervention, ce qui empêchait aussi tout
+      // contrôle conditionnel par type d'équipement (cond 'equip_*').
+      if (!admIv.booking.client_id){
+        return '<p class="ec-row-meta">Aucune fiche client rattachée à ce rendez-vous : équipement non enregistrable.</p>';
       }
       var isChaudiere = admIv.equipmentTypeDefault === 'chaudiere_gaz' || admIv.equipmentTypeDefault === 'chaudiere_fioul';
       var opts = admIv.equipList.map(function(eq){
@@ -17342,7 +17449,12 @@ if ('serviceWorker' in navigator){
     // qu'aucun équipement n'est choisi : tout reste alors visible.
     function admIvCurrentEquipSpecs(){
       var eq = (admIv.equipList || []).filter(function(e){ return e.id === admIv.selectedEquipmentId; })[0];
-      return (eq && eq.specs) || null;
+      if (!eq) return null;
+      // equipment_type fusionné dans les specs (jamais écrasé si specs en
+      // porte déjà un, ce qui ne devrait pas arriver) : seul moyen pour
+      // admIvItemVisible de distinguer les cond 'equip_*' (voir plus haut)
+      // sans changer la signature déjà utilisée à 3 endroits.
+      return Object.assign({}, eq.specs || {}, { equipment_type: eq.equipment_type });
     }
 
     function admIvSectionsHtml(){
@@ -17593,8 +17705,8 @@ if ('serviceWorker' in navigator){
           };
         }
         sb.client.from('customer_equipment').insert({
-          customer_user_id: admIv.booking.customer_user_id, equipment_type: newEquipType,
-          brand: brand || null, model: model || null, specs: specs
+          customer_user_id: admIv.booking.customer_user_id || null, client_id: admIv.booking.client_id || null,
+          equipment_type: newEquipType, brand: brand || null, model: model || null, specs: specs
         }).select('*').then(function(res){
           if (res.error || !res.data || !res.data[0]){ window.alert('Impossible d\'enregistrer cet équipement.'); return; }
           var eq = res.data[0];
