@@ -335,11 +335,14 @@ if ('serviceWorker' in navigator){
 <script>
   // Configuration de marque centralisée — utilisée par le portail d'entrée.
   // Si le nom commercial change, ne modifier QUE cette ligne pour le
-  // portail. Le reste du site (logo du header, <title>, méta, sujets
-  // d'e-mail) garde encore ses propres mentions codées en dur ailleurs
-  // dans ce fichier : les centraliser aussi est un chantier séparé, plus
-  // large, non fait à cette étape.
-  window.SUD_BRAND = { name: 'HAYEVA', tagline: 'Plomberie • Chauffage • Climatisation' };
+  // portail. `email` = adresse de contact officielle unique HAYEVA
+  // (contact@hayeva.fr) — disponible ici pour tout code qui en a besoin,
+  // mais les mentions déjà codées en dur ailleurs dans ce fichier (mentions
+  // légales, CGV, footer...) n'ont pas été migrées vers cette variable.
+  // Le reste du site (logo du header, <title>, méta) garde encore ses
+  // propres mentions codées en dur : les centraliser aussi est un chantier
+  // séparé, plus large, non fait à cette étape.
+  window.SUD_BRAND = { name: 'HAYEVA', tagline: 'Plomberie • Chauffage • Climatisation', email: 'contact@hayeva.fr' };
 </script>
 <style>
   /* L'attribut [hidden] natif n'est masqué que par la feuille de style par
