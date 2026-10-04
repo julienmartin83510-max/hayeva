@@ -11,10 +11,10 @@ sont à faire une fois, toi-même.
 - Dans le dashboard Resend, récupère ta clé API (Settings > API Keys).
 - Optionnel mais recommandé : vérifie ton propre nom de domaine (ex.
   `hayeva.fr`) dans Resend (Domains) pour pouvoir envoyer depuis
-  `notifications@hayeva.fr` plutôt que l'adresse de test
-  `onboarding@resend.dev` (celle-ci ne peut envoyer que vers l'adresse avec
-  laquelle tu t'es inscrit sur Resend — suffisant pour tester, pas pour la
-  prod).
+  `contact@hayeva.fr` — l'adresse de contact officielle unique HAYEVA —
+  plutôt que l'adresse de test `onboarding@resend.dev` (celle-ci ne peut
+  envoyer que vers l'adresse avec laquelle tu t'es inscrit sur Resend —
+  suffisant pour tester, pas pour la prod).
 
 ## 2. Installer la CLI Supabase et déployer la fonction
 
@@ -30,11 +30,18 @@ supabase functions deploy notify-admin-booking
 
 ```bash
 supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
-supabase secrets set ADMIN_NOTIFICATION_EMAIL=ton-adresse@exemple.fr
+supabase secrets set ADMIN_NOTIFICATION_EMAIL=contact@hayeva.fr
 # Optionnel :
-supabase secrets set RESEND_FROM_EMAIL="HAYEVA <notifications@hayeva.fr>"
+supabase secrets set RESEND_FROM_EMAIL="HAYEVA <contact@hayeva.fr>"
+supabase secrets set REPLY_TO_EMAIL=contact@hayeva.fr
 supabase secrets set ADMIN_PANEL_URL=https://hayeva.netlify.app/#espacePro
 ```
+
+`REPLY_TO_EMAIL` est optionnel — toutes les fonctions d'e-mail du projet
+utilisent déjà `contact@hayeva.fr` par défaut si ce secret n'est pas défini
+(voir `REPLY_TO_EMAIL` dans chaque `index.ts`), donc un client qui répond à
+un e-mail HAYEVA arrive toujours sur cette adresse, même si `RESEND_FROM_EMAIL`
+reste temporairement sur `onboarding@resend.dev` faute de domaine vérifié.
 
 `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` sont injectées automatiquement
 par Supabase pour toute Edge Function — rien à faire pour celles-ci.

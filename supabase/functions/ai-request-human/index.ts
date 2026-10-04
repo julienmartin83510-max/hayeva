@@ -31,6 +31,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const ADMIN_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL');
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
+const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
 const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
 
 const corsHeaders = {
@@ -169,6 +170,7 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             from: FROM_EMAIL,
             to: [ADMIN_EMAIL],
+            reply_to: REPLY_TO_EMAIL,
             subject: `🔔 Nouvelle demande HAYEVA — Assistant IA${resolvedName ? ' — ' + resolvedName : ''}`,
             html,
           }),

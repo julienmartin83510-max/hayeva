@@ -52,6 +52,7 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const ADMIN_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL');
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
+const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
 const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -201,6 +202,7 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           from: FROM_EMAIL,
           to: [ADMIN_EMAIL],
+          reply_to: REPLY_TO_EMAIL,
           subject,
           html,
         }),

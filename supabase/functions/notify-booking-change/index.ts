@@ -32,6 +32,7 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const ADMIN_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL');
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
+const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
 const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
 const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.netlify.app/#espaceClient';
 
@@ -89,7 +90,7 @@ async function sendAdminAlert(subject: string, badgeLabel: string, bodyHtml: str
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [ADMIN_EMAIL], subject, html }),
+    body: JSON.stringify({ from: FROM_EMAIL, to: [ADMIN_EMAIL], reply_to: REPLY_TO_EMAIL, subject, html }),
   });
   if (!res.ok) console.error('notify-booking-change: échec envoi Resend (admin)', res.status, await res.text());
 }
@@ -177,7 +178,7 @@ Deno.serve(async (req: Request) => {
           const res = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: FROM_EMAIL, to: [contact.email], subject: 'Votre rendez-vous HAYEVA a été déplacé', html }),
+            body: JSON.stringify({ from: FROM_EMAIL, to: [contact.email], reply_to: REPLY_TO_EMAIL, subject: 'Votre rendez-vous HAYEVA a été déplacé', html }),
           });
           if (!res.ok) console.error('notify-booking-change: échec envoi Resend (client)', res.status, await res.text());
         }
