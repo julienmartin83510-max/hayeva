@@ -35,14 +35,30 @@ const ITEM_STATUS_LABEL: Record<string, string> = {
 };
 
 const COMPLETION_STATUS_LABEL: Record<string, string> = {
-  CONFORME: 'Intervention terminée — fonctionnement conforme',
-  SURVEILLANCE: 'Intervention terminée — surveillance recommandée',
+  CONFORME: 'Fonctionnement normal après essais',
+  SURVEILLANCE: 'Fonctionnement avec réserves',
   PROVISOIRE: 'Intervention provisoire',
   PIECE_A_COMMANDER: 'Pièce à commander',
   DEVIS_COMPLEMENTAIRE: 'Devis complémentaire nécessaire',
-  NOUVELLE_INTERVENTION: 'Nouvelle intervention nécessaire',
-  MISE_EN_SECURITE: "Mise à l'arrêt / sécurité",
+  NOUVELLE_INTERVENTION: 'Intervention complémentaire nécessaire',
+  MISE_EN_SECURITE: "Appareil laissé à l'arrêt",
+  ESSAIS_IMPOSSIBLES: 'Impossible de réaliser les essais',
 };
+
+// Section 3 du cahier des charges diagnostic/réserves : distincte de
+// intervention_anomalies (liste libre détaillée) — réponse de synthèse
+// obligatoire sur chaque fiche de dépannage (voir admIvFinalize, index.html).
+const RESERVES_STATUS_LABEL: Record<string, string> = {
+  AUCUNE: 'Aucune autre anomalie constatée lors des contrôles réalisés',
+  AUTRE_ANOMALIE: 'Autre anomalie constatée',
+  RISQUE_OU_ANOMALIE: 'Installation présentant un risque ou une anomalie nécessitant une intervention complémentaire',
+  DIAGNOSTIC_PARTIEL: 'Contrôle limité / diagnostic partiel',
+};
+
+// Mention automatique obligatoire (section 4) — identique à IV_LEGAL_SCOPE_
+// MENTION côté frontend (index.html) : ne supprime et ne restreint JAMAIS
+// les garanties légales ou la responsabilité de HAYEVA lorsqu'applicables.
+const LEGAL_SCOPE_MENTION = "L'intervention et le diagnostic portent exclusivement sur le défaut constaté et les contrôles réalisés lors de la présente intervention. À l'issue de l'intervention, l'état de fonctionnement de l'équipement est indiqué dans le présent compte rendu. Toute panne ultérieure provenant d'un autre composant, d'une autre anomalie ou d'une cause indépendante de la présente intervention nécessitera un nouveau diagnostic et pourra faire l'objet d'une nouvelle intervention et d'un nouveau devis. Les éventuelles réserves ou anomalies constatées mais non traitées sont expressément mentionnées sur le présent compte rendu. Cette mention ne supprime ni ne restreint les garanties légales applicables ni la responsabilité de HAYEVA.";
 
 const ANOMALY_SEVERITY_LABEL: Record<string, string> = {
   INFO: 'Information', WATCH: 'À surveiller', RECOMMENDED: 'Intervention recommandée', SAFETY: 'Sécurité',
@@ -96,9 +112,11 @@ Deno.serve(async (req: Request) => {
       .from('interventions')
       .select(`
         id, report_status, report_number, email_status, observations, recommendations, ended_at, completion_status, auto_summary,
+        reserves_status, reserves_detail,
         client_signature_name, technician_signature_name,
         bookings(reference, date, start_time, customer_user_id, guest_name, guest_email,
           customer_addresses(address, postal_code, city), services(name)),
+        customer_equipment(brand, model, equipment_type),
         intervention_items(name, status, observation, measured_value, visibility, sort_order, field_type, field_meta),
         intervention_parts(designation, brand, reference, quantity),
         intervention_anomalies(equipment_label, description, severity),
@@ -154,6 +172,10 @@ Deno.serve(async (req: Request) => {
     const address = booking?.customer_addresses
       ? [booking.customer_addresses.address, booking.customer_addresses.postal_code, booking.customer_addresses.city].filter(Boolean).join(', ')
       : '';
+    const equipment = iv.customer_equipment as any;
+    const equipmentLabel = equipment
+      ? [equipment.brand, equipment.model].filter(Boolean).join(' ')
+      : '';
     // Une fiche chaudière compte ~90 contrôles : n'afficher dans le compte
     // rendu client QUE ceux réellement renseignés par le technicien (jamais
     // un mur de "—" pour les contrôles non pertinents/non effectués) — même
@@ -201,6 +223,18 @@ Deno.serve(async (req: Request) => {
       ? `<p><strong>Résumé de l'intervention :</strong><br>${escapeHtml(iv.auto_summary)}</p>`
       : '';
 
+    // Réserves (section 3) : mises en valeur distinctement, jamais fondues
+    // dans le résumé automatique ni dans la liste libre d'anomalies — même
+    // quand reserves_status vaut 'AUCUNE', l'absence de réserve est
+    // affichée explicitement (traçabilité : prouve que la question a été
+    // posée et répondue, pas simplement omise).
+    const reservesHtml = iv.reserves_status
+      ? `<div style="margin:16px 0;padding:14px 16px;border-radius:10px;background:#F7F5EE;">
+           <p style="margin:0 0 4px;font-weight:700;font-size:13px;">Réserves / autres anomalies constatées</p>
+           <p style="margin:0;font-size:13px;">${escapeHtml(RESERVES_STATUS_LABEL[iv.reserves_status] || iv.reserves_status)}${iv.reserves_detail ? ` — ${escapeHtml(iv.reserves_detail)}` : ''}</p>
+         </div>`
+      : '';
+
     // Attestation réglementaire : section visuellement et textuellement
     // DISTINCTE du compte rendu commercial ci-dessus — jamais confondue
     // avec une facture, un devis ou le contrat (section 13 du cahier des
@@ -219,17 +253,20 @@ Deno.serve(async (req: Request) => {
       ${statusBadgeHtml('Compte rendu d\'intervention', 'confirmed')}
       <h2 style="color:#101B24;margin:0 0 14px;">Bonjour ${escapeHtml(contactName)},</h2>
       <p>Voici le compte rendu de votre intervention <strong>${escapeHtml(svcName)}</strong>${iv.report_number ? ` (réf. ${escapeHtml(iv.report_number)})` : ''}${address ? ` au ${escapeHtml(address)}` : ''}, réalisée le ${booking?.date ? escapeHtml(booking.date.split('-').reverse().join('/')) : ''}.</p>
+      ${equipmentLabel ? `<p><strong>Équipement :</strong> ${escapeHtml(equipmentLabel)}</p>` : ''}
       ${summaryHtml}
       ${itemsHtml}
       ${partsHtml}
       ${anomaliesHtml}
       ${completionHtml}
+      ${reservesHtml}
       ${iv.observations ? `<p><strong>Observations du technicien :</strong><br>${escapeHtml(iv.observations)}</p>` : ''}
       ${iv.recommendations ? `<p><strong>Recommandations :</strong><br>${escapeHtml(iv.recommendations)}</p>` : ''}
       <p style="margin-top:20px;color:#5B6B78;font-size:13px;">
         Signé par ${escapeHtml(iv.client_signature_name || contactName)} (client) et ${escapeHtml(iv.technician_signature_name || 'notre technicien')} (HAYEVA).
       </p>
       ${attestationHtml}
+      <p style="margin-top:20px;padding:12px 14px;background:#FAF8F2;border-radius:8px;font-size:11px;line-height:1.5;color:#5B6B78;">${escapeHtml(LEGAL_SCOPE_MENTION)}</p>
       <p style="margin-top:24px;">Pour toute question sur cette intervention, répondez à cet e-mail ou appelez-nous au <strong>06 71 26 23 02</strong>.</p>
     `;
 

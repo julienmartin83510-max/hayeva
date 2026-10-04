@@ -16096,14 +16096,36 @@ if ('serviceWorker' in navigator){
     };
     var IV_SECTION_LABEL = { avant:'État initial / diagnostic', controles:'Contrôles techniques', apres:'Essais après intervention / travaux réalisés' };
     var IV_COMPLETION_OPTIONS = [
-      ['CONFORME', 'Intervention terminée — fonctionnement conforme'],
-      ['SURVEILLANCE', 'Intervention terminée — surveillance recommandée'],
+      ['CONFORME', 'Fonctionnement normal après essais'],
+      ['SURVEILLANCE', 'Fonctionnement avec réserves'],
       ['PROVISOIRE', 'Intervention provisoire'],
       ['PIECE_A_COMMANDER', 'Pièce à commander'],
       ['DEVIS_COMPLEMENTAIRE', 'Devis complémentaire nécessaire'],
-      ['NOUVELLE_INTERVENTION', 'Nouvelle intervention nécessaire'],
-      ['MISE_EN_SECURITE', 'Mise à l\'arrêt / sécurité']
+      ['NOUVELLE_INTERVENTION', 'Intervention complémentaire nécessaire'],
+      ['MISE_EN_SECURITE', 'Appareil laissé à l\'arrêt'],
+      ['ESSAIS_IMPOSSIBLES', 'Impossible de réaliser les essais']
     ];
+
+    // ---- Réserves / autres anomalies constatées (section 3 du cahier des
+    // charges diagnostic/réserves) : réponse OBLIGATOIRE avant clôture d'un
+    // dépannage (voir admIvFinalize), DISTINCTE de la liste libre
+    // d'anomalies (admIv.anomalies/intervention_anomalies) — c'est la case
+    // à cocher de synthèse présente sur CHAQUE fiche, jamais seulement sur
+    // celles qui ont une anomalie détaillée ajoutée. ----
+    var IV_RESERVES_OPTIONS = [
+      ['AUCUNE', 'Aucune autre anomalie constatée lors des contrôles réalisés'],
+      ['AUTRE_ANOMALIE', 'Autre anomalie constatée'],
+      ['RISQUE_OU_ANOMALIE', 'Installation présentant un risque ou une anomalie nécessitant une intervention complémentaire'],
+      ['DIAGNOSTIC_PARTIEL', 'Contrôle limité / diagnostic partiel']
+    ];
+
+    // Mention automatique obligatoire sur chaque compte rendu (section 4) —
+    // ne supprime et ne restreint JAMAIS les garanties légales ou la
+    // responsabilité de HAYEVA lorsqu'elles sont applicables : purement
+    // informative sur le périmètre réel de CETTE intervention précise.
+    var IV_LEGAL_SCOPE_MENTION = "L'intervention et le diagnostic portent exclusivement sur le défaut constaté et les contrôles réalisés lors de la présente intervention. À l'issue de l'intervention, l'état de fonctionnement de l'équipement est indiqué dans le présent compte rendu. Toute panne ultérieure provenant d'un autre composant, d'une autre anomalie ou d'une cause indépendante de la présente intervention nécessitera un nouveau diagnostic et pourra faire l'objet d'une nouvelle intervention et d'un nouveau devis. Les éventuelles réserves ou anomalies constatées mais non traitées sont expressément mentionnées sur le présent compte rendu. Cette mention ne supprime ni ne restreint les garanties légales applicables ni la responsabilité de HAYEVA.";
+
+    var IV_CLIENT_CONSENT_MENTION = "Je reconnais avoir pris connaissance des travaux réalisés, du résultat des essais et des éventuelles réserves mentionnées sur le présent compte rendu.";
 
     // ---- Blocs de contrôles réutilisés tels quels par plusieurs templates ----
     var CLIM_IDENTIFICATION = [
@@ -16516,7 +16538,8 @@ if ('serviceWorker' in navigator){
         { n:'Action réalisée', t:'textarea', s:'apres' },
         { n:'Pièce remplacée', t:'text', s:'apres' },
         { n:'Remise en service', t:'boolean', s:'apres' },
-        { n:'Test de fonctionnement final', t:'status', s:'apres' }
+        { n:'Test de fonctionnement final', t:'status', s:'apres' },
+        { n:'Essais et contrôles réalisés après intervention', t:'textarea', s:'apres' }
       ]},
       'chauffage-radiateur': { id:'chauffage-radiateur', title:'Remplacement radiateur', category:'chauffage', equipmentType:'radiateur', controls:[
         { n:'Ancien radiateur — type', t:'text', s:'avant' },
@@ -16565,9 +16588,14 @@ if ('serviceWorker' in navigator){
         { n:'Équipement concerné', t:'text', s:'avant' },
         { n:'Type de panne', t:'select', s:'avant', o:['Fuite','Bouchon','Panne équipement','Autre'] },
         { n:'Symptôme signalé', t:'textarea', s:'avant' },
+        { n:'Code défaut éventuel', t:'text', s:'avant' },
         { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+        { n:'Pièce défectueuse ou suspectée', t:'text', s:'apres' },
         { n:'Action réalisée', t:'textarea', s:'apres' },
-        { n:'Test final', t:'status', s:'apres' }
+        { n:'Pièce remplacée si applicable', t:'text', s:'apres' },
+        { n:'Remise en service', t:'boolean', s:'apres' },
+        { n:'Test final', t:'status', s:'apres' },
+        { n:'Essais et contrôles réalisés après intervention', t:'textarea', s:'apres' }
       ]},
       'plomberie-fuite': { id:'plomberie-fuite', title:'Recherche de fuite', category:'plomberie', equipmentType:'autre', controls:[
         { n:'Emplacement suspecté', t:'text', s:'avant' },
@@ -16751,6 +16779,7 @@ if ('serviceWorker' in navigator){
       { n:"Type d'appareil", t:'select', s:'avant', o:['Électrique', 'Thermodynamique', 'Solaire', 'Gaz'] },
       { n:'Capacité', t:'number', s:'avant', u:'L' },
       { n:'Symptôme signalé par le client', t:'textarea', s:'avant' },
+      { n:'Code défaut éventuel', t:'text', s:'avant' },
       { n:'Fuite constatée', t:'boolean', s:'avant' },
       { n:'Groupe de sécurité', t:'status', s:'controles' },
       { n:'Résistance', t:'status', s:'controles' },
@@ -16760,13 +16789,16 @@ if ('serviceWorker' in navigator){
       { n:'Pression réseau', t:'number', s:'controles', u:'bar' },
       { n:'Température de consigne', t:'number', s:'controles', u:'°C' },
       { n:'Diagnostic technicien', t:'textarea', s:'apres' },
+      { n:'Pièce défectueuse ou suspectée', t:'text', s:'apres' },
       { n:'Action réalisée', t:'textarea', s:'apres' },
       { n:'Pièce remplacée', t:'text', s:'apres' },
+      { n:'Remise en service', t:'boolean', s:'apres' },
       { n:'Détartrage effectué', t:'status', s:'apres' },
       { n:'Vidange effectuée', t:'status', s:'apres' },
       { n:'Température mesurée en sortie', t:'number', s:'apres', u:'°C' },
       { n:'Test du groupe de sécurité', t:'status', s:'apres' },
-      { n:'Test de chauffe final', t:'status', s:'apres' }
+      { n:'Test de chauffe final', t:'status', s:'apres' },
+      { n:'Essais et contrôles réalisés après intervention', t:'textarea', s:'apres' }
     ]};
 
     // ---- Dépannage chaudière gaz / fioul : fiches COURTES et DÉDIÉES,
@@ -16809,7 +16841,7 @@ if ('serviceWorker' in navigator){
       { n:'Action réalisée', t:'textarea', s:'apres' },
       { n:'Pièce remplacée si applicable', t:'text', s:'apres' },
       { n:'Remise en service', t:'boolean', s:'apres' },
-      { n:'Résultat des essais', t:'textarea', s:'apres' }
+      { n:'Essais et contrôles réalisés après intervention', t:'textarea', s:'apres' }
     ]};
 
     var CHAUDIERE_FIOUL_DEPANNAGE_TEMPLATE = { id:'chaudiere-fioul-depannage', title:'Dépannage chaudière fioul', category:'chauffage', equipmentType:'chaudiere_fioul', controls:[
@@ -16842,7 +16874,7 @@ if ('serviceWorker' in navigator){
       { n:'Action réalisée', t:'textarea', s:'apres' },
       { n:'Pièce remplacée si applicable', t:'text', s:'apres' },
       { n:'Remise en service', t:'boolean', s:'apres' },
-      { n:'Résultat des essais', t:'textarea', s:'apres' }
+      { n:'Essais et contrôles réalisés après intervention', t:'textarea', s:'apres' }
     ]};
 
     var DIAGNOSTIC_TEMPLATE_GENERIC = { id:'generic-custom', title:'Diagnostic personnalisé', category:null, equipmentType:'autre', controls:[
@@ -16986,6 +17018,11 @@ if ('serviceWorker' in navigator){
         '.adm-iv-equip-list{display:flex;flex-direction:column;gap:6px;}' +
         '.adm-iv-equip-option{display:flex;align-items:center;gap:8px;font-size:0.82rem;padding:8px 10px;border:1.5px solid var(--adm-line,#E5E1D6);border-radius:8px;cursor:pointer;}' +
         '.adm-iv-equip-option.is-selected{border-color:var(--adm-green,#3F9463);background:var(--adm-green-soft,rgba(63,148,99,0.1));}' +
+        '.adm-iv-reserves-section select{width:100%;font-family:inherit;font-size:0.85rem;padding:9px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);box-sizing:border-box;background:#fff;}' +
+        '.adm-iv-reserves-section textarea{width:100%;min-height:70px;font-family:inherit;font-size:0.85rem;padding:9px 10px;border-radius:8px;border:1.5px solid var(--adm-line,#E5E1D6);box-sizing:border-box;resize:vertical;}' +
+        '.adm-iv-legal-mention{background:var(--adm-cream,#FAF8F2);border-radius:10px;padding:12px 14px;}' +
+        '.adm-iv-legal-mention p{margin:0;font-size:0.72rem;line-height:1.5;color:var(--adm-ink-soft,#5B6B78);}' +
+        '.adm-iv-consent-mention{font-size:0.78rem;line-height:1.45;color:var(--adm-ink-soft,#5B6B78);margin:0 0 10px;font-style:italic;}' +
         '.adm-iv-signature-box{border:1.5px dashed var(--adm-line,#E5E1D6);border-radius:10px;padding:10px;margin-top:8px;}' +
         '.adm-iv-signature-box canvas{width:100%;height:140px;touch-action:none;background:#fbfaf6;border-radius:8px;display:block;}' +
         '.adm-iv-signature-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}' +
@@ -17279,6 +17316,7 @@ if ('serviceWorker' in navigator){
               items: allItems, observations: ivRow.observations || '', recommendations: ivRow.recommendations || '',
               generalPhotos: generalPhotos, parts: parts, anomalies: anomalies,
               completionStatus: ivRow.completion_status || null,
+              reservesStatus: ivRow.reserves_status || null, reservesDetail: ivRow.reserves_detail || '',
               technicianName: ivRow.technician_name || technicianName,
               reportStatus: ivRow.report_status, clientSignatureData: ivRow.client_signature_data,
               technicianSignatureData: ivRow.technician_signature_data,
@@ -17382,7 +17420,9 @@ if ('serviceWorker' in navigator){
         recommendations: admIv.recommendations || null,
         equipment_id: admIv.selectedEquipmentId || null,
         technician_name: admIv.technicianName || null,
-        completion_status: admIv.completionStatus || null
+        completion_status: admIv.completionStatus || null,
+        reserves_status: admIv.reservesStatus || null,
+        reserves_detail: admIv.reservesDetail || null
       }).eq('id', admIv.interventionId));
       Promise.all(updates).catch(function(err){ console.warn('admIvPersistDraft: échec autosave', err); });
     }
@@ -17597,7 +17637,12 @@ if ('serviceWorker' in navigator){
     }
 
     function admIvSignatureBoxHtml(role, signatureData){
+      // Mention de consentement (section 5) : affichée uniquement avant la
+      // signature CLIENT, jamais présentée comme une renonciation à ses
+      // droits légaux — simple accusé de prise de connaissance du contenu
+      // du compte rendu déjà affiché juste au-dessus dans la fiche.
       return '<div class="adm-iv-signature-box" data-role="' + role + '">' +
+        (role === 'client' ? '<p class="adm-iv-consent-mention">' + admEscape(IV_CLIENT_CONSENT_MENTION) + '</p>' : '') +
         '<input type="text" class="adm-iv-sig-name" placeholder="Nom du signataire" data-role="' + role + '" value="' + admEscape((role === 'client' ? admIv.contact.name : admIv.technicianName) || '') + '">' +
         '<canvas class="adm-iv-sig-canvas" data-role="' + role + '" width="640" height="140"></canvas>' +
         '<div class="adm-iv-signature-actions">' +
@@ -17708,6 +17753,10 @@ if ('serviceWorker' in navigator){
       var completionOpts = IV_COMPLETION_OPTIONS.map(function(o){
         return '<option value="' + o[0] + '"' + (admIv.completionStatus === o[0] ? ' selected' : '') + '>' + admEscape(o[1]) + '</option>';
       }).join('');
+      var reservesOpts = IV_RESERVES_OPTIONS.map(function(o){
+        return '<option value="' + o[0] + '"' + (admIv.reservesStatus === o[0] ? ' selected' : '') + '>' + admEscape(o[1]) + '</option>';
+      }).join('');
+      var reservesNeedsDetail = admIv.reservesStatus && admIv.reservesStatus !== 'AUCUNE';
       overlay.innerHTML = '<div class="adm-iv-sheet">' +
         '<div class="adm-iv-header">' +
           '<button type="button" class="adm-iv-back-btn" data-iv-close>← Retour au planning</button>' +
@@ -17727,6 +17776,11 @@ if ('serviceWorker' in navigator){
         '<div class="adm-iv-section"><h4>Observations du technicien</h4><textarea id="admIvObs" placeholder="Observations libres…">' + admEscape(admIv.observations) + '</textarea></div>' +
         '<div class="adm-iv-section"><h4>Recommandations</h4><textarea id="admIvReco" placeholder="Recommandations pour le client…">' + admEscape(admIv.recommendations) + '</textarea></div>' +
         '<div class="adm-iv-section"><h4>Résultat de l\'intervention</h4><select id="admIvCompletionStatus"><option value="">— À définir —</option>' + completionOpts + '</select></div>' +
+        '<div class="adm-iv-section adm-iv-reserves-section"><h4>Réserves / autres anomalies constatées</h4>' +
+          '<select id="admIvReservesStatus"><option value="">— À définir —</option>' + reservesOpts + '</select>' +
+          '<textarea id="admIvReservesDetail" placeholder="Décrivez la réserve ou l\'anomalie constatée…" style="margin-top:8px;"' + (reservesNeedsDetail ? '' : ' hidden') + '>' + admEscape(admIv.reservesDetail) + '</textarea>' +
+        '</div>' +
+        '<div class="adm-iv-section adm-iv-legal-mention"><p>' + admEscape(IV_LEGAL_SCOPE_MENTION) + '</p></div>' +
         (isFinalized ?
           '<div class="adm-iv-section"><h4>Fiche validée</h4><p class="adm-iv-msg is-success">Cette fiche a été finalisée et signée — elle n\'est plus modifiable depuis cet écran.</p></div>'
           : '<div class="adm-iv-section"><h4>Signature du client</h4>' + admIvSignatureBoxHtml('client', admIv.clientSignatureData) + '</div>' +
@@ -17981,7 +18035,21 @@ if ('serviceWorker' in navigator){
       }
       if (e.target.id === 'admIvObs'){ admIv.observations = e.target.value; admIvScheduleSave(); return; }
       if (e.target.id === 'admIvReco'){ admIv.recommendations = e.target.value; admIvScheduleSave(); return; }
+      if (e.target.id === 'admIvReservesDetail'){ admIv.reservesDetail = e.target.value; admIvScheduleSave(); return; }
       if (e.target.id === 'admIvCompletionStatus'){ admIv.completionStatus = e.target.value || null; admIvScheduleSave(); return; }
+      if (e.target.id === 'admIvReservesStatus'){
+        admIv.reservesStatus = e.target.value || null;
+        var needsDetail = admIv.reservesStatus && admIv.reservesStatus !== 'AUCUNE';
+        if (!needsDetail) admIv.reservesDetail = '';
+        // Bascule directe du champ détail en DOM (jamais un admIvRender()
+        // complet ici : il effacerait les signatures déjà dessinées sur les
+        // <canvas>, exactement le bug déjà corrigé ailleurs dans cette
+        // fiche pour l'alerte CO — voir admIvCoDangerConfirmBtn).
+        var detailEl = document.getElementById('admIvReservesDetail');
+        if (detailEl) detailEl.hidden = !needsDetail;
+        admIvScheduleSave();
+        return;
+      }
       if (e.target.id === 'admIvTechName'){
         admIv.technicianName = e.target.value;
         window.localStorage.setItem('admTechnicianName', e.target.value);
@@ -18057,7 +18125,30 @@ if ('serviceWorker' in navigator){
         lines.push('Anomalie relevée' + (a.equipment_label ? ' sur ' + a.equipment_label : '') + ' : ' + a.description + '.');
       });
       lines.push('Installation remise en fonctionnement.');
+      if (admIv.reservesStatus && admIv.reservesStatus !== 'AUCUNE'){
+        var reservesLabel = (IV_RESERVES_OPTIONS.filter(function(o){ return o[0] === admIv.reservesStatus; })[0] || [])[1];
+        lines.push('Réserve : ' + (reservesLabel || admIv.reservesStatus) + (admIv.reservesDetail ? ' — ' + admIv.reservesDetail : '') + '.');
+      }
       return lines.join(' ');
+    }
+
+    // Un dépannage (panne ponctuelle) requiert obligatoirement une réponse
+    // "réserves" avant clôture (section 2/3 du cahier des charges
+    // diagnostic/réserves) — un entretien/contrat/check technique
+    // périodique n'est pas concerné (pas la même logique de "panne traitée
+    // vs anomalie non liée"), pour ne jamais ajouter une contrainte
+    // bloquante sur un flux qui fonctionnait déjà sans elle.
+    function admIvTemplateIsEntretien(){
+      var tpl = admIv.template || {};
+      var id = tpl.id || '';
+      // Le titre, lui, survit TOUJOURS à withTemplateId() (voir ci-dessus,
+      // utilisé pour les 3 forfaits chaudière gaz/fioul essentiel/confort/
+      // premium qui partagent CHAUDIERE_GAZ_TEMPLATE/CHAUDIERE_FIOUL_
+      // TEMPLATE mais écrasent template.id par le slug du forfait réservé)
+      // — se fier uniquement à l'id ratait ces 6 forfaits d'entretien, qui
+      // se retrouvaient alors à tort soumis à l'obligation de réserves.
+      var title = tpl.title || '';
+      return /entretien/i.test(title) || /entretien/i.test(id) || /^clim-(essentiel|confort|premium)$/.test(id) || /^pro-check/.test(id) || /^generic-/.test(id) || id === 'multi' || id === 'devis';
     }
 
     function admIvFinalize(){
@@ -18071,6 +18162,10 @@ if ('serviceWorker' in navigator){
       }
       if (!clientName || admIvCanvasIsBlank(clientCanvas)){ showMsg('Merci de faire signer le client avant de valider.', false); return; }
       if (!techName || admIvCanvasIsBlank(techCanvas)){ showMsg('Merci de renseigner et signer en tant que technicien avant de valider.', false); return; }
+      if (!admIvTemplateIsEntretien()){
+        if (!admIv.reservesStatus){ showMsg('Merci de renseigner les réserves / autres anomalies constatées avant de valider.', false); return; }
+        if (admIv.reservesStatus !== 'AUCUNE' && !(admIv.reservesDetail || '').trim()){ showMsg('Merci de décrire la réserve ou l\'anomalie constatée avant de valider.', false); return; }
+      }
       var coVal = admIvCoAmbientValue();
       if (coVal !== null && coVal >= CO_AMBIENT_DANGER_THRESHOLD_PPM && !admIv.coDangerConfirmed){
         // Pas de admIvRender() ici : l'alerte plein écran est déjà affichée
@@ -18096,6 +18191,8 @@ if ('serviceWorker' in navigator){
         equipment_id: admIv.selectedEquipmentId || null,
         technician_name: techName,
         completion_status: admIv.completionStatus || null,
+        reserves_status: admIv.reservesStatus || null,
+        reserves_detail: admIv.reservesDetail || null,
         auto_summary: admIvBuildAutoSummary(),
         ended_at: new Date().toISOString(),
         report_status: 'FINALIZED',
