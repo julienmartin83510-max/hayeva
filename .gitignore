@@ -3,3 +3,9 @@
 
 # État local de la CLI Supabase (project ref, versions, etc.) — jamais à versionner
 supabase/.temp/
+
+# Jetons/secrets locaux (ex. SUPABASE_ACCESS_TOKEN) — jamais commités, jamais
+# dans le code source. Voir .env.local.example pour le format attendu.
+.env
+.env.local
+.env.*.local
