@@ -14003,6 +14003,12 @@ if ('serviceWorker' in navigator){
   function admRenderDashboardCounters(){
     var el = document.getElementById('adminBkDashboard');
     if (!el) return;
+    // #espaceProAdminPanel existe dans le DOM pour tout visiteur (caché tant
+    // que l'admin ne s'est pas authentifié) : sans cette garde, chaque
+    // visiteur public déclenchait une requête Supabase vouée à échouer
+    // (is_admin() la rejette) à chaque chargement de page.
+    var adminPanel = document.getElementById('espaceProAdminPanel');
+    if (adminPanel && adminPanel.hidden) return;
     el.innerHTML = '<p class="ec-loading">Chargement…</p>';
     var today = new Date(); today.setHours(0,0,0,0);
     var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
