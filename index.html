@@ -343,6 +343,34 @@ if ('serviceWorker' in navigator){
   // propres mentions codées en dur : les centraliser aussi est un chantier
   // séparé, plus large, non fait à cette étape.
   window.SUD_BRAND = { name: 'HAYEVA', tagline: 'Plomberie • Chauffage • Climatisation', email: 'contact@hayeva.fr' };
+
+  // ============================================================
+  // Informations légales centralisées — SOURCE UNIQUE pour toutes les
+  // pages juridiques (Mentions légales, Médiation, Rétractation). HAYEVA
+  // n'est pas encore immatriculée : chaque champ reste `null` tant que
+  // l'information officielle réelle n'a pas été transmise — JAMAIS une
+  // valeur inventée (pas de faux SIRET/SIREN/n° de police/médiateur).
+  // Pour mettre à jour le site une fois les informations disponibles :
+  // modifier UNIQUEMENT les valeurs ci-dessous, rien d'autre dans ce
+  // fichier — chaque page juridique lit déjà ces champs via
+  // legalRenderPlaceholders() (voir plus bas, section Overlay juridique).
+  window.SUD_LEGAL_INFO = {
+    companyRegistered: false, // passer à true une fois l'immatriculation officielle faite
+    entrepreneurName: null,   // raison sociale / nom de l'entrepreneur
+    legalForm: null,          // forme juridique (micro-entreprise, EURL, SASU...)
+    professionalAddress: null,
+    siren: null,
+    siret: null,
+    rcs: null,                // RCS ou répertoire des métiers
+    vatNumber: null,
+    publicationDirector: null,
+    insurer: null,            // assurance responsabilité civile professionnelle
+    insurancePolicyNumber: null,
+    insuranceCoverage: null,
+    mediatorName: null,       // médiateur de la consommation (obligatoire avant ouverture)
+    mediatorAddress: null,
+    mediatorWebsite: null
+  };
 </script>
 <style>
   /* L'attribut [hidden] natif n'est masqué que par la feuille de style par
@@ -5058,6 +5086,11 @@ if ('serviceWorker' in navigator){
     font-weight:700; font-size:0.85em; padding:1px 7px; border-radius:5px;
     border:1px dashed #C9932F;
   }
+  .legal-inprogress-banner{
+    background:var(--amber-soft); border:1px solid #C9932F; border-radius:12px;
+    padding:12px 16px; margin:0 0 18px; font-size:0.88rem; color:#5C4109; line-height:1.5;
+  }
+  .legal-inprogress-banner strong{ display:block; margin-bottom:3px; color:#4A3406; }
   .legal-page a{ color:var(--sky-deep-fixed); }
   .legal-retraction-form{
     background:var(--sand-deep); border:1px solid var(--line); border-radius:12px;
@@ -9015,19 +9048,25 @@ if ('serviceWorker' in navigator){
         <h2>Mentions légales</h2>
         <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
 
+        <div class="legal-inprogress-banner" id="legalInProgressBanner" hidden>
+          <strong>HAYEVA — entreprise en cours de création.</strong>
+          Les informations légales obligatoires (SIRET, assurance professionnelle, médiateur de la consommation)
+          seront complétées ici dès l'immatriculation officielle et la souscription effective des garanties.
+        </div>
+
         <h3>Édition du site</h3>
         <table>
           <tr><th>Nom commercial</th><td>HAYEVA</td></tr>
-          <tr><th>Entrepreneur / raison sociale</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
-          <tr><th>Forme juridique</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
-          <tr><th>Adresse professionnelle</th><td><span class="legal-placeholder">[À COMPLÉTER – ADRESSE PROFESSIONNELLE]</span></td></tr>
-          <tr><th>SIREN</th><td><span class="legal-placeholder">[À COMPLÉTER – SIREN]</span></td></tr>
-          <tr><th>SIRET (établissement principal)</th><td><span class="legal-placeholder">[À COMPLÉTER – SIRET]</span></td></tr>
-          <tr><th>RCS / Répertoire des métiers</th><td><span class="legal-placeholder">[À COMPLÉTER SI APPLICABLE]</span></td></tr>
-          <tr><th>N° de TVA intracommunautaire</th><td><span class="legal-placeholder">[À COMPLÉTER SI APPLICABLE]</span></td></tr>
+          <tr><th>Entrepreneur / raison sociale</th><td><span class="legal-placeholder" data-legal-field="entrepreneurName"></span></td></tr>
+          <tr><th>Forme juridique</th><td><span class="legal-placeholder" data-legal-field="legalForm"></span></td></tr>
+          <tr><th>Adresse professionnelle</th><td><span class="legal-placeholder" data-legal-field="professionalAddress"></span></td></tr>
+          <tr><th>SIREN</th><td><span class="legal-placeholder" data-legal-field="siren"></span></td></tr>
+          <tr><th>SIRET (établissement principal)</th><td><span class="legal-placeholder" data-legal-field="siret"></span></td></tr>
+          <tr><th>RCS / Répertoire des métiers</th><td><span class="legal-placeholder" data-legal-field="rcs"></span></td></tr>
+          <tr><th>N° de TVA intracommunautaire</th><td><span class="legal-placeholder" data-legal-field="vatNumber"></span></td></tr>
           <tr><th>E-mail</th><td><a href="mailto:contact@hayeva.fr">contact@hayeva.fr</a></td></tr>
           <tr><th>Téléphone</th><td><a href="tel:+33671262302">06 71 26 23 02</a></td></tr>
-          <tr><th>Directeur de la publication</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Directeur de la publication</th><td><span class="legal-placeholder" data-legal-field="publicationDirector"></span></td></tr>
         </table>
         <p>HAYEVA exerce une activité de plomberie, dépannage plomberie, chauffage, dépannage chauffage, entretien de climatisation et maintenance technique, principalement à Fréjus et dans les départements des Alpes-Maritimes (06) et du Var (83).</p>
 
@@ -9042,9 +9081,9 @@ if ('serviceWorker' in navigator){
 
         <h3>Assurance professionnelle</h3>
         <table>
-          <tr><th>Assureur</th><td><span class="legal-placeholder">[À COMPLÉTER – ASSURANCE PROFESSIONNELLE]</span></td></tr>
-          <tr><th>N° de police</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
-          <tr><th>Couverture géographique</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Assureur</th><td><span class="legal-placeholder" data-legal-field="insurer"></span></td></tr>
+          <tr><th>N° de police</th><td><span class="legal-placeholder" data-legal-field="insurancePolicyNumber"></span></td></tr>
+          <tr><th>Couverture géographique</th><td><span class="legal-placeholder" data-legal-field="insuranceCoverage"></span></td></tr>
         </table>
         <p style="font-size:0.82rem; color:var(--ink-soft);">Ces informations seront complétées dès la souscription effective des garanties professionnelles applicables à l'activité de HAYEVA. Aucune mention de garantie (assurance responsabilité civile professionnelle, garantie décennale ou autre) n'est affirmée tant que les références réelles n'ont pas été renseignées ici.</p>
 
@@ -9214,9 +9253,9 @@ if ('serviceWorker' in navigator){
         <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
         <p>Conformément aux articles L616-1 et suivants du Code de la consommation, tout client consommateur a le droit de recourir gratuitement à un médiateur de la consommation en vue de la résolution amiable d'un litige qui l'opposerait à HAYEVA, après une tentative préalable de résolution directe auprès de HAYEVA (voir la page « Mentions légales » pour nous contacter).</p>
         <table>
-          <tr><th>Médiateur</th><td><span class="legal-placeholder">[À COMPLÉTER – MÉDIATEUR DE LA CONSOMMATION]</span></td></tr>
-          <tr><th>Adresse</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
-          <tr><th>Site internet</th><td><span class="legal-placeholder">[À COMPLÉTER]</span></td></tr>
+          <tr><th>Médiateur</th><td><span class="legal-placeholder" data-legal-field="mediatorName"></span></td></tr>
+          <tr><th>Adresse</th><td><span class="legal-placeholder" data-legal-field="mediatorAddress"></span></td></tr>
+          <tr><th>Site internet</th><td><span class="legal-placeholder" data-legal-field="mediatorWebsite"></span></td></tr>
         </table>
         <p style="font-size:0.82rem; color:var(--ink-soft);">HAYEVA adhérera à un médiateur de la consommation habilité avant l'ouverture commerciale officielle du site ; les coordonnées exactes seront renseignées ici et dans les CGV dès l'adhésion effective. Le client peut également, le cas échéant, recourir à la plateforme européenne de règlement en ligne des litiges : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
       </article>
@@ -9240,7 +9279,7 @@ if ('serviceWorker' in navigator){
 
         <div class="legal-retraction-form">
           <p><strong>Formulaire type de rétractation</strong><br>(à compléter et renvoyer uniquement si vous souhaitez vous rétracter)</p>
-          <p>À l'attention de HAYEVA — <span class="legal-placeholder">[À COMPLÉTER – ADRESSE PROFESSIONNELLE]</span> — <a href="mailto:contact@hayeva.fr">contact@hayeva.fr</a></p>
+          <p>À l'attention de HAYEVA — <span class="legal-placeholder" data-legal-field="professionalAddress"></span> — <a href="mailto:contact@hayeva.fr">contact@hayeva.fr</a></p>
           <p>Je/nous (*) notifie/notifions (*) par la présente ma/notre (*) rétractation du contrat portant sur la prestation ci-dessous :</p>
           <p>— Prestation demandée : ……………………………………………<br>
           — Référence de la réservation : ……………………………………………<br>
@@ -9599,6 +9638,33 @@ if ('serviceWorker' in navigator){
   var pages = overlay.querySelectorAll('.legal-page');
   var navBtns = overlay.querySelectorAll('.legal-nav-btn');
   var contentEl = document.getElementById('legalOverlayContent');
+
+  // Remplit chaque champ juridique [data-legal-field] depuis l'unique
+  // source de vérité window.SUD_LEGAL_INFO (voir sa définition en tête de
+  // fichier) : pour mettre à jour le site une fois les informations
+  // officielles disponibles, modifier UNIQUEMENT cet objet — rien d'autre
+  // à toucher ici. Tant qu'un champ vaut null, affiche un message honnête
+  // ("en cours de création" / "à compléter après immatriculation"),
+  // jamais une valeur inventée.
+  function legalRenderPlaceholders(){
+    var info = window.SUD_LEGAL_INFO || {};
+    var banner = document.getElementById('legalInProgressBanner');
+    if (banner) banner.hidden = !!info.companyRegistered;
+    var fields = overlay.querySelectorAll('[data-legal-field]');
+    fields.forEach(function(el){
+      var key = el.getAttribute('data-legal-field');
+      var value = info[key];
+      if (value){
+        el.textContent = value;
+        el.classList.remove('legal-placeholder');
+      } else if (key === 'entrepreneurName'){
+        el.textContent = 'HAYEVA — entreprise en cours de création';
+      } else {
+        el.textContent = 'À compléter après immatriculation officielle';
+      }
+    });
+  }
+  legalRenderPlaceholders();
 
   function openLegal(key, opts){
     if (VALID_KEYS.indexOf(key) === -1) key = 'mentions';
