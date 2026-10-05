@@ -1,0 +1,22 @@
+-- ============================================================
+-- Correctif sécurité — find_or_create_client() était exécutable
+-- directement par n'importe quel utilisateur anon/authenticated alors
+-- qu'elle ne sert qu'en interne, appelée par les triggers
+-- bookings_attach_client()/equipment_attach_client() (0056/0059).
+-- ============================================================
+-- Scénario concret : p_user_id est un paramètre fourni tel quel par
+-- l'appelant, sans jamais vérifier p_user_id = auth.uid(). Un utilisateur
+-- authentifié pouvait appeler directement
+-- supabase.rpc('find_or_create_client', { p_user_id: <son propre uid>,
+-- p_email: 'victime@exemple.fr', ... }) : si une fiche client existait déjà
+-- avec cet e-mail (cas normal après n'importe quelle réservation invité),
+-- la fonction la rattachait silencieusement à son compte (user_id mis à
+-- jour), lui donnant ensuite accès en lecture à cette fiche via la policy
+-- "clients: self read" — nom, téléphone, adresse, notes internes.
+--
+-- Correctif strictement un retrait de privilège, aucune logique modifiée :
+-- les triggers SECURITY DEFINER qui appellent cette fonction en interne
+-- (même rôle propriétaire) continuent de fonctionner sans changement —
+-- vérifié : aucun appel direct à find_or_create_client() nulle part dans
+-- le frontend ni dans les Edge Functions avant cette migration.
+revoke execute on function find_or_create_client(uuid, text, text, text, text, text) from authenticated, anon;

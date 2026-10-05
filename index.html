@@ -4655,22 +4655,6 @@ if ('serviceWorker' in navigator){
   .ecx-equip-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem; color:var(--navy-fixed); margin:0 0 2px; }
   .ecx-equip-card-meta{ font-size:0.78rem; color:var(--ink-soft-fixed); margin:0; }
 
-  /* ---------- Documents : segmented control ---------- */
-  .ecx-doc-card{
-    display:flex; align-items:flex-start; justify-content:space-between; gap:14px; background:var(--white);
-    border:1px solid var(--line); border-radius:18px; padding:16px 18px; margin-bottom:12px;
-    box-shadow:0 8px 22px -20px rgba(16,27,36,0.35);
-  }
-  .ecx-doc-card-eyebrow{ font-size:0.68rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft-fixed); margin:0 0 4px; }
-  .ecx-doc-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:var(--navy-fixed); margin:0 0 4px; }
-  .ecx-doc-card-meta{ font-size:0.8rem; color:var(--ink-soft-fixed); margin:0; }
-  .ecx-doc-card-price{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1rem; color:var(--navy-fixed); white-space:nowrap; }
-  .ecx-doc-card-actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .ecx-doc-card-actions button{
-    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; color:var(--sky-deep-fixed); background:var(--sand-deep);
-    border:none; border-radius:999px; padding:8px 14px; cursor:pointer; min-height:38px;
-  }
-  .ecx-doc-card-actions button.is-primary{ background:var(--terracotta-fixed); color:#fff; }
 
   /* ---------- Skeleton loaders ---------- */
   .ecx-skeleton{ display:flex; flex-direction:column; gap:12px; }
@@ -9857,16 +9841,6 @@ if ('serviceWorker' in navigator){
   // svc.duration représente déjà trajet + intervention (créneau total confirmé avec le client).
   // MINIMUM_BUFFER_MIN est le battement obligatoire ajouté après CE créneau avant d'en proposer un autre.
   var MINIMUM_BUFFER_MIN = 15;
-  // Temps de trajet par défaut utilisé tant qu'aucun calcul réel (adresse du client, trajet depuis le
-  // rendez-vous précédent) n'est disponible. Point d'extension pour un futur calcul dynamique.
-  var DEFAULT_TRAVEL_MIN = 30;
-
-  function estimateTravelMinutes(address){
-    // À terme : calculer selon l'adresse du client et la distance depuis le rendez-vous précédent.
-    // Pour l'instant, valeur de configuration par défaut.
-    return DEFAULT_TRAVEL_MIN;
-  }
-
   function blockedDurationMinutes(durationMin){
     return durationMin + MINIMUM_BUFFER_MIN;
   }
@@ -10270,9 +10244,6 @@ if ('serviceWorker' in navigator){
      n'intervient qu'une seule fois, sur le total final affiché au client. */
   function roundCommercialPrice(amount){
     return Math.ceil(amount / 5) * 5;
-  }
-  function fmtEurosRounded(n){
-    return fmtEuros(roundCommercialPrice(n));
   }
 
   /* ---------- Remises multi-logements (conciergeries / gestionnaires) ----------
