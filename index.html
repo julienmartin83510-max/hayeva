@@ -3693,26 +3693,46 @@ if ('serviceWorker' in navigator){
   .admin-travel-settings-msg.is-success{ color:var(--adm-green); font-weight:600; }
   .admin-travel-settings-msg.is-error{ color:var(--adm-red); font-weight:600; }
 
-  /* ---------- Agenda & synchronisation (Apple Calendar) ---------- */
-  .adm-cal-sync-panel{
-    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:20px;
-    box-shadow:var(--adm-shadow-sm); display:flex; flex-direction:column; gap:16px; margin-bottom:16px;
+  /* ---------- Agenda & synchronisation (Apple Calendar) — carte compacte ---------- */
+  .adm-cal-card{
+    background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:16px; padding:16px;
+    box-shadow:var(--adm-shadow-sm); display:flex; flex-direction:column; gap:12px; margin-bottom:16px;
+    max-width:520px; min-width:0; box-sizing:border-box;
   }
-  .adm-cal-sync-status-row{ display:flex; align-items:center; gap:10px; font-weight:700; }
+  .adm-cal-card-title{ margin:0; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--adm-ink-soft); }
+  .adm-cal-card-status{ margin:0; display:flex; align-items:center; gap:8px; font-weight:700; font-size:1rem; color:var(--adm-ink); }
   .adm-cal-sync-dot{ width:10px; height:10px; border-radius:50%; background:var(--adm-ink-soft); flex-shrink:0; }
   .adm-cal-sync-dot.is-ok{ background:var(--adm-green); }
   .adm-cal-sync-dot.is-warning{ background:var(--amber, #E85A12); }
   .adm-cal-sync-dot.is-off{ background:var(--adm-ink-soft); }
-  .adm-cal-sync-hint{ font-size:0.78rem; color:var(--adm-ink-soft); margin:0; }
-  .adm-cal-sync-subhead{ font-size:0.92rem; font-weight:700; margin:0 0 8px; }
-  .adm-cal-sync-source-row{ display:flex; align-items:center; gap:8px; font-size:0.88rem; padding:6px 0; }
-  .adm-cal-sync-errors{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:0.78rem; color:var(--adm-red); }
-  #admCalSyncAccountBlock label{ display:flex; flex-direction:column; gap:6px; font-size:0.88rem; font-weight:600; color:var(--adm-ink-soft); max-width:320px; }
-  #admCalSyncAccountBlock input{ font:inherit; padding:9px 12px; border:1px solid var(--adm-line); border-radius:8px; background:var(--adm-sand); color:var(--adm-ink); }
-  #admCalSaveAccountBtn, #admCalRunSetupBtn, #admCalSyncNowBtn{
-    background:var(--adm-ocean); color:#fff; border:none; border-radius:999px; padding:10px 20px; font-weight:700; cursor:pointer;
+  .adm-cal-card-facts{ margin:0; display:grid; gap:8px; }
+  .adm-cal-card-facts > div{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; border-top:1px solid var(--adm-line); padding-top:8px; min-width:0; }
+  .adm-cal-card-facts dt{ font-size:0.8rem; color:var(--adm-ink-soft); }
+  .adm-cal-card-facts dd{ margin:0; font-size:0.88rem; font-weight:700; color:var(--adm-ink); text-align:right; overflow-wrap:anywhere; }
+  .adm-cal-card-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+  .adm-cal-btn{
+    flex:1 1 auto; min-height:44px; font:inherit; font-weight:700; font-size:0.85rem; cursor:pointer;
+    background:var(--adm-card-bg); color:var(--adm-ink); border:1.5px solid var(--adm-line); border-radius:999px; padding:10px 16px;
   }
-  #admCalSaveAccountBtn:disabled, #admCalRunSetupBtn:disabled, #admCalSyncNowBtn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .adm-cal-btn-primary{ background:var(--adm-ocean); border-color:var(--adm-ocean); color:#fff; }
+  .adm-cal-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .adm-cal-card-msg{ margin:0; font-size:0.8rem; font-weight:600; }
+  .adm-cal-card-msg.is-success{ color:var(--adm-green); }
+  .adm-cal-card-msg.is-error{ color:var(--adm-red); }
+  .adm-cal-settings{ display:flex; flex-direction:column; gap:14px; border-top:1px solid var(--adm-line); padding-top:12px; }
+  .adm-cal-field{ display:flex; flex-direction:column; gap:6px; font-size:0.82rem; font-weight:600; color:var(--adm-ink-soft); min-width:0; }
+  .adm-cal-field input{ font:inherit; font-size:16px; padding:9px 12px; border:1px solid var(--adm-line); border-radius:8px; background:var(--adm-sand); color:var(--adm-ink); width:100%; box-sizing:border-box; }
+  .adm-cal-margins-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end; }
+  .adm-cal-margins-row .adm-cal-btn{ grid-column:1 / -1; }
+  .adm-cal-sync-hint{ font-size:0.78rem; color:var(--adm-ink-soft); margin:0; overflow-wrap:anywhere; }
+  .adm-cal-sync-subhead{ font-size:0.88rem; font-weight:700; margin:0 0 6px; color:var(--adm-ink); }
+  .adm-cal-sync-source-row{ display:flex; align-items:center; gap:10px; font-size:0.9rem; min-height:44px; cursor:pointer; color:var(--adm-ink); }
+  .adm-cal-sync-source-row input{ width:20px; height:20px; flex-shrink:0; }
+  .adm-cal-details{ border-top:1px solid var(--adm-line); padding-top:8px; font-size:0.82rem; }
+  .adm-cal-details summary{ cursor:pointer; color:var(--adm-ink-soft); font-weight:600; min-height:32px; display:flex; align-items:center; }
+  .adm-cal-details[open] summary{ margin-bottom:6px; }
+  .adm-cal-sync-errors{ list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:0.76rem; color:var(--adm-ink-soft); max-height:180px; overflow:auto; overflow-wrap:anywhere; }
+  .adm-cal-sync-errors li.is-error{ color:var(--adm-red); }
 
   /* ---------- Planning hebdomadaire : apparence uniquement, structure et
      logique JS totalement inchangées (voir admRenderPlanning — non modifié
@@ -8641,52 +8661,54 @@ if ('serviceWorker' in navigator){
                 </form>
 
                 <h3 class="adm-subhead">Agenda &amp; synchronisation (Apple Calendar)</h3>
-                <p class="adm-page-sub" style="margin-top:-8px;">Synchronise automatiquement les rendez-vous HAYEVA confirmés vers un calendrier iCloud dédié, et bloque les créneaux déjà occupés sur vos agendas Apple personnels (jamais leur contenu, seulement l'horaire).</p>
-                <div class="adm-cal-sync-panel" id="admCalSyncPanel">
-                  <div class="adm-cal-sync-status-row">
-                    <span class="adm-cal-sync-dot" id="admCalSyncDot" aria-hidden="true"></span>
-                    <span id="admCalSyncStatusText">Chargement…</span>
+                <!-- Carte compacte : l'état utile d'un coup d'œil ; réglages et
+                     journal technique repliés (Paramètres / Voir les détails). -->
+                <div class="adm-cal-card" id="admCalSyncPanel">
+                  <p class="adm-cal-card-title">Agenda Apple</p>
+                  <p class="adm-cal-card-status"><span class="adm-cal-sync-dot" id="admCalSyncDot" aria-hidden="true"></span><span id="admCalSyncStatusText">Chargement…</span></p>
+                  <dl class="adm-cal-card-facts">
+                    <div><dt>Calendrier RDV</dt><dd id="admCalTargetName">—</dd></div>
+                    <div><dt>Calendriers bloquants</dt><dd id="admCalBlockingCount">—</dd></div>
+                    <div><dt>Dernière synchronisation</dt><dd id="admCalLastSync">—</dd></div>
+                  </dl>
+                  <div class="adm-cal-card-actions">
+                    <button type="button" class="adm-cal-btn adm-cal-btn-primary" id="admCalSyncNowBtn">Synchroniser maintenant</button>
+                    <button type="button" class="adm-cal-btn" id="admCalSettingsBtn" aria-expanded="false" aria-controls="admCalSettings">Paramètres</button>
                   </div>
-                  <div id="admCalSyncAccountBlock">
-                    <label>Identifiant Apple (email)
-                      <input type="email" id="admCalAppleEmail" placeholder="vous@icloud.com">
-                    </label>
-                    <div class="admin-bk-propose-form-row">
-                      <button type="button" id="admCalSaveAccountBtn">Enregistrer l'identifiant</button>
-                      <button type="button" id="admCalRunSetupBtn">Lancer la configuration</button>
+                  <p class="adm-cal-card-msg" id="admCalSyncMsg" role="status" hidden></p>
+
+                  <div class="adm-cal-settings" id="admCalSettings" hidden>
+                    <div id="admCalSyncAccountBlock">
+                      <label class="adm-cal-field">Identifiant Apple (email)
+                        <input type="email" id="admCalAppleEmail" placeholder="vous@icloud.com" autocomplete="off">
+                      </label>
+                      <div class="adm-cal-card-actions">
+                        <button type="button" class="adm-cal-btn" id="admCalSaveAccountBtn">Enregistrer l'identifiant</button>
+                        <button type="button" class="adm-cal-btn" id="admCalRunSetupBtn">Lancer la configuration</button>
+                      </div>
+                      <p class="adm-cal-sync-hint">Le mot de passe d'application Apple n'est jamais saisi ici : il reste uniquement côté serveur (Supabase Vault).</p>
                     </div>
-                    <p class="adm-cal-sync-hint">Le mot de passe d'application Apple n'est jamais saisi ici : il est déposé une seule fois, directement dans Supabase (Vault), jamais dans HAYEVA ni dans un navigateur.</p>
-                  </div>
 
-                  <div id="admCalSyncSourcesBlock" hidden>
-                    <h4 class="adm-cal-sync-subhead">Calendriers Apple pris en compte pour le blocage</h4>
-                    <div id="admCalSyncSourcesList"></div>
-                  </div>
+                    <div id="admCalSyncSourcesBlock" hidden>
+                      <p class="adm-cal-sync-subhead">Calendriers qui bloquent les réservations</p>
+                      <div id="admCalSyncSourcesList"></div>
+                    </div>
 
-                  <div id="admCalSyncMarginsBlock" hidden>
-                    <h4 class="adm-cal-sync-subhead">Marge de sécurité autour des événements bloquants</h4>
-                    <form id="admCalMarginsForm" class="admin-travel-settings-form">
-                      <label>Marge avant (minutes)
-                        <input type="number" id="admCalMarginBefore" min="0" max="240" step="5">
-                      </label>
-                      <label>Marge après (minutes)
-                        <input type="number" id="admCalMarginAfter" min="0" max="240" step="5">
-                      </label>
-                      <div class="admin-bk-propose-form-row">
-                        <button type="submit" id="admCalMarginsSave">Enregistrer</button>
+                    <form id="admCalMarginsForm" class="adm-cal-margins" hidden>
+                      <p class="adm-cal-sync-subhead">Marge autour des événements bloquants</p>
+                      <div class="adm-cal-margins-row">
+                        <label class="adm-cal-field">Avant (min)<input type="number" id="admCalMarginBefore" min="0" max="240" step="5" inputmode="numeric"></label>
+                        <label class="adm-cal-field">Après (min)<input type="number" id="admCalMarginAfter" min="0" max="240" step="5" inputmode="numeric"></label>
+                        <button type="submit" class="adm-cal-btn" id="admCalMarginsSave">Enregistrer</button>
                       </div>
                     </form>
                   </div>
 
-                  <div class="admin-bk-propose-form-row" id="admCalSyncNowRow" hidden>
-                    <button type="button" id="admCalSyncNowBtn">Synchroniser maintenant</button>
-                    <p class="admin-travel-settings-msg" id="admCalSyncMsg" hidden></p>
-                  </div>
-
-                  <div id="admCalSyncErrorsBlock" hidden>
-                    <h4 class="adm-cal-sync-subhead">Dernières erreurs de synchronisation</h4>
+                  <details class="adm-cal-details" id="admCalDetails">
+                    <summary>Voir les détails</summary>
+                    <p class="adm-cal-sync-hint" id="admCalAccountLine"></p>
                     <ul class="adm-cal-sync-errors" id="admCalSyncErrorsList"></ul>
-                  </div>
+                  </details>
                 </div>
 
                 <h3 class="adm-subhead">Consignes de préparation avant intervention</h3>
@@ -21216,30 +21238,59 @@ if ('serviceWorker' in navigator){
   // rôle service_role). "Lancer la configuration" et "Synchroniser
   // maintenant" déclenchent un appel asynchrone (pg_net côté serveur) : le
   // statut est donc relu après un court délai, jamais supposé immédiat.
-  function admCalSyncStatusLabel(status){
-    if (!status.connected) return 'Agenda Apple non connecté';
-    if (status.last_sync_error) return 'Connecté — dernière synchronisation en erreur';
-    return 'Connecté et synchronisé';
+  function admCalFmtDateTime(iso){
+    if (!iso) return 'Jamais';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('fr-FR', { timeZone:'Europe/Paris', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).replace(',', '');
+  }
+
+  function admCalSetMsg(text, isError){
+    var msgEl = document.getElementById('admCalSyncMsg');
+    if (!msgEl) return;
+    msgEl.hidden = !text;
+    msgEl.className = 'adm-cal-card-msg' + (text ? (isError ? ' is-error' : ' is-success') : '');
+    msgEl.textContent = text || '';
+  }
+
+  function admCalToggleSettings(open){
+    var panel = document.getElementById('admCalSettings');
+    var btn = document.getElementById('admCalSettingsBtn');
+    if (!panel || !btn) return;
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   function admRenderCalSyncPanel(status){
     var dot = document.getElementById('admCalSyncDot');
     var text = document.getElementById('admCalSyncStatusText');
     if (!dot || !text) return;
-    dot.className = 'adm-cal-sync-dot' + (status.connected ? (status.last_sync_error ? ' is-warning' : ' is-ok') : ' is-off');
-    text.textContent = admCalSyncStatusLabel(status) + (status.apple_id_email ? ' (' + status.apple_id_email + ')' : '');
+    var connected = !!status.connected;
+    // Seule la dernière synchronisation compte : une erreur ancienne déjà
+    // suivie d'un succès n'est jamais affichée comme l'état courant.
+    var inError = connected && !!status.last_sync_error;
+    dot.className = 'adm-cal-sync-dot' + (connected ? (inError ? ' is-warning' : ' is-ok') : ' is-off');
+    text.textContent = connected ? (inError ? 'Connecté — dernière synchronisation en erreur' : 'Connecté') : 'Non connecté';
+
+    var sources = status.sources || [];
+    var blocking = sources.filter(function(s){ return s.is_blocking; }).length;
+    document.getElementById('admCalTargetName').textContent = connected ? (status.target_calendar_display_name || 'HAYEVA') : '—';
+    document.getElementById('admCalBlockingCount').textContent = connected ? (blocking + ' sélectionné' + (blocking > 1 ? 's' : '')) : '—';
+    document.getElementById('admCalLastSync').textContent = connected ? admCalFmtDateTime(status.last_sync_at || status.last_pull_sync_at || status.last_push_sync_at) : '—';
+
+    var syncBtn = document.getElementById('admCalSyncNowBtn');
+    if (syncBtn) syncBtn.disabled = !connected;
 
     var emailInput = document.getElementById('admCalAppleEmail');
     if (emailInput && !emailInput.value) emailInput.value = status.apple_id_email || '';
 
     var sourcesBlock = document.getElementById('admCalSyncSourcesBlock');
-    var marginsBlock = document.getElementById('admCalSyncMarginsBlock');
-    var syncNowRow = document.getElementById('admCalSyncNowRow');
-    if (sourcesBlock) sourcesBlock.hidden = !status.connected;
-    if (marginsBlock) marginsBlock.hidden = !status.connected;
-    if (syncNowRow) syncNowRow.hidden = !status.connected;
+    var marginsForm = document.getElementById('admCalMarginsForm');
+    if (sourcesBlock) sourcesBlock.hidden = !connected;
+    if (marginsForm) marginsForm.hidden = !connected;
+    if (!connected) admCalToggleSettings(true);
 
-    if (status.connected){
+    if (connected){
       var before = document.getElementById('admCalMarginBefore');
       var after = document.getElementById('admCalMarginAfter');
       if (before) before.value = status.margin_before_minutes != null ? status.margin_before_minutes : 0;
@@ -21247,33 +21298,39 @@ if ('serviceWorker' in navigator){
 
       var list = document.getElementById('admCalSyncSourcesList');
       if (list){
-        if (!status.sources || status.sources.length === 0){
+        if (sources.length === 0){
           list.innerHTML = '<p class="adm-cal-sync-hint">Aucun calendrier Apple détecté.</p>';
         } else {
-          list.innerHTML = status.sources.map(function(s){
+          list.innerHTML = sources.map(function(s){
             return '<label class="adm-cal-sync-source-row">' +
-              '<input type="checkbox" class="adm-cal-source-toggle" data-source-id="' + s.id + '"' + (s.is_blocking ? ' checked' : '') + '> ' +
-              (s.display_name || s.calendar_url) +
+              '<input type="checkbox" class="adm-cal-source-toggle" data-source-id="' + admEscape(s.id) + '"' + (s.is_blocking ? ' checked' : '') + '> ' +
+              '<span>' + admEscape(s.display_name || 'Calendrier') + '</span>' +
               '</label>';
           }).join('');
           Array.prototype.forEach.call(list.querySelectorAll('.adm-cal-source-toggle'), function(cb){
             cb.addEventListener('change', function(){
-              sb.client.rpc('admin_set_calendar_source_blocking', { p_source_id: cb.getAttribute('data-source-id'), p_is_blocking: cb.checked });
+              cb.disabled = true;
+              sb.client.rpc('admin_set_calendar_source_blocking', { p_source_id: cb.getAttribute('data-source-id'), p_is_blocking: cb.checked }).then(function(res){
+                cb.disabled = false;
+                if (res.error){ cb.checked = !cb.checked; admCalSetMsg(res.error.message || 'Échec de l\'enregistrement.', true); return; }
+                admLoadCalSyncStatus();
+              });
             });
           });
         }
       }
     }
 
-    var errorsBlock = document.getElementById('admCalSyncErrorsBlock');
+    var accountLine = document.getElementById('admCalAccountLine');
+    if (accountLine) accountLine.textContent = status.apple_id_email ? ('Compte Apple : ' + status.apple_id_email) : 'Aucun identifiant Apple enregistré.';
     var errorsList = document.getElementById('admCalSyncErrorsList');
-    if (errorsBlock && errorsList){
+    if (errorsList){
       var errs = status.recent_errors || [];
-      errorsBlock.hidden = errs.length === 0;
-      if (errs.length){
+      if (!errs.length){
+        errorsList.innerHTML = '<li>Aucune erreur depuis la dernière synchronisation réussie.</li>';
+      } else {
         errorsList.innerHTML = errs.map(function(e){
-          var when = e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : '';
-          return '<li>[' + (e.direction === 'pull' ? 'Import' : 'Envoi') + '] ' + when + ' — ' + (e.detail || 'Erreur inconnue') + '</li>';
+          return '<li class="is-error">[' + (e.direction === 'pull' ? 'Import' : 'Envoi') + '] ' + admEscape(admCalFmtDateTime(e.created_at)) + ' — ' + admEscape(e.detail || 'Erreur inconnue') + '</li>';
         }).join('');
       }
     }
@@ -21287,7 +21344,14 @@ if ('serviceWorker' in navigator){
         document.getElementById('admCalSyncStatusText').textContent = 'Impossible de charger le statut de synchronisation.';
         return;
       }
-      admRenderCalSyncPanel(res.data);
+      admRenderCalSyncPanel(res.data || {});
+    });
+  }
+
+  var admCalSettingsBtn = document.getElementById('admCalSettingsBtn');
+  if (admCalSettingsBtn){
+    admCalSettingsBtn.addEventListener('click', function(){
+      admCalToggleSettings(admCalSettingsBtn.getAttribute('aria-expanded') !== 'true');
     });
   }
 
@@ -21299,23 +21363,27 @@ if ('serviceWorker' in navigator){
       admCalSaveAccountBtn.disabled = true;
       sb.client.rpc('admin_set_apple_account', { p_email: email }).then(function(res){
         admCalSaveAccountBtn.disabled = false;
-        if (!res.error) admLoadCalSyncStatus();
+        if (res.error){ admCalSetMsg(res.error.message || 'Échec de l\'enregistrement.', true); return; }
+        admCalSetMsg('Identifiant enregistré. Lancez la configuration.', false);
+        admLoadCalSyncStatus();
       });
     });
   }
 
+  // Le test réel (Apple) s'exécute côté serveur de façon asynchrone : le
+  // statut est relu après un délai, jamais supposé réussi d'avance.
   var admCalRunSetupBtn = document.getElementById('admCalRunSetupBtn');
   if (admCalRunSetupBtn){
     admCalRunSetupBtn.addEventListener('click', function(){
       admCalRunSetupBtn.disabled = true;
-      var msgEl = document.getElementById('admCalSyncMsg');
+      admCalSetMsg('Test de connexion Apple en cours…', false);
       sb.client.rpc('admin_trigger_calendar_setup').then(function(res){
-        admCalRunSetupBtn.disabled = false;
         if (res.error){
-          if (msgEl){ msgEl.hidden = false; msgEl.className = 'admin-travel-settings-msg is-error'; msgEl.textContent = res.error.message || 'Échec du déclenchement.'; }
+          admCalRunSetupBtn.disabled = false;
+          admCalSetMsg(res.error.message || 'Échec du déclenchement.', true);
           return;
         }
-        setTimeout(admLoadCalSyncStatus, 3000);
+        setTimeout(function(){ admCalRunSetupBtn.disabled = false; admCalSetMsg('', false); admLoadCalSyncStatus(); }, 6000);
       });
     });
   }
@@ -21324,15 +21392,14 @@ if ('serviceWorker' in navigator){
   if (admCalSyncNowBtn){
     admCalSyncNowBtn.addEventListener('click', function(){
       admCalSyncNowBtn.disabled = true;
-      var msgEl = document.getElementById('admCalSyncMsg');
+      admCalSetMsg('Synchronisation en cours…', false);
       sb.client.rpc('admin_trigger_calendar_sync').then(function(res){
-        admCalSyncNowBtn.disabled = false;
-        if (msgEl){
-          msgEl.hidden = false;
-          msgEl.className = res.error ? 'admin-travel-settings-msg is-error' : 'admin-travel-settings-msg is-success';
-          msgEl.textContent = res.error ? (res.error.message || 'Échec.') : 'Synchronisation lancée.';
+        if (res.error){
+          admCalSyncNowBtn.disabled = false;
+          admCalSetMsg(res.error.message || 'Échec.', true);
+          return;
         }
-        setTimeout(admLoadCalSyncStatus, 3000);
+        setTimeout(function(){ admCalSyncNowBtn.disabled = false; admCalSetMsg('', false); admLoadCalSyncStatus(); }, 5000);
       });
     });
   }
@@ -21343,7 +21410,9 @@ if ('serviceWorker' in navigator){
       e.preventDefault();
       var before = parseInt(document.getElementById('admCalMarginBefore').value, 10) || 0;
       var after = parseInt(document.getElementById('admCalMarginAfter').value, 10) || 0;
-      sb.client.rpc('admin_set_calendar_margins', { p_before_minutes: before, p_after_minutes: after });
+      sb.client.rpc('admin_set_calendar_margins', { p_before_minutes: before, p_after_minutes: after }).then(function(res){
+        admCalSetMsg(res.error ? (res.error.message || 'Échec.') : 'Marges enregistrées.', !!res.error);
+      });
     });
   }
 
