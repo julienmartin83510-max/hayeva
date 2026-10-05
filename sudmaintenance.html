@@ -3580,9 +3580,9 @@ if ('serviceWorker' in navigator){
   .admin-client-fiche-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 6px; border-bottom:1px solid var(--adm-line); padding-bottom:10px; }
   .admin-client-fiche-tab{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; padding:10px 14px; min-height:40px;
-    border-radius:999px; border:1.5px solid var(--adm-line); background:#fff; color:var(--adm-ink); cursor:pointer;
+    border-radius:999px; border:1.5px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink); cursor:pointer;
   }
-  .admin-client-fiche-tab.is-active{ background:var(--adm-ink); color:#fff; border-color:var(--adm-ink); }
+  .admin-client-fiche-tab.is-active{ background:var(--adm-navy); color:#fff; border-color:var(--adm-navy); }
   .admin-client-fiche-panel{ padding-top:6px; }
   .admin-equip-form{ display:flex; flex-direction:column; gap:12px; margin-top:12px; }
   .admin-equip-form label{ display:flex; flex-direction:column; gap:4px; font-size:0.85rem; font-weight:600; color:var(--adm-ink-soft); }
@@ -3646,7 +3646,7 @@ if ('serviceWorker' in navigator){
   .admin-bk-action-btn{
     display:inline-flex; align-items:center; justify-content:center; gap:6px; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.76rem;
     min-height:44px; padding:7px 14px; border-radius:8px; border:1.5px solid var(--adm-line); cursor:pointer; white-space:nowrap;
-    background:transparent; transition:background .2s ease, color .2s ease, border-color .2s ease;
+    background:transparent; color:var(--adm-ink); transition:background .2s ease, color .2s ease, border-color .2s ease;
   }
   .admin-bk-accept-btn{ border-color:var(--adm-green); color:var(--adm-green); }
   .admin-bk-accept-btn:hover{ background:var(--adm-green); color:#fff; }
@@ -3823,13 +3823,22 @@ if ('serviceWorker' in navigator){
      position:fixed si un ancêtre admin pose un jour un transform/filter) et
      sans toucher au planning, à Supabase ni à la logique de réservation. */
   .admin-bk-modal-overlay{
-    --adm-sand:#F2E9DA; --adm-card-bg:#FFFFFF;
+    --adm-navy:#101B2E; --adm-navy-soft:#1B2A45; --adm-petrol:#17394A;
+    --adm-ocean:#2C6FB3; --adm-ocean-soft:rgba(44,111,179,0.12); --adm-ocean-deep:#204F82;
+    --adm-turquoise:#3FA9A0; --adm-turquoise-soft:rgba(63,169,160,0.14);
+    --adm-coral:#E8724C; --adm-coral-soft:rgba(232,114,76,0.14); --adm-coral-deep:#C85A38;
+    --adm-sand:#F2E9DA; --adm-sand-deep:#EADDC6; --adm-offwhite:#F6F7FA; --adm-card-bg:#FFFFFF;
     --adm-ink:#212C3D; --adm-ink-soft:#5B6B80; --adm-line:rgba(33,44,61,0.10);
-    --adm-ocean:#2C6FB3;
+    --adm-shadow:0 14px 34px -18px rgba(16,27,46,0.22); --adm-shadow-sm:0 6px 18px -12px rgba(16,27,46,0.16);
+    --adm-green:#3F9463; --adm-green-soft:rgba(63,148,99,0.14);
+    --adm-amber:#C4862A; --adm-amber-soft:rgba(196,134,42,0.15);
+    --adm-grey:#7C8AA0; --adm-grey-soft:rgba(124,138,160,0.15);
+    --adm-red:#C1503B; --adm-red-soft:rgba(193,80,59,0.14);
+    --adm-blue:#2D6FA8; --adm-blue-soft:rgba(45,111,168,0.14);
   }
   @media (prefers-color-scheme: dark){
     .admin-bk-modal-overlay{
-      --adm-sand:#1E2A3D; --adm-card-bg:#1A2333;
+      --adm-offwhite:#111826; --adm-card-bg:#1A2333; --adm-sand:#1E2A3D; --adm-sand-deep:#243349;
       --adm-ink:#EEF2F7; --adm-ink-soft:rgba(238,242,247,0.68); --adm-line:rgba(238,242,247,0.12);
     }
   }
@@ -3839,9 +3848,20 @@ if ('serviceWorker' in navigator){
   }
   .admin-bk-modal-overlay[hidden]{ display:none; }
   .admin-bk-modal{
-    background:var(--adm-card-bg); border-radius:18px; padding:28px 26px; max-width:440px; width:100%;
+    background:var(--adm-card-bg); color:var(--adm-ink); border-radius:18px; padding:28px 26px; max-width:440px; width:100%;
     box-shadow:0 24px 60px -20px rgba(0,0,0,0.4); position:relative; margin-block:auto;
   }
+  /* Les règles globales "p{color:var(--ink-soft)}" et "h1,h2,h3{color:
+     var(--ink)}" (typographie du site public) ciblent directement ces
+     balises à l'intérieur des panneaux admin aussi, et l'emportent sur la
+     couleur héritée de .admin-bk-modal/#espaceProAdminPanel — un sélecteur
+     de type qui cible l'élément lui-même gagne toujours face à un simple
+     héritage, quelle que soit sa spécificité. --ink/--ink-soft sont calés
+     sur la palette sombre DU SITE PUBLIC, pas sur celle de l'admin, d'où un
+     texte illisible une fois les deux superposées en dark mode. */
+  .admin-bk-modal p, #espaceProAdminPanel p{ color:var(--adm-ink); }
+  .admin-bk-modal h1, .admin-bk-modal h2, .admin-bk-modal h3,
+  #espaceProAdminPanel h1, #espaceProAdminPanel h2, #espaceProAdminPanel h3{ color:var(--adm-ink); }
   .admin-bk-modal-wide{ max-width:760px; }
   /* ---------- Éditeur de devis (options + pièces jointes) ---------- */
   .qb-option-card{
