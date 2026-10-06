@@ -97,3 +97,15 @@
   for = "/sudmaintenance.html"
   [headers.values]
     Cache-Control = "no-cache"
+
+# Lien personnel de parrainage (https://hayeva.fr/rdv?ref=CODE) : même
+# application monopage, ouverte directement sur la prise de rendez-vous.
+[[redirects]]
+  from = "/rdv"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/rdv/"
+  to = "/index.html"
+  status = 200
