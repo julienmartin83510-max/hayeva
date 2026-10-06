@@ -25,79 +25,39 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
+import { ADMIN_BOOKING_EMAIL, sendEmailOnce } from '../_shared/mail.ts';
+import { escapeHtml, fmtDate, fmtTime, resolveBookingContact, rowHtml } from '../_shared/booking-contact.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const ADMIN_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL');
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
-const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
 const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
 const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.netlify.app/#espaceClient';
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
-  ));
-}
-function fmtDate(d: string): string {
-  const [y, m, day] = d.slice(0, 10).split('-');
-  return `${day}/${m}/${y}`;
-}
 function fmtDateTime(d: string, t: string): string {
-  return `${fmtDate(d)} à ${(t || '').slice(0, 5)}`;
+  return `${fmtDate(d)} à ${fmtTime(t)}`;
 }
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'En attente de validation',
+  CONFIRMED: 'Confirmé',
+};
 
-// Résout le nom/téléphone/e-mail/adresse du client d'une réservation — même
-// logique (invité / particulier connecté / professionnel) que celle déjà
-// écrite dans notify-admin-booking/index.ts, recopiée ici plutôt
-// qu'extraite en module partagé pour rester cohérent avec le reste du
-// projet (chaque fonction de notification a toujours porté sa propre copie
-// de cette résolution).
-async function resolveContact(supabase: ReturnType<typeof createClient>, booking: any) {
-  let name = 'Client';
-  let email = '';
-  if (booking.guest_name) {
-    name = booking.guest_name;
-    email = booking.guest_email || '';
-  } else if (booking.customer_user_id) {
-    const [{ data: cp }, { data: prof }] = await Promise.all([
-      supabase.from('customer_profiles').select('first_name,last_name').eq('user_id', booking.customer_user_id).maybeSingle(),
-      supabase.from('profiles').select('email').eq('user_id', booking.customer_user_id).maybeSingle(),
-    ]);
-    if (cp) name = [cp.first_name, cp.last_name].filter(Boolean).join(' ') || name;
-    if (prof) email = prof.email || '';
-  } else if (booking.professional_account_id) {
-    const { data: pa } = await supabase.from('professional_accounts').select('legal_name').eq('id', booking.professional_account_id).maybeSingle();
-    if (pa) name = pa.legal_name || name;
-  }
-  return { name, email };
-}
-
-async function sendAdminAlert(subject: string, badgeLabel: string, bodyHtml: string, reference: string) {
-  if (!RESEND_API_KEY || !ADMIN_EMAIL) {
-    console.error('notify-booking-change: RESEND_API_KEY ou ADMIN_NOTIFICATION_EMAIL manquant — e-mail admin ignoré.');
-    return;
-  }
-  const html = renderEmailShell(`
-    <h2 style="margin:0 0 16px; font-size:20px; color:#101B24;">${escapeHtml(badgeLabel)}</h2>
-    ${bodyHtml}
+// E-mail admin (contact@hayeva.fr) — flux séparé de l'e-mail client.
+function adminHtml(title: string, introHtml: string, rowsHtml: string, reference: string): string {
+  return renderEmailShell(`
+    <h2 style="margin:0 0 16px; font-size:20px; color:#101B24;">${escapeHtml(title)}</h2>
+    <p style="margin:0 0 18px; font-size:15px;">${introHtml}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">${rowsHtml}</table>
     <p style="margin:24px 0 0;">
       <a href="${ADMIN_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir le rendez-vous</a>
     </p>
   `, escapeHtml(reference || ''));
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [ADMIN_EMAIL], reply_to: REPLY_TO_EMAIL, subject, html }),
-  });
-  if (!res.ok) console.error('notify-booking-change: échec envoi Resend (admin)', res.status, await res.text());
 }
 
 // Push admin — même bloc que notify-admin-booking/index.ts (best-effort,
 // jamais bloquant, désactive l'abonnement sur 404/410).
-async function sendAdminPush(supabase: ReturnType<typeof createClient>, title: string, body: string, bookingId: string) {
+// deno-lint-ignore no-explicit-any
+async function sendAdminPush(supabase: any, title: string, body: string, bookingId: string) {
   try {
     const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
     const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
@@ -141,64 +101,90 @@ Deno.serve(async (req: Request) => {
     const { data: booking } = await supabase.from('bookings').select('*, services(name)').eq('id', payload.booking_id).maybeSingle();
     if (!booking) return new Response('booking not found', { status: 200 });
 
-    const contact = await resolveContact(supabase, booking);
+    const contact = await resolveBookingContact(supabase, booking);
     const serviceName = (booking.services && booking.services.name) || 'Intervention';
+    const phoneHtml = contact.phone ? `<a href="tel:${escapeHtml(contact.phone.replace(/\s+/g, ''))}" style="color:#1AA6EE;">${escapeHtml(contact.phone)}</a>` : '';
 
     if (payload.event === 'rescheduled') {
       const oldWhen = fmtDateTime(payload.old_date, payload.old_start_time);
       const newWhen = fmtDateTime(payload.new_date, payload.new_start_time);
+      const slotKey = `${payload.new_date}T${fmtTime(payload.new_start_time)}`;
+      // Politique ACTUELLE conservée telle quelle (reschedule_own_booking) :
+      // le statut ne change pas lors d'un déplacement — un RDV confirmé reste
+      // confirmé (événement Apple mis à jour, même UID, sans doublon), une
+      // demande en attente reste en attente de validation.
+      const statusLabel = STATUS_LABELS[booking.status] || booking.status;
 
-      await sendAdminAlert(
-        '🔁 Rendez-vous déplacé — HAYEVA',
-        'Rendez-vous déplacé',
-        `<p style="margin:0 0 18px; font-size:15px;">${escapeHtml(contact.name)} a déplacé son rendez-vous du <strong>${oldWhen}</strong> au <strong>${newWhen}</strong>.</p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
-          <tr><td style="padding:7px 0;color:#5B6B78;width:130px;">Client</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(contact.name)}</td></tr>
-          <tr><td style="padding:7px 0;color:#5B6B78;">Prestation</td><td style="padding:7px 0;text-align:right;">${escapeHtml(serviceName)}</td></tr>
-          <tr><td style="padding:7px 0;color:#5B6B78;">Ancien créneau</td><td style="padding:7px 0;text-align:right;">${oldWhen}</td></tr>
-          <tr><td style="padding:7px 0;color:#5B6B78;">Nouveau créneau</td><td style="padding:7px 0;text-align:right;font-weight:700;">${newWhen}</td></tr>
-        </table>`,
-        booking.reference
-      );
-      await sendAdminPush(supabase, '🔁 Rendez-vous déplacé', `${contact.name}\n${oldWhen} → ${newWhen}`, booking.id);
+      // Déplacement fait par l'administrateur lui-même (HAYEVA Pro) : pas
+      // d'e-mail admin à soi-même, uniquement l'e-mail au client.
+      const byAdmin = payload.by === 'admin';
+      const adminRes = byAdmin ? 'duplicate' : await sendEmailOnce(supabase, {
+        dedupeKey: `admin_rescheduled:${booking.id}:${slotKey}`,
+        bookingId: booking.id,
+        emailType: 'admin_rescheduled',
+        to: ADMIN_BOOKING_EMAIL,
+        subject: 'Rendez-vous HAYEVA modifié',
+        html: adminHtml('Rendez-vous modifié',
+          `${escapeHtml(contact.name)} a déplacé son rendez-vous : <strong>${oldWhen}</strong> → <strong>${newWhen}</strong>.`,
+          rowHtml('Client', escapeHtml(contact.name), true) +
+          rowHtml('Téléphone', phoneHtml) +
+          rowHtml('Prestation', escapeHtml(serviceName)) +
+          rowHtml('Ancien créneau', `<s>${oldWhen}</s>`) +
+          rowHtml('Nouveau créneau', newWhen, true) +
+          rowHtml('Adresse', escapeHtml(contact.address)) +
+          rowHtml('Statut', escapeHtml(statusLabel) + ' (inchangé)') +
+          rowHtml('Référence', escapeHtml(booking.reference || '')),
+          booking.reference),
+      });
+      if (adminRes !== 'duplicate') await sendAdminPush(supabase, 'Rendez-vous HAYEVA modifié', `${contact.name}\n${oldWhen} → ${newWhen}`, booking.id);
 
       if (contact.email) {
+        const pendingNote = booking.status === 'PENDING'
+          ? '<p style="margin:18px 0 0; font-size:14px;">Votre demande reste <strong>en attente de validation</strong> par HAYEVA. Vous recevrez un email dès qu\'elle sera confirmée.</p>'
+          : '';
         const html = renderEmailShell(`
-          <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour,</h2>
-          <p style="margin:0 0 18px; font-size:15px;">Votre rendez-vous HAYEVA a bien été <strong>déplacé</strong>, comme demandé.</p>
+          <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour ${escapeHtml(contact.firstName)},</h2>
+          <p style="margin:0 0 18px; font-size:15px;">${byAdmin ? 'Votre rendez-vous HAYEVA a été <strong>déplacé</strong> par HAYEVA. Merci de nous contacter si ce nouveau créneau ne vous convient pas.' : 'Votre rendez-vous HAYEVA a bien été <strong>déplacé</strong>, comme demandé.'}</p>
           ${statusBadgeHtml('🔁 Déplacé', 'rescheduled')}
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
             <tr><td style="padding:7px 0;color:#5B6B78;width:150px;">Prestation</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(serviceName)}</td></tr>
             <tr><td style="padding:7px 0;color:#5B6B78;">Ancien créneau</td><td style="padding:7px 0;text-align:right;">${oldWhen}</td></tr>
             <tr><td style="padding:10px 0 0;color:#101B24;font-weight:700;border-top:1px solid #E5E0D5;">Nouveau créneau</td><td style="padding:10px 0 0;font-weight:700;text-align:right;border-top:1px solid #E5E0D5;">${newWhen}</td></tr>
           </table>
+          ${pendingNote}
           <p style="margin:22px 0 0;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir mon rendez-vous</a></p>
         `, escapeHtml(booking.reference || ''));
-        if (RESEND_API_KEY) {
-          const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: FROM_EMAIL, to: [contact.email], reply_to: REPLY_TO_EMAIL, subject: 'Votre rendez-vous HAYEVA a été déplacé', html }),
-          });
-          if (!res.ok) console.error('notify-booking-change: échec envoi Resend (client)', res.status, await res.text());
-        }
+        await sendEmailOnce(supabase, {
+          dedupeKey: `client_rescheduled:${booking.id}:${slotKey}`,
+          bookingId: booking.id,
+          emailType: 'rescheduled',
+          to: contact.email,
+          subject: 'Votre rendez-vous HAYEVA a été déplacé',
+          html,
+        });
       }
     } else {
-      // cancelled_by_customer : l'e-mail client existe déjà (trigger
-      // notify_customer_status_change) — uniquement l'alerte admin ici.
+      // cancelled_by_customer : l'e-mail de confirmation d'annulation au
+      // CLIENT part séparément (trigger notify_customer_status_change) — ici
+      // uniquement l'alerte admin.
       const when = fmtDateTime(payload.date, payload.start_time);
-      await sendAdminAlert(
-        '✖ Rendez-vous annulé par le client — HAYEVA',
-        'Rendez-vous annulé',
-        `<p style="margin:0 0 18px; font-size:15px;">${escapeHtml(contact.name)} a annulé son rendez-vous du <strong>${when}</strong>.</p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
-          <tr><td style="padding:7px 0;color:#5B6B78;width:130px;">Client</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(contact.name)}</td></tr>
-          <tr><td style="padding:7px 0;color:#5B6B78;">Prestation</td><td style="padding:7px 0;text-align:right;">${escapeHtml(serviceName)}</td></tr>
-          <tr><td style="padding:7px 0;color:#5B6B78;">Créneau annulé</td><td style="padding:7px 0;text-align:right;">${when}</td></tr>
-        </table>`,
-        booking.reference
-      );
-      await sendAdminPush(supabase, '✖ Rendez-vous annulé', `${contact.name}\n${when}`, booking.id);
+      const adminRes = await sendEmailOnce(supabase, {
+        dedupeKey: `admin_cancelled:${booking.id}`,
+        bookingId: booking.id,
+        emailType: 'admin_cancelled',
+        to: ADMIN_BOOKING_EMAIL,
+        subject: '⚠️ Rendez-vous HAYEVA annulé',
+        html: adminHtml('Rendez-vous annulé par le client',
+          `${escapeHtml(contact.name)} a annulé son rendez-vous du <strong>${when}</strong>. Le créneau est libéré.`,
+          rowHtml('Client', escapeHtml(contact.name), true) +
+          rowHtml('Téléphone', phoneHtml) +
+          rowHtml('Prestation', escapeHtml(serviceName)) +
+          rowHtml('Date / heure annulées', when, true) +
+          rowHtml('Adresse', escapeHtml(contact.address)) +
+          rowHtml('Référence', escapeHtml(booking.reference || '')),
+          booking.reference),
+      });
+      if (adminRes !== 'duplicate') await sendAdminPush(supabase, '⚠️ Rendez-vous HAYEVA annulé', `${contact.name}\n${when}`, booking.id);
     }
 
     return new Response('ok', { status: 200 });

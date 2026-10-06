@@ -45,3 +45,38 @@
   from = "/admin/interventions/*"
   to = "/index.html"
   status = 200
+
+# Page de validation des demandes de RDV depuis l'e-mail admin (boutons
+# CONFIRMER / REFUSER) : jamais indexée, jamais mise en cache, aucun
+# Referer transmis (le jeton à usage unique est dans le fragment #...).
+[[headers]]
+  for = "/rdv-action.html"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+
+# Application technicien/admin HAYEVA Pro : point d'entrée dédié /app
+# (start_url de pro-manifest.json). Même application monopage (index.html),
+# ouverte directement sur « Mes interventions — Aujourd'hui ».
+[[redirects]]
+  from = "/app"
+  to = "/index.html"
+  status = 200
+
+# Service worker et manifestes : toujours revalidés (jamais une ancienne
+# version de l'application conservée sur l'iPhone).
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/pro-manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache"

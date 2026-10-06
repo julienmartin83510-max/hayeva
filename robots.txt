@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /sudmaintenance.html
+Disallow: /rdv-action.html
 
 Sitemap: https://hayeva.netlify.app/sitemap.xml
