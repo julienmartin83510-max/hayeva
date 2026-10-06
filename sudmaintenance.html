@@ -6267,7 +6267,7 @@ if ('serviceWorker' in navigator){
       <div class="lc-timeline" id="lcTimeline">
         <div class="lc-timeline-item">
           <span class="lc-timeline-label">Réservations</span>
-          <span class="lc-timeline-value" id="lcTimelineBooking">01 NOV. → 01 DÉC. 2026</span>
+          <span class="lc-timeline-value" id="lcTimelineBooking">06 OCT. → 06 DÉC. 2026</span>
         </div>
         <div class="lc-timeline-sep" aria-hidden="true"></div>
         <div class="lc-timeline-item">
@@ -6281,7 +6281,7 @@ if ('serviceWorker' in navigator){
         </div>
       </div>
 
-      <p class="lc-intro">Pour célébrer son lancement, HAYEVA organise un grand tirage au sort. Réservez une prestation éligible entre le 1er novembre et le 1er décembre 2026 inclus pour une intervention à partir du 2 janvier 2027 et participez selon les conditions du règlement.</p>
+      <p class="lc-intro" id="lcIntro">Pour célébrer son lancement, HAYEVA organise un grand tirage au sort. Réservez une prestation éligible entre le 6 octobre et le 6 décembre 2026 inclus pour une intervention à partir du 2 janvier 2027 et participez au tirage au sort selon les conditions du règlement.</p>
       <p class="lc-intro lc-intro-note">La participation associée à une réservation est soumise aux conditions du règlement, notamment concernant la réalisation, l'annulation ou le report de la prestation.</p>
 
       <p class="lc-lots-heading">3 grands lots à gagner</p>
@@ -9484,8 +9484,8 @@ if ('serviceWorker' in navigator){
      ======================================================================== */
   window.HAYEVA_LAUNCH_CAMPAIGN = window.HAYEVA_LAUNCH_CAMPAIGN || {
     active: true,
-    bookingStart: '2026-11-01',
-    bookingEnd: '2026-12-01',
+    bookingStart: '2026-10-06',
+    bookingEnd: '2026-12-06',
     serviceStart: '2027-01-02',
     drawDate: '2027-01-31',
     lots: {
@@ -9521,6 +9521,13 @@ if ('serviceWorker' in navigator){
     var months = upper ? MONTHS_FR : MONTHS_FR.map(function(m){ return m.toLowerCase(); });
     return dayLabel(d, upper) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
   }
+  // Comme fullDateLabel, mais sans l'année — pour "entre le 6 octobre et le
+  // 6 décembre 2026 inclus" (l'année n'apparaît qu'une fois, sur la 2e date).
+  function dayMonthLabel(iso){
+    var d = parseIsoDate(iso);
+    var months = MONTHS_FR.map(function(m){ return m.toLowerCase(); });
+    return dayLabel(d, false) + ' ' + months[d.getMonth()];
+  }
   function shortDateLabel(iso){
     var d = parseIsoDate(iso);
     return pad2(d.getDate()) + ' ' + MONTHS_FR_ABBR[d.getMonth()] + ' ' + d.getFullYear();
@@ -9544,6 +9551,14 @@ if ('serviceWorker' in navigator){
   if (elTimelineService) elTimelineService.textContent = 'À PARTIR DU ' + shortDateLabel(CONFIG.serviceStart);
   var elTimelineDraw = document.getElementById('lcTimelineDraw');
   if (elTimelineDraw) elTimelineDraw.textContent = shortDateLabel(CONFIG.drawDate);
+
+  var introEl = document.getElementById('lcIntro');
+  if (introEl){
+    introEl.textContent = 'Pour célébrer son lancement, HAYEVA organise un grand tirage au sort. Réservez une prestation éligible entre le ' +
+      dayMonthLabel(CONFIG.bookingStart) + ' et le ' + fullDateLabel(CONFIG.bookingEnd, false) +
+      ' inclus pour une intervention à partir du ' + fullDateLabel(CONFIG.serviceStart, false) +
+      ' et participez au tirage au sort selon les conditions du règlement.';
+  }
 
   var drawEl = document.getElementById('lcDraw');
   if (drawEl){
@@ -12558,7 +12573,7 @@ if ('serviceWorker' in navigator){
     { cat:'reservation-faq', popular:false, q:"Pourquoi l'adresse exacte est-elle demandée ?",
       a:"Elle permet notamment d'organiser l'intervention, de calculer le trajet et, lorsque cela s'applique, les éventuels frais de déplacement." },
     { cat:'reservation-faq', popular:true, q:"À partir de quand puis-je réserver une intervention ?",
-      a:"{{BRAND}} ouvre officiellement le 2 janvier 2027. Vous pouvez dès maintenant consulter les prestations et tarifs, et réserver un rendez-vous à partir du 2 janvier 2027 — y compris pendant le Grand Jeu de lancement HAYEVA (réservations du 1er novembre au 1er décembre 2026)." },
+      a:"{{BRAND}} ouvre officiellement le 2 janvier 2027. Vous pouvez dès maintenant consulter les prestations et tarifs, et réserver un rendez-vous à partir du 2 janvier 2027 — y compris pendant le Grand Jeu de lancement HAYEVA (réservations du {{LAUNCH_BOOKING_START}} au {{LAUNCH_BOOKING_END}})." },
 
     // ---- Particulier : Zone d'intervention ----
     { cat:'zone-faq', popular:true, q:"Dans quelles villes intervenez-vous ?",
@@ -12654,6 +12669,19 @@ if ('serviceWorker' in navigator){
       tokens.CHECK_EXPRESS = (window.sudBooking.getService('pro-check-express') || {}).price || '';
       tokens.CHECK_COMPLET = (window.sudBooking.getService('pro-check-complet') || {}).price || '';
       tokens.CHECK_PREMIUM = (window.sudBooking.getService('pro-check-premium') || {}).price || '';
+    }
+    // Dates du Grand Jeu de lancement — même source que la bannière
+    // (window.sudLaunchCampaignConfig), jamais une 2e paire de dates en dur
+    // dans une réponse de FAQ.
+    if (window.sudLaunchCampaignConfig){
+      var lcMonths = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      var lcFmt = function(iso){
+        var p = iso.split('-').map(Number);
+        var d = new Date(p[0], p[1] - 1, p[2]);
+        return (d.getDate() === 1 ? '1er' : d.getDate()) + ' ' + lcMonths[d.getMonth()] + ' ' + d.getFullYear();
+      };
+      tokens.LAUNCH_BOOKING_START = lcFmt(window.sudLaunchCampaignConfig.bookingStart);
+      tokens.LAUNCH_BOOKING_END = lcFmt(window.sudLaunchCampaignConfig.bookingEnd);
     }
     return text.replace(/\{\{(\w+)\}\}/g, function(m, key){
       return tokens.hasOwnProperty(key) ? tokens[key] : m;
@@ -16597,6 +16625,8 @@ if ('serviceWorker' in navigator){
         '.adm-iv-sheet .adm-iv-sub{font-size:0.82rem;color:var(--adm-ink-soft,#5B6B78);margin:0 0 16px;}' +
         '.adm-iv-section{border-top:1px solid var(--adm-line,#E5E1D6);padding-top:14px;margin-top:14px;}' +
         '.adm-iv-section h4{margin:0 0 10px;font-size:0.92rem;}' +
+        '@keyframes admIvInvalidFlash{0%,100%{box-shadow:0 0 0 3px rgba(193,80,59,0.45);}50%{box-shadow:0 0 0 3px rgba(193,80,59,0.1);}}' +
+        '.adm-iv-field-invalid{border-radius:10px;animation:admIvInvalidFlash 0.6s ease-in-out 2;outline:2px solid var(--adm-red,#C1503B);outline-offset:4px;}' +
         '.adm-iv-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--adm-line,#E5E1D6);}' +
         '.adm-iv-item-label{flex:1 1 220px;font-size:0.84rem;font-weight:600;min-width:0;}' +
         '.adm-iv-prior-hint{display:block;font-weight:500;font-style:italic;color:var(--adm-ink-soft,#5B6B78);font-size:0.72rem;margin-top:2px;}' +
@@ -17459,7 +17489,11 @@ if ('serviceWorker' in navigator){
         var pt = e.touches ? e.touches[0] : e;
         return { x: (pt.clientX - rect.left) * (canvas.width / rect.width), y: (pt.clientY - rect.top) * (canvas.height / rect.height) };
       }
-      function start(e){ drawing = true; last = posFromEvent(e); e.preventDefault(); }
+      function start(e){
+        drawing = true; last = posFromEvent(e); e.preventDefault();
+        var box = canvas.closest('.adm-iv-signature-box');
+        if (box) box.classList.remove('adm-iv-field-invalid');
+      }
       function move(e){
         if (!drawing) return;
         var p = posFromEvent(e);
@@ -17662,10 +17696,16 @@ if ('serviceWorker' in navigator){
       }
       if (e.target.id === 'admIvObs'){ admIv.observations = e.target.value; admIvScheduleSave(); return; }
       if (e.target.id === 'admIvReco'){ admIv.recommendations = e.target.value; admIvScheduleSave(); return; }
-      if (e.target.id === 'admIvReservesDetail'){ admIv.reservesDetail = e.target.value; admIvScheduleSave(); return; }
+      if (e.target.id === 'admIvReservesDetail'){
+        admIv.reservesDetail = e.target.value;
+        e.target.classList.remove('adm-iv-field-invalid');
+        admIvScheduleSave();
+        return;
+      }
       if (e.target.id === 'admIvCompletionStatus'){ admIv.completionStatus = e.target.value || null; admIvScheduleSave(); return; }
       if (e.target.id === 'admIvReservesStatus'){
         admIv.reservesStatus = e.target.value || null;
+        e.target.classList.remove('adm-iv-field-invalid');
         var needsDetail = admIv.reservesStatus && admIv.reservesStatus !== 'AUCUNE';
         if (!needsDetail) admIv.reservesDetail = '';
         // Bascule directe du champ détail en DOM (jamais un admIvRender()
@@ -17787,11 +17827,35 @@ if ('serviceWorker' in navigator){
       function showMsg(text, ok){
         msgEl.textContent = text; msgEl.className = 'adm-iv-msg ' + (ok ? 'is-success' : 'is-error'); msgEl.hidden = false;
       }
-      if (!clientName || admIvCanvasIsBlank(clientCanvas)){ showMsg('Merci de faire signer le client avant de valider.', false); return; }
-      if (!techName || admIvCanvasIsBlank(techCanvas)){ showMsg('Merci de renseigner et signer en tant que technicien avant de valider.', false); return; }
+      // Champ obligatoire manquant : au lieu d'un message générique, on
+      // amène le technicien EXACTEMENT là où agir — essentiel sur
+      // téléphone/tablette, sur une fiche longue (section 7 du cahier des
+      // charges UX technicien). Le highlight se retire tout seul à la
+      // prochaine interaction avec le champ (voir listeners plus bas).
+      function focusInvalid(el, text){
+        showMsg(text, false);
+        if (!el) return;
+        el.classList.add('adm-iv-field-invalid');
+        el.scrollIntoView({ behavior:'smooth', block:'center' });
+        if (typeof el.focus === 'function') el.focus({ preventScroll:true });
+      }
+      if (!clientName || admIvCanvasIsBlank(clientCanvas)){
+        focusInvalid(admIvOverlayRef.querySelector('.adm-iv-signature-box[data-role="client"]'), 'Merci de faire signer le client avant de valider.');
+        return;
+      }
+      if (!techName || admIvCanvasIsBlank(techCanvas)){
+        focusInvalid(admIvOverlayRef.querySelector('.adm-iv-signature-box[data-role="technician"]'), 'Merci de renseigner et signer en tant que technicien avant de valider.');
+        return;
+      }
       if (!admIvTemplateIsEntretien()){
-        if (!admIv.reservesStatus){ showMsg('Merci de renseigner les réserves / autres anomalies constatées avant de valider.', false); return; }
-        if (admIv.reservesStatus !== 'AUCUNE' && !(admIv.reservesDetail || '').trim()){ showMsg('Merci de décrire la réserve ou l\'anomalie constatée avant de valider.', false); return; }
+        if (!admIv.reservesStatus){
+          focusInvalid(document.getElementById('admIvReservesStatus'), 'Merci de répondre « Réserves / autres anomalies constatées » (même « Aucune ») avant de valider.');
+          return;
+        }
+        if (admIv.reservesStatus !== 'AUCUNE' && !(admIv.reservesDetail || '').trim()){
+          focusInvalid(document.getElementById('admIvReservesDetail'), 'Merci de décrire la réserve ou l\'anomalie constatée avant de valider.');
+          return;
+        }
       }
       var coVal = admIvCoAmbientValue();
       if (coVal !== null && coVal >= CO_AMBIENT_DANGER_THRESHOLD_PPM && !admIv.coDangerConfirmed){
