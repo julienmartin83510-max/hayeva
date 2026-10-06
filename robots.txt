@@ -3,4 +3,4 @@ Allow: /
 Disallow: /sudmaintenance.html
 Disallow: /rdv-action.html
 
-Sitemap: https://hayeva.netlify.app/sitemap.xml
+Sitemap: https://hayeva.fr/sitemap.xml
