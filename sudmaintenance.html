@@ -290,11 +290,23 @@
     return h;
   }
 
+  // Exclut l'activité interne (application technicien/admin, panneau
+  // Administration) des statistiques commerciales du site public — un
+  // admin qui consulte volontairement le site public comme un client
+  // continue, lui, d'être compté normalement (vérifié au moment même de
+  // chaque événement, jamais sur la seule identité du compte connecté).
+  function sudTrackIsInternalContext(){
+    if (window.HAYEVA_PRO_APP) return true;
+    var adminPanel = document.getElementById('espaceProAdminPanel');
+    return !!(adminPanel && !adminPanel.hidden);
+  }
+
   // Fire-and-forget, jamais bloquant : aucun await, une erreur reste locale
   // à ce module et ne doit jamais ralentir ni casser le reste du site.
   function sudTrack(eventType, page){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
+    if (sudTrackIsInternalContext()) return;
     try {
       sb.client.from('analytics_events').insert({
         event_type: eventType,
@@ -19559,27 +19571,8 @@ if ('serviceWorker' in navigator){
   // ce projet).
   // ============================================================
   var admStatsPeriod = 'today';
-  var admStatsRowsCache = null;
   var admStatsOnlineTimer = null;
   var admStatsRealtimeChannel = null;
-
-  function admStatsPeriodStart(period){
-    var d = new Date();
-    d.setHours(0, 0, 0, 0);
-    if (period === '7d') d.setDate(d.getDate() - 6);
-    else if (period === '30d') d.setDate(d.getDate() - 29);
-    return d;
-  }
-
-  function admStatsUniqueSessions(rows, sinceMs, untilMs, eventType){
-    var uniq = {};
-    rows.forEach(function(r){
-      if (eventType && r.event_type !== eventType) return;
-      var t = new Date(r.created_at).getTime();
-      if (t >= sinceMs && (untilMs == null || t < untilMs)) uniq[r.session_id] = true;
-    });
-    return Object.keys(uniq).length;
-  }
 
   function admStatsCountOnline(){
     var sb = window.sudSupabase;
@@ -19644,50 +19637,48 @@ if ('serviceWorker' in navigator){
     return "aujourd'hui";
   }
 
-  function admRenderStatsCards(rows){
-    var periodStart = admStatsPeriodStart(admStatsPeriod).getTime();
-    var visitors = admStatsUniqueSessions(rows, periodStart, null, 'page_view');
-    var pageviews = rows.filter(function(r){ return r.event_type === 'page_view' && new Date(r.created_at).getTime() >= periodStart; }).length;
-    var sevenDaysStart = admStatsPeriodStart('7d').getTime();
-    var visitors7d = admStatsUniqueSessions(rows, sevenDaysStart, null, 'page_view');
+  // Les agrégats (cartes/graphique/entonnoir/pages) viennent désormais
+  // TOUJOURS de admin_analytics_summary() — calculés côté serveur,
+  // jamais en rapatriant des lignes brutes vers le navigateur (voir
+  // 0079_admin_analytics_summary.sql pour la raison : la limite
+  // PostgREST max_rows=1000 tronquait silencieusement l'ancienne requête
+  // dès que analytics_events dépassait 1000 lignes sur 30 jours).
+  function admRenderStatsCards(summary){
     var label = admStatsPeriodLabel(admStatsPeriod);
-    document.getElementById('admStatVisitors').textContent = String(visitors);
+    document.getElementById('admStatVisitors').textContent = String(summary.visitors);
     document.getElementById('admStatVisitorsLabel').textContent = 'Visiteurs ' + label;
-    document.getElementById('admStatPageviews').textContent = String(pageviews);
+    document.getElementById('admStatPageviews').textContent = String(summary.pageviews);
     document.getElementById('admStatPageviewsLabel').textContent = 'Pages vues ' + label;
-    document.getElementById('admStat7d').textContent = String(visitors7d);
+    document.getElementById('admStat7d').textContent = String(summary.visitors_7d);
   }
 
-  function admRenderStatsChart(rows){
+  function admRenderStatsChart(summary){
     var el = document.getElementById('admStatsChart');
     if (!el) return;
-    var days = [];
-    for (var i = 6; i >= 0; i--){
-      var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
-      days.push(d);
-    }
-    var counts = days.map(function(d){
-      return admStatsUniqueSessions(rows, d.getTime(), d.getTime() + 24 * 60 * 60 * 1000, 'page_view');
-    });
+    var daily = summary.daily_7d || [];
+    var counts = daily.map(function(d){ return d.visitors; });
     var max = Math.max.apply(null, counts.concat([1]));
     var dayNames = ['dim','lun','mar','mer','jeu','ven','sam'];
-    el.innerHTML = days.map(function(d, idx){
+    el.innerHTML = daily.map(function(d, idx){
       var h = Math.round((counts[idx] / max) * 100);
+      // Parsing manuel (pas new Date('YYYY-MM-DD'), qui serait interprété en
+      // UTC par le moteur JS et pourrait afficher le mauvais jour de la
+      // semaine selon le fuseau du navigateur) — d.date vient déjà de
+      // Postgres en jours civils Europe/Paris (voir la migration).
+      var parts = d.date.split('-').map(Number);
+      var dow = new Date(parts[0], parts[1] - 1, parts[2]).getDay();
       return '<div class="admin-stats-bar-col">' +
         '<span class="admin-stats-bar-value">' + counts[idx] + '</span>' +
         '<div class="admin-stats-bar" style="height:' + Math.max(h, 3) + '%"></div>' +
-        '<span class="admin-stats-bar-label">' + dayNames[d.getDay()] + '</span>' +
+        '<span class="admin-stats-bar-label">' + dayNames[dow] + '</span>' +
       '</div>';
     }).join('');
   }
 
-  function admRenderStatsFunnel(rows){
+  function admRenderStatsFunnel(summary){
     var el = document.getElementById('admStatsFunnel');
     if (!el) return;
-    var periodStart = admStatsPeriodStart(admStatsPeriod).getTime();
-    var visitors = admStatsUniqueSessions(rows, periodStart, null, 'page_view');
-    var started = admStatsUniqueSessions(rows, periodStart, null, 'booking_started');
-    var completed = admStatsUniqueSessions(rows, periodStart, null, 'booking_completed');
+    var visitors = summary.visitors, started = summary.booking_started, completed = summary.booking_completed;
     var rate = visitors > 0 ? ((completed / visitors) * 100).toFixed(1).replace('.', ',') : '0,0';
     el.innerHTML =
       '<div class="admin-stats-funnel-step"><span class="admin-stats-funnel-value">' + visitors + '</span><span class="admin-stats-funnel-label">Visiteurs</span></div>' +
@@ -19703,19 +19694,10 @@ if ('serviceWorker' in navigator){
     zone:'Zone d\'intervention', faq:'FAQ', contact:'Contact', pourquoi:'Pourquoi nous',
     espaceClient:'Espace Client', espacePro:'Espace Professionnel'
   };
-  function admRenderStatsPages(rows){
+  function admRenderStatsPages(summary){
     var el = document.getElementById('admStatsPages');
     if (!el) return;
-    var periodStart = admStatsPeriodStart(admStatsPeriod).getTime();
-    var counts = {};
-    rows.forEach(function(r){
-      if (r.event_type !== 'page_view') return;
-      if (new Date(r.created_at).getTime() < periodStart) return;
-      var p = r.page || 'accueil';
-      counts[p] = (counts[p] || 0) + 1;
-    });
-    var entries = Object.keys(counts).map(function(p){ return { page:p, count:counts[p] }; })
-      .sort(function(a, b){ return b.count - a.count; }).slice(0, 8);
+    var entries = summary.top_pages || [];
     if (!entries.length){
       el.innerHTML = '<div class="ec-empty"><strong>Aucune donnée</strong>Pas encore de visite sur cette période.</div>';
       return;
@@ -19727,6 +19709,25 @@ if ('serviceWorker' in navigator){
     }).join('');
   }
 
+  var ADM_STATS_REFRESH_MS = 60000;
+  var admStatsRefreshTimer = null;
+  function admFetchStatsSummary(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    sb.client.rpc('admin_analytics_summary', { p_period: admStatsPeriod }).then(function(res){
+      if (res.error){
+        console.error('admLoadStats: échec admin_analytics_summary', res.error);
+        var chartEl = document.getElementById('admStatsChart');
+        if (chartEl) chartEl.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les statistiques</strong><button type="button" class="adm-retry-btn" data-adm-retry="stats">↻ Réessayer</button></div>';
+        return;
+      }
+      var summary = res.data || {};
+      admRenderStatsCards(summary);
+      admRenderStatsChart(summary);
+      admRenderStatsFunnel(summary);
+      admRenderStatsPages(summary);
+    }).catch(function(err){ console.error('admLoadStats: erreur réseau/inattendue', err); });
+  }
   function admLoadStats(){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
@@ -19740,23 +19741,11 @@ if ('serviceWorker' in navigator){
     // filtre Aujourd'hui/7j/30j (plus bas) ne rappelle jamais admLoadStats()
     // ni cette fonction, donc jamais de deuxième abonnement créé.
     admStatsSubscribeOnlineRealtime();
-    var since = admStatsPeriodStart('30d').toISOString();
-    sb.client.from('analytics_events').select('event_type, session_id, page, created_at')
-      .gte('created_at', since)
-      .then(function(res){
-        if (res.error){
-          console.error('admLoadStats: échec de la requête analytics_events', res.error);
-          var chartEl = document.getElementById('admStatsChart');
-          if (chartEl) chartEl.innerHTML = '<div class="ec-empty"><strong>Impossible de charger les statistiques</strong><button type="button" class="adm-retry-btn" data-adm-retry="stats">↻ Réessayer</button></div>';
-          return;
-        }
-        admStatsRowsCache = res.data || [];
-        admRenderStatsCards(admStatsRowsCache);
-        admRenderStatsChart(admStatsRowsCache);
-        admRenderStatsFunnel(admStatsRowsCache);
-        admRenderStatsPages(admStatsRowsCache);
-      })
-      .catch(function(err){ console.error('admLoadStats: erreur réseau/inattendue', err); });
+    // Rafraîchissement périodique MODÉRÉ des agrégats (pas à chaque INSERT
+    // Realtime, trop bavard pour une simple page de stats — voir §23 du
+    // cahier des charges) — un seul minuteur pour toute la session admin.
+    if (!admStatsRefreshTimer) admStatsRefreshTimer = setInterval(admFetchStatsSummary, ADM_STATS_REFRESH_MS);
+    admFetchStatsSummary();
   }
   var admStatsPeriodFiltersEl = document.getElementById('admStatsPeriodFilters');
   if (admStatsPeriodFiltersEl){
@@ -19767,11 +19756,7 @@ if ('serviceWorker' in navigator){
       Array.prototype.forEach.call(admStatsPeriodFiltersEl.querySelectorAll('[data-adm-stats-period]'), function(b){
         b.classList.toggle('is-active', b === btn);
       });
-      if (admStatsRowsCache){
-        admRenderStatsCards(admStatsRowsCache);
-        admRenderStatsFunnel(admStatsRowsCache);
-        admRenderStatsPages(admStatsRowsCache);
-      }
+      admFetchStatsSummary();
     });
   }
   document.addEventListener('click', function(e){
