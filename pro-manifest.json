@@ -1,16 +1,16 @@
 {
-  "id": "./?app=pro",
+  "id": "/app",
   "name": "HAYEVA Pro",
-  "short_name": "HAYEVA Pro",
-  "description": "Application professionnelle HAYEVA — planning, clients, interventions.",
-  "start_url": "./?app=pro#espacePro",
-  "scope": "./",
+  "short_name": "HAYEVA",
+  "description": "Application technicien HAYEVA — mes interventions du jour, planning, clients.",
+  "start_url": "/app",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#FFFFFF",
+  "background_color": "#101B24",
   "theme_color": "#101B24",
   "icons": [
-    { "src": "images/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "images/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "/images/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }

@@ -86,7 +86,12 @@
   // pour l'installation sur l'écran d'accueil (iPhone, iPad, ordinateur),
   // et ouverture directe sur l'espace administration (jamais le site public).
   (function(){
-    var isPro = /(?:^|[?&])app=pro(?:&|$)/.test(location.search);
+    // /app/ (avec barre finale) → /app : les chemins relatifs du site
+    // (images/…, manifest…) restent ainsi résolus depuis la racine.
+    if (/^\/app\/+$/.test(location.pathname)){ location.replace('/app' + location.search + location.hash); return; }
+    // Point d'entrée DÉDIÉ de l'application technicien/admin : /app
+    // (start_url de pro-manifest.json). ?app=pro reste accepté (ancienne icône).
+    var isPro = location.pathname === '/app' || /(?:^|[?&])app=pro(?:&|$)/.test(location.search);
     var standalone = false, adminDevice = false;
     try { standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch(e){}
     try {
@@ -104,7 +109,21 @@
     if (adminDevice) window.hvpMarkProInstallable();
     if (!isPro) return;
     window.HAYEVA_PRO_APP = true;
-    document.documentElement.classList.add('hayeva-pro-app');
+    // hvp-booting : rien de l'écran de connexion n'est affiché tant que la
+    // session Supabase n'a pas été vérifiée (getSession) — voir le module
+    // Espace Pro (handleRealSession / état initial).
+    document.documentElement.classList.add('hayeva-pro-app', 'hvp-booting');
+    window.hvpBootDone = function(){ if (window.hvpApplyGateTexts) window.hvpApplyGateTexts(); document.documentElement.classList.remove('hvp-booting'); };
+    setTimeout(window.hvpBootDone, 10000); // filet de sécurité (réseau absent)
+    // Écran de connexion DÉDIÉ technicien/admin (jamais le texte « Espace
+    // Professionnel » des conciergeries) — même formulaire sécurisé Supabase.
+    window.hvpApplyGateTexts = function(){
+      var t = document.getElementById('espaceProGateTitle'); if (t) t.textContent = 'HAYEVA — Application technicien';
+      var st = document.getElementById('espaceProGateSubtitle'); if (st) st.textContent = 'Connexion administrateur. Une seule connexion : vous restez ensuite connecté sur cet appareil.';
+      var eb = document.querySelector('#espaceProGate .espace-pro-intro .eyebrow'); if (eb && eb.firstChild) eb.firstChild.nodeValue = 'HAYEVA Pro';
+      var em = document.getElementById('espaceProEmail'); if (em) em.setAttribute('placeholder', 'contact@hayeva.fr');
+    };
+    document.addEventListener('DOMContentLoaded', window.hvpApplyGateTexts);
     var m = document.querySelector('link[rel="manifest"]'); if (m) m.setAttribute('href', 'pro-manifest.json');
     var t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.setAttribute('content', 'HAYEVA Pro');
     var c = document.querySelector('meta[name="theme-color"]'); if (c) c.setAttribute('content', '#101B24');
@@ -230,7 +249,7 @@
   if (configured && window.supabase && window.supabase.createClient){
     try {
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { storage: sudAuthStorage, persistSession: true, autoRefreshToken: true }
+        auth: { storage: sudAuthStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
     } catch(e){ client = null; }
   }
@@ -405,7 +424,11 @@
 // "Activer les notifications" (voir le module Administration plus bas).
 if ('serviceWorker' in navigator){
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      // Vérifie une nouvelle version de l'application à chaque retour au
+      // premier plan (PWA iPhone restée ouverte en arrière-plan).
+      document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') reg.update().catch(function(){}); });
+    }).catch(function(){});
   });
 }
 </script>
@@ -5976,6 +5999,17 @@ if ('serviceWorker' in navigator){
   html.hayeva-pro-app .hv-site-link{ display:none !important; }
   #admIvSyncBadge[data-state="offline"]{ color:#B23A3A !important; }
   #admIvSyncBadge[data-state="saving"]{ color:#5B6B78 !important; }
+
+  /* ---------- Application technicien (/app) ---------- */
+  html.hayeva-pro-app #espaceProBackToPortal,
+  html.hayeva-pro-app #espaceProShowSignup,
+  html.hayeva-pro-app #sitePortal,
+  html.hayeva-pro-app #cookieBanner{ display:none !important; }
+  html.hvp-booting #espaceProGate{ visibility:hidden !important; }
+  html.hvp-booting body::after{
+    content:"HAYEVA"; position:fixed; inset:0; z-index:2147483600; display:flex; align-items:center; justify-content:center;
+    background:#101B24 url("images/brand/hayeva-logo-sm.png") center 38% / 180px auto no-repeat; color:transparent;
+  }
 </style>
 
 <div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
@@ -13264,9 +13298,27 @@ if ('serviceWorker' in navigator){
   // professionnel", alors que profiles.global_role valait bien 'admin' en
   // base.
   function fetchRole(userId){
-    return sb.client.from('profiles').select('global_role').eq('user_id', userId).maybeSingle().then(function(res){
-      return res.data ? res.data.global_role : null;
-    }).catch(function(){ return null; });
+    // Réseau faible au démarrage (application terrain) : si la lecture du
+    // rôle échoue pour une raison RÉSEAU, on reprend le dernier rôle admin
+    // confirmé sur cet appareil pour CE compte — affichage seulement, toutes
+    // les données restent protégées côté serveur (RLS is_admin()).
+    function cachedAdmin(){
+      try { return window.localStorage.getItem('hayeva_admin_uid') === userId ? 'admin' : null; } catch(e){ return null; }
+    }
+    var roleQuery = sb.client.from('profiles').select('global_role').eq('user_id', userId).maybeSingle();
+    // Application terrain : on n'attend jamais plus de 3 s un réseau absent.
+    if (window.HAYEVA_PRO_APP && cachedAdmin()){
+      roleQuery = Promise.race([roleQuery, new Promise(function(resolve){ setTimeout(function(){ resolve({ error: { message: 'timeout' }, data: null }); }, 3000); })]);
+    }
+    return Promise.resolve(roleQuery).then(function(res){
+      if (res.error && !res.data) return cachedAdmin();
+      var role = res.data ? res.data.global_role : null;
+      try {
+        if (role === 'admin') window.localStorage.setItem('hayeva_admin_uid', userId);
+        else window.localStorage.removeItem('hayeva_admin_uid');
+      } catch(e){}
+      return role;
+    }).catch(function(){ return cachedAdmin(); });
   }
 
   // Provisionne professional_accounts + professional_members + profiles à la
@@ -13320,6 +13372,12 @@ if ('serviceWorker' in navigator){
     provisionProfessionalIfNeeded(session.user).then(function(){
       return fetchRole(session.user.id);
     }).then(function(role){
+      if (window.hvpBootDone) window.hvpBootDone();
+      if (window.HAYEVA_PRO_APP && role !== 'admin'){
+        renderLocked();
+        showMsg(loginError, "Cette application est réservée à l'administrateur / technicien HAYEVA.");
+        return;
+      }
       if (role === 'professional' || role === 'admin'){
         renderUnlocked('real', 'Espace professionnel — ' + (session.user.email || 'connecté'));
         initAdminPanel(role);
@@ -13354,10 +13412,11 @@ if ('serviceWorker' in navigator){
       var session = res && res.data && res.data.session;
       if (session){
         handleRealSession(session);
-      } else if (isDemoUnlocked()){
-        renderUnlocked('demo', 'Espace professionnel — démonstration locale');
+      } else {
+        if (window.hvpBootDone) window.hvpBootDone();
+        if (isDemoUnlocked()) renderUnlocked('demo', 'Espace professionnel — démonstration locale');
       }
-    });
+    }).catch(function(){ if (window.hvpBootDone) window.hvpBootDone(); });
     sb.client.auth.onAuthStateChange(function(event, session){
       if (event === 'SIGNED_OUT' && currentSessionType === 'real'){
         renderLocked();
@@ -19146,7 +19205,7 @@ if ('serviceWorker' in navigator){
         // Arrivé directement sur cette URL (pas d'entrée HAYEVA précédente à
         // qui revenir) : retour explicite à la racine plutôt qu'un back()
         // qui sortirait potentiellement du site.
-        window.history.pushState(null, '', '/');
+        window.history.pushState(null, '', window.HAYEVA_PRO_APP ? '/app' : '/');
       }
     } catch(err){
       admIvDebugLog('Nettoyage URL ignoré à la fermeture', (err && err.message) || String(err));
