@@ -2083,6 +2083,19 @@ if ('serviceWorker' in navigator){
   .ref-promo-n{ flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:var(--navy-fixed); color:#fff; font-family:"Poppins",sans-serif; font-weight:800; display:flex; align-items:center; justify-content:center; }
   .ref-promo-steps h3{ font-size:1rem; margin:2px 0 4px; color:var(--navy-fixed); }
   .ref-promo-steps p{ font-size:0.88rem; color:var(--ink-soft); margin:0; line-height:1.5; }
+  .ref-biz-band{ margin-top:32px; padding:22px 20px; border:1px solid var(--line); border-radius:18px; background:var(--white); display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+  .ref-biz-q{ font-family:"Poppins",sans-serif; font-weight:700; color:var(--navy-fixed); margin:0; }
+  .ref-biz-sub{ color:var(--ink-soft); margin:0 0 8px; font-size:0.92rem; }
+  .ref-biz-btn{ min-height:44px; padding:10px 18px; border-radius:999px; border:1.5px solid var(--navy-fixed); background:transparent; color:var(--navy-fixed); font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem; cursor:pointer; max-width:100%; white-space:normal; }
+  .ref-biz-form{ display:flex; flex-direction:column; gap:12px; margin-top:12px; }
+  .ref-biz-form label{ display:flex; flex-direction:column; gap:6px; font-size:0.86rem; font-weight:700; color:var(--ink-soft); }
+  .ref-biz-form input[type="text"], .ref-biz-form input[type="email"], .ref-biz-form input[type="tel"], .ref-biz-form textarea{
+    font-family:inherit; font-size:0.95rem; padding:11px 13px; border-radius:10px; border:1.5px solid var(--line); background:var(--white); color:var(--ink);
+  }
+  .ref-biz-form .ref-biz-consent{ flex-direction:row; align-items:flex-start; gap:10px; font-weight:500; line-height:1.45; }
+  .ref-biz-form .ref-biz-consent input{ margin-top:3px; width:18px; height:18px; flex:0 0 auto; }
+  .ref-biz-msg{ margin:0; font-size:0.88rem; color:#B23A3A; }
+  .ref-biz-msg.is-ok{ color:#2F7A4F; font-weight:700; }
   /* Code de parrainage (facultatif) */
   .bk-ref-block{ grid-column:1/-1; display:flex; flex-direction:column; gap:6px; }
   .bk-ref-q{ font-size:0.86rem; font-weight:700; color:var(--ink-soft); margin:0; }
@@ -9015,10 +9028,10 @@ if ('serviceWorker' in navigator){
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
                   <h2 class="adm-page-title">Parrainages</h2>
-                  <p class="adm-page-sub">Programme PARRAINAGE HAYEVA : une prime n'est validée qu'après intervention terminée et paiement confirmé au-dessus du seuil. Aucun virement n'est déclenché automatiquement.</p>
+                  <p class="adm-page-sub">Programme de parrainage HAYEVA et apporteurs d'affaires : une prime n'est validée qu'après intervention terminée et paiement confirmé au-dessus du seuil. Aucun virement n'est déclenché automatiquement.</p>
                 </div>
                 <div class="adm-stats-grid">
-                  <div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="refStatAmb">—</span><span class="adm-stat-label">Ambassadeurs actifs</span></div>
+                  <div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="refStatAmb">—</span><span class="adm-stat-label">Parrains actifs</span></div>
                   <div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="refStatClients">—</span><span class="adm-stat-label">Nouveaux clients apportés</span></div>
                   <div class="adm-stat-card adm-stat-sand"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="refStatPending">—</span><span class="adm-stat-label">Parrainages en attente</span></div>
                   <div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" id="refStatValidated">—</span><span class="adm-stat-label">Parrainages validés</span></div>
@@ -9031,18 +9044,26 @@ if ('serviceWorker' in navigator){
                 <div id="refAdmVerify"><p class="ec-loading">Chargement…</p></div>
                 <h3 class="adm-subhead">Demandes de versement</h3>
                 <div id="refAdmPayouts"><p class="ec-loading">Chargement…</p></div>
-                <h3 class="adm-subhead">Ambassadeurs</h3>
+                <div class="ref-adm-head-row">
+                  <h3 class="adm-subhead">Parrains particuliers et apporteurs d'affaires</h3>
+                  <button type="button" class="hvp-primary-btn" id="refAdmAddBtn">+ AJOUTER UN PARRAIN</button>
+                </div>
+                <div class="ref-adm-split" id="refAdmSplit"></div>
                 <div class="hvp-toolbar ref-adm-toolbar">
                   <input type="search" id="refAdmSearch" class="hvp-search" placeholder="Nom, code, e-mail, réservation, « Client #4821 »…" autocomplete="off">
                   <select id="refAdmFilter" class="hvp-search ref-adm-filter" aria-label="Filtrer">
                     <option value="all">Tous</option>
-                    <option value="available">Solde disponible</option>
-                    <option value="pending">Primes en attente</option>
+                    <option value="individual">Parrains particuliers</option>
+                    <option value="business">Apporteurs d'affaires</option>
                     <option value="review">À vérifier</option>
+                    <option value="suspended">Suspendus</option>
+                    <option value="available">Solde disponible</option>
                     <option value="reserved">Versement en cours</option>
                   </select>
                 </div>
                 <div id="refAdmList"><p class="ec-loading">Chargement…</p></div>
+                <h3 class="adm-subhead">Demandes « apporteur d'affaires »</h3>
+                <div id="refAdmApps"><p class="ec-loading">Chargement…</p></div>
                 <h3 class="adm-subhead">Configuration du programme</h3>
                 <div id="refAdmSettings"><p class="ec-loading">Chargement…</p></div>
               </section>
@@ -9503,21 +9524,27 @@ if ('serviceWorker' in navigator){
   <section id="parrainage" class="section-relative ref-promo" hidden>
     <div class="wrap">
       <div class="section-head">
-        <p class="eyebrow">Parrainage HAYEVA<span class="rule"></span></p>
-        <h2>PARRAINEZ. RECOMMANDEZ. GAGNEZ.</h2>
+        <p class="eyebrow">Programme de parrainage HAYEVA<span class="rule"></span></p>
+        <h2>PARRAINEZ VOS PROCHES AVEC HAYEVA</h2>
       </div>
       <div class="ref-promo-grid">
         <div class="ref-promo-main">
-          <p class="ref-promo-big"><span data-ref-reward>20 €</span> par nouveau client éligible.</p>
-          <p class="ref-promo-sub">10 clients validés = <span data-ref-ten>200 €</span>.</p>
-          <button type="button" class="btn-primary ref-promo-cta" id="refPromoCta">DEVENIR AMBASSADEUR HAYEVA</button>
-          <p class="ref-promo-legal">Prime de <span data-ref-reward>20 €</span> accordée pour tout nouveau client éligible ayant réglé une prestation d'au moins <span data-ref-min>100 €</span> TTC. <a href="#" id="refPromoTermsLink">Conditions applicables</a>.</p>
+          <p class="ref-promo-big">Recommandez HAYEVA à votre entourage et bénéficiez de <span data-ref-reward>20 €</span> pour chaque nouveau client éligible.</p>
+          <p class="ref-promo-sub"><span data-ref-ten-count>10</span> parrainages validés = <span data-ref-payout>200 €</span>.</p>
+          <p class="ref-promo-sub">La prime est validée après réalisation et paiement d'une prestation éligible d'au moins <span data-ref-min>100 €</span> TTC.</p>
+          <button type="button" class="btn-primary ref-promo-cta" id="refPromoCta">DÉCOUVRIR LE PARRAINAGE</button>
+          <p class="ref-promo-legal"><a href="#" id="refPromoTermsLink">Conditions du programme de parrainage</a></p>
         </div>
         <ol class="ref-promo-steps">
-          <li><span class="ref-promo-n">1</span><div><h3>Partagez</h3><p>Partagez votre code ou votre lien HAYEVA.</p></div></li>
+          <li><span class="ref-promo-n">1</span><div><h3>Recommandez</h3><p>Partagez votre code ou votre lien de parrainage avec un proche.</p></div></li>
           <li><span class="ref-promo-n">2</span><div><h3>Votre filleul fait appel à HAYEVA</h3><p>Il utilise votre code et règle une prestation éligible d'au moins <span data-ref-min>100 €</span> TTC.</p></div></li>
-          <li><span class="ref-promo-n">3</span><div><h3>Gagnez <span data-ref-reward>20 €</span></h3><p>Après validation de l'intervention et du paiement, <span data-ref-reward>20 €</span> sont ajoutés à votre solde.</p></div></li>
+          <li><span class="ref-promo-n">3</span><div><h3>Prime de parrainage</h3><p>Après validation de l'intervention et du paiement, <span data-ref-reward>20 €</span> sont ajoutés à votre solde.</p></div></li>
         </ol>
+      </div>
+      <div class="ref-biz-band" id="refBizBand" hidden>
+        <p class="ref-biz-q">Vous souhaitez recommander HAYEVA de manière régulière ou professionnelle ?</p>
+        <p class="ref-biz-sub">Découvrez le programme d'apporteurs d'affaires HAYEVA.</p>
+        <button type="button" class="ref-biz-btn" data-ref-biz-open>DEVENIR APPORTEUR D'AFFAIRES</button>
       </div>
     </div>
   </section>
@@ -9944,6 +9971,36 @@ if ('serviceWorker' in navigator){
   window.sudOpenFounderBio = openFounderBio;
 })();
 </script>
+
+<!-- ============================================================
+     Demande « Apporteur d'affaires HAYEVA » : simple prise de contact,
+     traitée par l'administration (aucune activité ouverte automatiquement).
+     ============================================================ -->
+<div class="legal-overlay" id="refBizOverlay" hidden>
+  <div class="legal-overlay-inner">
+    <div class="legal-overlay-topbar">
+      <span class="legal-overlay-brand">HAYEVA — Apporteur d'affaires</span>
+      <button type="button" class="legal-overlay-close" id="refBizClose" aria-label="Fermer">✕</button>
+    </div>
+    <div class="legal-overlay-content">
+      <article class="founder-bio-card">
+        <h2>Devenir apporteur d'affaires HAYEVA</h2>
+        <p>Vous souhaitez recommander HAYEVA de manière régulière ou professionnelle ? Laissez-nous vos coordonnées : nous vous recontactons pour étudier votre demande.</p>
+        <form class="ref-biz-form" id="refBizForm" novalidate>
+          <label>Nom / raison sociale<input type="text" id="refBizName" maxlength="160" autocomplete="organization" required></label>
+          <label>Nom du contact (facultatif)<input type="text" id="refBizContact" maxlength="160" autocomplete="name"></label>
+          <label>E-mail<input type="email" id="refBizEmail" maxlength="200" autocomplete="email" required></label>
+          <label>Téléphone (facultatif)<input type="tel" id="refBizPhone" maxlength="30" autocomplete="tel"></label>
+          <label>SIREN ou SIRET (facultatif)<input type="text" id="refBizSiren" maxlength="20" inputmode="numeric"></label>
+          <label>Votre message (facultatif)<textarea id="refBizMessage" rows="3" maxlength="2000"></textarea></label>
+          <label class="ref-biz-consent"><input type="checkbox" id="refBizConsent"> J'accepte que HAYEVA utilise ces informations pour me recontacter au sujet de ma demande. <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a></label>
+          <p class="ref-biz-msg" id="refBizMsg" hidden aria-live="polite"></p>
+          <button type="submit" class="btn-primary" id="refBizSubmit">ENVOYER MA DEMANDE</button>
+        </form>
+      </article>
+    </div>
+  </div>
+</div>
 
 <!-- ============================================================
      Conditions du programme de parrainage HAYEVA — reprend uniquement les
@@ -22967,8 +23024,8 @@ if ('serviceWorker' in navigator){
           html += '<div class="ec-loy-teaser" data-ec-goto="loyalty" role="button" tabindex="0" aria-label="Voir mon parrainage">' +
             ecxIcon('gift', 'ec-loy-teaser-icon') +
             '<div class="ec-loy-teaser-body">' +
-              '<p class="ec-loy-teaser-title">Parrainage HAYEVA</p>' +
-              '<p class="ec-loy-teaser-sub">' + 'Recommandez HAYEVA et gagnez ' + ecFmtEuros(loyalty.referrer_reward_cents).replace(',00', '') + ' par nouveau client éligible' + '</p>' +
+              '<p class="ec-loy-teaser-title">Programme de parrainage HAYEVA</p>' +
+              '<p class="ec-loy-teaser-sub">' + 'Recommandez HAYEVA à vos proches : ' + ecFmtEuros(loyalty.referrer_reward_cents).replace(',00', '') + ' par nouveau client éligible' + '</p>' +
             '</div><span class="ecx-opt-arrow" aria-hidden="true">›</span>' +
           '</div>';
         }
@@ -24208,6 +24265,7 @@ if ('serviceWorker' in navigator){
   var EC_PAYOUT_STATUS_LABEL = { REQUESTED:'Demandé', REVIEWING:'En vérification', APPROVED:'Approuvé', PAID:'Payé', REFUSED:'Refusé' };
   var EC_PAYOUT_STATUS_CLASS = { REQUESTED:'ec-badge-pending', REVIEWING:'ec-badge-pending', APPROVED:'ec-badge-confirmed', PAID:'ec-badge-completed', REFUSED:'ec-badge-cancelled' };
   var EC_PAYOUT_ERROR_LABEL = {
+    COMPTE_SUSPENDU:'Votre participation au programme est suspendue : contactez HAYEVA.',
     SEUIL_NON_ATTEINT:'Le seuil de versement n\'est pas encore atteint.',
     DEMANDE_EN_COURS:'Une demande de versement est déjà en cours de traitement.',
     VERSEMENTS_NON_OUVERTS:'Les demandes de versement ne sont pas encore ouvertes.',
@@ -24255,8 +24313,9 @@ if ('serviceWorker' in navigator){
       var canRequest = avail >= minPayoutCents && cfg.payouts_enabled && !d.has_active_payout;
 
       var html = '<div class="ec-amb-hero">' +
-          '<p class="ec-amb-eyebrow">PARRAINAGE HAYEVA</p>' +
-          '<p class="ec-amb-lead">Recommandez HAYEVA et gagnez ' + reward + ' pour chaque nouveau client éligible.</p>' +
+          '<p class="ec-amb-eyebrow">' + (d.participant_type === 'business' ? 'APPORTEUR D\'AFFAIRES HAYEVA' : 'PROGRAMME DE PARRAINAGE HAYEVA') + '</p>' +
+          '<p class="ec-amb-lead">Recommandez HAYEVA à votre entourage et bénéficiez de ' + reward + ' pour chaque nouveau client éligible.</p>' +
+          (d.participant_status === 'suspended' ? '<p class="ec-amb-lead">Votre participation au programme est actuellement suspendue. Contactez HAYEVA pour plus d\'informations.</p>' : '') +
           '<p class="ec-amb-code-label">Votre code</p>' +
           '<p class="ec-amb-code" id="ecAmbCode">' + ecEscape(code) + '</p>' +
           '<div class="ec-amb-btns">' +
@@ -24274,8 +24333,8 @@ if ('serviceWorker' in navigator){
 
       html += '<div class="ec-amb-stats">' +
           '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Clients apportés</span><span class="ec-amb-stat-value">' + (Number(bal.clients_count) || 0) + '</span></div>' +
-          '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Gains en attente</span><span class="ec-amb-stat-value">' + ecAmbEuros(pending) + '</span></div>' +
-          '<div class="ec-amb-stat is-strong"><span class="ec-amb-stat-label">Gains disponibles</span><span class="ec-amb-stat-value">' + ecAmbEuros(avail) + '</span></div>' +
+          '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Primes en attente</span><span class="ec-amb-stat-value">' + ecAmbEuros(pending) + '</span></div>' +
+          '<div class="ec-amb-stat is-strong"><span class="ec-amb-stat-label">Primes disponibles</span><span class="ec-amb-stat-value">' + ecAmbEuros(avail) + '</span></div>' +
           '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Déjà versé</span><span class="ec-amb-stat-value">' + ecAmbEuros(paid) + '</span></div>' +
         '</div>';
 
@@ -24293,9 +24352,9 @@ if ('serviceWorker' in navigator){
         '</div>';
 
       html += '<div class="ecx-card"><p class="ec-loy-card-title">Comment ça marche</p>' +
-          ecLoyaltyStepHtml(1, 'Partagez', 'Partagez votre code ou votre lien HAYEVA.') +
+          ecLoyaltyStepHtml(1, 'Recommandez', 'Partagez votre code ou votre lien de parrainage avec un proche.') +
           ecLoyaltyStepHtml(2, 'Votre filleul fait appel à HAYEVA', 'Il utilise votre code et règle une prestation éligible d\'au moins ' + minPaid + ' TTC.') +
-          ecLoyaltyStepHtml(3, 'Gagnez ' + reward, 'Après validation de l\'intervention et du paiement, ' + reward + ' sont ajoutés à votre solde.') +
+          ecLoyaltyStepHtml(3, 'Prime de parrainage', 'Après validation de l\'intervention et du paiement, ' + reward + ' sont ajoutés à votre solde.') +
           '<p class="ec-amb-note">Une simple réservation ou une demande de devis ne donne pas droit à la prime. Versement possible à partir de ' + ecAmbEuros(minPayoutCents) + ' de solde disponible.</p>' +
         '</div>';
 
@@ -24347,7 +24406,12 @@ if ('serviceWorker' in navigator){
           '<p class="ec-amb-stat-value" style="margin:0 0 4px;">' + ecAmbEuros(d.wallet_balance_cents) + '</p>' +
           '<p class="ec-amb-note" style="margin:0;">Crédit appliqué par HAYEVA sur une prochaine prestation.</p></div>';
       }
-      html += '<p class="ec-amb-legal">Prime de ' + reward + ' accordée pour tout nouveau client éligible ayant réglé une prestation d\'au moins ' + minPaid + ' TTC.</p>';
+      if (cfg.business_program_public_enabled && d.participant_type !== 'business'){
+        html += '<div class="ecx-card"><p class="ec-loy-card-title">Vous souhaitez recommander HAYEVA de manière régulière ou professionnelle ?</p>' +
+          '<p class="ec-amb-note" style="margin:0 0 12px;">Découvrez le programme d\'apporteurs d\'affaires HAYEVA.</p>' +
+          '<button type="button" class="ecx-promo-cta" data-ref-biz-open>DEVENIR APPORTEUR D\'AFFAIRES</button></div>';
+      }
+      html += '<p class="ec-amb-legal">Prime de parrainage de ' + reward + ' accordée pour tout nouveau client éligible ayant réglé une prestation d\'au moins ' + minPaid + ' TTC.</p>';
 
       panel.innerHTML = html;
 
@@ -27198,18 +27262,19 @@ if ('serviceWorker' in navigator){
 </script>
 <script>
 // =====================================================================
-// Administration — PARRAINAGES (programme ambassadeurs). Toutes les
-// opérations passent par des fonctions serveur réservées à is_admin()
-// (admin_referral_dashboard, admin_validate_referral_reward, …) : rien
-// n'est calculé ni décidé ici. Aucun virement automatique.
+// Administration — PARRAINAGES : parrains particuliers et apporteurs
+// d'affaires. Toutes les opérations passent par des fonctions serveur
+// réservées à is_admin() (admin_referral_dashboard, admin_list_referrers,
+// admin_create_referrer, …) : rien n'est calculé ni décidé ici. Aucun
+// virement automatique.
 // =====================================================================
 (function(){
   var sb = window.sudSupabase;
   if (!sb || !sb.client) return;
   var prev = window.hvProBeforeShowPage;
   window.hvProBeforeShowPage = function(k){ if (prev) prev(k); if (k === 'referrals') load(); };
-  // Pastille « Parrainages » (à vérifier + versements demandés) dès que
-  // l'administration a chargé ses données, sans attendre l'ouverture de la page.
+  // Pastille « Parrainages » (à vérifier + versements + demandes apporteurs)
+  // dès que l'administration a chargé ses données.
   var prevOn = window.hvProOnBookings, loadedOnce = false;
   window.hvProOnBookings = function(){
     if (prevOn) prevOn.apply(this, arguments);
@@ -27220,21 +27285,34 @@ if ('serviceWorker' in navigator){
   function euros(c){ c = Number(c) || 0; return (c % 100 === 0 ? String(c / 100) : (c / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 })) + ' €'; }
   function fmtDate(d){ if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d; }
   function toCents(v){ var n = parseFloat(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? Math.round(n * 100) : NaN; }
+  function copy(text){
+    return new Promise(function(resolve){
+      function legacy(){ try { var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); var ok = document.execCommand('copy'); document.body.removeChild(ta); resolve(!!ok); } catch(e){ resolve(false); } }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ resolve(true); }, legacy); else legacy();
+    });
+  }
   var FLAG = {
     SAME_ADDRESS:'Même adresse que le parrain', PRIOR_ACTIVITY:'Activité antérieure au parrainage', POSSIBLE_EXISTING_CLIENT:'Client possiblement déjà connu',
     MANY_CANCELLATIONS:'Nombreuses annulations', REFERRER_BURST:'Nombreux parrainages en peu de temps', MULTI_CODE_ATTEMPT:'Tentative avec un autre code',
-    PAYMENT_MISMATCH:'Paiement incohérent avec la réservation', CODE_AFTER_BOOKING:'Code ajouté après la réservation', ADMIN_FLAG:'Signalé'
+    PAYMENT_MISMATCH:'Paiement incohérent avec la réservation', CODE_AFTER_BOOKING:'Code ajouté après la réservation', ADMIN_FLAG:'Parrain suspendu / signalé'
   };
+  var ALERT = { SUSPENDU:'Suspendu', A_VERIFIER:'À vérifier', SEUIL_SUIVI_ANNUEL:'Seuil de suivi annuel atteint', INFOS_ADMINISTRATIVES:'Informations administratives manquantes' };
+  var TYPE = { individual:'Parrain particulier', business:'Apporteur d\'affaires' };
   var RSTATUS = { PENDING:'En attente', REVIEW:'À vérifier', VALIDATED:'Validée', REJECTED:'Non éligible', CANCELLED:'Annulée' };
   var RCLASS = { PENDING:'hvp-st-PENDING', REVIEW:'hvp-st-low', VALIDATED:'hvp-st-COMPLETED', REJECTED:'hvp-st-CANCELLED', CANCELLED:'hvp-st-CANCELLED' };
   var PSTATUS = { REQUESTED:'Demandé', REVIEWING:'En vérification', APPROVED:'Approuvé', PAID:'Payé', REFUSED:'Refusé' };
   var PCLASS = { REQUESTED:'hvp-st-PENDING', REVIEWING:'hvp-st-IN_PROGRESS', APPROVED:'hvp-st-CONFIRMED', PAID:'hvp-st-COMPLETED', REFUSED:'hvp-st-CANCELLED' };
+  var ASTATUS = { RECEIVED:'Demande reçue', TO_VERIFY:'À vérifier', APPROVED:'Approuvé', REFUSED:'Refusé', SUSPENDED:'Suspendu' };
+  var ACLASS = { RECEIVED:'hvp-st-PENDING', TO_VERIFY:'hvp-st-low', APPROVED:'hvp-st-COMPLETED', REFUSED:'hvp-st-CANCELLED', SUSPENDED:'hvp-st-CANCELLED' };
   var LEDGER = {
     reward_pending:'Prime en attente', reward_validated:'Prime validée', reward_cancelled:'Prime annulée', reward_clawback_alert:'Alerte : prime déjà versée puis remboursement',
     payout_requested:'Versement demandé', payout_reviewing:'Versement en vérification', payout_approved:'Versement approuvé', payout_paid:'Versement payé',
     payout_refused:'Versement refusé', payout_adjusted:'Versement ajusté'
   };
+  var CREATE_ERR = { PRENOM:'Le prénom est obligatoire.', EMAIL:'E-mail invalide.', FORMAT:'Code : 6 à 12 lettres ou chiffres (au moins une lettre).',
+    CODE_EXISTANT:'Ce code existe déjà. Choisissez-en un autre.', DEJA_PARRAIN:'Cette personne est déjà parraine', TYPE:'Type invalide.', INTROUVABLE:'Parrain introuvable.' };
   function flagsHtml(f){ return (f || []).map(function(x){ return '<span class="hvp-pill hvp-st-low ref-adm-flag">' + esc(FLAG[x] || x) + '</span>'; }).join(''); }
+  function alertsHtml(a){ return (a || []).map(function(x){ return '<span class="hvp-pill hvp-st-low ref-adm-flag">' + esc(ALERT[x] || x) + '</span>'; }).join(''); }
 
   var cache = { dash:null, list:[] };
   function rpc(name, args){
@@ -27244,11 +27322,12 @@ if ('serviceWorker' in navigator){
 
   function load(){
     var q = (document.getElementById('refAdmSearch') || {}).value || '';
-    return Promise.all([rpc('admin_referral_dashboard'), rpc('admin_list_ambassadors', { p_search: q || null })]).then(function(r){
+    var f = (document.getElementById('refAdmFilter') || {}).value || 'all';
+    return Promise.all([rpc('admin_referral_dashboard'), rpc('admin_list_referrers', { p_search: q || null, p_filter: f })]).then(function(r){
       cache.dash = r[0] || {}; cache.list = r[1] || [];
       render();
     }).catch(function(){
-      ['refAdmVerify', 'refAdmPayouts', 'refAdmList', 'refAdmSettings'].forEach(function(id){
+      ['refAdmVerify', 'refAdmPayouts', 'refAdmList', 'refAdmApps', 'refAdmSettings'].forEach(function(id){
         var el = document.getElementById(id); if (el) el.innerHTML = '<p class="hvp-error">Données indisponibles.</p>';
       });
     });
@@ -27267,15 +27346,21 @@ if ('serviceWorker' in navigator){
     setText('refStatToPay', euros(d.to_pay_cents));
     setText('refStatPaid', euros(d.paid_cents));
     var badge = document.getElementById('admRefBadge');
-    var todo = (Number(d.review_count) || 0) + (Number(d.payouts_requested) || 0);
+    var todo = (Number(d.review_count) || 0) + (Number(d.payouts_requested) || 0) + (Number(d.applications_open) || 0);
     if (badge){ badge.textContent = todo; badge.hidden = !todo; }
+    var split = document.getElementById('refAdmSplit');
+    if (split) split.innerHTML =
+      '<button type="button" class="ref-adm-split-item" data-ref-filter="individual"><strong>' + esc(d.individuals_count || 0) + '</strong><span>PARRAINS PARTICULIERS</span></button>' +
+      '<button type="button" class="ref-adm-split-item" data-ref-filter="business"><strong>' + esc(d.business_count || 0) + '</strong><span>APPORTEURS D\'AFFAIRES</span></button>' +
+      '<button type="button" class="ref-adm-split-item" data-ref-filter="suspended"><strong>' + esc(d.suspended_count || 0) + '</strong><span>SUSPENDUS</span></button>' +
+      '<button type="button" class="ref-adm-split-item" data-ref-scroll="refAdmApps"><strong>' + esc(d.applications_open || 0) + '</strong><span>DEMANDES APPORTEURS</span></button>';
 
     var v = document.getElementById('refAdmVerify');
     v.innerHTML = (d.to_verify && d.to_verify.length) ? d.to_verify.map(function(x){
       var title = x.clawback ? 'Récompense déjà versée — intervention remboursée — vérification requise'
         : (x.code === 'AWAITING_PAYMENT' ? 'Paiement à confirmer' : 'À vérifier');
       return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(x.ref) + ' — ' + esc(title) + '</p>' +
-        '<p class="hvp-card-sub">Parrain : ' + esc(x.referrer || '—') + ' · Filleul : ' + esc(x.referee || '—') +
+        '<p class="hvp-card-sub">' + esc(TYPE[x.referrer_type] || 'Parrain') + ' : ' + esc(x.referrer || '—') + ' · Filleul : ' + esc(x.referee || '—') +
         (x.booking_ref ? ' · ' + esc(x.booking_ref) + ' (' + esc(x.booking_status || '') + ')' : '') +
         (x.paid_amount_cents != null ? ' · payé ' + esc(euros(x.paid_amount_cents)) : '') + '</p>' +
         (x.reason ? '<p class="hvp-card-sub">' + esc(x.reason) + '</p>' : '') +
@@ -27298,7 +27383,7 @@ if ('serviceWorker' in navigator){
       if (p.status === 'APPROVED') acts.push(['PAID', 'MARQUER PAYÉ', 'is-main']);
       if (p.status === 'REQUESTED' || p.status === 'REVIEWING' || p.status === 'APPROVED') acts.push(['REFUSED', 'REFUSER', 'is-danger']);
       return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">Demande n°' + esc(p.no) + ' — ' + esc(euros(p.amount_cents)) + '</p>' +
-        '<p class="hvp-card-sub">' + esc(p.referrer || '—') + (p.email ? ' · ' + esc(p.email) : '') + (p.phone ? ' · ' + esc(p.phone) : '') + ' · ' + esc(fmtDate(p.requested_at)) +
+        '<p class="hvp-card-sub">' + esc(TYPE[p.participant_type] || 'Parrain') + ' : ' + esc(p.referrer || '—') + (p.email ? ' · ' + esc(p.email) : '') + (p.phone ? ' · ' + esc(p.phone) : '') + ' · ' + esc(fmtDate(p.requested_at)) +
         (p.payment_reference ? ' · réf. ' + esc(p.payment_reference) : '') + '</p>' +
         (p.admin_note ? '<p class="hvp-card-sub">' + esc(p.admin_note) + '</p>' : '') + '</div>' +
         '<span class="hvp-pill ' + (PCLASS[p.status] || '') + '">' + esc(PSTATUS[p.status] || p.status) + '</span></div>' +
@@ -27308,30 +27393,49 @@ if ('serviceWorker' in navigator){
     }).join('') : '<p class="hvp-empty">Aucune demande de versement.</p>';
 
     renderList();
+    renderApps(d.applications || []);
     renderSettings(d.settings || {});
   }
 
   function renderList(){
-    var f = (document.getElementById('refAdmFilter') || {}).value || 'all';
-    var rows = cache.list.filter(function(a){
-      if (f === 'available') return Number(a.available_cents) > 0;
-      if (f === 'pending') return Number(a.pending_cents) > 0;
-      if (f === 'review') return Number(a.review_count) > 0;
-      if (f === 'reserved') return Number(a.reserved_cents) > 0;
-      return true;
-    });
+    var rows = cache.list;
     var el = document.getElementById('refAdmList');
-    el.innerHTML = rows.length ? '<table class="ref-adm-table"><thead><tr><th>Ambassadeur</th><th>Code</th><th>Clients</th><th>Validés</th><th>En attente</th><th>Disponible</th><th>Versé</th></tr></thead><tbody>' +
+    el.innerHTML = rows.length ? '<table class="ref-adm-table"><thead><tr><th>Nom</th><th>Type</th><th>Code</th><th>Clients</th><th>En attente</th><th>Disponible</th><th>Versé</th><th>Versé (année)</th><th>Statut</th></tr></thead><tbody>' +
       rows.map(function(a){
         return '<tr data-ref-detail="' + esc(a.client_id) + '" tabindex="0">' +
-          '<td data-label="Ambassadeur"><strong>' + esc(a.name || '—') + '</strong>' + (Number(a.review_count) > 0 ? ' <span class="hvp-pill hvp-st-low">À vérifier</span>' : '') + '</td>' +
+          '<td data-label="Nom"><strong>' + esc(a.name || '—') + '</strong><div class="ref-adm-flags">' + alertsHtml((a.alerts || []).filter(function(x){ return x !== 'SUSPENDU'; })) + '</div></td>' +
+          '<td data-label="Type">' + esc(TYPE[a.participant_type] || a.participant_type) + '</td>' +
           '<td data-label="Code">' + esc(a.code) + '</td>' +
-          '<td data-label="Clients">' + esc(a.clients_count) + '</td>' +
-          '<td data-label="Validés">' + esc(a.validated_count) + '</td>' +
+          '<td data-label="Clients">' + esc(a.clients_count) + ' <span class="ref-adm-muted">(' + esc(a.validated_count) + ' validés)</span></td>' +
           '<td data-label="En attente">' + esc(euros(a.pending_cents)) + '</td>' +
           '<td data-label="Disponible">' + esc(euros(a.available_cents)) + '</td>' +
-          '<td data-label="Versé">' + esc(euros(a.paid_cents)) + '</td></tr>';
-      }).join('') + '</tbody></table>' : '<p class="hvp-empty">Aucun ambassadeur.</p>';
+          '<td data-label="Versé">' + esc(euros(a.paid_cents)) + '</td>' +
+          '<td data-label="Versé (année)">' + esc(euros(a.paid_year_cents)) + '</td>' +
+          '<td data-label="Statut"><span class="hvp-pill ' + (a.status === 'active' ? 'hvp-st-COMPLETED' : 'hvp-st-CANCELLED') + '">' + (a.status === 'active' ? 'Actif' : 'Suspendu') + '</span></td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="hvp-empty">Aucun parrain pour ce filtre.</p>';
+  }
+
+  function renderApps(apps){
+    var el = document.getElementById('refAdmApps');
+    if (!el) return;
+    el.innerHTML = apps.length ? apps.map(function(a){
+      var acts = [];
+      if (a.status === 'RECEIVED') acts.push(['TO_VERIFY', 'À VÉRIFIER', '']);
+      if (a.status === 'RECEIVED' || a.status === 'TO_VERIFY' || a.status === 'SUSPENDED') acts.push(['APPROVED', 'APPROUVER', 'is-main']);
+      if (a.status === 'RECEIVED' || a.status === 'TO_VERIFY') acts.push(['REFUSED', 'REFUSER', 'is-danger']);
+      if (a.status === 'APPROVED') acts.push(['SUSPENDED', 'SUSPENDRE', 'is-danger']);
+      return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">Demande n°' + esc(a.no) + ' — ' + esc(a.legal_name) + '</p>' +
+        '<p class="hvp-card-sub">' + (a.contact_name ? esc(a.contact_name) + ' · ' : '') + esc(a.email) + (a.phone ? ' · ' + esc(a.phone) : '') +
+        (a.siret ? ' · SIRET ' + esc(a.siret) : (a.siren ? ' · SIREN ' + esc(a.siren) : ' · SIREN/SIRET non renseigné')) + ' · ' + esc(fmtDate(a.created_at)) + '</p>' +
+        (a.message ? '<p class="hvp-card-sub">« ' + esc(a.message) + ' »</p>' : '') +
+        (a.admin_note ? '<p class="hvp-card-sub">Note : ' + esc(a.admin_note) + '</p>' : '') + '</div>' +
+        '<span class="hvp-pill ' + (ACLASS[a.status] || '') + '">' + esc(ASTATUS[a.status] || a.status) + '</span></div>' +
+        (acts.length ? '<div class="hvp-actions ref-adm-acts-' + acts.length + '">' + acts.map(function(x){
+          return '<button type="button" class="hvp-act ' + x[2] + '" data-ref-app="' + esc(a.id) + '" data-ref-app-status="' + x[0] + '">' + x[1] + '</button>';
+        }).join('') + '</div>' : '') +
+        (a.client_id ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-ref-detail="' + esc(a.client_id) + '">VOIR LA FICHE</button></div>' : '') +
+        '</div>';
+    }).join('') : '<p class="hvp-empty">Aucune demande.</p>';
   }
 
   function renderSettings(st){
@@ -27343,36 +27447,91 @@ if ('serviceWorker' in navigator){
         '<label class="hvp-field">Seuil de versement (€)<input type="text" inputmode="decimal" id="refSetMinPayout" value="' + esc((st.min_payout_cents || 0) / 100) + '"></label>' +
       '</div>' +
       '<label class="ref-adm-check"><input type="checkbox" id="refSetEnabled"' + (st.is_enabled ? ' checked' : '') + '> Parrainage actif (codes, attribution, primes)</label>' +
-      '<label class="ref-adm-check"><input type="checkbox" id="refSetPublic"' + (st.ambassador_public_enabled ? ' checked' : '') + '> Publication publique (bloc « Parrainez. Recommandez. Gagnez. » et conditions du programme)</label>' +
-      '<label class="ref-adm-check"><input type="checkbox" id="refSetPayouts"' + (st.payouts_enabled ? ' checked' : '') + '> Demandes de versement ouvertes aux ambassadeurs</label>' +
-      '<p class="hvp-card-sub">Publication publique et demandes de versement : à activer uniquement une fois les conditions juridiques, fiscales et comptables du programme validées. Aucun virement n\'est jamais déclenché automatiquement.</p>' +
+      '<label class="ref-adm-check"><input type="checkbox" id="refSetPublic"' + (st.ambassador_public_enabled ? ' checked' : '') + '> Publication publique du programme de parrainage (bloc du site et conditions)</label>' +
+      '<label class="ref-adm-check"><input type="checkbox" id="refSetBusiness"' + (st.business_program_public_enabled ? ' checked' : '') + '> Formulaire « Devenir apporteur d\'affaires » ouvert au public</label>' +
+      '<label class="ref-adm-check"><input type="checkbox" id="refSetPayouts"' + (st.payouts_enabled ? ' checked' : '') + '> Demandes de versement ouvertes</label>' +
+      '<label class="hvp-field">Seuil interne de suivi annuel des versements par bénéficiaire (€) — alerte d\'administration uniquement, facultatif<input type="text" inputmode="decimal" id="refSetTracking" value="' + (st.annual_tracking_threshold_cents ? esc(st.annual_tracking_threshold_cents / 100) : '') + '" placeholder="Aucun"></label>' +
+      '<p class="hvp-card-sub">Publication, formulaire apporteur et demandes de versement : à activer une fois les conditions juridiques, fiscales et comptables du programme établies. Aucun virement n\'est jamais déclenché automatiquement.</p>' +
       '<p class="hvp-error" id="refSetMsg" hidden></p>' +
       '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" id="refSetSave">ENREGISTRER</button></div></div>';
     document.getElementById('refSetSave').addEventListener('click', function(){
       var reward = toCents(document.getElementById('refSetReward').value);
       var minPaid = toCents(document.getElementById('refSetMinPaid').value);
       var minPayout = toCents(document.getElementById('refSetMinPayout').value);
+      var trackRaw = (document.getElementById('refSetTracking').value || '').trim();
+      var track = trackRaw ? toCents(trackRaw) : 0;
       var msg = document.getElementById('refSetMsg');
-      if (!(reward > 0) || !(minPaid > 0) || !(minPayout > 0)){ msg.textContent = 'Montants invalides.'; msg.hidden = false; return; }
-      var pub = document.getElementById('refSetPublic').checked, pay = document.getElementById('refSetPayouts').checked;
-      if ((pub && !st.ambassador_public_enabled) || (pay && !st.payouts_enabled)){
-        if (!window.confirm('Confirmez-vous l\'activation ? Les conditions juridiques, fiscales et comptables du programme doivent être validées.')) return;
+      if (!(reward > 0) || !(minPaid > 0) || !(minPayout > 0) || !(track >= 0)){ msg.textContent = 'Montants invalides.'; msg.hidden = false; return; }
+      var pub = document.getElementById('refSetPublic').checked, pay = document.getElementById('refSetPayouts').checked, biz = document.getElementById('refSetBusiness').checked;
+      if ((pub && !st.ambassador_public_enabled) || (pay && !st.payouts_enabled) || (biz && !st.business_program_public_enabled)){
+        if (!window.confirm('Confirmez-vous l\'activation ? Les conditions du programme doivent être établies avant toute publication.')) return;
       }
       this.disabled = true;
       rpc('admin_update_referral_settings', { p: {
         referrer_reward_cents: reward, min_eligible_paid_cents: minPaid, min_payout_cents: minPayout,
-        is_enabled: document.getElementById('refSetEnabled').checked, ambassador_public_enabled: pub, payouts_enabled: pay
+        is_enabled: document.getElementById('refSetEnabled').checked, ambassador_public_enabled: pub, payouts_enabled: pay,
+        business_program_public_enabled: biz, annual_tracking_threshold_cents: track
       } }).then(load, function(err){ fail(err); load(); });
     });
   }
 
-  // ---------- Fiche ambassadeur ----------
+  // ---------- Fenêtres (fiche / ajout) ----------
   var modal = document.createElement('div');
   modal.className = 'hvp-modal'; modal.id = 'refAdmModal'; modal.hidden = true;
-  modal.innerHTML = '<div class="hvp-sheet ref-adm-sheet" role="dialog" aria-modal="true" aria-label="Fiche ambassadeur"><div id="refAdmDetail"></div>' +
+  modal.innerHTML = '<div class="hvp-sheet ref-adm-sheet" role="dialog" aria-modal="true" aria-label="Fiche parrain"><div id="refAdmDetail"></div>' +
     '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-ref-close>Fermer</button></div></div>';
   document.body.appendChild(modal);
   modal.addEventListener('click', function(e){ if (e.target === modal || e.target.closest('[data-ref-close]')) modal.hidden = true; });
+
+  function openCreate(){
+    currentDetail = null;
+    var box = document.getElementById('refAdmDetail');
+    box.innerHTML = '<h3>Ajouter un parrain</h3>' +
+      '<form id="refAdmCreateForm" novalidate>' +
+        '<div class="hvp-grid2"><label class="hvp-field">Prénom<input type="text" id="refNewFirst" maxlength="80" autocomplete="off"></label>' +
+        '<label class="hvp-field">Nom (facultatif)<input type="text" id="refNewLast" maxlength="80" autocomplete="off"></label></div>' +
+        '<label class="hvp-field">E-mail<input type="email" id="refNewEmail" maxlength="200" autocomplete="off"></label>' +
+        '<label class="hvp-field">Téléphone (facultatif)<input type="tel" id="refNewPhone" maxlength="30" autocomplete="off"></label>' +
+        '<label class="hvp-field">Code de parrainage (modifiable)<input type="text" id="refNewCode" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"></label>' +
+        '<label class="hvp-field">Type<select id="refNewType"><option value="individual">Parrain particulier</option><option value="business">Apporteur d\'affaires (approuvé par HAYEVA)</option></select></label>' +
+        '<p class="hvp-error" id="refNewMsg" hidden></p>' +
+        '<div class="hvp-actions hvp-actions-1"><button type="submit" class="hvp-act is-main" id="refNewSubmit">CRÉER LE PARRAIN</button></div>' +
+      '</form>';
+    modal.hidden = false;
+    var first = document.getElementById('refNewFirst'), codeEl = document.getElementById('refNewCode'), codeTouched = false, t = null;
+    codeEl.addEventListener('input', function(){ codeTouched = true; });
+    first.addEventListener('input', function(){
+      if (codeTouched) return;
+      clearTimeout(t);
+      t = setTimeout(function(){
+        if (!first.value.trim()){ codeEl.value = ''; return; }
+        rpc('admin_suggest_referral_code', { p_first_name: first.value }).then(function(c){ if (!codeTouched && c) codeEl.value = c; }, function(){});
+      }, 250);
+    });
+    first.focus();
+    document.getElementById('refAdmCreateForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var msg = document.getElementById('refNewMsg'), btn = document.getElementById('refNewSubmit');
+      btn.disabled = true; msg.hidden = true;
+      rpc('admin_create_referrer', { p: {
+        first_name: first.value, last_name: document.getElementById('refNewLast').value, email: document.getElementById('refNewEmail').value,
+        phone: document.getElementById('refNewPhone').value, code: codeEl.value, participant_type: document.getElementById('refNewType').value
+      } }).then(function(out){
+        btn.disabled = false;
+        if (!out || !out.ok){
+          var t2 = (out && CREATE_ERR[out.error]) || 'Création impossible.';
+          if (out && out.error === 'DEJA_PARRAIN') t2 += ' (code ' + out.code + '). Ouvrez sa fiche pour modifier son code si besoin.';
+          msg.textContent = t2; msg.hidden = false;
+          if (out && out.error === 'DEJA_PARRAIN' && out.client_id){
+            msg.insertAdjacentHTML('afterend', '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-ref-detail="' + esc(out.client_id) + '">OUVRIR SA FICHE</button></div>');
+          }
+          return;
+        }
+        load(); openDetail(out.client_id);
+      }, function(err){ btn.disabled = false; msg.textContent = (err && err.message) || 'Création impossible.'; msg.hidden = false; });
+    });
+  }
+
   var currentDetail = null;
   function openDetail(clientId){
     currentDetail = clientId;
@@ -27380,22 +27539,37 @@ if ('serviceWorker' in navigator){
     box.innerHTML = '<p class="ec-loading">Chargement…</p>';
     modal.hidden = false;
     rpc('admin_ambassador_detail', { p_client_id: clientId }).then(function(x){
-      var b = x.balances || {};
-      var html = '<h3>' + esc((x.client && x.client.name) || 'Ambassadeur') + '</h3>' +
-        '<p class="hvp-card-sub">Code : <strong>' + esc(x.code || '—') + '</strong>' + (x.client && x.client.email ? ' · ' + esc(x.client.email) : '') + (x.client && x.client.phone ? ' · ' + esc(x.client.phone) : '') + '</p>' +
+      var b = x.balances || {}, active = x.status === 'active';
+      var html = '<h3>' + esc((x.client && x.client.name) || 'Parrain') + '</h3>' +
+        '<p class="hvp-card-sub">' + esc(TYPE[x.participant_type] || 'Parrain') + (x.client && x.client.email ? ' · ' + esc(x.client.email) : '') + (x.client && x.client.phone ? ' · ' + esc(x.client.phone) : '') + '</p>' +
+        '<div class="ref-adm-codebox"><div><span>Code</span><strong id="refDetCode">' + esc(x.code || '—') + '</strong></div>' +
+          '<div><span>Lien personnel</span><strong class="ref-adm-link" id="refDetLink">' + esc(x.link || '') + '</strong></div></div>' +
+        '<div class="hvp-actions ref-adm-acts-3">' +
+          '<button type="button" class="hvp-act" data-ref-copy="' + esc(x.code || '') + '" data-ref-copy-label="Code copié">COPIER LE CODE</button>' +
+          '<button type="button" class="hvp-act" data-ref-copy="' + esc(x.link || '') + '" data-ref-copy-label="Lien copié">COPIER LE LIEN</button>' +
+          '<button type="button" class="hvp-act' + (active ? ' is-danger' : ' is-main') + '" data-ref-status="' + esc(clientId) + '" data-ref-status-to="' + (active ? 'suspended' : 'active') + '">' + (active ? 'DÉSACTIVER LE PARRAIN' : 'RÉACTIVER LE PARRAIN') + '</button>' +
+        '</div>' +
+        '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-ref-setcode="' + esc(clientId) + '">MODIFIER LE CODE</button></div>' +
+        '<p class="ref-adm-copied" id="refDetCopied" hidden aria-live="polite"></p>' +
         '<div class="ref-adm-kv">' +
           '<div><span>Clients apportés</span><strong>' + esc(b.clients_count || 0) + '</strong></div>' +
-          '<div><span>Validés</span><strong>' + esc(b.validated_count || 0) + '</strong></div>' +
-          '<div><span>En attente</span><strong>' + esc(b.pending_count || 0) + '</strong></div>' +
-          '<div><span>Solde disponible</span><strong>' + esc(euros(b.available_cents)) + '</strong></div>' +
+          '<div><span>Gains en attente</span><strong>' + esc(euros(b.pending_cents)) + '</strong></div>' +
+          '<div><span>Gains disponibles</span><strong>' + esc(euros(b.available_cents)) + '</strong></div>' +
           '<div><span>Réservé pour paiement</span><strong>' + esc(euros(b.reserved_cents)) + '</strong></div>' +
           '<div><span>Déjà versé</span><strong>' + esc(euros(b.paid_cents)) + '</strong></div>' +
-        '</div><p class="hvp-section-title">Historique des parrainages</p>';
+          '<div><span>Versé cette année</span><strong>' + esc(euros(x.paid_year_cents)) + '</strong></div>' +
+          '<div><span>Statut</span><strong>' + (active ? 'Actif' : 'Suspendu') + '</strong></div>' +
+          '<div><span>Validés</span><strong>' + esc(b.validated_count || 0) + '</strong></div>' +
+          '<div><span>Créé le</span><strong>' + esc(fmtDate(x.created_at)) + '</strong></div>' +
+        '</div>' +
+        (x.application ? '<p class="hvp-card-sub">Demande apporteur n°' + esc(x.application.no) + ' — ' + esc(x.application.legal_name) + ' · ' +
+          (x.application.siret ? 'SIRET ' + esc(x.application.siret) : (x.application.siren ? 'SIREN ' + esc(x.application.siren) : 'SIREN/SIRET non renseigné')) + ' · ' + esc(ASTATUS[x.application.status] || x.application.status) + '</p>' : '') +
+        '<p class="hvp-section-title">Parrainages</p>';
       html += (x.rewards || []).length ? x.rewards.map(function(w){
         var actionable = w.status === 'PENDING' || w.status === 'REVIEW';
         return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(w.ref) + ' — ' + esc(w.referee || '') + '</p>' +
           '<p class="hvp-card-sub">' + esc(fmtDate(w.created_at)) + (w.booking_ref ? ' · ' + esc(w.booking_ref) + ' (' + esc(w.booking_status || '') + ')' : '') +
-          (w.paid_amount_cents != null ? ' · payé ' + esc(euros(w.paid_amount_cents)) : '') + ' · prime ' + esc(euros(w.amount_cents)) +
+          (w.paid_amount_cents != null ? ' · payé ' + esc(euros(w.paid_amount_cents)) : '') + ' · ' + (w.referrer_type === 'business' ? 'commission ' : 'prime ') + esc(euros(w.amount_cents)) +
           (w.payout_no ? ' · demande n°' + esc(w.payout_no) : '') + (w.validation_source ? ' · validation ' + (w.validation_source === 'admin' ? 'manuelle' : 'automatique') : '') + '</p>' +
           (w.reason ? '<p class="hvp-card-sub">' + esc(w.reason) + '</p>' : '') + '<div class="ref-adm-flags">' + flagsHtml(w.flags) + '</div></div>' +
           '<span class="hvp-pill ' + (RCLASS[w.status] || '') + '">' + esc(RSTATUS[w.status] || w.status) + '</span></div>' +
@@ -27403,7 +27577,7 @@ if ('serviceWorker' in navigator){
             '<button type="button" class="hvp-act is-danger" data-ref-reject="' + esc(w.id) + '">REFUSER</button><button type="button" class="hvp-act" data-ref-recheck="' + esc(w.id) + '">REVÉRIFIER</button></div>'
             : (w.status === 'VALIDATED' && !w.payout_no ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-danger" data-ref-reject="' + esc(w.id) + '">ANNULER LA PRIME</button></div>' : '')) +
           '</div>';
-      }).join('') : '<p class="hvp-empty">Aucun parrainage.</p>';
+      }).join('') : '<p class="hvp-empty">Aucun parrainage pour le moment.</p>';
       if ((x.payouts || []).length){
         html += '<p class="hvp-section-title">Versements</p>' + x.payouts.map(function(p){
           return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">Demande n°' + esc(p.no) + ' — ' + esc(euros(p.amount_cents)) + '</p>' +
@@ -27425,17 +27599,56 @@ if ('serviceWorker' in navigator){
   document.addEventListener('input', function(e){
     if (e.target && e.target.id === 'refAdmSearch'){ clearTimeout(searchTimer); searchTimer = setTimeout(load, 300); }
   });
-  document.addEventListener('change', function(e){ if (e.target && e.target.id === 'refAdmFilter') renderList(); });
+  document.addEventListener('change', function(e){ if (e.target && e.target.id === 'refAdmFilter') load(); });
   document.addEventListener('keydown', function(e){
     if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('tr[data-ref-detail]')) openDetail(e.target.getAttribute('data-ref-detail'));
   });
   document.addEventListener('click', function(e){
     var t;
+    if (e.target.closest && e.target.closest('#refAdmAddBtn')){ openCreate(); return; }
+    if ((t = e.target.closest('[data-ref-filter]'))){
+      var sel = document.getElementById('refAdmFilter'); sel.value = t.getAttribute('data-ref-filter'); load();
+      document.getElementById('refAdmList').scrollIntoView({ block:'start', behavior:'smooth' }); return;
+    }
+    if ((t = e.target.closest('[data-ref-scroll]'))){ var el = document.getElementById(t.getAttribute('data-ref-scroll')); if (el) el.scrollIntoView({ block:'start', behavior:'smooth' }); return; }
+    if ((t = e.target.closest('[data-ref-copy]'))){
+      var label = t.getAttribute('data-ref-copy-label'), val = t.getAttribute('data-ref-copy');
+      copy(val).then(function(ok){ var c = document.getElementById('refDetCopied'); if (c){ c.textContent = ok ? label : val; c.hidden = false; setTimeout(function(){ c.hidden = true; }, 2500); } });
+      return;
+    }
+    if ((t = e.target.closest('[data-ref-status]'))){
+      var to = t.getAttribute('data-ref-status-to');
+      if (!window.confirm(to === 'suspended' ? 'Désactiver ce parrain ? Son code ne sera plus accepté et ses primes en attente passeront « À vérifier ».' : 'Réactiver ce parrain ?')) return;
+      t.disabled = true;
+      rpc('admin_set_referrer_status', { p_client_id: t.getAttribute('data-ref-status'), p_status: to }).then(after, function(err){ fail(err); after(); });
+      return;
+    }
+    if ((t = e.target.closest('[data-ref-setcode]'))){
+      var cur = (document.getElementById('refDetCode') || {}).textContent || '';
+      var nc = window.prompt('Nouveau code de parrainage (6 à 12 lettres ou chiffres). L\'ancien code et l\'ancien lien ne fonctionneront plus.', cur);
+      if (nc == null || !nc.trim() || nc.trim().toUpperCase() === cur) return;
+      t.disabled = true;
+      rpc('admin_set_referrer_code', { p_client_id: t.getAttribute('data-ref-setcode'), p_code: nc }).then(function(out){
+        if (!out || !out.ok) window.alert((out && CREATE_ERR[out.error]) || 'Modification impossible.');
+        after();
+      }, function(err){ fail(err); after(); });
+      return;
+    }
+    if ((t = e.target.closest('[data-ref-app]'))){
+      var st = t.getAttribute('data-ref-app-status'), note = '';
+      if (st === 'APPROVED' && !window.confirm('Approuver cet apporteur d\'affaires ? Un code « apporteur » actif sera créé.')) return;
+      if (st === 'REFUSED' || st === 'SUSPENDED'){ note = window.prompt('Motif (visible dans l\'administration uniquement) :', ''); if (note == null) return; }
+      t.disabled = true;
+      rpc('admin_set_business_application_status', { p_id: t.getAttribute('data-ref-app'), p_status: st, p_note: note || null }).then(function(out){
+        load(); if (st === 'APPROVED' && out && out.client_id) openDetail(out.client_id);
+      }, function(err){ fail(err); load(); });
+      return;
+    }
     if ((t = e.target.closest('[data-ref-validate]'))){
       var def = t.getAttribute('data-ref-paid');
-      var val = window.prompt('Montant final RÉELLEMENT payé par le client (en € TTC) :', def ? String(Number(def) / 100).replace('.', ',') : '');
-      if (val == null) return;
-      var cents = toCents(val);
+      var val2 = window.prompt('Montant final RÉELLEMENT payé par le client (en € TTC) :', def ? String(Number(def) / 100).replace('.', ',') : '');
+      if (val2 == null) return;
+      var cents = toCents(val2);
       if (!(cents >= 0)){ window.alert('Montant invalide.'); return; }
       t.disabled = true;
       rpc('admin_validate_referral_reward', { p_reward_id: t.getAttribute('data-ref-validate'), p_paid_cents: cents, p_note: 'Paiement confirmé par l\'administration' }).then(after, function(err){ fail(err); after(); });
@@ -27454,17 +27667,17 @@ if ('serviceWorker' in navigator){
       return;
     }
     if ((t = e.target.closest('[data-ref-payout]'))){
-      var status = t.getAttribute('data-ref-payout-status'), note = null, ref = null;
+      var status = t.getAttribute('data-ref-payout-status'), pnote = null, ref = null;
       if (status === 'PAID'){
         ref = window.prompt('Référence du versement (ex. référence du virement) :', '');
         if (ref == null) return;
         if (!window.confirm('Confirmez-vous que ce versement a bien été effectué ?')) return;
       } else if (status === 'REFUSED'){
-        note = window.prompt('Motif du refus :', '');
-        if (note == null) return;
+        pnote = window.prompt('Motif du refus :', '');
+        if (pnote == null) return;
       }
       t.disabled = true;
-      rpc('admin_set_referral_payout_status', { p_payout_id: t.getAttribute('data-ref-payout'), p_status: status, p_note: note, p_payment_reference: ref }).then(after, function(err){ fail(err); after(); });
+      rpc('admin_set_referral_payout_status', { p_payout_id: t.getAttribute('data-ref-payout'), p_status: status, p_note: pnote, p_payment_reference: ref }).then(after, function(err){ fail(err); after(); });
       return;
     }
     if ((t = e.target.closest('[data-ref-detail]'))){ openDetail(t.getAttribute('data-ref-detail')); }
@@ -27473,6 +27686,20 @@ if ('serviceWorker' in navigator){
 </script>
 <style>
   .ref-adm-flags{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .ref-adm-head-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:30px 0 14px; }
+  .ref-adm-head-row .adm-subhead{ margin:0; }
+  .ref-adm-split{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 14px; }
+  @media (min-width:760px){ .ref-adm-split{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+  .ref-adm-split-item{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:12px 14px; border-radius:14px; border:1px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink); font-family:"Poppins",sans-serif; cursor:pointer; text-align:left; min-height:44px; }
+  .ref-adm-split-item strong{ font-size:1.3rem; }
+  .ref-adm-split-item span{ font-size:0.68rem; letter-spacing:.05em; color:var(--adm-ink-soft); font-weight:700; }
+  .ref-adm-muted{ color:var(--adm-ink-soft); font-size:0.78rem; }
+  .ref-adm-codebox{ display:grid; grid-template-columns:1fr; gap:8px; margin:12px 0 6px; }
+  .ref-adm-codebox div{ background:var(--adm-offwhite); border:1px solid var(--adm-line); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .ref-adm-codebox span{ font-size:0.74rem; color:var(--adm-ink-soft); }
+  .ref-adm-codebox strong{ font-size:1.05rem; letter-spacing:.04em; }
+  .ref-adm-link{ font-size:0.86rem !important; letter-spacing:0 !important; overflow-wrap:anywhere; }
+  .ref-adm-copied{ font-size:0.84rem; color:var(--adm-green, #3F9463); font-weight:700; margin:8px 0 0; }
   .ref-adm-flag{ white-space:normal; }
   .ref-adm-acts-2{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
   .ref-adm-acts-3{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
@@ -27654,12 +27881,15 @@ if ('serviceWorker' in navigator){
   function closeRefTerms(){ if (!termsOverlay) return; termsOverlay.hidden = true; document.body.style.overflow = ''; }
   window.hvShowAmbassadorMarketing = function(cfg){
     var map = { 'data-ref-reward': euros(cfg.reward_cents), 'data-ref-min': euros(cfg.min_eligible_paid_cents),
-                'data-ref-ten': euros((Number(cfg.reward_cents) || 0) * 10), 'data-ref-payout': euros(cfg.min_payout_cents) };
+                'data-ref-ten-count': String(Math.max(1, Math.round((Number(cfg.min_payout_cents) || 0) / (Number(cfg.reward_cents) || 1)))),
+                'data-ref-payout': euros(cfg.min_payout_cents) };
     Object.keys(map).forEach(function(attr){
       Array.prototype.forEach.call(document.querySelectorAll('[' + attr + ']'), function(el){ el.textContent = map[attr]; });
     });
     var section = document.getElementById('parrainage');
     if (section) section.hidden = false;
+    var bizBand = document.getElementById('refBizBand');
+    if (bizBand) bizBand.hidden = !cfg.business_program_public_enabled;
     var link = document.getElementById('refPromoTermsLink');
     if (link) link.addEventListener('click', openRefTerms);
     var closeB = document.getElementById('refTermsOverlayClose');
@@ -27679,6 +27909,51 @@ if ('serviceWorker' in navigator){
     });
   };
 
+  // ---------- Demande « apporteur d'affaires » (formulaire) ----------
+  var bizOverlay = document.getElementById('refBizOverlay');
+  function openBiz(e){
+    if (e) e.preventDefault();
+    if (!bizOverlay) return;
+    bizOverlay.hidden = false; document.body.style.overflow = 'hidden';
+    var ct = bizOverlay.querySelector('.legal-overlay-content'); if (ct) ct.scrollTop = 0;
+  }
+  function closeBiz(){ if (!bizOverlay) return; bizOverlay.hidden = true; document.body.style.overflow = ''; }
+  window.hvOpenBizForm = openBiz;
+  document.addEventListener('click', function(e){ if (e.target.closest && e.target.closest('[data-ref-biz-open]')) openBiz(e); });
+  var bizClose = document.getElementById('refBizClose');
+  if (bizClose) bizClose.addEventListener('click', closeBiz);
+  if (bizOverlay) bizOverlay.addEventListener('click', function(e){ if (e.target === bizOverlay) closeBiz(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && bizOverlay && !bizOverlay.hidden) closeBiz(); });
+  var BIZ_ERR = {
+    NOM:'Merci d\'indiquer votre nom ou votre raison sociale.', EMAIL:'Merci d\'indiquer un e-mail valide.',
+    SIREN:'Le SIREN comporte 9 chiffres, le SIRET 14 chiffres.', CONSENTEMENT:'Merci de cocher la case d\'accord pour être recontacté.',
+    TROP_LONG:'Un des champs est trop long.', TROP_DE_DEMANDES:'Trop de demandes en ce moment : réessayez un peu plus tard.',
+    INDISPONIBLE:'Les demandes ne sont pas ouvertes pour le moment.'
+  };
+  var bizForm = document.getElementById('refBizForm');
+  if (bizForm) bizForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var msgEl = document.getElementById('refBizMsg'), btn = document.getElementById('refBizSubmit');
+    function show(t, ok){ msgEl.textContent = t; msgEl.hidden = !t; msgEl.classList.toggle('is-ok', !!ok); }
+    if (!sb || !sb.client){ show('Service momentanément indisponible.'); return; }
+    if ((document.getElementById('refBizName').value || '').trim().length < 2){ show(BIZ_ERR.NOM); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((document.getElementById('refBizEmail').value || '').trim())){ show(BIZ_ERR.EMAIL); return; }
+    if (!document.getElementById('refBizConsent').checked){ show(BIZ_ERR.CONSENTEMENT); return; }
+    btn.disabled = true; show('');
+    sb.client.rpc('submit_business_referrer_application', {
+      p_legal_name: document.getElementById('refBizName').value || '', p_contact_name: document.getElementById('refBizContact').value || null,
+      p_email: document.getElementById('refBizEmail').value || '', p_phone: document.getElementById('refBizPhone').value || null,
+      p_siren_siret: document.getElementById('refBizSiren').value || null, p_message: document.getElementById('refBizMessage').value || null,
+      p_contact_consent: document.getElementById('refBizConsent').checked
+    }).then(function(r){
+      btn.disabled = false;
+      var out = (r && r.data) || {};
+      if (r.error || !out.ok){ show(BIZ_ERR[out.error] || 'Envoi impossible pour le moment. Réessayez dans un instant.'); return; }
+      bizForm.reset();
+      show('Merci, votre demande a bien été envoyée. HAYEVA vous recontacte rapidement.', true);
+    }, function(){ btn.disabled = false; show('Connexion impossible. Vérifiez votre réseau et réessayez.'); });
+  });
+
   // ---------- Configuration publique (activations centralisées) ----------
   var cfgPromise = (sb && sb.client && !window.HAYEVA_PRO_APP)
     ? sb.client.rpc('get_referral_public_config').then(function(r){ return (r && !r.error && r.data) || null; }, function(){ return null; })
@@ -27687,6 +27962,7 @@ if ('serviceWorker' in navigator){
     if (!cfg || !cfg.program_enabled) return;
     if (block) block.hidden = false;
     prefillFromPending();
+    window.hvReferralPublicConfig = cfg;
     if (cfg.ambassador_public_enabled && window.hvShowAmbassadorMarketing) window.hvShowAmbassadorMarketing(cfg);
   });
 
