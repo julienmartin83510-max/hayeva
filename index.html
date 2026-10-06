@@ -4827,6 +4827,72 @@ if ('serviceWorker' in navigator){
   .ecx-option-row .ecx-opt-arrow{ color:var(--ink-soft-fixed); }
   .ecx-option-row.is-danger{ color:var(--terracotta-deep-fixed); }
 
+  /* ---------- Fidélité / parrainage (Accueil + onglet dédié) ---------- */
+  .ec-loy-teaser{
+    display:flex; align-items:center; gap:14px; background:linear-gradient(135deg, var(--ivory) 0%, var(--ivory-deep) 100%);
+    border:1px solid var(--line); border-radius:20px; padding:16px 18px; margin-bottom:20px; cursor:pointer; min-height:44px;
+  }
+  .ec-loy-teaser-icon{ width:26px; height:26px; flex:0 0 auto; color:var(--terracotta-fixed); }
+  .ec-loy-teaser-body{ flex:1 1 auto; min-width:0; }
+  .ec-loy-teaser-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:var(--navy-fixed); margin:0; }
+  .ec-loy-teaser-sub{ font-size:0.82rem; color:var(--ink-soft-fixed); margin:2px 0 0; }
+  .ec-loy-wallet{
+    background:linear-gradient(135deg, var(--navy-fixed) 0%, var(--sky-deep-fixed) 100%); border-radius:22px;
+    padding:28px 22px; margin-bottom:16px; text-align:center; color:#fff;
+  }
+  .ec-loy-wallet-icon{ width:30px; height:30px; color:#fff; margin-bottom:6px; }
+  .ec-loy-wallet-label{ font-size:0.86rem; opacity:0.85; margin:0; }
+  .ec-loy-wallet-amount{ font-family:"Poppins",sans-serif; font-weight:800; font-size:2.1rem; margin:4px 0; }
+  .ec-loy-wallet-note{ font-size:0.78rem; opacity:0.8; margin:0; }
+  .ec-loy-card-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.95rem; color:var(--navy-fixed); margin:0 0 14px; }
+  .ec-loy-step{ display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; }
+  .ec-loy-step:last-child{ margin-bottom:0; }
+  .ec-loy-step-n{
+    flex:0 0 auto; width:24px; height:24px; border-radius:50%; background:var(--terracotta-fixed); color:#fff;
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; display:flex; align-items:center; justify-content:center;
+  }
+  .ec-loy-step-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.86rem; color:var(--navy-fixed); margin:0; }
+  .ec-loy-step-sub{ font-size:0.8rem; color:var(--ink-soft-fixed); margin:2px 0 0; line-height:1.4; }
+  .ec-loy-code-row{ display:flex; align-items:center; gap:10px; }
+  .ec-loy-code{
+    flex:1 1 auto; font-family:"Poppins",sans-serif; font-weight:800; font-size:1.2rem; letter-spacing:0.08em;
+    color:var(--navy-fixed); background:var(--sand-deep); border-radius:12px; padding:12px 14px; text-align:center;
+  }
+  .ec-loy-icon-btn{
+    flex:0 0 auto; width:44px; height:44px; border-radius:12px; border:1px solid var(--line); background:var(--white);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--navy-fixed);
+  }
+  .ec-loy-icon-btn .ecx-svg-icon{ width:19px; height:19px; }
+  .ec-loy-code-hint{ font-size:0.8rem; color:#2F7A4F; margin:8px 0 0; }
+  .ec-loy-code-card .ecx-promo-cta{ margin-top:14px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .ec-loy-code-card .ecx-promo-cta .ecx-svg-icon{ width:16px; height:16px; }
+  .ec-loy-ref-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .ec-loy-ref-reward{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.9rem; color:#2F7A4F; }
+  .ec-loy-ref-reason{ font-size:0.8rem; color:var(--ink-soft-fixed); margin:10px 0 0; line-height:1.4; }
+  .ec-loy-attach-form{ display:flex; gap:10px; }
+  .ec-loy-attach-form input{
+    flex:1 1 auto; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:0.92rem;
+    font-family:"Poppins",sans-serif; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; min-height:44px;
+  }
+  .ec-loy-attach-form .btn-primary{ flex:0 0 auto; min-height:44px; }
+  .ec-loy-attach-msg{ font-size:0.82rem; color:#B23A3A; margin:10px 0 0; line-height:1.4; }
+  .ec-loy-attach-msg.is-success{ color:#2F7A4F; }
+  .ec-loy-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+  .ec-loy-list-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--white);
+    border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+  }
+  .ec-loy-list-name{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.88rem; color:var(--navy-fixed); margin:0; }
+  .ec-loy-list-sub{ font-size:0.78rem; color:var(--ink-soft-fixed); margin:3px 0 0; }
+  .ec-loy-list-end{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .ec-loy-tx-amount{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.9rem; flex:0 0 auto; }
+  .ec-loy-tx-amount.is-positive{ color:#2F7A4F; }
+  .ec-loy-tx-amount.is-negative{ color:var(--ink-soft-fixed); }
+  @media (max-width:520px){
+    .ec-loy-wallet-amount{ font-size:1.8rem; }
+    .ec-loy-attach-form{ flex-direction:column; }
+  }
+
   /* ---------- Cartes logement / équipement ---------- */
   .ecx-home-card{
     display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--white); border:1px solid var(--line);
@@ -9180,6 +9246,7 @@ if ('serviceWorker' in navigator){
             <button type="button" class="ec-tab" data-ec-tab="invoices">Mes factures</button>
             <button type="button" class="ec-tab" data-ec-tab="documents">Mes documents</button>
             <button type="button" class="ec-tab" data-ec-tab="addresses">Mes adresses</button>
+            <button type="button" class="ec-tab" data-ec-tab="loyalty">Fidélité &amp; parrainage</button>
             <button type="button" class="ec-tab" data-ec-tab="profile">Mon profil</button>
           </nav>
 
@@ -9194,6 +9261,7 @@ if ('serviceWorker' in navigator){
             <section class="ec-panel" id="ecPanelInvoices" data-ec-panel="invoices" hidden></section>
             <section class="ec-panel" id="ecPanelDocuments" data-ec-panel="documents" hidden></section>
             <section class="ec-panel" id="ecPanelAddresses" data-ec-panel="addresses" hidden></section>
+            <section class="ec-panel" id="ecPanelLoyalty" data-ec-panel="loyalty" hidden></section>
             <section class="ec-panel" id="ecPanelProfile" data-ec-panel="profile" hidden></section>
           </div>
         </div>
@@ -22311,7 +22379,11 @@ if ('serviceWorker' in navigator){
     logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
-    mic: '<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/>'
+    mic: '<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/>',
+    gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>'
   };
   function ecxIcon(name, extraClass){
     var path = ECX_ICON_PATHS[name];
@@ -22356,6 +22428,29 @@ if ('serviceWorker' in navigator){
   function ecErrorBlock(){
     return '<div class="ec-empty"><strong>Chargement impossible</strong>Une erreur est survenue. Réessayez dans un instant.</div>';
   }
+  // Fidélité/parrainage : libellés humains pour referrals.status (contrainte
+  // SQL réelle : PENDING/VALIDATED/INELIGIBLE, voir 0079+ referrals_status_check)
+  // et wallet_transactions.type (REFERRAL_REFERRER/REFERRAL_REFEREE/
+  // REDEMPTION/ADJUSTMENT) — jamais de statut inventé, toujours celui
+  // réellement renvoyé par get_my_loyalty().
+  var EC_REFERRAL_STATUS_LABEL = { PENDING:'En attente', VALIDATED:'Validé', INELIGIBLE:'Non retenu' };
+  var EC_REFERRAL_STATUS_CLASS = { PENDING:'ec-badge-pending', VALIDATED:'ec-badge-completed', INELIGIBLE:'ec-badge-cancelled' };
+  function ecReferralBadge(status){
+    return '<span class="ec-badge ' + (EC_REFERRAL_STATUS_CLASS[status] || 'ec-badge-pending') + '">' +
+      ecEscape(EC_REFERRAL_STATUS_LABEL[status] || status) + '</span>';
+  }
+  var EC_WALLET_TX_LABEL = {
+    REFERRAL_REFERRER:'Parrainage', REFERRAL_REFEREE:'Avantage de bienvenue',
+    REDEMPTION:'Crédit utilisé', ADJUSTMENT:'Ajustement HAYEVA'
+  };
+  var EC_ATTACH_REFERRAL_ERROR_LABEL = {
+    CODE_INVALIDE:'Ce code ne correspond à aucun compte HAYEVA. Vérifiez la saisie.',
+    AUTO_PARRAINAGE:'Vous ne pouvez pas utiliser votre propre code.',
+    DEJA_PARRAINE:'Votre compte est déjà rattaché à un autre parrainage.',
+    PARRAINAGE_CIRCULAIRE:'Ce code ne peut pas être utilisé (parrainage croisé).',
+    CLIENT_DEJA_EXISTANT:'Ce code ne peut plus être utilisé : votre compte a déjà une intervention terminée.',
+    PROGRAMME_INACTIF:'Le programme de parrainage est temporairement indisponible.'
+  };
   var EC_EQUIPMENT_LABEL = {
     climatisation:'Climatisation', chaudiere_gaz:'Chaudière gaz', chaudiere_fioul:'Chaudière fioul',
     chauffe_eau:'Chauffe-eau', pac:'Pompe à chaleur', autre:'Autre'
@@ -22371,7 +22466,7 @@ if ('serviceWorker' in navigator){
     home:'home', services:'services',
     appointments:'appointments', interventions:'appointments',
     quotes:'documents', invoices:'documents', documents:'documents',
-    equipment:'profile', addresses:'profile', profile:'profile'
+    equipment:'profile', addresses:'profile', profile:'profile', loyalty:'profile'
   };
   var ECX_DEFAULT_TAB_FOR_SECTION = { home:'home', services:'services', appointments:'appointments', documents:'quotes', profile:'profile' };
 
@@ -22430,12 +22525,14 @@ if ('serviceWorker' in navigator){
     else if (tab === 'invoices') ecLoadInvoices();
     else if (tab === 'documents') ecLoadDocuments();
     else if (tab === 'addresses') ecLoadAddresses();
+    else if (tab === 'loyalty') ecLoadLoyalty();
     else if (tab === 'profile') ecLoadProfile();
   }
   function ecResetDashboard(){
     ecUser = null;
     ecLoaded = {};
     ecProfileCache = null;
+    ecLoyaltyCache = null;
     var panels = document.querySelectorAll('.ec-panel');
     for (var i = 0; i < panels.length; i++){ panels[i].innerHTML = ''; }
     var tabs = document.querySelectorAll('#ecTabs .ec-tab');
@@ -22446,6 +22543,7 @@ if ('serviceWorker' in navigator){
     ecUser = user;
     ecLoaded = {};
     ecProfileCache = null;
+    ecLoyaltyCache = null;
     ecShowTab('home');
   }
   // Hook minimal appelé depuis le module de réservation après une écriture
@@ -22477,6 +22575,21 @@ if ('serviceWorker' in navigator){
       ecProfileCache = (res && res.data) || {};
       return ecProfileCache;
     }).catch(function(){ return {}; });
+  }
+  // Fidélité/parrainage : get_my_loyalty() (SECURITY DEFINER) renvoie en un
+  // seul appel tout ce dont l'onglet Fidélité et la carte d'accueil ont
+  // besoin — jamais de lecture directe de referral_settings/wallet_balances/
+  // referrals depuis le client (RLS les réserve à l'admin ou au propriétaire
+  // via cette fonction). Mis en cache comme ecFetchProfile ; invalidé après
+  // un parrainage saisi avec succès (voir ecLoadLoyalty) pour refléter
+  // l'état réel sans attendre un rechargement complet du tableau de bord.
+  var ecLoyaltyCache = null;
+  function ecFetchLoyalty(){
+    if (ecLoyaltyCache) return Promise.resolve(ecLoyaltyCache);
+    return sb.client.rpc('get_my_loyalty').then(function(res){
+      ecLoyaltyCache = (res && res.data) || null;
+      return ecLoyaltyCache;
+    }).catch(function(){ return null; });
   }
   var ecTabsNav = document.getElementById('ecTabs');
   if (ecTabsNav){
@@ -22604,11 +22717,13 @@ if ('serviceWorker' in navigator){
         .in('status', ['PENDING','CONFIRMED','IN_PROGRESS'])
         .order('date', { ascending:true })
         .order('start_time', { ascending:true })
-        .limit(1)
+        .limit(1),
+      ecFetchLoyalty()
     ])
       .then(function(results){
         var profile = results[0];
         var res = results[1];
+        var loyalty = results[2];
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var firstName = profile && profile.first_name ? profile.first_name.trim() : '';
         var html = '<div class="ec-home-head">' +
@@ -22648,6 +22763,17 @@ if ('serviceWorker' in navigator){
         } else {
           html += '<div class="ec-empty"><strong>Vous n\'avez aucune intervention prévue</strong><br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
         }
+        // Carte fidélité : toujours construite depuis get_my_loyalty() (voir
+        // ecLoadLoyalty plus bas), jamais un solde recalculé ou deviné ici.
+        if (loyalty && loyalty.program_enabled){
+          html += '<div class="ec-loy-teaser" data-ec-goto="loyalty" role="button" tabindex="0" aria-label="Voir mon programme fidélité">' +
+            ecxIcon('gift', 'ec-loy-teaser-icon') +
+            '<div class="ec-loy-teaser-body">' +
+              '<p class="ec-loy-teaser-title">Fidélité &amp; parrainage</p>' +
+              '<p class="ec-loy-teaser-sub">' + (loyalty.balance_cents > 0 ? ecFmtEuros(loyalty.balance_cents) + ' de crédit disponible' : 'Parrainez vos proches, gagnez ' + ecFmtEuros(loyalty.referrer_reward_cents)) + '</p>' +
+            '</div><span class="ecx-opt-arrow" aria-hidden="true">›</span>' +
+          '</div>';
+        }
         if (window.sudBooking){
           var popular = window.sudBooking.popularServices();
           if (popular.length){
@@ -22686,6 +22812,9 @@ if ('serviceWorker' in navigator){
         }
         Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(card){
           card.addEventListener('click', function(){ ecShowTab(card.getAttribute('data-ec-goto')); });
+          card.addEventListener('keydown', function(e){
+            if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); ecShowTab(card.getAttribute('data-ec-goto')); }
+          });
         });
         Array.prototype.forEach.call(panel.querySelectorAll('[data-svc-book]'), function(btn){
           btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
@@ -23860,6 +23989,173 @@ if ('serviceWorker' in navigator){
     }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
 
+  // Fidélité/parrainage : UI construite exclusivement à partir de
+  // get_my_loyalty()/attach_referral() (backend déjà en production, voir
+  // migrations 0063+) — aucune donnée inventée, aucun second système de
+  // points. Programme actuellement configuré à 20€/20€ (referral_settings),
+  // jamais codé en dur ici : toujours lu depuis la réponse de la fonction.
+  function ecLoyaltyStepHtml(n, title, sub){
+    return '<div class="ec-loy-step"><span class="ec-loy-step-n">' + n + '</span>' +
+      '<div><p class="ec-loy-step-title">' + title + '</p><p class="ec-loy-step-sub">' + ecEscape(sub) + '</p></div></div>';
+  }
+  function ecLoadLoyalty(){
+    var panel = document.getElementById('ecPanelLoyalty');
+    panel.innerHTML = '<div class="ecx-skeleton"><div class="ecx-skel-card" style="height:140px;border-radius:22px;"></div><div class="ecx-skel-card"></div><div class="ecx-skel-card" style="height:90px;"></div></div>';
+    ecFetchLoyalty().then(function(d){
+      if (!d){ panel.innerHTML = ecErrorBlock(); return; }
+      if (!d.program_enabled){
+        panel.innerHTML = '<p class="ec-section-title">Fidélité &amp; parrainage</p>' +
+          '<div class="ec-empty"><strong>Programme momentanément indisponible</strong>Revenez un peu plus tard : cette page sera de nouveau active prochainement.</div>';
+        return;
+      }
+      var refererEuros = ecFmtEuros(d.referrer_reward_cents);
+      var refereeEuros = ecFmtEuros(d.referee_reward_cents);
+      var html = '<p class="ec-section-title">Fidélité &amp; parrainage</p>' +
+        '<p class="ec-section-sub">Parrainez vos proches, cumulez des crédits HAYEVA.</p>';
+
+      // --- Cagnotte ---
+      html += '<div class="ec-loy-wallet">' +
+        ecxIcon('gift', 'ec-loy-wallet-icon') +
+        '<p class="ec-loy-wallet-label">Votre cagnotte HAYEVA</p>' +
+        '<p class="ec-loy-wallet-amount">' + ecFmtEuros(d.balance_cents) + '</p>' +
+        '<p class="ec-loy-wallet-note">Crédit appliqué par HAYEVA sur une prochaine prestation.</p>' +
+      '</div>';
+
+      // --- Comment ça marche (valeurs réelles, jamais codées en dur) ---
+      html += '<div class="ecx-card"><p class="ec-loy-card-title">Comment ça marche</p>' +
+        ecLoyaltyStepHtml(1, 'Partagez votre code', 'Votre proche crée un compte HAYEVA et renseigne votre code.') +
+        ecLoyaltyStepHtml(2, 'Il réalise sa première intervention éligible', 'Il reçoit ' + refereeEuros + ' de crédit, une fois l\'intervention terminée.') +
+        ecLoyaltyStepHtml(3, 'Vous recevez votre récompense', 'Vous gagnez ' + refererEuros + ' de crédit, automatiquement.') +
+      '</div>';
+
+      // --- Code + partage ---
+      html += '<div class="ecx-card ec-loy-code-card">' +
+        '<p class="ec-loy-card-title">Votre code de parrainage</p>' +
+        '<div class="ec-loy-code-row"><span class="ec-loy-code" id="ecLoyCode">' + ecEscape(d.code || '') + '</span>' +
+          '<button type="button" class="ec-loy-icon-btn" id="ecLoyCopyBtn" aria-label="Copier le code">' + ecxIcon('copy') + '</button>' +
+        '</div>' +
+        '<p class="ec-loy-code-hint" id="ecLoyCopyHint" hidden>Code copié.</p>' +
+        '<button type="button" class="ecx-promo-cta" id="ecLoyShareBtn">' + ecxIcon('share') + ' Partager mon code</button>' +
+      '</div>';
+
+      // --- Parrainage reçu (si ce client a lui-même été parrainé) ---
+      if (d.invited_by){
+        html += '<div class="ecx-card"><p class="ec-loy-card-title">Votre parrainage</p>' +
+          '<div class="ec-loy-ref-row">' + ecReferralBadge(d.invited_by.status) +
+            '<span class="ec-loy-ref-reward">' + (d.invited_by.status === 'VALIDATED' ? '+' + ecFmtEuros(d.invited_by.reward_cents) : '') + '</span>' +
+          '</div>' +
+          (d.invited_by.reason ? '<p class="ec-loy-ref-reason">' + ecEscape(d.invited_by.reason) + '</p>' : '') +
+        '</div>';
+      } else {
+        html += '<div class="ecx-card"><p class="ec-loy-card-title">Vous avez été parrainé ?</p>' +
+          '<p class="ec-section-sub" style="margin:0 0 12px;">Renseignez le code d\'un proche pour bénéficier de ' + refereeEuros + ' dès votre première intervention terminée.</p>' +
+          '<form class="ec-loy-attach-form" id="ecLoyAttachForm">' +
+            '<input type="text" id="ecLoyAttachInput" placeholder="Code (ex. AB12CD34)" maxlength="12" autocomplete="off" autocapitalize="characters">' +
+            '<button type="submit" class="btn-primary">Valider</button>' +
+          '</form>' +
+          '<p class="ec-loy-attach-msg" id="ecLoyAttachMsg" hidden></p>' +
+        '</div>';
+      }
+
+      // --- Vos filleuls ---
+      html += '<div class="ecx-section-head"><h3>Vos filleuls (' + (d.referrals ? d.referrals.length : 0) + ')</h3></div>';
+      if (d.referrals && d.referrals.length){
+        html += '<div class="ec-loy-list">' + d.referrals.map(function(r){
+          return '<div class="ec-loy-list-row"><div>' +
+            '<p class="ec-loy-list-name">' + ecEscape(r.first_name) + '</p>' +
+            '<p class="ec-loy-list-sub">' + ecFmtDate(r.created_at) + (r.reason ? ' — ' + ecEscape(r.reason) : '') + '</p>' +
+          '</div><div class="ec-loy-list-end">' + ecReferralBadge(r.status) +
+            (r.status === 'VALIDATED' ? '<span class="ec-loy-ref-reward">+' + ecFmtEuros(r.reward_cents) + '</span>' : '') +
+          '</div></div>';
+        }).join('') + '</div>';
+      } else {
+        html += '<div class="ec-empty"><strong>Vous n\'avez parrainé personne pour le moment</strong>Partagez votre code pour commencer.</div>';
+      }
+
+      // --- Historique de la cagnotte ---
+      html += '<div class="ecx-section-head"><h3>Historique de votre cagnotte</h3></div>';
+      if (d.history && d.history.length){
+        html += '<div class="ec-loy-list">' + d.history.map(function(t){
+          var positive = t.amount_cents > 0;
+          return '<div class="ec-loy-list-row"><div>' +
+            '<p class="ec-loy-list-name">' + ecEscape(EC_WALLET_TX_LABEL[t.type] || t.type) + '</p>' +
+            '<p class="ec-loy-list-sub">' + ecFmtDate(t.created_at) + (t.reason ? ' — ' + ecEscape(t.reason) : '') + '</p>' +
+          '</div><span class="ec-loy-tx-amount ' + (positive ? 'is-positive' : 'is-negative') + '">' +
+            (positive ? '+' : '') + ecFmtEuros(t.amount_cents) + '</span></div>';
+        }).join('') + '</div>';
+      } else {
+        html += '<div class="ec-empty"><strong>Aucun mouvement pour le moment</strong>Votre historique apparaîtra ici dès votre premier crédit.</div>';
+      }
+
+      panel.innerHTML = html;
+
+      var copyBtn = document.getElementById('ecLoyCopyBtn');
+      if (copyBtn){
+        copyBtn.addEventListener('click', function(){
+          var code = d.code || '';
+          var hint = document.getElementById('ecLoyCopyHint');
+          function done(){ if (hint){ hint.hidden = false; setTimeout(function(){ hint.hidden = true; }, 2200); } }
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(code).then(done).catch(function(){}); }
+            else {
+              var ta = document.createElement('textarea'); ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+              document.body.appendChild(ta); ta.select();
+              try { document.execCommand('copy'); } catch(e){}
+              document.body.removeChild(ta); done();
+            }
+          } catch(e){}
+        });
+      }
+      var shareBtn = document.getElementById('ecLoyShareBtn');
+      if (shareBtn){
+        shareBtn.addEventListener('click', function(){
+          var text = 'Avec mon code HAYEVA ' + (d.code || '') + ', bénéficiez de ' + refereeEuros + ' sur votre première intervention (plomberie, chauffage, climatisation). Créez votre compte sur hayeva.fr puis renseignez ce code dans votre Espace Client, rubrique Fidélité & parrainage.';
+          try {
+            if (navigator.share){ navigator.share({ title:'Mon code HAYEVA', text:text }).catch(function(){}); return; }
+          } catch(e){}
+          var copyBtn2 = document.getElementById('ecLoyCopyBtn');
+          if (navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(function(){
+              var hint = document.getElementById('ecLoyCopyHint');
+              if (hint){ hint.textContent = 'Message copié — collez-le où vous voulez.'; hint.hidden = false; setTimeout(function(){ hint.hidden = true; hint.textContent = 'Code copié.'; }, 3000); }
+            }).catch(function(){});
+          } else if (copyBtn2) copyBtn2.click();
+        });
+      }
+      var attachForm = document.getElementById('ecLoyAttachForm');
+      if (attachForm){
+        attachForm.addEventListener('submit', function(e){
+          e.preventDefault();
+          var input = document.getElementById('ecLoyAttachInput');
+          var msg = document.getElementById('ecLoyAttachMsg');
+          var code = (input.value || '').trim();
+          if (!code){ return; }
+          var btn = attachForm.querySelector('button[type="submit"]');
+          btn.disabled = true;
+          showMsg(msg, '');
+          sb.client.rpc('attach_referral', { p_code: code }).then(function(res){
+            btn.disabled = false;
+            if (res.error){ showMsg(msg, 'Une erreur est survenue. Réessayez dans un instant.'); msg.classList.remove('is-success'); return; }
+            var out = res.data || {};
+            if (out.ok){
+              msg.classList.add('is-success');
+              showMsg(msg, 'Code validé ! Votre crédit sera appliqué dès votre première intervention terminée.');
+              ecLoyaltyCache = null;
+              ecLoaded.loyalty = false;
+              setTimeout(function(){ ecLoadLoyalty(); }, 1400);
+            } else {
+              msg.classList.remove('is-success');
+              showMsg(msg, EC_ATTACH_REFERRAL_ERROR_LABEL[out.error] || 'Ce code n\'a pas pu être validé.');
+            }
+          }).catch(function(){
+            btn.disabled = false;
+            showMsg(msg, 'Une erreur est survenue. Réessayez dans un instant.');
+          });
+        });
+      }
+    }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
+  }
+
   function ecLoadProfile(){
     var panel = document.getElementById('ecPanelProfile');
     panel.innerHTML = '<div class="ecx-skeleton"><div class="ecx-skel-card" style="height:160px;border-radius:22px;"></div><div class="ecx-skel-card"></div></div>';
@@ -23879,6 +24175,7 @@ if ('serviceWorker' in navigator){
         '<div class="ecx-profile-tile" data-ec-goto="equipment" role="button" tabindex="0" aria-label="Mes équipements">' + ecxIcon('wrench', 'ecx-tile-icon') + '<span class="ecx-tile-label">Mes équipements</span></div>' +
       '</div>' +
       '<div class="ecx-option-list ecx-card ecx-card-flat" style="padding:6px 14px;">' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="loyalty">' + ecxIcon('gift', 'ecx-opt-icon') + '<span class="ecx-opt-label">Fidélité &amp; parrainage</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
         '<button type="button" class="ecx-option-row" data-scroll-to="ecProfileForm">' + ecxIcon('user', 'ecx-opt-icon') + '<span class="ecx-opt-label">Informations personnelles</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
         '<button type="button" class="ecx-option-row" data-ec-goto="addresses">' + ecxIcon('mapPin', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mes adresses</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
         '<a class="ecx-option-row" href="tel:+33671262302">' + ecxIcon('messageCircle', 'ecx-opt-icon') + '<span class="ecx-opt-label">Aide — 06 71 26 23 02</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></a>' +
