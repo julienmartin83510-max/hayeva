@@ -433,6 +433,16 @@
 // "Activer les notifications" (voir le module Administration plus bas).
 if ('serviceWorker' in navigator){
   window.addEventListener('load', function(){
+    // Nouvelle version du service worker activée juste au chargement (ex.
+    // ancien cache conservé sur l'appareil) : un seul rechargement
+    // immédiat pour afficher la version déployée. Jamais plus tard dans la
+    // session (aucun formulaire en cours interrompu) ; les navigations
+    // suivantes sont de toute façon servies réseau d'abord.
+    var hvSwHadController = !!navigator.serviceWorker.controller, hvSwBootAt = Date.now(), hvSwReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (!hvSwHadController || hvSwReloaded || Date.now() - hvSwBootAt > 15000) return;
+      hvSwReloaded = true; window.location.reload();
+    });
     navigator.serviceWorker.register('sw.js').then(function(reg){
       // Vérifie une nouvelle version de l'application à chaque retour au
       // premier plan (PWA iPhone restée ouverte en arrière-plan).
@@ -10345,9 +10355,9 @@ if ('serviceWorker' in navigator){
     return d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   }
 
-  // Ouverture officielle HAYEVA : 2 janvier 2027 (décalée depuis le 1er
-  // novembre 2026 — le Grand Jeu de lancement se réserve dès le 1er
-  // novembre 2026, mais aucune intervention n'est réellement planifiée
+  // Ouverture officielle HAYEVA : 2 janvier 2027 — le Grand Jeu de
+  // lancement se réserve du 6 octobre au 6 décembre 2026 inclus, mais
+  // aucune intervention n'est réellement planifiée
   // avant cette date, voir migration 0042). Le serveur applique la même
   // règle (enforce_hayeva_opening_date) : ce garde-fou frontend n'est qu'un
   // confort d'affichage du calendrier, jamais la seule protection.
