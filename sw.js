@@ -1,15 +1,9 @@
-// Service Worker HAYEVA — gère uniquement les Web Push Notifications de
-// l'Espace Administration (nouvelles réservations). Aucun cache offline
-// n'est mis en place volontairement : le site reste toujours à jour à
-// chaque chargement, sans risque de servir une version périmée du planning
-// ou des tarifs.
-//
-// CACHE_VERSION : jamais utilisé pour mettre en cache quoi que ce soit
-// aujourd'hui (voir ci-dessus) — posé ici pour qu'une éventuelle future
-// stratégie de cache ait immédiatement un identifiant de version à faire
-// évoluer, et que activate() ait un nom de cache "à soi" à protéger lors du
-// nettoyage ci-dessous plutôt que de devoir le découvrir a posteriori.
-var CACHE_VERSION = 'hayeva-v1';
+// Service Worker HAYEVA — Web Push de l'Espace Administration + secours
+// hors-ligne "réseau d'abord" (voir fetch plus bas) : le site reste toujours
+// à jour quand le réseau répond ; la copie locale ne sert qu'en cas de
+// coupure réelle. CACHE_VERSION : à incrémenter pour purger les anciennes
+// copies lors d'un déploiement (activate supprime tout autre cache).
+var CACHE_VERSION = 'hayeva-v2';
 
 self.addEventListener('install', function(event){
   self.skipWaiting();
@@ -33,9 +27,43 @@ self.addEventListener('activate', function(event){
 // réseau échoue réellement (coupure), laisser passer l'erreur normale du
 // navigateur plutôt que de servir un HTML périmé depuis un cache qui de
 // toute façon n'existe pas ici.
+// HAYEVA Pro (mode terrain) : toujours RÉSEAU D'ABORD — la version en ligne
+// est servie dès que le réseau répond, et une copie est gardée. La copie
+// n'est utilisée QUE si le réseau est réellement indisponible (vide
+// sanitaire, garage...), pour que l'application s'ouvre quand même et que
+// les saisies locales (brouillons d'intervention) restent accessibles.
+// Jamais de cache pour Supabase / API (données toujours fraîches).
+function sameOriginStatic(req){
+  try {
+    var u = new URL(req.url);
+    return u.origin === self.location.origin && req.method === 'GET' &&
+      (/\.(png|jpe?g|webp|svg|ico|json|css|js)$/i.test(u.pathname));
+  } catch(e){ return false; }
+}
 self.addEventListener('fetch', function(event){
-  if (event.request.mode === 'navigate'){
-    event.respondWith(fetch(event.request));
+  var req = event.request;
+  var isAppShell = false;
+  if (req.mode === 'navigate'){
+    try {
+      var p = new URL(req.url).pathname;
+      isAppShell = p === '/' || p === '/index.html' || p.indexOf('/admin/interventions/') === 0;
+    } catch(e){}
+    if (!isAppShell) return;
+  }
+  if (isAppShell || sameOriginStatic(req)){
+    event.respondWith(
+      fetch(req).then(function(res){
+        if (res && res.ok){
+          var copy = res.clone();
+          caches.open(CACHE_VERSION).then(function(c){ c.put(req.mode === 'navigate' ? './' : req, copy); }).catch(function(){});
+        }
+        return res;
+      }).catch(function(){
+        return caches.open(CACHE_VERSION).then(function(c){
+          return c.match(req.mode === 'navigate' ? './' : req, { ignoreSearch: req.mode === 'navigate' });
+        }).then(function(hit){ return hit || Response.error(); });
+      })
+    );
   }
 });
 

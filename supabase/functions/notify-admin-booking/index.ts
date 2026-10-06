@@ -45,33 +45,27 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
+import { ADMIN_BOOKING_EMAIL, bigButtonHtml, sendEmailOnce } from '../_shared/mail.ts';
+import { escapeHtml, fmtDate, fmtDuration, fmtTime, resolveBookingContact, rowHtml } from '../_shared/booking-contact.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const ADMIN_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL');
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
-const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
 const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
+const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.netlify.app';
+// Page de validation (site Netlify) : le jeton est passé dans le fragment
+// (#...), jamais envoyé à un serveur ni dans un en-tête Referer.
+const ACTION_PAGE_URL = `${SITE_BASE_URL}/rdv-action.html`;
+const TOKEN_TTL_DAYS = 21;
 
-const CATEGORY_LABELS: Record<string, string> = {
-  climatisation: 'Climatisation',
-  chauffage: 'Chauffage',
-  plomberie: 'Plomberie',
-  multi: 'Multi-services',
-  pro: 'Professionnel',
-};
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
-  ));
+function randomToken(): string {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-
-function fmtDate(d: string): string {
-  const [y, m, day] = d.slice(0, 10).split('-');
-  return `${day}/${m}/${y}`;
+async function sha256Hex(s: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(d)).map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
 Deno.serve(async (req: Request) => {
@@ -93,30 +87,17 @@ Deno.serve(async (req: Request) => {
     }
     const booking = payload.record;
 
-    // Ni l'e-mail ni le push ne sont plus une condition d'arrêt l'un pour
-    // l'autre (avant : un RESEND_API_KEY/ADMIN_NOTIFICATION_EMAIL manquant
-    // coupait TOUTE la fonction avant même d'atteindre le bloc push
-    // ci-dessous) — chaque canal vérifie désormais sa propre config et
-    // s'ignore silencieusement si elle manque, sans empêcher l'autre.
-    if (!RESEND_API_KEY || !ADMIN_EMAIL) {
-      console.error('notify-admin-booking: RESEND_API_KEY ou ADMIN_NOTIFICATION_EMAIL manquant — e-mail admin ignoré (le push, ci-dessous, reste tenté).');
-    }
-
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // ---- Service / prestation ----
     let serviceName = 'Intervention';
-    let categoryLabel = 'HAYEVA';
     if (booking.service_id) {
       const { data: svc } = await supabase
         .from('services')
-        .select('name, category')
+        .select('name')
         .eq('id', booking.service_id)
         .maybeSingle();
-      if (svc) {
-        serviceName = svc.name;
-        categoryLabel = CATEGORY_LABELS[svc.category] || svc.category;
-      }
+      if (svc) serviceName = svc.name;
     }
     let packName: string | null = null;
     if (booking.service_pack_id) {
@@ -129,88 +110,67 @@ Deno.serve(async (req: Request) => {
     }
 
     // ---- Contact (invité / particulier connecté / professionnel) ----
-    let contactName = 'Client';
-    let contactPhone = '';
-    let contactEmail = '';
-    let contactAddress = '';
-
-    if (booking.guest_name) {
-      contactName = booking.guest_name;
-      contactPhone = booking.guest_phone || '';
-      contactEmail = booking.guest_email || '';
-      contactAddress = booking.guest_address || '';
-    } else if (booking.customer_user_id) {
-      const [{ data: cp }, { data: prof }] = await Promise.all([
-        supabase.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', booking.customer_user_id).maybeSingle(),
-        supabase.from('profiles').select('email').eq('user_id', booking.customer_user_id).maybeSingle(),
-      ]);
-      if (cp) {
-        contactName = [cp.first_name, cp.last_name].filter(Boolean).join(' ') || contactName;
-        contactPhone = cp.phone || '';
-      }
-      if (prof) contactEmail = prof.email || '';
-      if (booking.customer_address_id) {
-        const { data: addr } = await supabase
-          .from('customer_addresses')
-          .select('address,postal_code,city')
-          .eq('id', booking.customer_address_id)
-          .maybeSingle();
-        if (addr) contactAddress = [addr.address, addr.postal_code, addr.city].filter(Boolean).join(', ');
-      }
-    } else if (booking.professional_account_id) {
-      const { data: pa } = await supabase
-        .from('professional_accounts')
-        .select('legal_name,phone,address_line1,address_line2,postal_code,city')
-        .eq('id', booking.professional_account_id)
-        .maybeSingle();
-      if (pa) {
-        contactName = pa.legal_name || contactName;
-        contactPhone = pa.phone || '';
-        contactAddress = [pa.address_line1, pa.address_line2, pa.postal_code, pa.city].filter(Boolean).join(', ');
-      }
-    }
+    const contact = await resolveBookingContact(supabase, booking);
+    const contactName = contact.name;
+    const contactAddress = contact.address;
 
     const prestationLabel = packName ? `${serviceName} — ${packName}` : serviceName;
-    const subject = `🔔 Nouveau rendez-vous HAYEVA – ${categoryLabel}`;
+    const subject = '🔔 Nouvelle demande de rendez-vous HAYEVA';
+    const dedupeKey = `admin_new:${booking.id}`;
 
-    const html = renderEmailShell(`
-      <h2 style="margin:0 0 16px; font-size:20px; color:#101B24;">Nouveau rendez-vous HAYEVA</h2>
-      ${statusBadgeHtml('🔔 Nouvelle demande', 'received')}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
-        <tr><td style="padding:7px 0;color:#5B6B78;width:130px;">Client</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(contactName)}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">Téléphone</td><td style="padding:7px 0;text-align:right;">${contactPhone ? escapeHtml(contactPhone) : '—'}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">E-mail</td><td style="padding:7px 0;text-align:right;">${contactEmail ? escapeHtml(contactEmail) : '—'}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">Type</td><td style="padding:7px 0;text-align:right;">${escapeHtml(categoryLabel)}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">Prestation</td><td style="padding:7px 0;text-align:right;">${escapeHtml(prestationLabel)}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">Date</td><td style="padding:7px 0;text-align:right;">${fmtDate(booking.date)}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">Créneau</td><td style="padding:7px 0;text-align:right;">${(booking.start_time || '').slice(0, 5)}</td></tr>
-        <tr><td style="padding:7px 0;color:#5B6B78;">Adresse</td><td style="padding:7px 0;text-align:right;">${contactAddress ? escapeHtml(contactAddress) : '—'}</td></tr>
-        ${booking.notes ? `<tr><td style="padding:7px 0;color:#5B6B78;vertical-align:top;">Commentaire</td><td style="padding:7px 0;text-align:right;">${escapeHtml(booking.notes)}</td></tr>` : ''}
-      </table>
-      <p style="margin:24px 0 0;">
-        <a href="${ADMIN_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir le rendez-vous</a>
-      </p>
-    `, escapeHtml(booking.reference || ''));
+    // Anti-doublon : un webhook rejoué ne régénère ni jetons ni e-mail.
+    const { data: already } = await supabase
+      .from('booking_emails').select('id').eq('dedupe_key', dedupeKey).eq('status', 'sent').maybeSingle();
 
-    if (RESEND_API_KEY && ADMIN_EMAIL) {
-      const emailRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: FROM_EMAIL,
-          to: [ADMIN_EMAIL],
-          reply_to: REPLY_TO_EMAIL,
-          subject,
-          html,
-        }),
-      });
-
-      if (!emailRes.ok) {
-        console.error('notify-admin-booking: échec envoi Resend', emailRes.status, await emailRes.text());
+    if (!already) {
+      // Boutons CONFIRMER / REFUSER : uniquement pour une demande encore en
+      // attente. Jetons aléatoires (256 bits), seul leur hash est stocké.
+      let actionsHtml = '';
+      if (booking.status === 'PENDING') {
+        const confirmToken = randomToken();
+        const refuseToken = randomToken();
+        const expiresAt = new Date(Date.now() + TOKEN_TTL_DAYS * 86400000).toISOString();
+        const { error: tokErr } = await supabase.from('booking_action_tokens').insert([
+          { booking_id: booking.id, action: 'confirm', token_hash: await sha256Hex(confirmToken), expires_at: expiresAt },
+          { booking_id: booking.id, action: 'refuse', token_hash: await sha256Hex(refuseToken), expires_at: expiresAt },
+        ]);
+        if (tokErr) {
+          console.error('notify-admin-booking: création des jetons impossible', tokErr.message);
+        } else {
+          actionsHtml = `
+            <div style="margin:26px 0 6px;">
+              ${bigButtonHtml(`${ACTION_PAGE_URL}#a=confirm&t=${confirmToken}`, '✅ CONFIRMER LE RENDEZ-VOUS', '#2F9E5B')}
+              ${bigButtonHtml(`${ACTION_PAGE_URL}#a=refuse&t=${refuseToken}`, '❌ REFUSER LE RENDEZ-VOUS', '#C8423B')}
+            </div>
+            <p style="margin:0 0 4px;font-size:12px;color:#8A97A3;text-align:center;">Liens personnels à usage unique, valables ${TOKEN_TTL_DAYS} jours — ne pas transférer.</p>`;
+        }
       }
+
+      const html = renderEmailShell(`
+        <h2 style="margin:0 0 16px; font-size:20px; color:#101B24;">Nouvelle demande de rendez-vous</h2>
+        ${statusBadgeHtml('🟠 En attente de votre validation', 'received')}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
+          ${rowHtml('Client', escapeHtml(contactName), true)}
+          ${rowHtml('Téléphone', contact.phone ? `<a href="tel:${escapeHtml(contact.phone.replace(/\s+/g, ''))}" style="color:#1AA6EE;">${escapeHtml(contact.phone)}</a>` : '')}
+          ${rowHtml('E-mail', escapeHtml(contact.email))}
+          ${rowHtml('Type de client', contact.kind)}
+          ${rowHtml('Prestation', escapeHtml(prestationLabel))}
+          ${rowHtml('Date', fmtDate(booking.date), true)}
+          ${rowHtml('Heure', fmtTime(booking.start_time), true)}
+          ${rowHtml('Durée estimée', fmtDuration(booking.service_duration_minutes))}
+          ${rowHtml('Adresse', escapeHtml(contactAddress))}
+          ${rowHtml('Commentaire', booking.notes ? escapeHtml(booking.notes) : '')}
+          ${rowHtml('Référence', escapeHtml(booking.reference || ''))}
+        </table>
+        ${actionsHtml}
+        <p style="margin:18px 0 0;text-align:center;">
+          <a href="${ADMIN_PANEL_URL}" style="color:#1AA6EE;font-size:13px;">Ouvrir l'espace administration</a>
+        </p>
+      `, escapeHtml(booking.reference || ''));
+
+      await sendEmailOnce(supabase, {
+        dedupeKey, bookingId: booking.id, emailType: 'admin_new', to: ADMIN_BOOKING_EMAIL, subject, html,
+      });
     }
 
     // ---- Notification push (Web Push / PWA, Espace Administration) ----
@@ -223,7 +183,7 @@ Deno.serve(async (req: Request) => {
       const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
       const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:contact@hayeva.fr';
 
-      if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+      if (!already && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
         const { data: subs } = await supabase
           .from('admin_push_subscriptions')
           .select('id, endpoint, p256dh, auth_key')
@@ -251,7 +211,7 @@ Deno.serve(async (req: Request) => {
           const pushUrl = `${panelBase}?booking=${booking.id}#${panelHash}`;
 
           const pushPayload = JSON.stringify({
-            title: '🔔 Nouvelle réservation HAYEVA',
+            title: '🔔 Nouvelle demande de rendez-vous HAYEVA',
             body: pushBody,
             bookingId: booking.id,
             url: pushUrl,
