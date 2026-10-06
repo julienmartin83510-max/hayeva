@@ -80,6 +80,27 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HAYEVA">
+<script>
+  // HAYEVA Pro (application professionnelle installable) : ouverte via
+  // ?app=pro — même site, même session, mais manifest/nom/couleurs dédiés
+  // pour l'installation sur l'écran d'accueil (iPhone, iPad, ordinateur),
+  // et ouverture directe sur l'espace administration (jamais le site public).
+  (function(){
+    var isPro = /(?:^|[?&])app=pro(?:&|$)/.test(location.search);
+    try {
+      if (isPro) sessionStorage.setItem('hayeva_app', 'pro');
+      else if (sessionStorage.getItem('hayeva_app') === 'pro' && window.matchMedia('(display-mode: standalone)').matches) isPro = true;
+    } catch(e){}
+    if (!isPro) return;
+    window.HAYEVA_PRO_APP = true;
+    document.documentElement.classList.add('hayeva-pro-app');
+    var m = document.querySelector('link[rel="manifest"]'); if (m) m.setAttribute('href', 'pro-manifest.json');
+    var t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.setAttribute('content', 'HAYEVA Pro');
+    var c = document.querySelector('meta[name="theme-color"]'); if (c) c.setAttribute('content', '#101B24');
+    if (!/^#espace(pro|client)/i.test(location.hash)) history.replaceState(null, '', location.pathname + location.search + '#espacePro');
+    document.title = 'HAYEVA Pro';
+  })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <!-- Bibliothèques réservées à l'administration (≈1,2 Mo) : lecture
@@ -5920,6 +5941,11 @@ if ('serviceWorker' in navigator){
   .rdv-launch-badge strong{ display:block; font-size:0.82rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--terracotta-deep); margin-bottom:3px; }
   .rdv-launch-badge span{ font-size:0.9rem; color:var(--ink-soft); line-height:1.4; }
   .rdv-launch-badge-link{ display:inline-block; margin-left:6px; font-weight:700; color:var(--terracotta-deep); text-decoration:underline; text-underline-offset:2px; white-space:nowrap; }
+
+  /* HAYEVA Pro (application installée) : aucun lien vers le site public. */
+  html.hayeva-pro-app .hv-site-link{ display:none !important; }
+  #admIvSyncBadge[data-state="offline"]{ color:#B23A3A !important; }
+  #admIvSyncBadge[data-state="saving"]{ color:#5B6B78 !important; }
 </style>
 
 <div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
@@ -8214,10 +8240,16 @@ if ('serviceWorker' in navigator){
               </div>
               <div class="adm-sidebar-nav" id="admSidebarNav" role="tablist">
                 <button type="button" class="adm-nav-btn is-active" data-adm-page="dashboard" role="tab" aria-selected="true">
-                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Tableau de bord</span>
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Aujourd'hui</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="planning" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Planning</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="clients" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Clients</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="interventions" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Interventions</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="requests" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Demandes récentes</span>
@@ -8244,6 +8276,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="pricing" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Chiffrage</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="stock" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Stock</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="catalog" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Catalogue</span>
                 </button>
@@ -8259,7 +8294,7 @@ if ('serviceWorker' in navigator){
                 <div class="adm-page-head">
                   <div class="pro-page-head-top">
                     <div>
-                      <p class="adm-eyebrow">Tableau de bord</p>
+                      <p class="adm-eyebrow" id="hvpTodayDate">Aujourd'hui</p>
                       <h2 class="adm-page-title">Bonjour THE BIG BOSS</h2>
                     </div>
                     <button type="button" class="hv-site-link" id="espaceAdminGoToSiteBtn">Voir le site<span class="hv-site-link-arrow" aria-hidden="true">↗</span></button>
@@ -8291,6 +8326,16 @@ if ('serviceWorker' in navigator){
                 <p class="adm-subhead" id="admNextApptHeading" hidden>Prochain rendez-vous</p>
                 <div id="admNextApptCard"></div>
                 <p class="adm-subhead">Actions rapides</p>
+                <div class="hvp-quick">
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-client">+ Nouveau client</button>
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-booking">+ Nouveau RDV</button>
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-quote">+ Nouveau devis</button>
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-intervention">+ Nouvelle intervention</button>
+                </div>
+                <p class="adm-subhead">À traiter</p>
+                <div class="hvp-todo" id="hvpTodo"><p class="ec-loading">Chargement…</p></div>
+                <p class="adm-subhead">Interventions du jour</p>
+                <div id="hvpTodayList"><p class="ec-loading">Chargement…</p></div>
                 <div class="adm-quicklinks">
                   <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">Planning</button>
                   <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">Demandes récentes</button>
@@ -8677,6 +8722,39 @@ if ('serviceWorker' in navigator){
               </section>
 
 
+              <section class="adm-page" id="admPageClients" data-adm-page="clients" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Base clients</p>
+                  <h2 class="adm-page-title">Clients</h2>
+                </div>
+                <div class="hvp-toolbar">
+                  <input type="search" id="hvpClientSearch" class="hvp-search" placeholder="Nom, téléphone, adresse, e-mail…" autocomplete="off">
+                  <button type="button" class="hvp-primary-btn" data-hvp-action="new-client">+ Nouveau client</button>
+                </div>
+                <div id="hvpClientList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageInterventions" data-adm-page="interventions" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Terrain</p>
+                  <h2 class="adm-page-title">Interventions</h2>
+                </div>
+                <div id="hvpIvList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageStock" data-adm-page="stock" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Pièces</p>
+                  <h2 class="adm-page-title">Stock</h2>
+                  <p class="adm-page-sub">Les pièces reliées au stock sont déduites automatiquement quand elles sont utilisées en intervention.</p>
+                </div>
+                <div class="hvp-toolbar">
+                  <input type="search" id="hvpStockSearch" class="hvp-search" placeholder="Nom, référence, marque, fournisseur…" autocomplete="off">
+                  <button type="button" class="hvp-primary-btn" data-hvp-action="new-stock">+ Nouvelle pièce</button>
+                </div>
+                <div id="hvpStockList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
@@ -8791,16 +8869,16 @@ if ('serviceWorker' in navigator){
                "Plus" pour les 8 pages secondaires. -->
           <nav class="hv-bottomnav" id="admBottomNav" aria-label="Navigation Administration (mobile)">
             <button type="button" class="hv-bottomnav-item is-active" data-hv-nav="dashboard" aria-current="page">
-              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/></svg></span>Accueil
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6"/></svg></span>Aujourd'hui
             </button>
             <button type="button" class="hv-bottomnav-item" data-hv-nav="planning">
               <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>Planning
             </button>
-            <button type="button" class="hv-bottomnav-item" data-hv-nav="requests">
-              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H7l-3 3z"/></svg></span>Demandes
+            <button type="button" class="hv-bottomnav-item" data-hv-nav="clients">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8"/><path d="M22 21a7 7 0 0 0-4-6.3"/></svg></span>Clients
             </button>
-            <button type="button" class="hv-bottomnav-item" data-hv-nav="quotes">
-              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>Devis
+            <button type="button" class="hv-bottomnav-item" data-hv-nav="interventions">
+              <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></span>Interventions
             </button>
             <button type="button" class="hv-bottomnav-item" data-hv-more="admin">
               <span class="hv-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>Plus
@@ -8819,6 +8897,9 @@ if ('serviceWorker' in navigator){
                 </button>
               </div>
               <div class="hv-more-list">
+                <button type="button" class="hv-more-item" data-hv-nav="requests">Demandes de RDV</button>
+                <button type="button" class="hv-more-item" data-hv-nav="quotes">Devis</button>
+                <button type="button" class="hv-more-item" data-hv-nav="stock">Stock</button>
                 <button type="button" class="hv-more-item" data-hv-nav="contracts">Contrats chaudière</button>
                 <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
@@ -11996,6 +12077,7 @@ if ('serviceWorker' in navigator){
     document.title = isPro
       ? brandName + ' Pro — Check technique conciergeries & mobil-homes'
       : brandName + ' — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël';
+    if (window.HAYEVA_PRO_APP) document.title = 'HAYEVA Pro';
     var meta = document.querySelector('meta[name="description"]');
     if (!meta && document.head){
       meta = document.createElement('meta');
@@ -13406,6 +13488,9 @@ if ('serviceWorker' in navigator){
   // ouvert, ou de faire défiler une page publique cachée derrière lui.
   function afterProLogout(){
     renderLocked();
+    // Application HAYEVA Pro installée : on reste sur l'écran de connexion
+    // professionnel, jamais de retour vers le site public.
+    if (window.HAYEVA_PRO_APP) return;
     if (window.sudCloseEspace) window.sudCloseEspace('espacePro');
     if (window.sudOpenPortal) window.sudOpenPortal();
   }
@@ -14814,6 +14899,7 @@ if ('serviceWorker' in navigator){
   // seule fois (pas de requête par onglet), les onglets ne font que
   // basculer l'affichage d'un contenu déjà en mémoire.
   var adminClientFicheCache = null;
+  window.admOpenClientFiche = function(id){ return admOpenClientFiche(id); };
   var adminClientFicheTab = 'overview';
   function admOpenClientFiche(clientId){
     var overlay = document.getElementById('adminClientFicheOverlay');
@@ -15516,6 +15602,7 @@ if ('serviceWorker' in navigator){
         // Demandes récentes bloqué sur "Chargement…" sans aucun message.
         return Promise.all([admBuildProfileMap(rows), loadEmails()]).then(function(res2){
           adminBookingsCache = { rows: rows, profiles: res2[0], emails: res2[1] };
+          if (window.hvProOnBookings) { try { window.hvProOnBookings(); } catch(e){ console.error('hvProOnBookings', e); } }
           admRenderBkArea();
           admRenderRecentRequests();
           admHandleDeepLink();
@@ -16966,6 +17053,7 @@ if ('serviceWorker' in navigator){
     document.addEventListener('touchstart', admIvTouchProbe, true);
 
     var admIvOpening = false;
+    window.admOpenInterventionSheet = function(id, cb){ return admOpenInterventionSheet(id, cb); };
     function admOpenInterventionSheet(bookingId, onSettled){
       function settle(){ admIvOpening = false; if (onSettled) onSettled(); }
       admIvDebugLog('CLIC DÉTECTÉ ✓', { bookingId: bookingId });
@@ -17090,7 +17178,9 @@ if ('serviceWorker' in navigator){
               technicianSignatureData: ivRow.technician_signature_data,
               priorValues: null, priorDate: null
             };
+            var admIvRestoredLocal = admIvApplyLocalDraft();
             admIvRender();
+            if (admIvRestoredLocal){ admIvSetSyncBadge('offline'); admIvScheduleSave(); }
             admIvForceRepaint(overlay);
             // Amélioration purement indicative (comparaison avec le dernier
             // entretien) : protégée pour ne JAMAIS faire échouer l'ouverture
@@ -17176,24 +17266,103 @@ if ('serviceWorker' in navigator){
     // Sauvegarde du brouillon : update() par id pour chaque item déjà en
     // base (jamais de delete+reinsert, qui casserait le lien avec les photos
     // déjà uploadées via intervention_photos.intervention_item_id).
-    function admIvPersistDraft(){
-      if (!admIv) return;
-      var updates = admIv.items.map(function(it){
+    // Mode terrain : chaque autosauvegarde est D'ABORD écrite localement
+    // (localStorage, clé par intervention) puis envoyée à Supabase. Si le
+    // réseau est coupé (vide sanitaire, garage…), la saisie reste sur
+    // l'appareil — rien n'est perdu même si l'application est fermée — et
+    // elle est renvoyée automatiquement dès le retour du réseau
+    // (admIvFlushLocalDrafts, sur l'événement "online" et à l'ouverture).
+    var ADM_IV_DRAFT_PREFIX = 'hayeva_iv_draft_';
+    function admIvDraftPayload(){
+      return {
+        ts: Date.now(), synced: false,
+        items: admIv.items.map(function(it){ return { id: it.id, status: it.status, observation: it.observation || null, measured_value: it.measured_value || null }; }),
+        iv: {
+          observations: admIv.observations || null,
+          recommendations: admIv.recommendations || null,
+          equipment_id: admIv.selectedEquipmentId || null,
+          technician_name: admIv.technicianName || null,
+          completion_status: admIv.completionStatus || null,
+          reserves_status: admIv.reservesStatus || null,
+          reserves_detail: admIv.reservesDetail || null
+        }
+      };
+    }
+    function admIvSendDraft(interventionId, draft){
+      var updates = draft.items.map(function(it){
         return sb.client.from('intervention_items').update({
-          status: it.status, observation: it.observation || null, measured_value: it.measured_value || null
+          status: it.status, observation: it.observation, measured_value: it.measured_value
         }).eq('id', it.id);
       });
-      updates.push(sb.client.from('interventions').update({
-        observations: admIv.observations || null,
-        recommendations: admIv.recommendations || null,
-        equipment_id: admIv.selectedEquipmentId || null,
-        technician_name: admIv.technicianName || null,
-        completion_status: admIv.completionStatus || null,
-        reserves_status: admIv.reservesStatus || null,
-        reserves_detail: admIv.reservesDetail || null
-      }).eq('id', admIv.interventionId));
-      Promise.all(updates).catch(function(err){ console.warn('admIvPersistDraft: échec autosave', err); });
+      updates.push(sb.client.from('interventions').update(draft.iv).eq('id', interventionId));
+      return Promise.all(updates).then(function(results){
+        var failed = results.some(function(r){ return r && r.error; });
+        if (failed) throw new Error('sync');
+        try {
+          var cur = JSON.parse(window.localStorage.getItem(ADM_IV_DRAFT_PREFIX + interventionId) || 'null');
+          // Ne marque synchronisé que si aucune saisie plus récente n'a été
+          // écrite pendant l'envoi.
+          if (cur && cur.ts === draft.ts) window.localStorage.removeItem(ADM_IV_DRAFT_PREFIX + interventionId);
+        } catch(e){}
+        admIvSetSyncBadge('ok');
+      });
     }
+    function admIvSetSyncBadge(state){
+      var el = document.getElementById('admIvSyncBadge');
+      if (!el) return;
+      el.textContent = state === 'ok' ? '✓ Enregistré' : (state === 'offline' ? '⚠ Hors ligne — saisie gardée sur l\'appareil, envoi automatique au retour du réseau' : 'Enregistrement…');
+      el.setAttribute('data-state', state);
+    }
+    function admIvPersistDraft(){
+      if (!admIv) return;
+      var draft = admIvDraftPayload();
+      var id = admIv.interventionId;
+      try { window.localStorage.setItem(ADM_IV_DRAFT_PREFIX + id, JSON.stringify(draft)); } catch(e){}
+      admIvSetSyncBadge('saving');
+      admIvSendDraft(id, draft).catch(function(err){
+        console.warn('admIvPersistDraft: hors ligne / échec — gardé localement', err);
+        admIvSetSyncBadge('offline');
+      });
+    }
+    function admIvFlushLocalDrafts(){
+      if (!sb || !sb.client) return;
+      var keys = [];
+      try {
+        for (var i = 0; i < window.localStorage.length; i++){
+          var k = window.localStorage.key(i);
+          if (k && k.indexOf(ADM_IV_DRAFT_PREFIX) === 0) keys.push(k);
+        }
+      } catch(e){ return; }
+      keys.forEach(function(k){
+        var draft = null;
+        try { draft = JSON.parse(window.localStorage.getItem(k) || 'null'); } catch(e){}
+        if (!draft || !draft.iv) return;
+        admIvSendDraft(k.slice(ADM_IV_DRAFT_PREFIX.length), draft).catch(function(){});
+      });
+    }
+    // Applique un brouillon local non encore envoyé sur la fiche qui s'ouvre
+    // (prioritaire sur la version serveur, puisqu'il est plus récent).
+    function admIvApplyLocalDraft(){
+      var draft = null;
+      try { draft = JSON.parse(window.localStorage.getItem(ADM_IV_DRAFT_PREFIX + admIv.interventionId) || 'null'); } catch(e){}
+      if (!draft || !draft.iv) return false;
+      var byId = {};
+      draft.items.forEach(function(d){ byId[d.id] = d; });
+      admIv.items.forEach(function(it){
+        var d = byId[it.id];
+        if (d){ it.status = d.status; it.observation = d.observation; it.measured_value = d.measured_value; }
+      });
+      admIv.observations = draft.iv.observations || '';
+      admIv.recommendations = draft.iv.recommendations || '';
+      if (draft.iv.equipment_id) admIv.selectedEquipmentId = draft.iv.equipment_id;
+      if (draft.iv.technician_name) admIv.technicianName = draft.iv.technician_name;
+      admIv.completionStatus = draft.iv.completion_status;
+      admIv.reservesStatus = draft.iv.reserves_status;
+      admIv.reservesDetail = draft.iv.reserves_detail || '';
+      return true;
+    }
+    window.addEventListener('online', function(){ try { admIvFlushLocalDrafts(); } catch(e){} });
+    setTimeout(function(){ try { admIvFlushLocalDrafts(); } catch(e){} }, 4000);
 
     // Rendu d'un contrôle selon son field_type (voir DIAGNOSTIC_TEMPLATES
     // plus haut) : 'status' est l'historique OK/À surveiller/Anomalie/N/A,
@@ -17529,6 +17698,11 @@ if ('serviceWorker' in navigator){
         '<div class="adm-iv-header">' +
           '<button type="button" class="adm-iv-back-btn" data-iv-close>← Retour au planning</button>' +
           '<span class="adm-iv-status-pill">' + statusLabel + '</span>' +
+        '</div>' +
+        '<p id="admIvSyncBadge" data-state="ok" style="margin:0 0 10px;font-size:13px;font-weight:600;color:#2F7A4F;" aria-live="polite">✓ Enregistré</p>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;">' +
+          (c.phone ? '<a href="tel:' + admEscape(String(c.phone).replace(/\s+/g, '')) + '" style="flex:1;min-width:130px;text-align:center;padding:14px 10px;border-radius:12px;background:#101B24;color:#fff;font-weight:700;text-decoration:none;">📞 Appeler</a>' : '') +
+          (c.address ? '<a href="https://maps.apple.com/?daddr=' + encodeURIComponent(c.address) + '" target="_blank" rel="noopener" style="flex:1;min-width:130px;text-align:center;padding:14px 10px;border-radius:12px;background:#1AA6EE;color:#fff;font-weight:700;text-decoration:none;">🧭 Itinéraire</a>' : '') +
         '</div>' +
         admIvSafetyBannerHtml() +
         '<h3>Fiche d\'intervention — ' + admEscape(svcName) + '</h3>' +
@@ -19125,7 +19299,17 @@ if ('serviceWorker' in navigator){
     return '';
   }
 
+  // Exposés pour le module HAYEVA Pro (pages Aujourd'hui / Clients /
+  // Interventions / Stock, script séparé plus bas) — réutilisation des
+  // fiches existantes, aucune duplication.
+  window.admShowPage = function(k){ return admShowPage(k); };
+  window.admOpenBookingModal = function(id){ return admOpenBookingModal(id); };
+  window.admLoadBookings = function(){ return admLoadBookings(); };
+  window.admGetBookingsCache = function(){ return adminBookingsCache; };
+  window.admOpenQuoteBuilder = function(id){ return admOpenQuoteBuilder(id); };
+  window.admContactFor = function(b){ return admContactFor(b, (adminBookingsCache && adminBookingsCache.profiles) || {}); };
   function admShowPage(key){
+    if (window.hvProBeforeShowPage) window.hvProBeforeShowPage(key);
     Array.prototype.forEach.call(document.querySelectorAll('.adm-page'), function(sec){
       sec.hidden = sec.getAttribute('data-adm-page') !== key;
     });
@@ -19134,7 +19318,7 @@ if ('serviceWorker' in navigator){
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    if (window.hvSyncBottomNav) window.hvSyncBottomNav(document.getElementById('admBottomNav'), key, ['dashboard', 'planning', 'requests', 'quotes']);
+    if (window.hvSyncBottomNav) window.hvSyncBottomNav(document.getElementById('admBottomNav'), key, ['dashboard', 'planning', 'clients', 'interventions']);
     if (key === 'contracts' && typeof admContractsInit === 'function') admContractsInit();
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
@@ -25229,4 +25413,493 @@ if ('serviceWorker' in navigator){
   });
 })();
 </script>
+<style>
+  /* ---------- HAYEVA Pro : Aujourd'hui / Clients / Interventions / Stock ----------
+     Mêmes variables --adm-* que le reste de l'administration (identité
+     inchangée), gros boutons pour l'usage terrain, aucune animation. */
+  .hvp-quick{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 18px; }
+  @media (min-width:760px){ .hvp-quick{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+  .hvp-quick-btn, .hvp-primary-btn{
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.92rem; color:#fff; background:var(--adm-navy);
+    border:none; border-radius:14px; min-height:52px; padding:12px 14px; cursor:pointer; text-align:center;
+  }
+  .hvp-primary-btn{ background:var(--adm-ocean); white-space:nowrap; }
+  .hvp-todo{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 18px; }
+  @media (min-width:760px){ .hvp-todo{ grid-template-columns:repeat(5,minmax(0,1fr)); } }
+  .hvp-todo-item{
+    display:flex; flex-direction:column; gap:2px; text-align:left; background:var(--adm-card-bg); color:var(--adm-ink);
+    border:1px solid var(--adm-line); border-radius:14px; padding:12px 14px; cursor:pointer; font-family:"Poppins",sans-serif; min-height:72px;
+  }
+  .hvp-todo-item strong{ font-size:1.45rem; line-height:1.1; }
+  .hvp-todo-item span{ font-size:0.78rem; color:var(--adm-ink-soft); font-weight:600; }
+  .hvp-todo-item.is-alert{ border-color:var(--adm-coral); box-shadow:inset 4px 0 0 var(--adm-coral); }
+  .hvp-card{
+    background:var(--adm-card-bg); color:var(--adm-ink); border:1px solid var(--adm-line); border-radius:16px;
+    padding:14px 14px 12px; margin:0 0 10px; box-shadow:var(--adm-shadow-sm); font-family:"Poppins",sans-serif;
+  }
+  .hvp-card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .hvp-card-time{ font-size:1.15rem; font-weight:800; }
+  .hvp-card-title{ font-weight:700; font-size:0.98rem; margin:2px 0 0; overflow-wrap:anywhere; }
+  .hvp-card-sub{ font-size:0.84rem; color:var(--adm-ink-soft); margin:2px 0 0; overflow-wrap:anywhere; }
+  .hvp-actions{ display:grid; grid-template-columns:0.9fr 1.15fr 0.85fr 1.2fr; gap:6px; margin-top:12px; }
+  .hvp-act{
+    display:flex; align-items:center; justify-content:center; text-align:center; min-height:46px; padding:6px 4px;
+    border-radius:12px; border:1px solid var(--adm-line); background:var(--adm-offwhite); color:var(--adm-ink);
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:0.7rem; letter-spacing:-0.01em; text-decoration:none; cursor:pointer; overflow:hidden;
+  }
+  @media (min-width:600px){ .hvp-act{ font-size:0.78rem; } }
+  .hvp-act.is-main{ background:var(--adm-green); color:#fff; border-color:transparent; }
+  .hvp-pill{ display:inline-block; font-size:0.68rem; font-weight:700; border-radius:999px; padding:4px 10px; white-space:nowrap; font-family:"Poppins",sans-serif; }
+  .hvp-st-PENDING{ background:var(--adm-amber-soft); color:var(--adm-amber); }
+  .hvp-st-CONFIRMED{ background:var(--adm-blue-soft); color:var(--adm-blue); }
+  .hvp-st-IN_PROGRESS{ background:var(--adm-turquoise-soft); color:var(--adm-turquoise); }
+  .hvp-st-COMPLETED{ background:var(--adm-green-soft); color:var(--adm-green); }
+  .hvp-st-CANCELLED, .hvp-st-REFUSED, .hvp-st-NO_SHOW{ background:var(--adm-grey-soft); color:var(--adm-grey); }
+  .hvp-st-low{ background:var(--adm-red-soft); color:var(--adm-red); }
+  .hvp-toolbar{ display:flex; gap:10px; margin:0 0 14px; }
+  .hvp-search{
+    flex:1; min-width:0; font-size:16px; padding:13px 14px; border-radius:12px; border:1px solid var(--adm-line);
+    background:var(--adm-card-bg); color:var(--adm-ink); font-family:"Poppins",sans-serif;
+  }
+  .hvp-section-title{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--adm-ink-soft); margin:18px 0 8px; }
+  .hvp-row{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; cursor:pointer; }
+  .hvp-row .hvp-grow{ flex:1; min-width:0; }
+  .hvp-qty{ display:flex; align-items:center; gap:6px; }
+  .hvp-qty button{ width:44px; height:44px; border-radius:12px; border:1px solid var(--adm-line); background:var(--adm-offwhite); color:var(--adm-ink); font-size:1.2rem; font-weight:700; cursor:pointer; }
+  .hvp-qty strong{ min-width:44px; text-align:center; font-size:1.1rem; }
+  .hvp-empty{ font-family:"Poppins",sans-serif; color:var(--adm-ink-soft); padding:14px 4px; }
+  /* Fenêtre de saisie (nouveau client / RDV / pièce) */
+  .hvp-modal{
+    --adm-card-bg:#FFFFFF; --adm-offwhite:#F6F7FA; --adm-ink:#212C3D; --adm-ink-soft:#5B6B80; --adm-line:rgba(33,44,61,0.14);
+    --adm-ocean:#2C6FB3; --adm-ocean-soft:rgba(44,111,179,0.12); --adm-red:#C1503B;
+  }
+  @media (prefers-color-scheme: dark){
+    .hvp-modal{ --adm-card-bg:#1A2333; --adm-offwhite:#111826; --adm-ink:#EEF2F7; --adm-ink-soft:rgba(238,242,247,0.68); --adm-line:rgba(238,242,247,0.16); }
+  }
+  .hvp-modal{ position:fixed; inset:0; background:rgba(16,27,36,0.55); z-index:2147482000; display:flex; align-items:flex-end; justify-content:center; }
+  .hvp-modal[hidden]{ display:none; }
+  @media (min-width:760px){ .hvp-modal{ align-items:center; } }
+  .hvp-sheet{
+    background:var(--adm-card-bg); color:var(--adm-ink); width:100%; max-width:560px; max-height:92vh; overflow-y:auto;
+    border-radius:18px 18px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px)); font-family:"Poppins",sans-serif; box-sizing:border-box;
+  }
+  @media (min-width:760px){ .hvp-sheet{ border-radius:18px; } }
+  .hvp-sheet h3{ margin:0 0 14px; font-size:1.15rem; }
+  .hvp-field{ display:block; margin:0 0 12px; font-size:0.82rem; font-weight:600; color:var(--adm-ink-soft); }
+  .hvp-field input, .hvp-field select, .hvp-field textarea{
+    display:block; width:100%; box-sizing:border-box; margin-top:5px; font-size:16px; padding:12px; border-radius:12px;
+    border:1px solid var(--adm-line); background:var(--adm-offwhite); color:var(--adm-ink); font-family:"Poppins",sans-serif;
+  }
+  .hvp-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .hvp-sheet-actions{ display:flex; gap:10px; margin-top:6px; }
+  .hvp-sheet-actions button{ flex:1; min-height:52px; border-radius:14px; border:none; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.95rem; cursor:pointer; }
+  .hvp-btn-cancel{ background:var(--adm-offwhite); color:var(--adm-ink); border:1px solid var(--adm-line) !important; }
+  .hvp-btn-ok{ background:var(--adm-ocean); color:#fff; }
+  .hvp-error{ color:var(--adm-red); font-size:0.85rem; font-weight:600; margin:0 0 10px; }
+  .hvp-picklist{ max-height:180px; overflow-y:auto; border:1px solid var(--adm-line); border-radius:12px; margin-top:6px; }
+  .hvp-pick{ display:block; width:100%; text-align:left; padding:11px 12px; border:none; border-bottom:1px solid var(--adm-line); background:transparent; color:var(--adm-ink); font-family:"Poppins",sans-serif; font-size:0.9rem; cursor:pointer; }
+  .hvp-pick.is-selected{ background:var(--adm-ocean-soft); font-weight:700; }
+  /* Tablette / ordinateur : deux colonnes pour les listes */
+  @media (min-width:1024px){
+    #hvpClientList .hvp-list, #hvpStockList .hvp-list{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    #hvpClientList .hvp-card, #hvpStockList .hvp-card{ margin:0; }
+  }
+</style>
+<div class="hvp-modal" id="hvpModal" hidden role="dialog" aria-modal="true"><div class="hvp-sheet" id="hvpSheet"></div></div>
+<script>
+// =====================================================================
+// HAYEVA Pro — module "terrain" de l'administration : écran Aujourd'hui,
+// pages Clients / Interventions / Stock, création rapide (client, RDV,
+// devis, intervention). Réutilise les fiches existantes (fiche client 360°,
+// fiche RDV, fiche d'intervention, éditeur de devis) via les fonctions
+// exposées par le module Administration — aucune logique dupliquée.
+// Toutes les lectures/écritures passent par la session de l'administrateur
+// (RLS is_admin() côté Supabase) ; aucune clé sensible dans ce code.
+// =====================================================================
+(function(){
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  var STATUS_LABEL = { PENDING:'En attente', CONFIRMED:'Confirmé', IN_PROGRESS:'En cours', COMPLETED:'Terminé', CANCELLED:'Annulé', REFUSED:'Refusé', NO_SHOW:'Absent' };
+  var clientsCache = null, stockCache = null, servicesCache = null;
 
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function todayStr(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function fmtDate(d){ if (!d) return ''; var p = String(d).slice(0,10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function fmtTime(t){ return String(t || '').slice(0,5); }
+  function euros(c){ return ((Number(c) || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €'; }
+  function statusKey(b){ return (b.status === 'CANCELLED' && b.cancellation_type === 'refused') ? 'REFUSED' : b.status; }
+  function pill(b){ var k = statusKey(b); return '<span class="hvp-pill hvp-st-' + k + '">' + esc(STATUS_LABEL[k] || k) + '</span>'; }
+  function bookings(){ var c = window.admGetBookingsCache && window.admGetBookingsCache(); return (c && c.rows) || []; }
+  function contactOf(b){ try { return window.admContactFor ? window.admContactFor(b) : {}; } catch(e){ return {}; } }
+  function cityOf(addr){ var m = /\b\d{5}\s+(.+)$/.exec(String(addr || '')); return m ? m[1] : ''; }
+  function byWhen(a, b){ var x = a.date + 'T' + (a.start_time || ''), y = b.date + 'T' + (b.start_time || ''); return x < y ? -1 : (x > y ? 1 : 0); }
+
+  // Carte RDV/intervention avec les 4 actions terrain.
+  function bookingCard(b){
+    var c = contactOf(b);
+    var svc = (b.services && b.services.name) || 'Intervention';
+    var city = cityOf(c.address);
+    var phone = String(c.phone || '').replace(/\s+/g, '');
+    var main;
+    if (b.status === 'IN_PROGRESS') main = '<button type="button" class="hvp-act is-main" data-hvp-start="' + b.id + '">REPRENDRE</button>';
+    else if (b.status === 'CONFIRMED') main = '<button type="button" class="hvp-act is-main" data-hvp-start="' + b.id + '">COMMENCER</button>';
+    else main = '<button type="button" class="hvp-act" data-hvp-open="' + b.id + '">OUVRIR</button>';
+    return '<div class="hvp-card">' +
+      '<div class="hvp-card-top"><div style="min-width:0">' +
+        '<div class="hvp-card-time">' + esc(fmtTime(b.start_time)) + (b.date !== todayStr() ? ' <span style="font-size:.8rem;font-weight:600;color:var(--adm-ink-soft)">' + esc(fmtDate(b.date)) + '</span>' : '') + '</div>' +
+        '<p class="hvp-card-title">' + esc(c.name || 'Client') + (city ? ' · ' + esc(city) : '') + '</p>' +
+        '<p class="hvp-card-sub">' + esc(svc) + '</p>' +
+      '</div>' + pill(b) + '</div>' +
+      '<div class="hvp-actions">' +
+        (phone ? '<a class="hvp-act" href="tel:' + esc(phone) + '">APPELER</a>' : '<span class="hvp-act" aria-disabled="true" style="opacity:.4">APPELER</span>') +
+        (c.address ? '<a class="hvp-act" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=' + encodeURIComponent(c.address) + '">ITINÉRAIRE</a>' : '<span class="hvp-act" aria-disabled="true" style="opacity:.4">ITINÉRAIRE</span>') +
+        (b.client_id ? '<button type="button" class="hvp-act" data-hvp-client="' + b.client_id + '">CLIENT</button>' : '<button type="button" class="hvp-act" data-hvp-open="' + b.id + '">FICHE</button>') +
+        main +
+      '</div></div>';
+  }
+
+  // ---------------- Aujourd'hui ----------------
+  function renderToday(){
+    var todoEl = document.getElementById('hvpTodo');
+    var listEl = document.getElementById('hvpTodayList');
+    if (!todoEl || !listEl) return;
+    var dEl = document.getElementById('hvpTodayDate');
+    if (dEl){ try { var ds = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); dEl.textContent = 'Aujourd\'hui · ' + ds; } catch(e){} }
+    var rows = bookings();
+    var t = todayStr();
+    var today = rows.filter(function(b){ return b.date === t && b.status !== 'CANCELLED'; }).sort(byWhen);
+    var pending = rows.filter(function(b){ return b.status === 'PENDING'; }).length;
+    var toFinish = rows.filter(function(b){ return b.status === 'IN_PROGRESS'; }).length;
+    listEl.innerHTML = today.length ? today.map(bookingCard).join('') : '<p class="hvp-empty">Aucune intervention aujourd\'hui.</p>';
+    function item(n, label, goto, alert){
+      return '<button type="button" class="hvp-todo-item' + (alert && n > 0 ? ' is-alert' : '') + '" data-adm-goto="' + goto + '"><strong>' + (n == null ? '—' : n) + '</strong><span>' + label + '</span></button>';
+    }
+    var counts = { quotes:null, invoices:null, stock:null };
+    function paint(){
+      todoEl.innerHTML =
+        item(pending, 'Demandes en attente', 'requests', true) +
+        item(toFinish, 'Interventions à terminer', 'interventions', true) +
+        item(counts.quotes, 'Devis en attente', 'quotes', false) +
+        item(counts.invoices, 'Factures à régler', 'archives', true) +
+        item(counts.stock, 'Stock faible', 'stock', true);
+    }
+    paint();
+    Promise.all([
+      sb.client.from('quotes').select('id', { count:'exact', head:true }).eq('status', 'SENT'),
+      sb.client.from('invoices').select('id', { count:'exact', head:true }).eq('status', 'ISSUED'),
+      sb.client.from('stock_items').select('quantity,min_quantity').eq('is_active', true)
+    ]).then(function(r){
+      counts.quotes = r[0].error ? null : (r[0].count || 0);
+      counts.invoices = r[1].error ? null : (r[1].count || 0);
+      counts.stock = r[2].error ? null : (r[2].data || []).filter(function(s){ return Number(s.min_quantity) > 0 && Number(s.quantity) <= Number(s.min_quantity); }).length;
+      paint();
+    }).catch(function(){});
+  }
+
+  // ---------------- Interventions ----------------
+  function renderInterventions(){
+    var el = document.getElementById('hvpIvList');
+    if (!el) return;
+    var rows = bookings();
+    var t = todayStr();
+    var monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    var groups = [
+      ['À terminer', rows.filter(function(b){ return b.status === 'IN_PROGRESS'; }).sort(byWhen)],
+      ['Aujourd\'hui', rows.filter(function(b){ return b.date === t && b.status === 'CONFIRMED'; }).sort(byWhen)],
+      ['À venir', rows.filter(function(b){ return b.date > t && b.status === 'CONFIRMED'; }).sort(byWhen).slice(0, 30)],
+      ['Terminées (30 derniers jours)', rows.filter(function(b){ return b.status === 'COMPLETED' && b.date >= monthAgo; }).sort(byWhen).reverse()]
+    ];
+    el.innerHTML = groups.map(function(g){
+      return '<p class="hvp-section-title">' + esc(g[0]) + ' (' + g[1].length + ')</p>' +
+        (g[1].length ? g[1].map(bookingCard).join('') : '<p class="hvp-empty">Aucune.</p>');
+    }).join('') + '<p class="hvp-empty">Toutes les interventions terminées sont classées par mois dans Archives.</p>';
+  }
+
+  // ---------------- Clients ----------------
+  function loadClients(force){
+    if (clientsCache && !force) return Promise.resolve(clientsCache);
+    return sb.client.from('clients').select('id,first_name,last_name,email,phone,address,postal_code,city,client_type,user_id,merged_into')
+      .is('merged_into', null).order('last_name', { ascending:true }).limit(2000)
+      .then(function(r){ if (r.error) throw r.error; clientsCache = r.data || []; return clientsCache; });
+  }
+  function clientName(c){ return [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || c.phone || 'Client'; }
+  function clientAddress(c){ return [c.address, [c.postal_code, c.city].filter(Boolean).join(' ')].filter(Boolean).join(', '); }
+  function norm(s){ return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' '); }
+  function clientMatches(c, q){
+    if (!q) return true;
+    var digits = q.replace(/\D/g, '');
+    if (digits.length >= 3 && String(c.phone || '').replace(/\D/g, '').indexOf(digits) !== -1) return true;
+    return norm([clientName(c), c.email, clientAddress(c)].join(' ')).indexOf(norm(q)) !== -1;
+  }
+  function renderClients(){
+    var el = document.getElementById('hvpClientList');
+    var input = document.getElementById('hvpClientSearch');
+    if (!el) return;
+    loadClients().then(function(list){
+      var q = input ? input.value.trim() : '';
+      var rows = list.filter(function(c){ return clientMatches(c, q); }).slice(0, 200);
+      el.innerHTML = rows.length ? '<div class="hvp-list">' + rows.map(function(c){
+        var phone = String(c.phone || '').replace(/\s+/g, '');
+        return '<div class="hvp-card"><div class="hvp-row" data-hvp-client="' + c.id + '" role="button" tabindex="0"><div class="hvp-grow">' +
+          '<p class="hvp-card-title">' + esc(clientName(c)) + (c.client_type && /^pro/i.test(c.client_type) ? ' <span class="hvp-pill hvp-st-CONFIRMED">Pro</span>' : '') + '</p>' +
+          '<p class="hvp-card-sub">' + esc([c.phone, c.email].filter(Boolean).join(' · ')) + '</p>' +
+          '<p class="hvp-card-sub">' + esc(clientAddress(c)) + '</p></div>' +
+          (phone ? '<a class="hvp-act" style="min-width:86px" href="tel:' + esc(phone) + '">APPELER</a>' : '') +
+        '</div></div>';
+      }).join('') + '</div>' : '<p class="hvp-empty">' + (q ? 'Aucun client ne correspond.' : 'Aucun client.') + '</p>';
+    }).catch(function(err){ console.error('hvp clients', err); el.innerHTML = '<p class="hvp-error">Impossible de charger les clients.</p>'; });
+  }
+
+  // ---------------- Stock ----------------
+  function loadStock(){
+    return sb.client.from('stock_items').select('*').eq('is_active', true).order('name', { ascending:true })
+      .then(function(r){ if (r.error) throw r.error; stockCache = r.data || []; return stockCache; });
+  }
+  function renderStock(){
+    var el = document.getElementById('hvpStockList');
+    var input = document.getElementById('hvpStockSearch');
+    if (!el) return;
+    loadStock().then(function(list){
+      var q = norm(input ? input.value.trim() : '');
+      var rows = list.filter(function(s){ return !q || norm([s.name, s.reference, s.brand, s.supplier].join(' ')).indexOf(q) !== -1; });
+      el.innerHTML = rows.length ? '<div class="hvp-list">' + rows.map(function(s){
+        var low = Number(s.min_quantity) > 0 && Number(s.quantity) <= Number(s.min_quantity);
+        return '<div class="hvp-card"><div class="hvp-row"><div class="hvp-grow" data-hvp-stock-edit="' + s.id + '" role="button" tabindex="0">' +
+          '<p class="hvp-card-title">' + esc(s.name) + (low ? ' <span class="hvp-pill hvp-st-low">Stock faible</span>' : '') + '</p>' +
+          '<p class="hvp-card-sub">' + esc([s.brand, s.reference, s.supplier].filter(Boolean).join(' · ')) + '</p>' +
+          '<p class="hvp-card-sub">' + (s.sale_price_cents != null ? 'Vente ' + esc(euros(s.sale_price_cents)) : '') + (s.purchase_price_cents != null ? ' · Achat ' + esc(euros(s.purchase_price_cents)) : '') + '</p></div>' +
+          '<div class="hvp-qty"><button type="button" data-hvp-stock-delta="-1" data-id="' + s.id + '" aria-label="Retirer 1">−</button><strong>' + esc(Number(s.quantity)) + '</strong><button type="button" data-hvp-stock-delta="1" data-id="' + s.id + '" aria-label="Ajouter 1">+</button></div>' +
+        '</div></div>';
+      }).join('') + '</div>' : '<p class="hvp-empty">' + (q ? 'Aucune pièce ne correspond.' : 'Aucune pièce en stock. Ajoutez votre première pièce avec « + Nouvelle pièce ».') + '</p>';
+    }).catch(function(err){ console.error('hvp stock', err); el.innerHTML = '<p class="hvp-error">Impossible de charger le stock.</p>'; });
+  }
+
+  // ---------------- Fenêtres de saisie ----------------
+  var modal = document.getElementById('hvpModal');
+  var sheet = document.getElementById('hvpSheet');
+  function openSheet(html){ sheet.innerHTML = html; modal.hidden = false; var f = sheet.querySelector('input,select,textarea'); if (f && window.matchMedia('(min-width:760px)').matches) f.focus(); }
+  function closeSheet(){ modal.hidden = true; sheet.innerHTML = ''; }
+  modal.addEventListener('click', function(e){ if (e.target === modal || e.target.closest('[data-hvp-cancel]')) closeSheet(); });
+  function field(label, name, type, value, extra){
+    return '<label class="hvp-field">' + esc(label) + '<input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value == null ? '' : value) + '"' + (extra || '') + '></label>';
+  }
+  function showError(msg){ var e = sheet.querySelector('.hvp-error'); if (e){ e.textContent = msg; e.hidden = false; } }
+  function busy(on){ var b = sheet.querySelector('[type="submit"]'); if (b){ b.disabled = on; b.textContent = on ? 'Enregistrement…' : b.getAttribute('data-label'); } }
+
+  function newClientForm(onCreated){
+    openSheet('<form id="hvpClientForm"><h3>Nouveau client</h3><p class="hvp-error" hidden></p>' +
+      '<div class="hvp-grid2">' + field('Prénom', 'first_name') + field('Nom', 'last_name') + '</div>' +
+      field('Téléphone', 'phone', 'tel', '', ' inputmode="tel" autocomplete="off"') + field('E-mail', 'email', 'email', '', ' autocomplete="off"') +
+      field('Adresse', 'address') + '<div class="hvp-grid2">' + field('Code postal', 'postal_code', 'text', '', ' inputmode="numeric"') + field('Ville', 'city') + '</div>' +
+      '<label class="hvp-field">Type<select name="client_type"><option value="particulier">Particulier</option><option value="professionnel">Professionnel</option></select></label>' +
+      '<label class="hvp-field">Notes<textarea name="notes" rows="2"></textarea></label>' +
+      '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Créer le client">Créer le client</button></div></form>');
+    sheet.querySelector('#hvpClientForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var fd = new FormData(e.target), row = {};
+      ['first_name','last_name','phone','email','address','postal_code','city','client_type','notes'].forEach(function(k){ var v = String(fd.get(k) || '').trim(); row[k] = v || null; });
+      if (!row.first_name && !row.last_name){ showError('Indiquez au moins un nom.'); return; }
+      if (!row.phone && !row.email){ showError('Indiquez un téléphone ou un e-mail.'); return; }
+      busy(true);
+      sb.client.from('clients').insert(row).select('*').single().then(function(r){
+        busy(false);
+        if (r.error){ showError('Création impossible : ' + r.error.message); return; }
+        clientsCache = null;
+        closeSheet();
+        if (onCreated) onCreated(r.data);
+        else { renderClients(); if (window.admOpenClientFiche) window.admOpenClientFiche(r.data.id); }
+      });
+    });
+  }
+
+  function loadServices(){
+    if (servicesCache) return Promise.resolve(servicesCache);
+    return sb.client.from('services').select('id,name,category,duration_minutes,base_price_cents,is_active').eq('is_active', true).order('sort_order', { ascending:true })
+      .then(function(r){ servicesCache = r.data || []; return servicesCache; });
+  }
+
+  // Nouveau RDV (ou nouvelle intervention immédiate) pour un client de la
+  // base. Créé CONFIRMÉ par défaut : Apple Calendar + e-mail client
+  // "Rendez-vous confirmé" partent automatiquement (triggers serveur).
+  function newBookingForm(opts){
+    opts = opts || {};
+    var selected = opts.client || null;
+    Promise.all([loadClients(), loadServices()]).then(function(r){
+      var services = r[1];
+      var now = new Date(); var hh = String(now.getHours()).padStart(2,'0'), mm = now.getMinutes() < 30 ? '00' : '30';
+      openSheet('<form id="hvpBookingForm"><h3>' + (opts.startNow ? 'Nouvelle intervention' : 'Nouveau rendez-vous') + '</h3><p class="hvp-error" hidden></p>' +
+        '<label class="hvp-field">Client<input type="search" id="hvpBkClientSearch" placeholder="Rechercher un client…" autocomplete="off"></label>' +
+        '<div class="hvp-picklist" id="hvpBkClientPick"></div>' +
+        '<p style="margin:8px 0 12px"><button type="button" class="hvp-act" style="width:100%" id="hvpBkNewClient">+ Créer un nouveau client</button></p>' +
+        '<label class="hvp-field">Prestation<select name="service_id" required>' + services.map(function(s){ return '<option value="' + s.id + '">' + esc(s.name) + '</option>'; }).join('') + '</select></label>' +
+        '<div class="hvp-grid2">' + field('Date', 'date', 'date', opts.startNow ? todayStr() : '') + field('Heure', 'start_time', 'time', opts.startNow ? hh + ':' + mm : '', ' step="900"') + '</div>' +
+        (opts.startNow ? '' : '<label class="hvp-field">Statut<select name="status"><option value="CONFIRMED">Confirmé (Apple Calendar + e-mail client)</option><option value="PENDING">En attente</option></select></label>') +
+        '<label class="hvp-field">Informations / commentaire<textarea name="notes" rows="2"></textarea></label>' +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="' + (opts.startNow ? 'Commencer' : 'Créer le RDV') + '">' + (opts.startNow ? 'Commencer' : 'Créer le RDV') + '</button></div></form>');
+      var pickEl = sheet.querySelector('#hvpBkClientPick');
+      var searchEl = sheet.querySelector('#hvpBkClientSearch');
+      function paintPick(){
+        var q = searchEl.value.trim();
+        var rows = clientsCache.filter(function(c){ return clientMatches(c, q); }).slice(0, 40);
+        if (selected && rows.indexOf(selected) === -1) rows.unshift(selected);
+        pickEl.innerHTML = rows.map(function(c){ return '<button type="button" class="hvp-pick' + (selected && selected.id === c.id ? ' is-selected' : '') + '" data-id="' + c.id + '">' + esc(clientName(c)) + '<br><small>' + esc([c.phone, clientAddress(c)].filter(Boolean).join(' · ')) + '</small></button>'; }).join('') || '<p class="hvp-empty">Aucun client.</p>';
+      }
+      paintPick();
+      searchEl.addEventListener('input', paintPick);
+      pickEl.addEventListener('click', function(e){
+        var b = e.target.closest('.hvp-pick'); if (!b) return;
+        selected = clientsCache.filter(function(c){ return c.id === b.getAttribute('data-id'); })[0] || null;
+        paintPick();
+      });
+      sheet.querySelector('#hvpBkNewClient').addEventListener('click', function(){
+        newClientForm(function(c){ loadClients(true).then(function(){ newBookingForm({ client: c, startNow: opts.startNow }); }); });
+      });
+      sheet.querySelector('#hvpBookingForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        var fd = new FormData(e.target);
+        if (!selected){ showError('Choisissez un client.'); return; }
+        var svc = services.filter(function(s){ return s.id === fd.get('service_id'); })[0];
+        var date = String(fd.get('date') || ''), time = String(fd.get('start_time') || '');
+        if (!svc || !date || !time){ showError('Prestation, date et heure sont obligatoires.'); return; }
+        var row = {
+          client_id: selected.id,
+          customer_user_id: selected.user_id || null,
+          guest_name: selected.user_id ? null : clientName(selected),
+          guest_email: selected.user_id ? null : (selected.email || null),
+          guest_phone: selected.user_id ? null : (selected.phone || null),
+          guest_address: selected.user_id ? null : (clientAddress(selected) || null),
+          service_id: svc.id, date: date, start_time: time,
+          status: opts.startNow ? 'CONFIRMED' : String(fd.get('status') || 'CONFIRMED'),
+          service_duration_minutes: svc.duration_minutes || 60,
+          service_price_cents: svc.base_price_cents || 0,
+          total_cents: svc.base_price_cents || 0,
+          notes: String(fd.get('notes') || '').trim() || null
+        };
+        busy(true);
+        sb.client.from('bookings').insert(row).select('id').single().then(function(r){
+          busy(false);
+          if (r.error){
+            showError(/no_overlapping|exclusion/i.test(r.error.message) ? 'Ce créneau est déjà occupé par un autre rendez-vous.' : 'Création impossible : ' + r.error.message);
+            return;
+          }
+          closeSheet();
+          var id = r.data.id;
+          var p = window.admLoadBookings ? window.admLoadBookings() : null;
+          if (opts.startNow && window.admOpenInterventionSheet){
+            Promise.resolve(p).then(function(){ setTimeout(function(){ window.admOpenInterventionSheet(id); }, 300); });
+          }
+        });
+      });
+    }).catch(function(err){ console.error('hvp booking form', err); window.alert('Impossible d\'ouvrir le formulaire.'); });
+  }
+
+  function newQuote(){
+    loadClients().then(function(){
+      openSheet('<form id="hvpQuoteForm"><h3>Nouveau devis</h3><p class="hvp-error" hidden></p>' +
+        '<label class="hvp-field">Client<input type="search" id="hvpQClientSearch" placeholder="Rechercher un client…" autocomplete="off"></label>' +
+        '<div class="hvp-picklist" id="hvpQClientPick"></div>' +
+        field('Objet du devis', 'title') +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Créer le devis">Créer le devis</button></div></form>');
+      var selected = null;
+      var pickEl = sheet.querySelector('#hvpQClientPick'), searchEl = sheet.querySelector('#hvpQClientSearch');
+      function paint(){
+        var rows = clientsCache.filter(function(c){ return clientMatches(c, searchEl.value.trim()); }).slice(0, 40);
+        pickEl.innerHTML = rows.map(function(c){ return '<button type="button" class="hvp-pick' + (selected && selected.id === c.id ? ' is-selected' : '') + '" data-id="' + c.id + '">' + esc(clientName(c)) + '</button>'; }).join('');
+      }
+      paint();
+      searchEl.addEventListener('input', paint);
+      pickEl.addEventListener('click', function(e){ var b = e.target.closest('.hvp-pick'); if (!b) return; selected = clientsCache.filter(function(c){ return c.id === b.getAttribute('data-id'); })[0]; paint(); });
+      sheet.querySelector('#hvpQuoteForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        if (!selected){ showError('Choisissez un client.'); return; }
+        busy(true);
+        sb.client.from('quotes').insert({
+          client_id: selected.id, customer_user_id: selected.user_id || null,
+          reference: 'DV-' + new Date().getFullYear() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
+          status: 'DRAFT', subtotal_cents: 0, total_cents: 0,
+          title: String(new FormData(e.target).get('title') || '').trim() || null
+        }).select('id').single().then(function(r){
+          busy(false);
+          if (r.error){ showError('Création impossible : ' + r.error.message); return; }
+          closeSheet();
+          if (window.admShowPage) window.admShowPage('quotes');
+          if (window.admOpenQuoteBuilder) window.admOpenQuoteBuilder(r.data.id);
+        });
+      });
+    });
+  }
+
+  function stockForm(item){
+    item = item || {};
+    openSheet('<form id="hvpStockForm"><h3>' + (item.id ? 'Modifier la pièce' : 'Nouvelle pièce') + '</h3><p class="hvp-error" hidden></p>' +
+      field('Nom de la pièce', 'name', 'text', item.name) +
+      '<div class="hvp-grid2">' + field('Référence', 'reference', 'text', item.reference) + field('Marque', 'brand', 'text', item.brand) + '</div>' +
+      field('Fournisseur', 'supplier', 'text', item.supplier) +
+      '<div class="hvp-grid2">' + field('Prix achat (€)', 'purchase', 'number', item.purchase_price_cents != null ? item.purchase_price_cents / 100 : '', ' step="0.01" min="0" inputmode="decimal"') + field('Prix vente (€)', 'sale', 'number', item.sale_price_cents != null ? item.sale_price_cents / 100 : '', ' step="0.01" min="0" inputmode="decimal"') + '</div>' +
+      '<div class="hvp-grid2">' + (item.id ? '' : field('Quantité', 'quantity', 'number', 0, ' step="1" min="0" inputmode="numeric"')) + field('Alerte si ≤', 'min_quantity', 'number', item.min_quantity != null ? Number(item.min_quantity) : 0, ' step="1" min="0" inputmode="numeric"') + '</div>' +
+      field('Emplacement (camion, dépôt…)', 'location', 'text', item.location) +
+      '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Enregistrer">Enregistrer</button></div></form>');
+    sheet.querySelector('#hvpStockForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var fd = new FormData(e.target);
+      var name = String(fd.get('name') || '').trim();
+      if (!name){ showError('Le nom est obligatoire.'); return; }
+      function cents(v){ v = String(v || '').replace(',', '.').trim(); return v === '' ? null : Math.round(parseFloat(v) * 100); }
+      var row = {
+        name: name, reference: String(fd.get('reference') || '').trim() || null, brand: String(fd.get('brand') || '').trim() || null,
+        supplier: String(fd.get('supplier') || '').trim() || null, purchase_price_cents: cents(fd.get('purchase')), sale_price_cents: cents(fd.get('sale')),
+        min_quantity: Number(fd.get('min_quantity') || 0), location: String(fd.get('location') || '').trim() || null, updated_at: new Date().toISOString()
+      };
+      busy(true);
+      var q = item.id ? sb.client.from('stock_items').update(row).eq('id', item.id).select('id').single() : sb.client.from('stock_items').insert(row).select('id').single();
+      q.then(function(r){
+        if (r.error){ busy(false); showError('Enregistrement impossible : ' + r.error.message); return; }
+        var initial = item.id ? 0 : Number(fd.get('quantity') || 0);
+        var next = initial > 0 ? sb.client.from('stock_movements').insert({ stock_item_id: r.data.id, delta: initial, reason: 'entree', note: 'Stock initial' }) : Promise.resolve({});
+        Promise.resolve(next).then(function(){ busy(false); closeSheet(); renderStock(); });
+      });
+    });
+  }
+
+  // ---------------- Branchements ----------------
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('[data-hvp-action]');
+    if (a){
+      var act = a.getAttribute('data-hvp-action');
+      if (act === 'new-client') newClientForm();
+      else if (act === 'new-booking') newBookingForm();
+      else if (act === 'new-intervention') newBookingForm({ startNow: true });
+      else if (act === 'new-quote') newQuote();
+      else if (act === 'new-stock') stockForm();
+      return;
+    }
+    var st = e.target.closest('[data-hvp-start]');
+    if (st && window.admOpenInterventionSheet){ window.admOpenInterventionSheet(st.getAttribute('data-hvp-start')); return; }
+    var op = e.target.closest('[data-hvp-open]');
+    if (op && window.admOpenBookingModal){ window.admOpenBookingModal(op.getAttribute('data-hvp-open')); return; }
+    var cl = e.target.closest('[data-hvp-client]');
+    if (cl && !e.target.closest('a') && window.admOpenClientFiche){ window.admOpenClientFiche(cl.getAttribute('data-hvp-client')); return; }
+    var se = e.target.closest('[data-hvp-stock-edit]');
+    if (se){ var it = (stockCache || []).filter(function(s){ return s.id === se.getAttribute('data-hvp-stock-edit'); })[0]; if (it) stockForm(it); return; }
+    var sd = e.target.closest('[data-hvp-stock-delta]');
+    if (sd){
+      var delta = Number(sd.getAttribute('data-hvp-stock-delta'));
+      sd.disabled = true;
+      sb.client.from('stock_movements').insert({ stock_item_id: sd.getAttribute('data-id'), delta: delta, reason: delta > 0 ? 'entree' : 'sortie_manuelle' })
+        .then(function(r){ if (r.error) window.alert('Mise à jour du stock impossible.'); renderStock(); });
+    }
+  });
+  var cs = document.getElementById('hvpClientSearch');
+  if (cs) cs.addEventListener('input', function(){ renderClients(); });
+  var ss = document.getElementById('hvpStockSearch');
+  if (ss) ss.addEventListener('input', function(){ renderStock(); });
+
+  window.hvProBeforeShowPage = function(key){
+    if (key === 'dashboard') renderToday();
+    else if (key === 'clients') renderClients();
+    else if (key === 'interventions') renderInterventions();
+    else if (key === 'stock') renderStock();
+  };
+  window.hvProOnBookings = function(){ renderToday(); renderInterventions(); };
+})();
+</script>
