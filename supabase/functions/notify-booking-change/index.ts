@@ -115,7 +115,10 @@ Deno.serve(async (req: Request) => {
       // demande en attente reste en attente de validation.
       const statusLabel = STATUS_LABELS[booking.status] || booking.status;
 
-      const adminRes = await sendEmailOnce(supabase, {
+      // Déplacement fait par l'administrateur lui-même (HAYEVA Pro) : pas
+      // d'e-mail admin à soi-même, uniquement l'e-mail au client.
+      const byAdmin = payload.by === 'admin';
+      const adminRes = byAdmin ? 'duplicate' : await sendEmailOnce(supabase, {
         dedupeKey: `admin_rescheduled:${booking.id}:${slotKey}`,
         bookingId: booking.id,
         emailType: 'admin_rescheduled',
@@ -141,7 +144,7 @@ Deno.serve(async (req: Request) => {
           : '';
         const html = renderEmailShell(`
           <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour ${escapeHtml(contact.firstName)},</h2>
-          <p style="margin:0 0 18px; font-size:15px;">Votre rendez-vous HAYEVA a bien été <strong>déplacé</strong>, comme demandé.</p>
+          <p style="margin:0 0 18px; font-size:15px;">${byAdmin ? 'Votre rendez-vous HAYEVA a été <strong>déplacé</strong> par HAYEVA. Merci de nous contacter si ce nouveau créneau ne vous convient pas.' : 'Votre rendez-vous HAYEVA a bien été <strong>déplacé</strong>, comme demandé.'}</p>
           ${statusBadgeHtml('🔁 Déplacé', 'rescheduled')}
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
             <tr><td style="padding:7px 0;color:#5B6B78;width:150px;">Prestation</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(serviceName)}</td></tr>

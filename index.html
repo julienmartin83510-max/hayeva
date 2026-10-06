@@ -8276,6 +8276,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="pricing" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Chiffrage</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="invoices" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Factures</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="stock" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Stock</span>
                 </button>
@@ -8334,6 +8337,7 @@ if ('serviceWorker' in navigator){
                 </div>
                 <p class="adm-subhead">À traiter</p>
                 <div class="hvp-todo" id="hvpTodo"><p class="ec-loading">Chargement…</p></div>
+                <div id="hvpNotifs"></div>
                 <p class="adm-subhead">Interventions du jour</p>
                 <div id="hvpTodayList"><p class="ec-loading">Chargement…</p></div>
                 <div class="adm-quicklinks">
@@ -8368,6 +8372,11 @@ if ('serviceWorker' in navigator){
                   <div class="admin-bk-view-toggle" id="adminBkViewToggle" role="group" aria-label="Mode d'affichage">
                     <button type="button" class="admin-bk-view-tab is-active" data-admin-bk-view="planning">Planning</button>
                     <button type="button" class="admin-bk-view-tab" data-admin-bk-view="liste">☰ Liste</button>
+                  </div>
+                  <div class="hvp-seg" id="hvpPlanViewSeg" role="group" aria-label="Période du planning">
+                    <button type="button" data-hvp-planview="day">Jour</button>
+                    <button type="button" data-hvp-planview="week">Semaine</button>
+                    <button type="button" data-hvp-planview="month">Mois</button>
                   </div>
                 </div>
                 <div class="admin-bk-planning-nav" id="adminBkPlanningNav">
@@ -8742,6 +8751,14 @@ if ('serviceWorker' in navigator){
                 <div id="hvpIvList"><p class="ec-loading">Chargement…</p></div>
               </section>
 
+              <section class="adm-page" id="admPageInvoices" data-adm-page="invoices" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Gestion</p>
+                  <h2 class="adm-page-title">Factures</h2>
+                </div>
+                <div id="hvpInvoices"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
               <section class="adm-page" id="admPageStock" data-adm-page="stock" hidden>
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Pièces</p>
@@ -8759,8 +8776,10 @@ if ('serviceWorker' in navigator){
                 <div class="adm-page-head">
                   <p class="adm-eyebrow">Administration</p>
                   <h2 class="adm-page-title">Paramètres</h2>
-                  <p class="adm-page-sub">Barème de déplacement et notifications de l'équipe HAYEVA.</p>
+                  <p class="adm-page-sub">Informations entreprise, barème de déplacement et notifications de l'équipe HAYEVA.</p>
                 </div>
+                <h3 class="adm-subhead" id="hvpCompanyAnchor">Informations entreprise</h3>
+                <div id="hvpCompany"><p class="ec-loading">Chargement…</p></div>
                 <h3 class="adm-subhead">Déplacements</h3>
                 <form id="adminTravelSettingsForm" class="admin-travel-settings-form">
                   <label>Point de départ (nom affiché)
@@ -8900,6 +8919,8 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="hv-more-item" data-hv-nav="requests">Demandes de RDV</button>
                 <button type="button" class="hv-more-item" data-hv-nav="quotes">Devis</button>
                 <button type="button" class="hv-more-item" data-hv-nav="stock">Stock</button>
+                <button type="button" class="hv-more-item" data-hv-nav="invoices">Factures</button>
+                <button type="button" class="hv-more-item" data-hv-nav="settings" data-hvp-company-link>Informations entreprise</button>
                 <button type="button" class="hv-more-item" data-hv-nav="contracts">Contrats chaudière</button>
                 <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
@@ -14450,6 +14471,15 @@ if ('serviceWorker' in navigator){
     doc.setTextColor(16, 27, 36);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
     doc.text('Période : ' + periodLabel + '   ·   ' + rowCount + ' ligne(s)   ·   généré le ' + admFmtDateTime(new Date().toISOString()), 28, 72);
+    // Informations entreprise (Paramètres › Informations entreprise) :
+    // uniquement ce qui a été réellement saisi, jamais de valeur inventée.
+    var co = window.hvpCompany && window.hvpCompany();
+    if (co && (co.legal_name || co.trade_name)){
+      var coLine = [co.trade_name || co.legal_name, [co.address_line1, co.postal_code, co.city].filter(Boolean).join(' '), co.siret ? 'SIRET ' + co.siret : '', co.phone, co.email].filter(Boolean).join('  ·  ');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(8);
+      doc.text(coLine, doc.internal.pageSize.getWidth() - 28, 34, { align: 'right' });
+      doc.setTextColor(16, 27, 36);
+    }
     return doc;
   }
   function admDownloadPdfDoc(doc, filename){
@@ -17522,7 +17552,8 @@ if ('serviceWorker' in navigator){
         var bits = [p.designation];
         if (p.brand) bits.push(p.brand);
         if (p.reference) bits.push('réf. ' + p.reference);
-        var label = admEscape(bits.join(' — ')) + (p.quantity > 1 ? ' × ' + p.quantity : '');
+        var label = admEscape(bits.join(' — ')) + (p.quantity > 1 ? ' × ' + p.quantity : '') +
+          (p.stock_item_id ? ' <small style="opacity:.75">· 📦 stock' + (p.stock_deducted_qty != null ? ' (déduit)' : '') + '</small>' : ' <small style="opacity:.6">· hors stock</small>');
         return '<div class="adm-iv-parts-row" data-part-id="' + p.id + '">' +
           '<span class="adm-iv-parts-label">' + label + '</span>' +
           '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" data-iv-del-part="' + p.id + '">Supprimer</button>' +
@@ -17534,8 +17565,11 @@ if ('serviceWorker' in navigator){
           '<input type="text" id="admIvPartBrand" placeholder="Marque">' +
           '<input type="text" id="admIvPartRef" placeholder="Référence">' +
           '<input type="number" id="admIvPartQty" placeholder="Qté" min="1" value="1" style="max-width:70px;">' +
-          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admIvPartAddBtn">+ Ajouter une pièce</button>' +
-        '</div></div>';
+          '<button type="button" class="adm-iv-btn adm-iv-btn-ghost" id="admIvPartAddBtn">+ Pièce hors stock</button>' +
+        '</div>' +
+        '<button type="button" class="adm-iv-btn" id="admIvStockPartBtn" style="width:100%;min-height:50px;margin-top:10px;">📦 Ajouter une pièce du stock</button>' +
+        '<p style="margin:6px 0 0;font-size:12px;opacity:.75;">Les pièces du stock sont déduites de l\'inventaire à la validation de l\'intervention. Une pièce « hors stock » ne modifie pas l\'inventaire.</p>' +
+        '</div>';
     }
 
     var IV_ANOMALY_SEVERITY = [
@@ -17882,6 +17916,17 @@ if ('serviceWorker' in navigator){
         });
         return;
       }
+      if (e.target.id === 'admIvStockPartBtn' && admIv){
+        if (window.hvpOpenStockPicker){
+          var ivIdForStock = admIv.interventionId;
+          window.hvpOpenStockPicker(ivIdForStock, function(part){
+            if (!admIv || admIv.interventionId !== ivIdForStock) return;
+            admIv.parts = (admIv.parts || []).concat([part]);
+            admIvRender();
+          });
+        }
+        return;
+      }
       if (e.target.id === 'admIvPartAddBtn'){
         var pDesignation = document.getElementById('admIvPartDesignation').value.trim();
         if (!pDesignation){ window.alert('Merci de renseigner au moins une désignation.'); return; }
@@ -18166,6 +18211,8 @@ if ('serviceWorker' in navigator){
       }).then(function(res){
         if (res && res.error) console.warn('admIvFinalize: échec génération attestation (non bloquant)', res.error);
         showMsg('Fiche validée et rendez-vous marqué Terminé.', true);
+        if (admIvSaveTimer){ clearTimeout(admIvSaveTimer); admIvSaveTimer = null; }
+        try { window.localStorage.removeItem(ADM_IV_DRAFT_PREFIX + admIv.interventionId); } catch(e){}
         admLoadBookings();
         admIvSendReportEmail(admIv.interventionId);
         setTimeout(admIvCloseSheet, 1200);
@@ -18297,6 +18344,11 @@ if ('serviceWorker' in navigator){
   function admRenderPlanning(){
     var container = document.getElementById('adminBkPlanning');
     if (!container) return;
+    // Vues Jour / Mois (module HAYEVA Pro) ; la vue Semaine reste ci-dessous.
+    if (window.hvpPlanView && window.hvpPlanView() !== 'week' && window.hvpRenderPlanningAlt){
+      window.hvpRenderPlanningAlt(container, document.getElementById('adminBkPlanningLabel'));
+      return;
+    }
     var labelEl = document.getElementById('adminBkPlanningLabel');
     if (labelEl) labelEl.textContent = admWeekLabel(adminPlanningWeekStart);
     if (!adminBookingsCache){
@@ -18419,6 +18471,7 @@ if ('serviceWorker' in navigator){
       var btn = e.target.closest('[data-admin-planning-nav]');
       if (!btn) return;
       var action = btn.getAttribute('data-admin-planning-nav');
+      if (window.hvpPlanView && window.hvpPlanView() !== 'week' && window.hvpPlanNav){ window.hvpPlanNav(action); admRenderPlanning(); return; }
       if (action === 'prev') adminPlanningWeekStart = admAddDays(adminPlanningWeekStart, -7);
       else if (action === 'next') adminPlanningWeekStart = admAddDays(adminPlanningWeekStart, 7);
       else adminPlanningWeekStart = admMondayOf(new Date());
@@ -19306,6 +19359,8 @@ if ('serviceWorker' in navigator){
   window.admOpenBookingModal = function(id){ return admOpenBookingModal(id); };
   window.admLoadBookings = function(){ return admLoadBookings(); };
   window.admGetBookingsCache = function(){ return adminBookingsCache; };
+  window.admRenderPlanning = function(){ return admRenderPlanning(); };
+  window.admRenderBkArea = function(){ return admRenderBkArea(); };
   window.admOpenQuoteBuilder = function(id){ return admOpenQuoteBuilder(id); };
   window.admContactFor = function(b){ return admContactFor(b, (adminBookingsCache && adminBookingsCache.profiles) || {}); };
   function admShowPage(key){
@@ -25476,7 +25531,7 @@ if ('serviceWorker' in navigator){
   @media (prefers-color-scheme: dark){
     .hvp-modal{ --adm-card-bg:#1A2333; --adm-offwhite:#111826; --adm-ink:#EEF2F7; --adm-ink-soft:rgba(238,242,247,0.68); --adm-line:rgba(238,242,247,0.16); }
   }
-  .hvp-modal{ position:fixed; inset:0; background:rgba(16,27,36,0.55); z-index:2147482000; display:flex; align-items:flex-end; justify-content:center; }
+  .hvp-modal{ position:fixed; inset:0; background:rgba(16,27,36,0.55); z-index:2147483500; display:flex; align-items:flex-end; justify-content:center; }
   .hvp-modal[hidden]{ display:none; }
   @media (min-width:760px){ .hvp-modal{ align-items:center; } }
   .hvp-sheet{
@@ -25499,6 +25554,36 @@ if ('serviceWorker' in navigator){
   .hvp-picklist{ max-height:180px; overflow-y:auto; border:1px solid var(--adm-line); border-radius:12px; margin-top:6px; }
   .hvp-pick{ display:block; width:100%; text-align:left; padding:11px 12px; border:none; border-bottom:1px solid var(--adm-line); background:transparent; color:var(--adm-ink); font-family:"Poppins",sans-serif; font-size:0.9rem; cursor:pointer; }
   .hvp-pick.is-selected{ background:var(--adm-ocean-soft); font-weight:700; }
+  .hvp-actions-3{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; margin-top:8px; }
+  .hvp-actions-1{ grid-template-columns:1fr !important; margin-top:8px; }
+  .hvp-act.is-danger{ background:var(--adm-red-soft); color:var(--adm-red); border-color:transparent; }
+  .hvp-seg{ display:inline-flex; border:1px solid var(--adm-line); border-radius:12px; overflow:hidden; margin-left:8px; background:var(--adm-card-bg); }
+  .hvp-seg button{ border:none; background:transparent; color:var(--adm-ink); font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; padding:10px 14px; min-height:42px; cursor:pointer; }
+  .hvp-seg button.is-active{ background:var(--adm-navy); color:#fff; }
+  .hvp-day{ max-width:760px; }
+  .hvp-month-head, .hvp-month-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+  .hvp-month-head span{ text-align:center; font-size:0.72rem; font-weight:700; color:var(--adm-ink-soft); padding:4px 0; font-family:"Poppins",sans-serif; }
+  .hvp-mcell{ display:flex; flex-direction:column; align-items:stretch; gap:2px; min-height:64px; padding:4px; border-radius:10px; border:1px solid var(--adm-line); background:var(--adm-card-bg); color:var(--adm-ink); cursor:pointer; text-align:left; overflow:hidden; font-family:"Poppins",sans-serif; }
+  @media (min-width:900px){ .hvp-mcell{ min-height:104px; padding:6px; } }
+  .hvp-mcell.is-out{ opacity:.45; }
+  .hvp-mcell.is-today{ border-color:var(--adm-ocean); box-shadow:inset 0 0 0 1px var(--adm-ocean); }
+  .hvp-mday{ font-size:0.8rem; font-weight:700; }
+  .hvp-mchip{ display:block; font-size:0.62rem; font-weight:700; border-radius:6px; padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hvp-mname{ font-weight:500; }
+  @media (max-width:600px){ .hvp-mname{ display:none; } }
+  .hvp-mmore{ font-size:0.62rem; color:var(--adm-ink-soft); font-weight:700; }
+  .hvp-legend{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0; }
+  .hvp-banner{ border-radius:12px; padding:12px 14px; font-family:"Poppins",sans-serif; font-weight:600; font-size:0.88rem; margin:0 0 12px; }
+  .hvp-banner.is-warn{ background:var(--adm-amber-soft); color:var(--adm-amber); }
+  .hvp-banner.is-ok{ background:var(--adm-green-soft); color:var(--adm-green); }
+  .hvp-link{ background:none; border:none; color:var(--adm-ocean); font-weight:700; font-family:"Poppins",sans-serif; cursor:pointer; padding:6px 4px; font-size:0.85rem; text-decoration:underline; }
+  .hvp-notif-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:18px 0 8px; }
+  .hvp-notif{ display:flex; align-items:center; gap:10px; cursor:pointer; padding:10px 12px; }
+  .hvp-notif-icon{ font-size:1.3rem; }
+  .hvp-grow{ flex:1; min-width:0; }
+  .hvp-company-form .hvp-field input, .hvp-company-form .hvp-field select{ background:var(--adm-card-bg); }
+  .hvp-company-grid{ display:grid; grid-template-columns:1fr; gap:0 14px; }
+  @media (min-width:760px){ .hvp-company-grid{ grid-template-columns:1fr 1fr; } }
   /* Tablette / ordinateur : deux colonnes pour les listes */
   @media (min-width:1024px){
     #hvpClientList .hvp-list, #hvpStockList .hvp-list{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -25555,7 +25640,7 @@ if ('serviceWorker' in navigator){
         (c.address ? '<a class="hvp-act" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=' + encodeURIComponent(c.address) + '">ITINÉRAIRE</a>' : '<span class="hvp-act" aria-disabled="true" style="opacity:.4">ITINÉRAIRE</span>') +
         (b.client_id ? '<button type="button" class="hvp-act" data-hvp-client="' + b.client_id + '">CLIENT</button>' : '<button type="button" class="hvp-act" data-hvp-open="' + b.id + '">FICHE</button>') +
         main +
-      '</div></div>';
+      '</div>' + decisionRow(b) + '</div>';
   }
 
   // ---------------- Aujourd'hui ----------------
@@ -25584,6 +25669,7 @@ if ('serviceWorker' in navigator){
         item(counts.stock, 'Stock faible', 'stock', true);
     }
     paint();
+    renderNotifs();
     Promise.all([
       sb.client.from('quotes').select('id', { count:'exact', head:true }).eq('status', 'SENT'),
       sb.client.from('invoices').select('id', { count:'exact', head:true }).eq('status', 'ISSUED'),
@@ -25861,6 +25947,347 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // ---------------- Actions de décision / MODIFIER ----------------
+  function decisionRow(b){
+    if (b.status === 'PENDING'){
+      return '<div class="hvp-actions hvp-actions-3">' +
+        '<button type="button" class="hvp-act is-main" data-hvp-confirm="' + b.id + '">CONFIRMER</button>' +
+        '<button type="button" class="hvp-act is-danger" data-hvp-refuse="' + b.id + '">REFUSER</button>' +
+        '<button type="button" class="hvp-act" data-hvp-edit="' + b.id + '">MODIFIER</button></div>';
+    }
+    if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS'){
+      return '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hvp-edit="' + b.id + '">MODIFIER</button></div>';
+    }
+    return '';
+  }
+  function findBooking(id){ return bookings().filter(function(b){ return b.id === id; })[0]; }
+  function refreshAfterChange(){ if (window.admLoadBookings) window.admLoadBookings(); }
+  function confirmBooking(id, btn){
+    if (!window.confirm('Confirmer ce rendez-vous ? Le client recevra l\'e-mail « Rendez-vous confirmé » et le RDV sera ajouté à Apple Calendar.')) return;
+    if (btn) btn.disabled = true;
+    sb.client.from('bookings').update({ status: 'CONFIRMED' }).eq('id', id).eq('status', 'PENDING').select('id').then(function(r){
+      if (r.error || !r.data || !r.data.length) window.alert(r.error ? 'Confirmation impossible : ' + r.error.message : 'Cette demande a déjà été traitée.');
+      refreshAfterChange();
+    });
+  }
+  function refuseBooking(id, btn){
+    if (!window.confirm('Refuser cette demande ? Le client sera prévenu et le créneau libéré.')) return;
+    if (btn) btn.disabled = true;
+    sb.client.from('bookings').update({
+      status: 'CANCELLED', cancelled_by: 'admin', cancelled_at: new Date().toISOString(),
+      cancellation_type: 'refused', cancellation_reason_code: 'creneau_indisponible'
+    }).eq('id', id).eq('status', 'PENDING').select('id').then(function(r){
+      if (r.error || !r.data || !r.data.length) window.alert(r.error ? 'Refus impossible : ' + r.error.message : 'Cette demande a déjà été traitée.');
+      refreshAfterChange();
+    });
+  }
+  function editBooking(id){
+    var b = findBooking(id);
+    if (!b) return;
+    loadServices().then(function(services){
+      openSheet('<form id="hvpEditForm"><h3>Modifier le rendez-vous</h3><p class="hvp-error" hidden></p>' +
+        '<p class="hvp-card-sub" style="margin:0 0 12px">' + esc(contactOf(b).name || '') + ' · Réf. ' + esc(b.reference || '') + '</p>' +
+        '<div class="hvp-grid2">' + field('Date', 'date', 'date', b.date) + field('Heure', 'start_time', 'time', fmtTime(b.start_time), ' step="900"') + '</div>' +
+        '<label class="hvp-field">Prestation<select name="service_id">' + services.map(function(s){ return '<option value="' + s.id + '"' + (b.services && s.name === b.services.name ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '</select></label>' +
+        '<label class="hvp-field">Informations / commentaire<textarea name="notes" rows="2">' + esc(b.notes || '') + '</textarea></label>' +
+        '<p class="hvp-card-sub" style="margin:0 0 12px">Un changement de date/heure prévient le client par e-mail et met à jour Apple Calendar (même événement, sans doublon).</p>' +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Enregistrer">Enregistrer</button></div></form>');
+      var origService = (services.filter(function(s){ return b.services && s.name === b.services.name; })[0] || {}).id;
+      sheet.querySelector('#hvpEditForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        var fd = new FormData(e.target);
+        var date = String(fd.get('date') || ''), time = String(fd.get('start_time') || '');
+        var svcId = String(fd.get('service_id') || ''), notes = String(fd.get('notes') || '').trim() || null;
+        if (!date || !time){ showError('Date et heure obligatoires.'); return; }
+        busy(true);
+        var steps = [];
+        if (svcId && svcId !== origService || notes !== (b.notes || null)){
+          var upd = { notes: notes };
+          if (svcId && svcId !== origService){
+            var svc = services.filter(function(s){ return s.id === svcId; })[0];
+            upd.service_id = svcId;
+            upd.service_duration_minutes = svc.duration_minutes || 60;
+            upd.service_price_cents = svc.base_price_cents || 0;
+            upd.total_cents = (svc.base_price_cents || 0) + (b.travel_fee_cents || 0) - (b.discount_cents || 0);
+          }
+          steps.push(function(){ return sb.client.from('bookings').update(upd).eq('id', id); });
+        }
+        if (date !== b.date || time !== fmtTime(b.start_time)){
+          steps.push(function(){ return sb.client.rpc('admin_reschedule_booking', { p_booking_id: id, p_date: date, p_start_time: time }); });
+        }
+        var chain = Promise.resolve({});
+        steps.forEach(function(fn){ chain = chain.then(function(prev){ if (prev && prev.error) return prev; return fn(); }); });
+        chain.then(function(r){
+          busy(false);
+          if (r && r.error){ showError(r.error.message); return; }
+          closeSheet();
+          refreshAfterChange();
+        });
+      });
+    });
+  }
+
+  // ---------------- Planning : vues Jour / Mois ----------------
+  var planView = (function(){ try { return localStorage.getItem('hvp_plan_view') || (window.innerWidth < 700 ? 'day' : 'week'); } catch(e){ return window.innerWidth < 700 ? 'day' : 'week'; } })();
+  var planDate = new Date(); planDate.setHours(0,0,0,0);
+  function iso(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function paintSeg(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-hvp-planview]'), function(b){ b.classList.toggle('is-active', b.getAttribute('data-hvp-planview') === planView); });
+    var unit = planView === 'day' ? ['Jour précédent', 'Jour suivant'] : (planView === 'month' ? ['Mois précédent', 'Mois suivant'] : ['Semaine précédente', 'Semaine suivante']);
+    var pv = document.querySelector('[data-admin-planning-nav="prev"]'), nx = document.querySelector('[data-admin-planning-nav="next"]');
+    if (pv) pv.textContent = '← ' + unit[0];
+    if (nx) nx.textContent = unit[1] + ' →';
+  }
+  window.hvpPlanView = function(){ return planView; };
+  window.hvpPlanNav = function(action){
+    if (action === 'today'){ planDate = new Date(); planDate.setHours(0,0,0,0); return; }
+    var step = action === 'prev' ? -1 : 1;
+    if (planView === 'day') planDate.setDate(planDate.getDate() + step);
+    else { planDate.setDate(1); planDate.setMonth(planDate.getMonth() + step); }
+  };
+  window.hvpRenderPlanningAlt = function(container, labelEl){
+    paintSeg();
+    var rows = bookings();
+    if (planView === 'day'){
+      var d = iso(planDate);
+      if (labelEl){ try { labelEl.textContent = planDate.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }); } catch(e){ labelEl.textContent = fmtDate(d); } }
+      var dayRows = rows.filter(function(b){ return b.date === d; }).sort(byWhen);
+      container.innerHTML = '<div class="hvp-day">' + (dayRows.length ? dayRows.map(bookingCard).join('') : '<p class="hvp-empty">Aucun rendez-vous ce jour.</p>') + '</div>';
+      return;
+    }
+    // Mois
+    var first = new Date(planDate.getFullYear(), planDate.getMonth(), 1);
+    if (labelEl){ try { labelEl.textContent = first.toLocaleDateString('fr-FR', { month:'long', year:'numeric' }); } catch(e){} }
+    var start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));
+    var byDay = {};
+    rows.forEach(function(b){ (byDay[b.date] = byDay[b.date] || []).push(b); });
+    var tdy = todayStr();
+    var html = '<div class="hvp-month"><div class="hvp-month-head">' + ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(function(n){ return '<span>' + n + '</span>'; }).join('') + '</div><div class="hvp-month-grid">';
+    var dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    var cells = Math.ceil((((first.getDay() + 6) % 7) + dim) / 7) * 7;
+    for (var i = 0; i < cells; i++){
+      var c = new Date(start); c.setDate(start.getDate() + i);
+      var k = iso(c);
+      var list = (byDay[k] || []).slice().sort(byWhen);
+      var out = c.getMonth() !== first.getMonth();
+      html += '<button type="button" class="hvp-mcell' + (out ? ' is-out' : '') + (k === tdy ? ' is-today' : '') + '" data-hvp-day="' + k + '">' +
+        '<span class="hvp-mday">' + c.getDate() + '</span>' +
+        list.slice(0, 3).map(function(b){ return '<span class="hvp-mchip hvp-st-' + statusKey(b) + '">' + esc(fmtTime(b.start_time)) + ' <span class="hvp-mname">' + esc(contactOf(b).name || '') + '</span></span>'; }).join('') +
+        (list.length > 3 ? '<span class="hvp-mmore">+' + (list.length - 3) + '</span>' : '') +
+        '</button>';
+    }
+    html += '</div><p class="hvp-legend"><span class="hvp-pill hvp-st-PENDING">En attente</span> <span class="hvp-pill hvp-st-CONFIRMED">Confirmé</span> <span class="hvp-pill hvp-st-IN_PROGRESS">En cours</span> <span class="hvp-pill hvp-st-COMPLETED">Terminé</span> <span class="hvp-pill hvp-st-CANCELLED">Annulé / refusé</span></p></div>';
+    container.innerHTML = html;
+  };
+  document.addEventListener('click', function(e){
+    var v = e.target.closest('[data-hvp-planview]');
+    if (v){
+      planView = v.getAttribute('data-hvp-planview');
+      try { localStorage.setItem('hvp_plan_view', planView); } catch(err){}
+      var ptab = document.querySelector('.admin-bk-view-tab[data-admin-bk-view="planning"]');
+      if (ptab && !ptab.classList.contains('is-active')){ ptab.click(); paintSeg(); return; }
+      if (window.admRenderPlanning) window.admRenderPlanning();
+      paintSeg();
+      return;
+    }
+    var day = e.target.closest('[data-hvp-day]');
+    if (day){
+      var p = day.getAttribute('data-hvp-day').split('-');
+      planDate = new Date(+p[0], +p[1] - 1, +p[2]);
+      planView = 'day';
+      if (window.admRenderPlanning) window.admRenderPlanning();
+      paintSeg();
+    }
+  });
+  paintSeg();
+
+  // Bouton MODIFIER aussi dans la fiche RDV existante (planning semaine,
+  // liste, demandes) : ajouté automatiquement à chaque ouverture.
+  (function(){
+    var body = document.getElementById('adminBkModalBody');
+    if (!body || !window.MutationObserver) return;
+    new MutationObserver(function(){
+      if (body.querySelector('.hvp-modal-edit')) return;
+      var any = body.querySelector('[data-booking-id]');
+      if (!any) return;
+      var id = any.getAttribute('data-booking-id');
+      var b = findBooking(id);
+      if (!b || ['PENDING', 'CONFIRMED', 'IN_PROGRESS'].indexOf(b.status) === -1) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hvp-act hvp-modal-edit';
+      btn.style.cssText = 'width:100%;min-height:50px;margin:12px 0 0;';
+      btn.setAttribute('data-hvp-edit', id);
+      btn.textContent = 'MODIFIER (date, heure, prestation, informations)';
+      body.appendChild(btn);
+    }).observe(body, { childList: true, subtree: true });
+  })();
+
+  // ---------------- Stock dans l'intervention ----------------
+  window.hvpOpenStockPicker = function(interventionId, onAdded){
+    loadStock().then(function(list){
+      openSheet('<form id="hvpStockPick"><h3>Ajouter une pièce du stock</h3><p class="hvp-error" hidden></p>' +
+        '<input type="search" class="hvp-search" id="hvpSpSearch" placeholder="Nom, référence, marque…" autocomplete="off" style="width:100%;box-sizing:border-box;margin:0 0 8px">' +
+        '<div class="hvp-picklist" id="hvpSpList" style="max-height:260px"></div>' +
+        '<div class="hvp-grid2" style="margin-top:12px">' + field('Quantité utilisée', 'qty', 'number', 1, ' min="0.01" step="any" inputmode="decimal"') + '<div></div></div>' +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Ajouter">Ajouter</button></div></form>');
+      var selected = null;
+      var listEl = sheet.querySelector('#hvpSpList'), searchEl = sheet.querySelector('#hvpSpSearch');
+      function paint(){
+        var q = norm(searchEl.value.trim());
+        var rows = list.filter(function(s){ return !q || norm([s.name, s.reference, s.brand, s.supplier].join(' ')).indexOf(q) !== -1; }).slice(0, 60);
+        listEl.innerHTML = rows.length ? rows.map(function(s){
+          var low = Number(s.quantity) <= 0;
+          return '<button type="button" class="hvp-pick' + (selected && selected.id === s.id ? ' is-selected' : '') + '" data-id="' + s.id + '">' +
+            '<strong>' + esc(s.name) + '</strong><br><small>' + esc([s.reference ? 'Réf. ' + s.reference : '', s.brand].filter(Boolean).join(' · ')) +
+            ' · Dispo : <b' + (low ? ' style="color:var(--adm-red)"' : '') + '>' + esc(Number(s.quantity)) + '</b>' +
+            (s.sale_price_cents != null ? ' · ' + esc(euros(s.sale_price_cents)) : '') + '</small></button>';
+        }).join('') : '<p class="hvp-empty">Aucune pièce. Ajoutez vos pièces dans Plus › Stock.</p>';
+      }
+      paint();
+      searchEl.addEventListener('input', paint);
+      listEl.addEventListener('click', function(e){ var b = e.target.closest('.hvp-pick'); if (!b) return; selected = list.filter(function(s){ return s.id === b.getAttribute('data-id'); })[0]; paint(); });
+      sheet.querySelector('#hvpStockPick').addEventListener('submit', function(e){
+        e.preventDefault();
+        if (!selected){ showError('Choisissez une pièce.'); return; }
+        var qty = parseFloat(String(new FormData(e.target).get('qty') || '1').replace(',', '.'));
+        if (!(qty > 0)){ showError('Quantité invalide.'); return; }
+        if (qty > Number(selected.quantity) && !window.confirm('Quantité supérieure au stock disponible (' + Number(selected.quantity) + '). Ajouter quand même ?')) return;
+        busy(true);
+        sb.client.from('intervention_parts').insert({
+          intervention_id: interventionId, designation: selected.name, brand: selected.brand || null,
+          reference: selected.reference || null, quantity: Math.ceil(qty), unit_price_cents: selected.sale_price_cents,
+          stock_item_id: selected.id
+        }).select('*').single().then(function(r){
+          busy(false);
+          if (r.error){ showError('Ajout impossible : ' + r.error.message); return; }
+          closeSheet();
+          if (onAdded) onAdded(r.data);
+        });
+      });
+    }).catch(function(){ window.alert('Stock indisponible (connexion ?).'); });
+  };
+
+  // ---------------- Notifications ----------------
+  var NOTIF_ICON = { new_request:'🔔', client_reschedule:'🔁', client_cancel:'⚠️', quote_accepted:'✅', payment:'💶', stock_low:'📦', reminder:'⏰' };
+  function renderNotifs(){
+    var el = document.getElementById('hvpNotifs');
+    if (!el) return;
+    sb.client.from('admin_notifications').select('id,kind,title,body,booking_id,created_at').is('read_at', null).order('created_at', { ascending:false }).limit(8).then(function(r){
+      var rows = (r && r.data) || [];
+      if (!rows.length){ el.innerHTML = ''; return; }
+      el.innerHTML = '<div class="hvp-notif-head"><p class="adm-subhead" style="margin:0">Notifications</p><button type="button" class="hvp-link" data-hvp-notif-readall>Tout marquer comme lu</button></div>' +
+        rows.map(function(n){
+          return '<div class="hvp-card hvp-notif" data-hvp-notif="' + n.id + '"' + (n.booking_id ? ' data-hvp-notif-booking="' + n.booking_id + '"' : '') + ' role="button" tabindex="0">' +
+            '<span class="hvp-notif-icon" aria-hidden="true">' + (NOTIF_ICON[n.kind] || '•') + '</span><div class="hvp-grow"><p class="hvp-card-title">' + esc(n.title) + '</p><p class="hvp-card-sub">' + esc(n.body || '') + '</p></div>' +
+            '<span class="hvp-card-sub">' + esc(new Date(n.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })) + '</span></div>';
+        }).join('');
+    });
+  }
+  document.addEventListener('click', function(e){
+    if (e.target.closest('[data-hvp-notif-readall]')){
+      sb.client.from('admin_notifications').update({ read_at: new Date().toISOString() }).is('read_at', null).then(renderNotifs);
+      return;
+    }
+    var n = e.target.closest('[data-hvp-notif]');
+    if (n){
+      sb.client.from('admin_notifications').update({ read_at: new Date().toISOString() }).eq('id', n.getAttribute('data-hvp-notif')).then(renderNotifs);
+      var bid = n.getAttribute('data-hvp-notif-booking');
+      if (bid && window.admOpenBookingModal) window.admOpenBookingModal(bid);
+    }
+  });
+
+  // ---------------- Informations entreprise ----------------
+  var COMPANY_FIELDS = [
+    ['legal_name', 'Raison sociale', true], ['trade_name', 'Nom commercial', false], ['owner_name', 'Nom de l\'entrepreneur', true],
+    ['address_line1', 'Adresse', true], ['address_line2', 'Complément d\'adresse', false], ['postal_code', 'Code postal', true], ['city', 'Ville', true],
+    ['siren', 'SIREN (9 chiffres)', false], ['siret', 'SIRET (14 chiffres)', true],
+    ['vat_regime', 'Régime de TVA', true], ['vat_number', 'N° de TVA intracommunautaire (si assujetti)', false],
+    ['insurance_company', 'Assurance (compagnie)', true], ['insurance_contract_number', 'N° de contrat d\'assurance', true], ['insurance_coverage', 'Couverture géographique', false],
+    ['mediator_name', 'Médiateur de la consommation', true], ['mediator_contact', 'Coordonnées du médiateur (site / adresse)', false],
+    ['phone', 'Téléphone', false], ['email', 'E-mail', false], ['website', 'Site internet', false]
+  ];
+  var companyCache = null, billingReady = false;
+  window.hvpCompany = function(){ return companyCache; };
+  window.hvpBillingReady = function(){ return billingReady; };
+  function loadCompany(){
+    return Promise.all([
+      sb.client.from('company_settings').select('*').eq('id', 1).maybeSingle(),
+      sb.client.rpc('company_billing_ready')
+    ]).then(function(r){ companyCache = r[0].data || {}; billingReady = r[1].data === true; return companyCache; });
+  }
+  var BILLING_OFF = 'Facturation définitive indisponible — informations entreprise à compléter.';
+  function renderCompany(){
+    var el = document.getElementById('hvpCompany');
+    if (!el) return;
+    loadCompany().then(function(c){
+      el.innerHTML = '<p class="hvp-banner ' + (billingReady ? 'is-ok' : 'is-warn') + '">' + (billingReady ? '✓ Informations complètes — facturation définitive disponible.' : esc(BILLING_OFF)) + '</p>' +
+        '<form id="hvpCompanyForm" class="hvp-company-form"><p class="hvp-error" hidden></p><div class="hvp-company-grid">' +
+        COMPANY_FIELDS.map(function(f){
+          var label = f[1] + (f[2] ? ' *' : '');
+          if (f[0] === 'vat_regime'){
+            return '<label class="hvp-field">' + esc(label) + '<select name="vat_regime"><option value="">— Non renseigné —</option>' +
+              '<option value="franchise_base"' + (c.vat_regime === 'franchise_base' ? ' selected' : '') + '>Franchise en base (TVA non applicable, art. 293 B du CGI)</option>' +
+              '<option value="assujetti"' + (c.vat_regime === 'assujetti' ? ' selected' : '') + '>Assujetti à la TVA</option></select></label>';
+          }
+          return field(label, f[0], f[0] === 'email' ? 'email' : (f[0] === 'website' ? 'url' : 'text'), c[f[0]], (f[0] === 'siret' || f[0] === 'siren' || f[0] === 'postal_code') ? ' inputmode="numeric"' : '');
+        }).join('') + '</div>' +
+        '<p class="hvp-card-sub">* Obligatoire pour la facturation définitive. Rien n\'est pré-rempli : saisissez uniquement vos informations officielles.</p>' +
+        '<div class="hvp-sheet-actions"><button type="submit" class="hvp-btn-ok" data-label="Enregistrer les informations">Enregistrer les informations</button></div></form>';
+      el.querySelector('#hvpCompanyForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        var fd = new FormData(e.target), row = { id: 1, updated_at: new Date().toISOString() };
+        COMPANY_FIELDS.forEach(function(f){ var v = String(fd.get(f[0]) || '').trim(); row[f[0]] = v || null; });
+        if (row.siret) row.siret = row.siret.replace(/\s+/g, '');
+        if (row.siren) row.siren = row.siren.replace(/\s+/g, '');
+        if (row.siret && !/^\d{14}$/.test(row.siret)){ el.querySelector('.hvp-error').hidden = false; el.querySelector('.hvp-error').textContent = 'Le SIRET doit comporter 14 chiffres.'; return; }
+        if (row.siren && !/^\d{9}$/.test(row.siren)){ el.querySelector('.hvp-error').hidden = false; el.querySelector('.hvp-error').textContent = 'Le SIREN doit comporter 9 chiffres.'; return; }
+        var btn = e.target.querySelector('[type="submit"]'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+        sb.client.from('company_settings').upsert(row).then(function(r){
+          btn.disabled = false; btn.textContent = btn.getAttribute('data-label');
+          if (r.error){ el.querySelector('.hvp-error').hidden = false; el.querySelector('.hvp-error').textContent = 'Enregistrement impossible : ' + r.error.message; return; }
+          renderCompany();
+        });
+      });
+    }).catch(function(){ el.innerHTML = '<p class="hvp-error">Informations entreprise indisponibles.</p>'; });
+  }
+
+  // ---------------- Factures ----------------
+  var INV_STATUS = { DRAFT:'Brouillon', ISSUED:'Émise — à régler', PAID:'Payée', CANCELLED:'Annulée' };
+  function renderInvoices(){
+    var el = document.getElementById('hvpInvoices');
+    if (!el) return;
+    Promise.all([loadCompany(), sb.client.from('invoices').select('id,reference,status,total_cents,created_at,paid_at,client_id').order('created_at', { ascending:false }).limit(200)]).then(function(r){
+      var rows = (r[1] && r[1].data) || [];
+      el.innerHTML = (billingReady ? '' : '<p class="hvp-banner is-warn">' + esc(BILLING_OFF) + ' <button type="button" class="hvp-link" data-hvp-goto-company>Compléter</button></p>') +
+        '<p class="hvp-card-sub">La création et l\'émission de factures définitives sont désactivées tant que les informations entreprise obligatoires ne sont pas renseignées (contrôle également appliqué côté serveur).</p>' +
+        (rows.length ? rows.map(function(i){
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(i.reference || 'Facture') + '</p><p class="hvp-card-sub">' + esc(fmtDate(i.created_at)) + ' · ' + esc(euros(i.total_cents)) + '</p></div>' +
+            '<span class="hvp-pill ' + (i.status === 'PAID' ? 'hvp-st-COMPLETED' : (i.status === 'ISSUED' ? 'hvp-st-PENDING' : 'hvp-st-CANCELLED')) + '">' + esc(INV_STATUS[i.status] || i.status) + '</span></div>' +
+            (i.status === 'ISSUED' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-paid="' + i.id + '">ENREGISTRER LE PAIEMENT</button></div>' : '') +
+            '</div>';
+        }).join('') : '<p class="hvp-empty">Aucune facture.</p>');
+    }).catch(function(){ el.innerHTML = '<p class="hvp-error">Factures indisponibles.</p>'; });
+  }
+  document.addEventListener('click', function(e){
+    var pd = e.target.closest('[data-hvp-paid]');
+    if (pd){
+      if (!window.confirm('Enregistrer le paiement de cette facture ?')) return;
+      pd.disabled = true;
+      sb.client.from('invoices').update({ status: 'PAID', paid_at: new Date().toISOString() }).eq('id', pd.getAttribute('data-hvp-paid')).then(function(r){
+        if (r.error) window.alert(r.error.message);
+        renderInvoices();
+      });
+      return;
+    }
+    if (e.target.closest('[data-hvp-goto-company]') || e.target.closest('[data-hvp-company-link]')){
+      setTimeout(function(){
+        if (window.admShowPage) window.admShowPage('settings');
+        var a = document.getElementById('hvpCompanyAnchor'); if (a) a.scrollIntoView({ block:'start' });
+      }, 50);
+    }
+  });
+
   // ---------------- Branchements ----------------
   document.addEventListener('click', function(e){
     var a = e.target.closest('[data-hvp-action]');
@@ -25873,6 +26300,12 @@ if ('serviceWorker' in navigator){
       else if (act === 'new-stock') stockForm();
       return;
     }
+    var cf = e.target.closest('[data-hvp-confirm]');
+    if (cf){ confirmBooking(cf.getAttribute('data-hvp-confirm'), cf); return; }
+    var rf = e.target.closest('[data-hvp-refuse]');
+    if (rf){ refuseBooking(rf.getAttribute('data-hvp-refuse'), rf); return; }
+    var ed = e.target.closest('[data-hvp-edit]');
+    if (ed){ editBooking(ed.getAttribute('data-hvp-edit')); return; }
     var st = e.target.closest('[data-hvp-start]');
     if (st && window.admOpenInterventionSheet){ window.admOpenInterventionSheet(st.getAttribute('data-hvp-start')); return; }
     var op = e.target.closest('[data-hvp-open]');
@@ -25899,7 +26332,9 @@ if ('serviceWorker' in navigator){
     else if (key === 'clients') renderClients();
     else if (key === 'interventions') renderInterventions();
     else if (key === 'stock') renderStock();
+    else if (key === 'settings') renderCompany();
+    else if (key === 'invoices') renderInvoices();
   };
-  window.hvProOnBookings = function(){ renderToday(); renderInterventions(); };
+  window.hvProOnBookings = function(){ renderToday(); renderInterventions(); renderNotifs(); if (!companyCache) loadCompany().catch(function(){}); };
 })();
 </script>
