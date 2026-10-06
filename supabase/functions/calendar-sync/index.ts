@@ -122,15 +122,39 @@ function foldLine(line: string): string {
 // ------------------------------------------------------------
 // CalDAV — requêtes HTTP de base avec Basic Auth.
 // ------------------------------------------------------------
+// iCloud renvoie parfois des 503/429 passagers (observé en test réel lors
+// d'écritures rapprochées sur le même événement) : nouvelles tentatives
+// avec attente croissante avant de considérer l'opération en échec. Toutes
+// les opérations CalDAV utilisées ici (PUT à UID fixe, DELETE, PROPFIND,
+// REPORT) sont idempotentes, donc rejouables sans risque de doublon.
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [500, 1500, 4000];
+
 async function caldavFetch(appleEmail: string, appPassword: string, url: string, method: string, body?: string, extraHeaders?: Record<string, string>) {
   const auth = 'Basic ' + btoa(`${appleEmail}:${appPassword}`);
-  const res = await fetch(url, {
-    method,
-    headers: { Authorization: auth, 'Content-Type': 'application/xml; charset=utf-8', Depth: '0', ...extraHeaders },
-    body,
-  });
-  const text = await res.text();
-  return { ok: res.ok, status: res.status, text, headers: res.headers };
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: auth, 'Content-Type': 'application/xml; charset=utf-8', Depth: '0', ...extraHeaders },
+        body,
+      });
+      const text = await res.text();
+      if (RETRYABLE_STATUSES.has(res.status) && attempt < RETRY_DELAYS_MS.length) {
+        const retryAfter = Number(res.headers.get('retry-after'));
+        const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 8000) : RETRY_DELAYS_MS[attempt];
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      return { ok: res.ok, status: res.status, text, headers: res.headers };
+    } catch (netErr) {
+      if (attempt < RETRY_DELAYS_MS.length) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+        continue;
+      }
+      throw new Error('caldav_network_error: ' + redactError(netErr));
+    }
+  }
 }
 
 // iCloud répond souvent avec des href absolus vers un serveur partitionné
@@ -523,6 +547,7 @@ async function runPull() {
   if (!conn?.connected) return { skipped: 'not_connected' };
 
   const appPassword = await getAppPassword();
+  const retried = await retryFailedPushes();
   const { data: sources } = await supabase.from('calendar_blocking_sources').select('*').eq('connection_id', conn.id).eq('is_blocking', true);
 
   const now = new Date();
@@ -631,7 +656,41 @@ async function runPull() {
     last_pull_sync_at: new Date().toISOString(),
     last_sync_error: anyError,
   }).eq('id', conn.id);
-  return { sources: summary };
+  return { sources: summary, retried };
+}
+
+// Rattrapage des envois vers Apple restés en échec (iCloud indisponible au
+// moment de la confirmation / du déplacement / de l'annulation) : rejoués
+// à chaque cycle de 15 minutes, sans action manuelle. Bornée pour ne jamais
+// allonger excessivement un cycle.
+async function retryFailedPushes() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: failed } = await supabase.from('bookings')
+    .select('id, status, calendar_event_uid')
+    .eq('calendar_sync_status', 'ERROR')
+    .gte('date', today)
+    .order('date', { ascending: true })
+    .limit(20);
+  let ok = 0, ko = 0;
+  for (const b of failed || []) {
+    try {
+      if (b.status === 'CANCELLED' || b.status === 'NO_SHOW') {
+        if (b.calendar_event_uid) await runDelete(b.id);
+        else await supabase.from('bookings').update({ calendar_sync_status: 'NOT_SYNCED', calendar_sync_error: null }).eq('id', b.id);
+      } else if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') {
+        await runUpsert(b.id);
+      } else {
+        continue;
+      }
+      ok++;
+    } catch (e) {
+      ko++;
+      const detail = redactError(e);
+      await supabase.from('bookings').update({ calendar_sync_error: detail }).eq('id', b.id);
+      await logSync('push', 'error', `retry_failed: ${detail}`, b.id);
+    }
+  }
+  return { ok, ko };
 }
 
 // ------------------------------------------------------------
