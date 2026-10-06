@@ -4520,22 +4520,22 @@ if ('serviceWorker' in navigator){
   }
   .hv-more-sheet[hidden]{ display:none; }
   .hv-more-card{
-    width:100%; max-width:460px; max-height:min(78vh, 640px); background:#fff; border-radius:20px 20px 0 0;
+    width:100%; max-width:460px; max-height:min(78vh, 640px); max-height:min(72dvh, 640px); background:#fff; border-radius:20px 20px 0 0;
     display:flex; flex-direction:column; overflow:hidden; animation:ecxAssistSheetIn .22s ease;
-    padding-bottom:env(safe-area-inset-bottom, 0px);
+    padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
   }
   @media (min-width:900px){
     .hv-more-sheet{ align-items:center; }
     .hv-more-card{ border-radius:20px; max-height:min(70vh, 600px); box-shadow:0 24px 60px -20px rgba(16,27,46,0.45); }
   }
   .hv-more-head{ flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:16px 16px 12px; border-bottom:1px solid rgba(22,34,44,0.1); }
-  .hv-more-title{ flex:1 1 auto; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.98rem; color:#16222C; margin:0; }
+  .hv-more-title{ flex:1 1 auto; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.98rem; color:#16222C !important; opacity:1 !important; margin:0; }
   .hv-more-close{
     flex:0 0 auto; width:32px; height:32px; border-radius:50%; border:none; background:#F3F1EC;
     color:#16222C; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
   .hv-more-close svg{ width:16px; height:16px; }
-  .hv-more-list{ flex:1 1 auto; overflow-y:auto; padding:8px; display:flex; flex-direction:column; }
+  .hv-more-list{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:8px 8px 28px; display:flex; flex-direction:column; }
   .hv-more-item{
     text-align:left; background:none; border:none; padding:14px 12px; font-family:"Poppins",sans-serif;
     font-weight:600; font-size:0.92rem; color:#16222C; cursor:pointer; border-radius:12px;
@@ -4597,9 +4597,9 @@ if ('serviceWorker' in navigator){
   }
   .ecx-assist-sheet[hidden]{ display:none; }
   .ecx-assist-card{
-    width:100%; max-width:460px; max-height:min(78vh, 640px); background:#fff; border-radius:20px 20px 0 0;
+    width:100%; max-width:460px; max-height:min(78vh, 640px); max-height:min(72dvh, 640px); background:#fff; border-radius:20px 20px 0 0;
     display:flex; flex-direction:column; overflow:hidden; animation:ecxAssistSheetIn .22s ease;
-    padding-bottom:env(safe-area-inset-bottom, 0px);
+    padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
   }
   @media (min-width:900px){
     .ecx-assist-sheet{ align-items:center; }
@@ -8921,6 +8921,7 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="hv-more-item" data-hv-nav="stock">Stock</button>
                 <button type="button" class="hv-more-item" data-hv-nav="invoices">Factures</button>
                 <button type="button" class="hv-more-item" data-hv-nav="settings" data-hvp-company-link>Informations entreprise</button>
+                <button type="button" class="hv-more-item" data-hv-nav="settings">Paramètres (notifications…)</button>
                 <button type="button" class="hv-more-item" data-hv-nav="contracts">Contrats chaudière</button>
                 <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
