@@ -2,8 +2,8 @@
 <html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus</title>
-<meta name="description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
+<title>HAYEVA — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël</title>
+<meta name="description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, dans tout le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <!-- Balises statiques de secours pour les robots/aperçus qui n'exécutent pas
      le JavaScript (partage iMessage/WhatsApp/réseaux sociaux, premier
      passage d'un crawler) : mêmes textes que updateMeta() ci-dessous, qui
@@ -18,13 +18,13 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HAYEVA">
 <meta property="og:locale" content="fr_FR">
-<meta property="og:title" content="HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus">
-<meta property="og:description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
+<meta property="og:title" content="HAYEVA — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël">
+<meta property="og:description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, dans tout le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <meta property="og:url" content="https://hayeva.netlify.app/">
 <meta property="og:image" content="https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="HAYEVA — Climatisation, Chauffage, Plomberie à Fréjus">
-<meta name="twitter:description" content="Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.">
+<meta name="twitter:title" content="HAYEVA — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël">
+<meta name="twitter:description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, dans tout le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <meta name="twitter:image" content="https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg">
 <!-- Données structurées Schema.org (JSON-LD) — uniquement des champs vérifiés
      dans ce dépôt (téléphone/e-mail déjà publiés dans la section Contact,
@@ -49,10 +49,10 @@
       "url": "https://hayeva.netlify.app/",
       "logo": "https://hayeva.netlify.app/images/brand/hayeva-logo.png",
       "image": "https://hayeva.netlify.app/images/portal/portal-bg-lg.jpg",
-      "description": "Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.",
+      "description": "Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, dans tout le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.",
       "telephone": "+33671262302",
       "email": "contact@hayeva.fr",
-      "areaServed": ["Fréjus", "Var", "Alpes-Maritimes"],
+      "areaServed": ["Fréjus", "Saint-Raphaël", "Var", "Alpes-Maritimes"],
       "serviceType": ["Dépannage plomberie", "Entretien et dépannage chauffage", "Entretien climatisation"],
       "founder": { "@type": "Person", "name": "Julien Martin" }
     },
@@ -81,15 +81,41 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HAYEVA">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Lecture CSV/XLSX du catalogue fournisseurs (admin, import manuel — voir
-     tâche 14). Chargée globalement mais n'est utilisée que par l'admin. -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<!-- Génération PDF réelle (exports Statistiques/Archives, section 1 du
-     cahier des charges HAYEVA du 03/10/2026) — remplace l'impression
-     navigateur, qui ne produit pas un vrai fichier PDF téléchargeable. -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<!-- Bibliothèques réservées à l'administration (≈1,2 Mo) : lecture
+     CSV/XLSX du catalogue fournisseurs et génération PDF réelle (exports
+     Statistiques/Archives). Elles ne sont plus téléchargées par chaque
+     visiteur : chargées à la demande via sudLoadAdminLibs(), appelée à
+     l'ouverture de l'espace admin (initAdminPanel) et avant chaque usage. -->
+<script>
+  (function(){
+    var cache = {};
+    window.sudLoadScript = function(src){
+      if (!cache[src]) {
+        cache[src] = new Promise(function(resolve, reject){
+          var el = document.createElement('script');
+          el.src = src; el.async = true;
+          el.onload = function(){ resolve(); };
+          el.onerror = function(){ delete cache[src]; reject(new Error('Chargement impossible : ' + src)); };
+          document.head.appendChild(el);
+        });
+      }
+      return cache[src];
+    };
+    window.SUD_ADMIN_LIBS = {
+      xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+      jspdf: 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+      autotable: 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+    };
+    window.sudLoadAdminLibs = function(){
+      var L = window.SUD_ADMIN_LIBS;
+      return Promise.all([
+        window.sudLoadScript(L.xlsx),
+        window.sudLoadScript(L.jspdf).then(function(){ return window.sudLoadScript(L.autotable); })
+      ]);
+    };
+  })();
+</script>
 <script>
 (function(){
   // ---------- Configuration Supabase ----------
@@ -974,6 +1000,19 @@ if ('serviceWorker' in navigator){
   @media (max-width:600px){
     .call-btn-text{ display:none; }
     .call-btn{ padding:8px; gap:0; }
+    /* Lisibilité téléphone (audit de mise en production) : la ligne unique
+       défile déjà horizontalement, inutile donc de réduire les liens à
+       ~9px — texte lisible et zones tactiles plus hautes, sans menu ☰.
+       Le léger fondu à droite signale qu'il reste des liens à faire
+       défiler. */
+    nav.links a{ font-size:0.74rem; padding:12px 6px; }
+    .mode-btn-text{ font-size:0.62rem; }
+    button.mode-btn{ padding:6px 8px; }
+    .headerbar-scroll{
+      -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 22px), transparent);
+              mask-image:linear-gradient(to right, #000 calc(100% - 22px), transparent);
+      padding-right:16px;
+    }
   }
 
   /* ---------- Sélecteur Particulier / Professionnel ---------- */
@@ -5907,7 +5946,7 @@ if ('serviceWorker' in navigator){
      onerror si le fichier n'existe pas encore : jamais de bouton cassé. -->
 <div class="ai-widget-toggle" id="aiWidgetToggle" role="button" tabindex="0" aria-label="Ouvrir l'assistant Hayeva" hidden>
   <span class="hayeva-char" id="hayevaCharToggle" aria-hidden="true">
-    <img src="images/assistant-character/character.png" alt=""
+    <img src="images/assistant-character/character-192.png" width="192" height="192" alt=""
          onerror="this.closest('.hayeva-char').classList.add('hayeva-char-missing')">
   </span>
   <div class="ai-widget-invite" id="aiWidgetInvite">
@@ -5920,7 +5959,7 @@ if ('serviceWorker' in navigator){
 <div class="ai-widget-panel" id="aiWidgetPanel" hidden role="dialog" aria-modal="false" aria-labelledby="aiWidgetTitle">
   <div class="ai-widget-header">
     <span class="hayeva-char hayeva-char-mini" id="hayevaCharPanel" aria-hidden="true">
-      <img src="images/assistant-character/character.png" alt=""
+      <img src="images/assistant-character/character-192.png" width="192" height="192" alt=""
            onerror="this.closest('.hayeva-char').classList.add('hayeva-char-missing')">
       <span class="hayeva-char-fallback-emoji"></span>
     </span>
@@ -6159,9 +6198,9 @@ if ('serviceWorker' in navigator){
     <div class="headerbar-scroll" id="headerbarScroll">
       <div class="brand">
         <a href="#accueil" aria-label="HAYEVA — Accueil">
-          <img class="header-logo" src="images/brand/hayeva-logo.png"
-               srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
-               sizes="130px" alt="HAYEVA" width="900" height="607">
+          <img class="header-logo" src="images/brand/hayeva-logo-xs.png"
+               srcset="images/brand/hayeva-logo-xs.png 240w, images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w"
+               sizes="56px" alt="HAYEVA" width="900" height="607">
         </a>
       </div>
       <div class="mode-switch" id="modeSwitch" role="group" aria-label="Choisir votre profil : particulier ou professionnel">
@@ -8273,9 +8312,11 @@ if ('serviceWorker' in navigator){
                 </div>
                 <div class="admin-bk-main-tabs" id="adminBkMainTabs" role="group" aria-label="Rendez-vous">
                   <button type="button" class="admin-bk-main-tab is-active" data-admin-filter="today">Aujourd'hui</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="pending">🟠 En attente</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="confirmed">🟢 Confirmés</button>
                   <button type="button" class="admin-bk-main-tab" data-admin-filter="upcoming">À venir</button>
                   <button type="button" class="admin-bk-main-tab" data-admin-filter="completed">Terminées</button>
-                  <button type="button" class="admin-bk-main-tab" data-admin-filter="cancelled">Annulées / Refusées</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="cancelled">🔴 Refusés / annulés</button>
                   <button type="button" class="admin-bk-main-tab" data-admin-filter="archives">Archives</button>
                 </div>
                 <div class="admin-bk-toolbar" id="adminBkOperationalToolbar">
@@ -9349,7 +9390,7 @@ if ('serviceWorker' in navigator){
           <tr><th>Adresse</th><td><span class="legal-placeholder" data-legal-field="mediatorAddress"></span></td></tr>
           <tr><th>Site internet</th><td><span class="legal-placeholder" data-legal-field="mediatorWebsite"></span></td></tr>
         </table>
-        <p style="font-size:0.82rem; color:var(--ink-soft);">HAYEVA adhérera à un médiateur de la consommation habilité avant l'ouverture commerciale officielle du site ; les coordonnées exactes seront renseignées ici et dans les CGV dès l'adhésion effective. Le client peut également, le cas échéant, recourir à la plateforme européenne de règlement en ligne des litiges : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">HAYEVA adhérera à un médiateur de la consommation habilité avant l'ouverture commerciale officielle du site ; les coordonnées exactes seront renseignées ici et dans les CGV dès l'adhésion effective.</p>
       </article>
 
       <!-- ========== RÉTRACTATION ========== -->
@@ -11954,7 +11995,7 @@ if ('serviceWorker' in navigator){
     var brandName = (window.SUD_BRAND && window.SUD_BRAND.name) || 'HAYEVA';
     document.title = isPro
       ? brandName + ' Pro — Check technique conciergeries & mobil-homes'
-      : brandName + ' — Climatisation, Chauffage, Plomberie à Fréjus';
+      : brandName + ' — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël';
     var meta = document.querySelector('meta[name="description"]');
     if (!meta && document.head){
       meta = document.createElement('meta');
@@ -11964,7 +12005,7 @@ if ('serviceWorker' in navigator){
     if (meta){
       meta.setAttribute('content', isPro
         ? "Check technique plomberie, chauffage, climatisation pour conciergeries, locations saisonnières, campings et mobil-homes. Tarifs dégressifs multi-logements."
-        : "Entretien climatisation, entretien et dépannage chauffage, dépannage plomberie à Fréjus, dans le Var et les Alpes-Maritimes.");
+        : "Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, dans tout le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.");
     }
   }
 
@@ -13504,6 +13545,11 @@ if ('serviceWorker' in navigator){
       // propre onglet — sinon un même rendez-vous apparaîtrait dans les
       // deux à la fois.
       if (mode === 'upcoming') return d.getTime() > today.getTime();
+      // "🟠 En attente" : toutes les demandes à valider (y compris depuis
+      // l'e-mail CONFIRMER/REFUSER) ; "🟢 Confirmés" : RDV confirmés à
+      // partir d'aujourd'hui.
+      if (mode === 'pending') return b.status === 'PENDING';
+      if (mode === 'confirmed') return b.status === 'CONFIRMED' && d.getTime() >= today.getTime();
       return true;
     });
   }
@@ -13770,7 +13816,9 @@ if ('serviceWorker' in navigator){
       return da < db ? -1 : (da > db ? 1 : 0);
     });
     if (!rows.length){
-      listEl.innerHTML = '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
+      listEl.innerHTML = adminFilter === 'pending'
+        ? '<div class="ec-empty"><strong>Aucune demande en attente</strong>Toutes les demandes ont été traitées.</div>'
+        : '<div class="ec-empty"><strong>Aucun rendez-vous</strong>Aucune réservation pour cette période.</div>';
       return;
     }
     var html = '<div class="ec-list">';
@@ -14303,8 +14351,9 @@ if ('serviceWorker' in navigator){
   // haut dans le document) — un vrai fichier .pdf téléchargeable, jamais
   // une impression navigateur présentée comme un export.
   function admJsPdfDoc(title, periodLabel, rowCount){
-    if (!window.jspdf || !window.jspdf.jsPDF){
-      window.alert('Le générateur PDF n\'a pas pu se charger (connexion réseau ?). Réessayez.');
+    if (!window.jspdf || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API || !window.jspdf.jsPDF.API.autoTable){
+      if (window.sudLoadAdminLibs) window.sudLoadAdminLibs().catch(function(){});
+      window.alert('Le générateur PDF est en cours de chargement (ou la connexion est coupée). Réessayez dans quelques secondes.');
       return null;
     }
     var doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt' });
@@ -18159,6 +18208,7 @@ if ('serviceWorker' in navigator){
 
     var isOperational = adminFilter === 'today' || adminFilter === 'upcoming';
     var showPlanning = isOperational && adminBkViewMode === 'planning';
+    var isStatusList = adminFilter === 'pending' || adminFilter === 'confirmed';
 
     Array.prototype.forEach.call(document.querySelectorAll('.admin-bk-view-tab'), function(btn){
       btn.classList.toggle('is-active', btn.getAttribute('data-admin-bk-view') === adminBkViewMode);
@@ -18167,7 +18217,7 @@ if ('serviceWorker' in navigator){
     if (operationalToolbarEl) operationalToolbarEl.hidden = !isOperational;
     if (planningEl) planningEl.hidden = !showPlanning;
     if (planningNavEl) planningNavEl.hidden = !showPlanning;
-    if (listEl) listEl.hidden = showPlanning || adminFilter === 'archives';
+    if (listEl) listEl.hidden = (showPlanning || adminFilter === 'archives') && !isStatusList;
     if (cancelledSubFiltersEl) cancelledSubFiltersEl.hidden = adminFilter !== 'cancelled';
     if (archivesEl) archivesEl.hidden = adminFilter !== 'archives';
 
@@ -20454,7 +20504,9 @@ if ('serviceWorker' in navigator){
   var CATALOG_AVAILABILITY_MAP = { disponible:'available', limite:'limited', indisponible:'unavailable', inconnu:'unknown' };
 
   function catalogParseFile(file){
-    return file.arrayBuffer().then(function(buf){
+    return window.sudLoadScript(window.SUD_ADMIN_LIBS.xlsx).then(function(){
+      return file.arrayBuffer();
+    }).then(function(buf){
       var wb = XLSX.read(buf, { type: 'array' });
       var sheet = wb.Sheets[wb.SheetNames[0]];
       return XLSX.utils.sheet_to_json(sheet, { defval: '' });
@@ -20762,6 +20814,9 @@ if ('serviceWorker' in navigator){
   function initAdminPanel(role){
     var panel = document.getElementById('espaceProAdminPanel');
     if (!panel) return;
+    // Exports PDF/XLSX : bibliothèques préchargées en arrière-plan dès
+    // l'ouverture de l'admin (jamais pour un simple visiteur).
+    if (role === 'admin' && window.sudLoadAdminLibs) window.sudLoadAdminLibs().catch(function(){});
     // Un compte admin n'est jamais aussi un client conciergerie/mobil-home :
     // masquer .pro-shell (son propre "Bonjour THE BIG BOSS", ses logements
     // toujours à 0, sa propre navigation basse) pour ne montrer que le
@@ -24079,6 +24134,14 @@ if ('serviceWorker' in navigator){
     var initialTarget = initialHash === '#espacepro' ? 'espacePro' : 'espaceClient';
     if (window.sudSetMode) window.sudSetMode(initialTarget === 'espacePro' ? 'professionnel' : 'particulier');
     openEspace(initialTarget);
+  } else if (initialHash === '#rdv'){
+    // Lien direct "CHOISIR UN AUTRE CRÉNEAU" (e-mail de refus) : ouvre
+    // directement la prise de rendez-vous, sans le portail d'accueil.
+    portal.hidden = true;
+    setTimeout(function(){
+      var rdv = document.getElementById('rdv');
+      if (rdv) rdv.scrollIntoView();
+    }, 300);
   } else {
     document.body.style.overflow = 'hidden';
   }
