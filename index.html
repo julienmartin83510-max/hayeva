@@ -87,10 +87,21 @@
   // et ouverture directe sur l'espace administration (jamais le site public).
   (function(){
     var isPro = /(?:^|[?&])app=pro(?:&|$)/.test(location.search);
+    var standalone = false, adminDevice = false;
+    try { standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch(e){}
     try {
+      // Appareil de l'administrateur (mémorisé à sa connexion) : un ajout à
+      // l'écran d'accueil depuis N'IMPORTE quelle page crée « HAYEVA Pro »,
+      // et l'icône installée s'ouvre toujours sur l'espace pro.
+      adminDevice = localStorage.getItem('hayeva_admin_device') === '1';
       if (isPro) sessionStorage.setItem('hayeva_app', 'pro');
-      else if (sessionStorage.getItem('hayeva_app') === 'pro' && window.matchMedia('(display-mode: standalone)').matches) isPro = true;
+      else if (standalone && (adminDevice || sessionStorage.getItem('hayeva_app') === 'pro')) isPro = true;
     } catch(e){}
+    window.hvpMarkProInstallable = function(){
+      var m = document.querySelector('link[rel="manifest"]'); if (m) m.setAttribute('href', 'pro-manifest.json');
+      var t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.setAttribute('content', 'HAYEVA Pro');
+    };
+    if (adminDevice) window.hvpMarkProInstallable();
     if (!isPro) return;
     window.HAYEVA_PRO_APP = true;
     document.documentElement.classList.add('hayeva-pro-app');
@@ -21057,6 +21068,10 @@ if ('serviceWorker' in navigator){
     // Exports PDF/XLSX : bibliothèques préchargées en arrière-plan dès
     // l'ouverture de l'admin (jamais pour un simple visiteur).
     if (role === 'admin' && window.sudLoadAdminLibs) window.sudLoadAdminLibs().catch(function(){});
+    if (role === 'admin'){
+      try { localStorage.setItem('hayeva_admin_device', '1'); } catch(e){}
+      if (window.hvpMarkProInstallable) window.hvpMarkProInstallable();
+    }
     // Un compte admin n'est jamais aussi un client conciergerie/mobil-home :
     // masquer .pro-shell (son propre "Bonjour THE BIG BOSS", ses logements
     // toujours à 0, sa propre navigation basse) pour ne montrer que le
