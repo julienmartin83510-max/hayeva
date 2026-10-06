@@ -22545,7 +22545,32 @@ if ('serviceWorker' in navigator){
     ecProfileCache = null;
     ecLoyaltyCache = null;
     ecShowTab('home');
+    ecAutoAttachReferral();
   }
+  // Parrainage arrivé par un lien ?ref=CODE (code déjà vérifié côté serveur
+  // et conservé localement 30 jours, voir module « Parrainage : lien ?ref= ») :
+  // rattachement AUTOMATIQUE au compte client dès la connexion / création de
+  // compte, via attach_referral() — toutes les règles (auto-parrainage, un
+  // seul parrain, parrainage croisé, client déjà servi…) restent appliquées
+  // côté serveur. Aucun crédit ici : il n'est versé qu'à la fin de la
+  // première intervention éligible (trigger serveur, idempotent).
+  var EC_REF_FINAL_ERRORS = ['CODE_INVALIDE', 'AUTO_PARRAINAGE', 'DEJA_PARRAINE', 'PARRAINAGE_CIRCULAIRE', 'CLIENT_DEJA_EXISTANT'];
+  function ecAutoAttachReferral(){
+    var pending = window.hvRefPending && window.hvRefPending();
+    if (!ecUser || !pending || !pending.code) return;
+    sb.client.rpc('attach_referral', { p_code: pending.code }).then(function(res){
+      if (res.error) return; // réseau : on réessaiera à la prochaine connexion
+      var out = res.data || {};
+      if (out.ok){
+        window.hvRefClear();
+        ecLoyaltyCache = null; ecLoaded.loyalty = false;
+        if (!out.already && window.hvRefToast) window.hvRefToast('Parrainage HAYEVA enregistré sur votre compte — ' + (pending.amount || '20 €') + ' de crédit après votre première intervention éligible.');
+      } else if (EC_REF_FINAL_ERRORS.indexOf(out.error) !== -1){
+        window.hvRefClear();
+      }
+    }).catch(function(){});
+  }
+  window.sudEcAutoAttachReferral = ecAutoAttachReferral;
   // Hook minimal appelé depuis le module de réservation après une écriture
   // réelle dans bookings, pour que l'onglet Accueil/Mes rendez-vous se
   // recharge avec la nouvelle réservation au lieu de garder un cache périmé.
@@ -24034,7 +24059,7 @@ if ('serviceWorker' in navigator){
         '<div class="ec-loy-code-row"><span class="ec-loy-code" id="ecLoyCode">' + ecEscape(d.code || '') + '</span>' +
           '<button type="button" class="ec-loy-icon-btn" id="ecLoyCopyBtn" aria-label="Copier le code">' + ecxIcon('copy') + '</button>' +
         '</div>' +
-        '<p class="ec-loy-code-hint" id="ecLoyCopyHint" hidden>Code copié.</p>' +
+        '<p class="ec-loy-code-hint" id="ecLoyCopyHint" hidden aria-live="polite">Code copié</p>' +
         '<button type="button" class="ecx-promo-cta" id="ecLoyShareBtn">' + ecxIcon('share') + ' Partager mon code</button>' +
       '</div>';
 
@@ -24050,7 +24075,7 @@ if ('serviceWorker' in navigator){
         html += '<div class="ecx-card"><p class="ec-loy-card-title">Vous avez été parrainé ?</p>' +
           '<p class="ec-section-sub" style="margin:0 0 12px;">Renseignez le code d\'un proche pour bénéficier de ' + refereeEuros + ' dès votre première intervention terminée.</p>' +
           '<form class="ec-loy-attach-form" id="ecLoyAttachForm">' +
-            '<input type="text" id="ecLoyAttachInput" placeholder="Code (ex. AB12CD34)" maxlength="12" autocomplete="off" autocapitalize="characters">' +
+            '<input type="text" id="ecLoyAttachInput" placeholder="Code (ex. AB12CD34)" maxlength="12" autocomplete="off" autocapitalize="characters" value="' + ecEscape((window.hvRefPending && window.hvRefPending() && window.hvRefPending().code) || '') + '">' +
             '<button type="submit" class="btn-primary">Valider</button>' +
           '</form>' +
           '<p class="ec-loy-attach-msg" id="ecLoyAttachMsg" hidden></p>' +
@@ -24109,17 +24134,43 @@ if ('serviceWorker' in navigator){
       var shareBtn = document.getElementById('ecLoyShareBtn');
       if (shareBtn){
         shareBtn.addEventListener('click', function(){
-          var text = 'Avec mon code HAYEVA ' + (d.code || '') + ', bénéficiez de ' + refereeEuros + ' sur votre première intervention (plomberie, chauffage, climatisation). Créez votre compte sur hayeva.fr puis renseignez ce code dans votre Espace Client, rubrique Fidélité & parrainage.';
+          // Message + lien individuel (toujours le vrai code du client
+          // connecté, renvoyé par get_my_loyalty — jamais un code fixe).
+          // Lien sur hayeva.fr : ?ref=CODE est détecté et vérifié côté
+          // serveur à l'arrivée (voir module « Parrainage : lien ?ref= »).
+          var code = d.code || '';
+          var cents = d.referee_reward_cents;
+          var amount = cents == null ? '20 €' : ((cents % 100 === 0) ? String(cents / 100) : (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 })) + ' €';
+          var link = 'https://hayeva.fr/?ref=' + encodeURIComponent(code);
+          var text = 'Je te recommande HAYEVA pour tes besoins en plomberie, chauffage et climatisation.\n\n' +
+            'Utilise mon code de parrainage ' + code + ' et bénéficie de ' + amount + ' de crédit sur ta première intervention éligible.\n\n' +
+            'Prends rendez-vous sur hayeva.fr';
+          var full = text + '\n' + link;
+          var hint = document.getElementById('ecLoyCopyHint');
+          function flash(msg){ if (!hint) return; hint.textContent = msg; hint.hidden = false; setTimeout(function(){ hint.hidden = true; hint.textContent = 'Code copié'; }, 3000); }
+          function copyFallback(){
+            function legacy(){
+              try {
+                var ta = document.createElement('textarea'); ta.value = full; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                var ok = document.execCommand('copy'); document.body.removeChild(ta);
+                flash(ok ? 'Message et lien copiés — collez-les où vous voulez.' : 'Votre lien : ' + link);
+              } catch(e){ flash('Votre lien : ' + link); }
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText){
+              navigator.clipboard.writeText(full).then(function(){ flash('Message et lien copiés — collez-les où vous voulez.'); }).catch(legacy);
+            } else legacy();
+          }
           try {
-            if (navigator.share){ navigator.share({ title:'Mon code HAYEVA', text:text }).catch(function(){}); return; }
+            if (navigator.share){
+              navigator.share({ title:'HAYEVA — mon code de parrainage', text: text, url: link }).catch(function(err){
+                // Annulation volontaire : rien à faire ; autre erreur : copie.
+                if (!err || err.name !== 'AbortError') copyFallback();
+              });
+              return;
+            }
           } catch(e){}
-          var copyBtn2 = document.getElementById('ecLoyCopyBtn');
-          if (navigator.clipboard && navigator.clipboard.writeText){
-            navigator.clipboard.writeText(text).then(function(){
-              var hint = document.getElementById('ecLoyCopyHint');
-              if (hint){ hint.textContent = 'Message copié — collez-le où vous voulez.'; hint.hidden = false; setTimeout(function(){ hint.hidden = true; hint.textContent = 'Code copié.'; }, 3000); }
-            }).catch(function(){});
-          } else if (copyBtn2) copyBtn2.click();
+          copyFallback();
         });
       }
       var attachForm = document.getElementById('ecLoyAttachForm');
@@ -26887,5 +26938,92 @@ if ('serviceWorker' in navigator){
     else if (key === 'invoices') renderInvoices();
   };
   window.hvProOnBookings = function(){ renderTech(); renderToday(); renderInterventions(); renderNotifs(); if (!companyCache) loadCompany().catch(function(){}); };
+})();
+</script>
+<style>
+  /* Parrainage : confirmation discrète à l'arrivée par un lien ?ref= */
+  .hv-ref-toast{
+    position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%);
+    z-index:10050; width:min(560px, calc(100% - 32px)); box-sizing:border-box;
+    display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border-radius:16px;
+    background:#101B24; color:#fff; box-shadow:0 14px 34px -14px rgba(16,27,36,0.55);
+    font-family:"Poppins",sans-serif; font-size:0.9rem; line-height:1.45;
+  }
+  .hv-ref-toast[hidden]{ display:none; }
+  .hv-ref-toast-icon{ flex:0 0 auto; font-size:1.15rem; line-height:1.3; }
+  .hv-ref-toast-text{ flex:1 1 auto; min-width:0; }
+  .hv-ref-toast-close{ flex:0 0 auto; background:none; border:none; color:rgba(255,255,255,0.75); font-size:1.2rem; line-height:1; cursor:pointer; padding:2px 4px; }
+  @media (max-width:760px){ .hv-ref-toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); } }
+</style>
+<div class="hv-ref-toast" id="hvRefToast" hidden role="status" aria-live="polite">
+  <span class="hv-ref-toast-icon" aria-hidden="true">🎁</span>
+  <span class="hv-ref-toast-text" id="hvRefToastText"></span>
+  <button type="button" class="hv-ref-toast-close" id="hvRefToastClose" aria-label="Fermer">×</button>
+</div>
+<script>
+// =====================================================================
+// Parrainage : lien ?ref=CODE (https://hayeva.fr/?ref=CODE)
+// - Le code n'est JAMAIS cru sur parole : il est vérifié côté serveur
+//   (get_referral_preview, ne renvoie que valide/invalide + montants, aucune
+//   donnée sur le parrain).
+// - Code valide : conservé localement 30 jours (premier lien reçu prioritaire,
+//   jamais remplacé par un lien ultérieur), pour suivre la navigation et un
+//   retour ultérieur sur le site ; rattaché automatiquement au compte client
+//   à la connexion / création de compte (attach_referral, règles serveur).
+// - Aucun crédit n'est jamais accordé ici : uniquement à la fin de la
+//   première intervention éligible (trigger serveur idempotent).
+// - Le paramètre ?ref est retiré de l'adresse (URL propre, pas de doublon SEO).
+// =====================================================================
+(function(){
+  var KEY = 'hayeva_ref', TTL = 30 * 86400000;
+  function read(){
+    try {
+      var v = JSON.parse(window.localStorage.getItem(KEY) || 'null');
+      if (v && v.code && (Date.now() - v.ts) < TTL) return v;
+      window.localStorage.removeItem(KEY);
+    } catch(e){}
+    return null;
+  }
+  window.hvRefPending = read;
+  window.hvRefClear = function(){ try { window.localStorage.removeItem(KEY); } catch(e){} };
+
+  var toast = document.getElementById('hvRefToast');
+  var toastText = document.getElementById('hvRefToastText');
+  var toastTimer = null;
+  window.hvRefToast = function(msg){
+    if (!toast || !toastText) return;
+    toastText.textContent = msg;
+    toast.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.hidden = true; }, 7000);
+  };
+  var closeBtn = document.getElementById('hvRefToastClose');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toast.hidden = true; });
+
+  var m = /[?&]ref=([^&#]*)/.exec(window.location.search);
+  if (!m) return;
+  var code = decodeURIComponent(m[1] || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20);
+  try {
+    var params = new URLSearchParams(window.location.search);
+    params.delete('ref');
+    var qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+  } catch(e){}
+  if (!code || code.length < 4 || window.HAYEVA_PRO_APP) return;
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  sb.client.rpc('get_referral_preview', { p_code: code }).then(function(res){
+    var out = (res && res.data) || {};
+    if (res.error || !out.valid) return; // code inexistant / programme inactif : rien n'est conservé
+    var cents = out.referee_reward_cents;
+    var amount = cents == null ? '20 €' : ((cents % 100 === 0) ? String(cents / 100) : (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 })) + ' €';
+    var existing = read();
+    if (!existing){
+      try { window.localStorage.setItem(KEY, JSON.stringify({ code: code, ts: Date.now(), amount: amount })); } catch(e){}
+    }
+    window.hvRefToast('Parrainage HAYEVA enregistré — ' + ((existing && existing.amount) || amount) + ' de crédit après votre première intervention éligible.');
+    // Client déjà connecté : rattachement immédiat à son compte.
+    if (window.sudEcAutoAttachReferral) window.sudEcAutoAttachReferral();
+  }).catch(function(){});
 })();
 </script>
