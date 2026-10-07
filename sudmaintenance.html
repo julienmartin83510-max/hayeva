@@ -27280,6 +27280,9 @@ if ('serviceWorker' in navigator){
   var prevOn = window.hvProOnBookings, loadedOnce = false;
   window.hvProOnBookings = function(){
     if (prevOn) prevOn.apply(this, arguments);
+    // Uniquement dans l'administration réellement ouverte (jamais pour un visiteur).
+    var panel = document.getElementById('espaceProAdminPanel');
+    if (!panel || panel.hidden) return;
     if (!loadedOnce){ loadedOnce = true; load(); }
   };
 
