@@ -612,6 +612,12 @@ if ('serviceWorker' in navigator){
   // Le reste du site (logo du header, <title>, méta) garde encore ses
   // propres mentions codées en dur : les centraliser aussi est un chantier
   // séparé, plus large, non fait à cette étape.
+  // Adresse de retour des e-mails Auth (confirmation, mot de passe) :
+  // toujours le domaine officiel, sauf si l'on est déjà sur hayeva.fr/www.
+  window.hvAuthRedirectBase = function(){
+    var o = window.location.origin;
+    return /^https:\/\/(www\.)?hayeva\.fr$/.test(o) ? o : 'https://hayeva.fr';
+  };
   window.SUD_BRAND = { name: 'HAYEVA', tagline: 'Plomberie • Chauffage • Climatisation', email: 'contact@hayeva.fr' };
 
   // ============================================================
@@ -14474,7 +14480,7 @@ if ('serviceWorker' in navigator){
           sud_pending_phone: phone || null,
           sud_pending_first_name: firstName,
           sud_pending_last_name: lastName
-        } }
+        }, emailRedirectTo: (window.hvAuthRedirectBase ? window.hvAuthRedirectBase() : 'https://hayeva.fr') + '/' }
       });
       }).then(function(res){
         signupSubmitBtn.disabled = false;
@@ -25593,7 +25599,7 @@ if ('serviceWorker' in navigator){
         return sb.client.auth.signUp({
           email: email,
           password: password,
-          options: { captchaToken: captchaToken || undefined, data: meta, emailRedirectTo: window.location.origin + '/' }
+          options: { captchaToken: captchaToken || undefined, data: meta, emailRedirectTo: (window.hvAuthRedirectBase ? window.hvAuthRedirectBase() : 'https://hayeva.fr') + '/' }
         });
       }).then(function(res){
         signupSubmitBtn.disabled = false;
@@ -27817,7 +27823,7 @@ if ('serviceWorker' in navigator){
       sb.client.rpc('company_billing_ready')
     ]).then(function(r){ companyCache = r[0].data || {}; billingReady = r[1].data === true; return companyCache; });
   }
-  var BILLING_OFF = 'Facturation définitive indisponible — informations entreprise à compléter.';
+  var BILLING_OFF = 'Complétez les informations légales de l\'entreprise avant d\'émettre une facture définitive.';
   function renderCompany(){
     var el = document.getElementById('hvpCompany');
     if (!el) return;
@@ -28655,7 +28661,9 @@ if ('serviceWorker' in navigator){
   function footer(pdf, co, extra){
     var W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
     var lines = [];
-    if (co.vat_regime !== 'assujetti') lines.push('TVA non applicable, art. 293 B du CGI.');
+    // Mention de franchise UNIQUEMENT si ce régime est réellement renseigné :
+    // jamais de mention fiscale déduite d'une information manquante.
+    if (co.vat_regime === 'franchise_base') lines.push('TVA non applicable, art. 293 B du CGI.');
     (extra || []).forEach(function(x){ if (x) lines.push(x); });
     if (co.insurance_company) lines.push('Assurance professionnelle : ' + co.insurance_company + (co.insurance_contract_number ? ' — contrat n° ' + co.insurance_contract_number : '') + (co.insurance_coverage ? ' — couverture : ' + co.insurance_coverage : '') + '.');
     if (co.mediator_name) lines.push('Médiateur de la consommation : ' + co.mediator_name + (co.mediator_contact ? ' — ' + co.mediator_contact : '') + '.');
@@ -28711,7 +28719,7 @@ if ('serviceWorker' in navigator){
     var ty = rows.length ? totalsTable(pdf, rows, pdf.lastAutoTable.finalY + 8) : pdf.lastAutoTable.finalY;
     ty += 18;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
-    pdf.text(assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : 'Montants en euros, nets de taxe.', 40, ty);
+    pdf.text(assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : (co.vat_regime === 'franchise_base' ? 'Montants en euros, nets de taxe.' : 'Montants en euros.'), 40, ty);
     if (co.payment_terms){ pdf.splitTextToSize('Conditions de paiement : ' + co.payment_terms, 515).forEach(function(s2, k){ pdf.text(s2, 40, ty + 14 + k * 12); }); ty += 14; }
     pdf.text('Bon pour accord — date et signature du client :', 40, ty + 30);
     pdf.rect(40, ty + 38, 240, 66);
@@ -28724,8 +28732,9 @@ if ('serviceWorker' in navigator){
     var co = d.company || {}, inv = d.doc, lines = d.lines || [];
     var assujetti = (inv.vat_regime || co.vat_regime) === 'assujetti';
     var pdf = newPdf();
-    var status = inv.status === 'PAID' ? 'Payée' : inv.status === 'CANCELLED' ? 'Annulée (avoir)' : '';
-    header(pdf, co, 'FACTURE', inv.reference, 'du ' + fmtDate(inv.issued_at || inv.created_at), status);
+    var isDraft = inv.status === 'DRAFT';
+    var status = isDraft ? 'Brouillon — non valable comme facture' : inv.status === 'PAID' ? 'Payée' : inv.status === 'CANCELLED' ? 'Annulée (avoir)' : '';
+    header(pdf, co, isDraft ? 'BROUILLON' : 'FACTURE', inv.reference, 'du ' + fmtDate(inv.issued_at || inv.created_at), status);
     var y = parties(pdf, co, d.customer || {}, 96);
     var body = lines.map(function(l){
       var ttc = Math.round(Number(l.quantity) * Number(l.unit_ttc_cents));
@@ -28758,8 +28767,12 @@ if ('serviceWorker' in navigator){
     if (inv.due_date && inv.status === 'ISSUED'){ pdf.text('Date d\'échéance du paiement : ' + fmtDate(inv.due_date) + '.', 40, ty); ty += 14; }
     if (co.payment_terms){ pdf.splitTextToSize('Conditions de paiement : ' + co.payment_terms, 515).forEach(function(s2){ pdf.text(s2, 40, ty); ty += 12; }); }
     if (inv.status === 'CANCELLED' && inv.cancelled_reason){ pdf.setTextColor(178, 58, 58); pdf.setFont('helvetica', 'bold'); pdf.text(inv.cancelled_reason, 40, ty + 6); pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]); }
-    footer(pdf, co);
-    pdf.save('Facture-' + (inv.reference || 'HAYEVA') + '.pdf');
+    footer(pdf, co, isDraft ? [
+      'BROUILLON — document de préparation, non valable comme facture.',
+      (co.siret && co.vat_regime && co.address_line1 && co.insurance_company && co.mediator_name) ? null
+        : 'Informations légales de l\'entreprise : À RENSEIGNER AVANT FACTURATION.'
+    ] : null);
+    pdf.save((isDraft ? 'Brouillon-' : 'Facture-') + (inv.reference || 'HAYEVA') + '.pdf');
   }
 
   function buildCreditNote(d){
