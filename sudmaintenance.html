@@ -472,6 +472,24 @@
   // page_view : au chargement initial, puis à chaque navigation vers une
   // section nommée (mêmes ancres que la navigation existante du site).
   window.addEventListener('load', function(){ sudTrack('page_view'); });
+  // Source de campagne (QR code, support imprimé) : https://hayeva.fr/?src=flyer
+  // — enregistrée une seule fois par session comme visite 'src:<code>' (voir
+  // 0127_campaign_sources.sql), puis retirée de l'URL affichée.
+  (function(){
+    var src = null;
+    try { src = new URLSearchParams(location.search).get('src'); } catch(e){}
+    if (!src) return;
+    src = String(src).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
+    try {
+      var q = new URLSearchParams(location.search); q.delete('src');
+      var qs = q.toString();
+      history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    } catch(e){}
+    if (src.length < 2) return;
+    var key = 'sud_campaign_src';
+    try { if (sessionStorage.getItem(key) === src) return; sessionStorage.setItem(key, src); } catch(e){}
+    window.addEventListener('load', function(){ sudTrack('page_view', 'src:' + src); });
+  })();
   window.addEventListener('hashchange', function(){ sudTrack('page_view'); });
 
   // heartbeat : toutes les ~60s, uniquement onglet visible — se met en
@@ -9100,6 +9118,9 @@ if ('serviceWorker' in navigator){
 
                 <h3 class="adm-subhead">Pages populaires</h3>
                 <div id="admStatsPages" class="ec-list"><p class="ec-loading">Chargement…</p></div>
+
+                <h3 class="adm-subhead">QR codes et liens de campagne</h3>
+                <div id="admStatsCampaigns" class="ec-list"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPagePricing" data-adm-page="pricing" hidden>
@@ -9893,6 +9914,20 @@ if ('serviceWorker' in navigator){
     <a href="#legal/mediation" data-legal-link="mediation">Médiation</a>
     <a href="#legal/retractation" data-legal-link="retractation">Rétractation</a>
   </div>
+  <nav class="wrap footer-legal-row" aria-label="Zones et services">
+    <span class="footer-legal-label">Zones &amp; services</span>
+    <a href="/plombier-chauffagiste-frejus/">Fréjus</a>
+    <a href="/plombier-chauffagiste-saint-raphael/">Saint-Raphaël</a>
+    <a href="/plombier-chauffagiste-le-muy/">Le Muy</a>
+    <a href="/plombier-chauffagiste-var/">Var (83)</a>
+    <a href="/plombier-chauffagiste-alpes-maritimes/">Alpes-Maritimes (06)</a>
+    <a href="/entretien-climatisation-frejus-saint-raphael/">Entretien climatisation</a>
+    <a href="/entretien-chaudiere-var/">Entretien chaudière</a>
+    <a href="/professionnels/">Conciergeries</a>
+    <a href="/syndics-copropriete/">Syndics</a>
+    <a href="/campings-mobil-homes/">Campings & mobil-homes</a>
+    <a href="/partenaires/">Partenaires</a>
+  </nav>
   <div class="wrap footer-row">
     <span class="footer-brand brand-wordmark">HAYEVA</span>
     <span style="text-transform:uppercase; letter-spacing:0.04em;">Climatisation · Chauffage · Plomberie — Fréjus, Alpes-Maritimes (06) et Var (83)</span>
@@ -20615,6 +20650,21 @@ if ('serviceWorker' in navigator){
     }).join('');
   }
 
+  function admRenderStatsCampaigns(summary){
+    var el = document.getElementById('admStatsCampaigns');
+    if (!el) return;
+    var entries = summary.campaigns || [];
+    if (!entries.length){
+      el.innerHTML = '<div class="ec-empty"><strong>Aucune visite par QR code</strong>Sur cette période. Liens à utiliser : https://hayeva.fr/?src=nom-du-support</div>';
+      return;
+    }
+    el.innerHTML = entries.map(function(e){
+      return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">' + admEscape(e.source) + '</span>' +
+        '<span class="ec-row-meta">' + e.bookings + ' réservation' + (e.bookings > 1 ? 's' : '') + ' créée' + (e.bookings > 1 ? 's' : '') + '</span></div>' +
+        '<span class="admin-bk-pending-count">' + e.visitors + '</span></div>';
+    }).join('');
+  }
+
   var ADM_STATS_REFRESH_MS = 60000;
   var admStatsRefreshTimer = null;
   function admFetchStatsSummary(){
@@ -20632,6 +20682,7 @@ if ('serviceWorker' in navigator){
       admRenderStatsChart(summary);
       admRenderStatsFunnel(summary);
       admRenderStatsPages(summary);
+      admRenderStatsCampaigns(summary);
     }).catch(function(err){ console.error('admLoadStats: erreur réseau/inattendue', err); });
   }
   function admLoadStats(){

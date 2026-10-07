@@ -1,23 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  HAYEVA — sitemap.xml
-
-  Une seule URL réelle : le site est une page unique (SPA à ancres, voir
-  index.html), toutes les sections (#services, #tarifs, #zone, #rdv,
-  #pourquoi, #contact, #faq…) vivent sur la même ressource https://…/ et ne
-  sont donc jamais listées séparément ici — Google traite une URL avec
-  fragment (#…) comme identique à l'URL sans fragment, les y ajouter créerait
-  des doublons plutôt que des pages indexables distinctes.
-
-  hayeva.fr est le domaine définitif, vérifié en production le 06/10/2026
-  (HTTPS actif, www→apex redirigé) — URL mise à jour ici en même temps que le
-  canonical/OG/JSON-LD d'index.html et le Sitemap: de robots.txt.
--->
+<!-- HAYEVA — sitemap.xml, généré par docs/tools/build_local_pages.py.
+     La page d'accueil est une SPA à ancres (une seule URL) ; les pages
+     locales et professionnelles sont des fichiers statiques distincts. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://hayeva.fr/</loc>
     <lastmod>2026-10-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/plombier-chauffagiste-frejus/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/plombier-chauffagiste-saint-raphael/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/plombier-chauffagiste-le-muy/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/plombier-chauffagiste-var/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/plombier-chauffagiste-alpes-maritimes/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/entretien-climatisation-frejus-saint-raphael/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/entretien-chaudiere-var/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/professionnels/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/syndics-copropriete/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/campings-mobil-homes/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayeva.fr/partenaires/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>
