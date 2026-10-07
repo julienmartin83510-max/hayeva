@@ -14399,34 +14399,27 @@ if ('serviceWorker' in navigator){
   // admin_viewed_at. Purement une amélioration d'affichage, jamais
   // bloquante.
   var adminCancelledMetaCache = {};
+  var adminCancelledMetaPending = {};
   function admLoadCancelledMeta(ids, onDone){
-    var missing = ids.filter(function(id){ return !(id in adminCancelledMetaCache); });
-    if (!missing.length){ onDone(); return; }
-    // admin_cancel_reason est une colonne facultative (migration
-    // 0022_admin_booking_refusal_reason.sql) : on essaie de la lire, et si
-    // elle n'existe pas encore, on retente sans elle plutôt que d'échouer
-    // sur cancelled_by/cancelled_at qui, eux, existent déjà depuis 0017.
-    sb.client.from('bookings').select('id, cancelled_by, cancelled_at, admin_cancel_reason').in('id', missing).then(function(res){
-      if (!res.error){
-        (res.data || []).forEach(function(r){ adminCancelledMetaCache[r.id] = r; });
-        onDone();
-        return;
-      }
-      sb.client.from('bookings').select('id, cancelled_by, cancelled_at').in('id', missing).then(function(res2){
-        if (!res2.error){
-          (res2.data || []).forEach(function(r){ adminCancelledMetaCache[r.id] = r; });
-        } else {
-          missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
-        }
-        onDone();
-      }).catch(function(){
-        missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
-        onDone();
-      });
-    }).catch(function(){
-      missing.forEach(function(id){ adminCancelledMetaCache[id] = null; });
+    var missing = ids.filter(function(id){ return !(id in adminCancelledMetaCache) && !adminCancelledMetaPending[id]; });
+    if (!missing.length){
+      // Déjà en cours de chargement : la requête en vol rappellera.
+      if (!ids.some(function(id){ return adminCancelledMetaPending[id]; })) onDone();
+      return;
+    }
+    // Uniquement des colonnes existantes (cancelled_by/cancelled_at, 0017) :
+    // admin_cancel_reason n'a jamais existé en base (voir 0054) et
+    // provoquait une erreur 400 à chaque ouverture. Une seule requête en
+    // vol par réservation, jamais de rafale.
+    missing.forEach(function(id){ adminCancelledMetaPending[id] = true; });
+    function done(rows){
+      missing.forEach(function(id){ delete adminCancelledMetaPending[id]; adminCancelledMetaCache[id] = null; });
+      (rows || []).forEach(function(r){ adminCancelledMetaCache[r.id] = r; });
       onDone();
-    });
+    }
+    sb.client.from('bookings').select('id, cancelled_by, cancelled_at').in('id', missing).then(function(res){
+      done(res.error ? [] : res.data);
+    }).catch(function(){ done([]); });
   }
 
   function admRenderList(){
