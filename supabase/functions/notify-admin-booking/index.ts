@@ -56,7 +56,8 @@ const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.netlify.a
 // Page de validation (site Netlify) : le jeton est passé dans le fragment
 // (#...), jamais envoyé à un serveur ni dans un en-tête Referer.
 const ACTION_PAGE_URL = `${SITE_BASE_URL}/rdv-action.html`;
-const TOKEN_TTL_DAYS = 21;
+// Liens d'action personnels : 7 jours (et jamais après la date du RDV).
+const TOKEN_TTL_DAYS = 7;
 
 function randomToken(): string {
   const b = new Uint8Array(32);
@@ -123,31 +124,43 @@ Deno.serve(async (req: Request) => {
       .from('booking_emails').select('id').eq('dedupe_key', dedupeKey).eq('status', 'sent').maybeSingle();
 
     if (!already) {
-      // Boutons CONFIRMER / REFUSER : uniquement pour une demande encore en
-      // attente. Jetons aléatoires (256 bits), seul leur hash est stocké.
+      // Boutons ACCEPTER / DÉPLACER / REFUSER : uniquement pour une demande
+      // encore en attente. Jetons aléatoires (256 bits), seul leur hash est
+      // stocké. Le jeton est dans le fragment (#) de l'URL : jamais transmis
+      // à un serveur ; l'ouverture du lien (ou un scanner anti-spam) ne fait
+      // qu'AFFICHER la demande, l'action n'est exécutée qu'après un appui.
       let actionsHtml = '';
       if (booking.status === 'PENDING') {
         const confirmToken = randomToken();
         const refuseToken = randomToken();
+        const moveToken = randomToken();
         const expiresAt = new Date(Date.now() + TOKEN_TTL_DAYS * 86400000).toISOString();
         const { error: tokErr } = await supabase.from('booking_action_tokens').insert([
           { booking_id: booking.id, action: 'confirm', token_hash: await sha256Hex(confirmToken), expires_at: expiresAt },
           { booking_id: booking.id, action: 'refuse', token_hash: await sha256Hex(refuseToken), expires_at: expiresAt },
         ]);
+        const { error: moveErr } = tokErr ? { error: null } : await supabase.from('booking_move_tokens').insert(
+          { booking_id: booking.id, token_hash: await sha256Hex(moveToken), expires_at: expiresAt },
+        );
         if (tokErr) {
           console.error('notify-admin-booking: création des jetons impossible', tokErr.message);
         } else {
+          if (moveErr) console.error('notify-admin-booking: jeton DÉPLACER impossible', moveErr.message);
           actionsHtml = `
             <div style="margin:26px 0 6px;">
-              ${bigButtonHtml(`${ACTION_PAGE_URL}#a=confirm&t=${confirmToken}`, '✅ CONFIRMER LE RENDEZ-VOUS', '#2F9E5B')}
-              ${bigButtonHtml(`${ACTION_PAGE_URL}#a=refuse&t=${refuseToken}`, '❌ REFUSER LE RENDEZ-VOUS', '#C8423B')}
+              ${bigButtonHtml(`${ACTION_PAGE_URL}#a=confirm&t=${confirmToken}`, '✓ ACCEPTER', '#2F9E5B')}
+              ${moveErr ? '' : bigButtonHtml(`${ACTION_PAGE_URL}#a=move&t=${moveToken}`, '↔ DÉPLACER', '#1AA6EE')}
+              ${bigButtonHtml(`${ACTION_PAGE_URL}#a=refuse&t=${refuseToken}`, '✕ REFUSER', '#C8423B')}
             </div>
             <p style="margin:0 0 4px;font-size:12px;color:#8A97A3;text-align:center;">Liens personnels à usage unique, valables ${TOKEN_TTL_DAYS} jours — ne pas transférer.</p>`;
         }
       }
+      const priceLabelEmail = booking.total_cents != null && Number(booking.total_cents) > 0
+        ? `${(Number(booking.total_cents) / 100).toFixed(2).replace('.', ',')} €`
+        : 'Sur devis';
 
       const html = renderEmailShell(`
-        <h2 style="margin:0 0 16px; font-size:20px; color:#101B24;">Nouvelle demande de rendez-vous</h2>
+        <h2 style="margin:0 0 16px; font-size:20px; color:#101B24; letter-spacing:.02em;">NOUVELLE DEMANDE DE RENDEZ-VOUS</h2>
         ${statusBadgeHtml('🟠 En attente de votre validation', 'received')}
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
           ${rowHtml('Client', escapeHtml(contactName), true)}
@@ -158,8 +171,9 @@ Deno.serve(async (req: Request) => {
           ${rowHtml('Date', fmtDate(booking.date), true)}
           ${rowHtml('Heure', fmtTime(booking.start_time), true)}
           ${rowHtml('Durée estimée', fmtDuration(booking.service_duration_minutes))}
+          ${rowHtml('Prix estimatif', priceLabelEmail, true)}
           ${rowHtml('Adresse', escapeHtml(contactAddress))}
-          ${rowHtml('Commentaire', booking.notes ? escapeHtml(booking.notes) : '')}
+          ${rowHtml('Informations / commentaire', booking.notes ? escapeHtml(booking.notes) : '')}
           ${rowHtml('Référence', escapeHtml(booking.reference || ''))}
         </table>
         ${actionsHtml}

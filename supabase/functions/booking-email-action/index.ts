@@ -3,6 +3,9 @@
 //
 // Appelée UNIQUEMENT par la page rdv-action.html du site (POST JSON) :
 //   { a: 'confirm' | 'refuse', t: '<jeton>', execute: boolean }
+//   { a: 'move', t: '<jeton>', d?: 'AAAA-MM-JJ', h?: 'HH:MM', execute: boolean }
+//     (DÉPLACER : sans d => infos ; d seul => créneaux libres ; d+h+execute
+//     => déplacement, voir process_booking_email_move, 0119)
 // - execute=false : renvoie l'état de la demande (affichage avant validation).
 // - execute=true  : exécute l'action (une seule fois).
 //
@@ -55,17 +58,30 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action = body?.a === 'confirm' || body?.a === 'refuse' ? body.a : null;
+    const action = body?.a === 'confirm' || body?.a === 'refuse' || body?.a === 'move' ? body.a : null;
     const token = typeof body?.t === 'string' ? body.t : '';
     if (!action || !/^[A-Za-z0-9_-]{40,64}$/.test(token)) {
       return new Response(JSON.stringify({ result: 'invalid' }), { status: 200, headers });
     }
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-    const { data, error } = await supabase.rpc('process_booking_email_action', {
-      p_token_hash: await sha256Hex(token),
-      p_action: action,
-      p_execute: body?.execute === true,
-    });
+    let rpc;
+    if (action === 'move') {
+      const d = typeof body?.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.d) ? body.d : null;
+      const h = typeof body?.h === 'string' && /^\d{2}:\d{2}$/.test(body.h) ? body.h : null;
+      rpc = await supabase.rpc('process_booking_email_move', {
+        p_token_hash: await sha256Hex(token),
+        p_date: d,
+        p_start_time: h,
+        p_execute: body?.execute === true && !!d && !!h,
+      });
+    } else {
+      rpc = await supabase.rpc('process_booking_email_action', {
+        p_token_hash: await sha256Hex(token),
+        p_action: action,
+        p_execute: body?.execute === true,
+      });
+    }
+    const { data, error } = rpc;
     if (error) {
       console.error('booking-email-action: erreur RPC', error.message);
       return new Response(JSON.stringify({ result: 'error' }), { status: 200, headers });

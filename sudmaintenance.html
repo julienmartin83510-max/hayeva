@@ -1884,6 +1884,18 @@ if ('serviceWorker' in navigator){
     background:var(--line);
   }
   .booking-progress span.done{background:var(--terracotta);}
+  .booking-step.bk-gated > :not(#bkStep3Title):not(#bkAuthGate){ display:none !important; }
+  .bk-auth-gate{ text-align:center; }
+  .bk-auth-gate-eyebrow{ font-size:.82rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--terracotta); margin:0 0 6px; }
+  .bk-auth-gate-title{ font-family:"Poppins",sans-serif; font-size:1.3rem; font-weight:800; margin:0 0 10px; line-height:1.25; }
+  .bk-auth-gate-text{ color:var(--ink-soft, #5B6B78); margin:0 auto 16px; max-width:520px; }
+  .bk-auth-gate-recap{ text-align:left; margin:0 0 18px; }
+  .bk-auth-gate-actions{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .bk-auth-gate-choice{ display:flex; flex-direction:column; gap:8px; }
+  .bk-auth-gate-choice button{ width:100%; min-height:52px; font-size:1rem; }
+  .bk-auth-gate-q{ margin:0; font-weight:700; font-size:.92rem; }
+  .bk-auth-gate-forgot{ margin:16px 0 0; }
+  @media (max-width:560px){ .bk-auth-gate-actions{ grid-template-columns:1fr; } }
   .booking-step h3{
     font-size:1.05rem;
     font-family:"Poppins",sans-serif;
@@ -7885,7 +7897,24 @@ if ('serviceWorker' in navigator){
         </div>
 
         <div class="booking-step" data-step="3" hidden>
-          <h3>3 · Vos coordonnées</h3>
+          <h3 id="bkStep3Title">3 · Vos coordonnées</h3>
+          <div class="bk-auth-gate" id="bkAuthGate" hidden>
+            <p class="bk-auth-gate-eyebrow">Votre rendez-vous est presque prêt</p>
+            <h4 class="bk-auth-gate-title">Connectez-vous pour prendre rendez-vous</h4>
+            <p class="bk-auth-gate-text">Votre prestation et votre créneau sont conservés. Votre espace HAYEVA vous permet de retrouver votre rendez-vous, de le déplacer ou l'annuler et de consulter vos interventions et documents.</p>
+            <div class="summary-card bk-auth-gate-recap" id="bkAuthGateRecap"></div>
+            <div class="bk-auth-gate-actions">
+              <div class="bk-auth-gate-choice">
+                <p class="bk-auth-gate-q">Déjà client HAYEVA ?</p>
+                <button type="button" class="btn-primary" id="bkGateLogin">Se connecter</button>
+              </div>
+              <div class="bk-auth-gate-choice">
+                <p class="bk-auth-gate-q">Première réservation ?</p>
+                <button type="button" class="btn-secondary" id="bkGateSignup">Créer mon espace client</button>
+              </div>
+            </div>
+            <p class="bk-auth-gate-forgot"><a href="#" id="bkGateForgot">Mot de passe oublié ?</a></p>
+          </div>
           <div class="booking-form" data-audience="pro" hidden id="bkProFields">
             <label>Entreprise / Conciergerie
               <input id="bkCompany" type="text" placeholder="Nom de votre entreprise ou conciergerie" autocomplete="organization">
@@ -9608,7 +9637,7 @@ if ('serviceWorker' in navigator){
               <input type="email" id="ecSuEmail" placeholder="vous@exemple.fr" autocomplete="email" required>
             </label>
             <label>Téléphone
-              <input type="tel" id="ecSuPhone" placeholder="06 12 34 56 78" autocomplete="tel">
+              <input type="tel" id="ecSuPhone" placeholder="06 12 34 56 78" autocomplete="tel" required>
             </label>
             <div class="espace-pro-form-grid-2">
               <label>Mot de passe
@@ -11798,6 +11827,153 @@ if ('serviceWorker' in navigator){
   // réservation", jamais redéclenché à chaque retour en arrière/avant dans
   // le tunnel.
   var bookingStartedTracked = false;
+
+  // ---------- Compte obligatoire pour réserver ----------
+  // Un visiteur non connecté peut choisir prestation et créneau, mais
+  // l'étape 3 est remplacée par « Connectez-vous pour prendre rendez-vous ».
+  // La sélection est conservée (brouillon local, jamais de mot de passe ni
+  // de donnée sensible) et reprise automatiquement après connexion,
+  // création de compte (lien de confirmation) ou mot de passe oublié.
+  // Le serveur refuse de toute façon toute réservation sans compte
+  // authentifié (trigger bookings_require_account, 0118).
+  var BK_DRAFT_KEY = 'hayeva_booking_draft';
+  var BK_DRAFT_TTL_MS = 48 * 3600 * 1000;
+  var bkGated = false;
+  var bkAuthGateEl = document.getElementById('bkAuthGate');
+  var bkStep3El = document.querySelector('.booking-step[data-step="3"]');
+  var bkStep3Title = document.getElementById('bkStep3Title');
+
+  function saveBkDraft(pendingAuth){
+    try {
+      var it = installTypeGroup.querySelector('input[name="installType"]:checked');
+      var uc = unitCountGroup.querySelector('input[name="unitCount"]:checked');
+      localStorage.setItem(BK_DRAFT_KEY, JSON.stringify({
+        v: 1, ts: Date.now(), pendingAuth: !!pendingAuth,
+        serviceId: state.serviceId,
+        date: state.date ? toISODateLocal(state.date) : null,
+        time: state.time,
+        installType: it ? it.value : null,
+        unitCount: uc ? uc.value : null,
+        comment: (bkComment.value || '').slice(0, 1000)
+      }));
+    } catch (e){}
+  }
+  function readBkDraft(){
+    try {
+      var d = JSON.parse(localStorage.getItem(BK_DRAFT_KEY) || 'null');
+      if (!d || d.v !== 1 || !d.ts || Date.now() - d.ts > BK_DRAFT_TTL_MS){ localStorage.removeItem(BK_DRAFT_KEY); return null; }
+      return d;
+    } catch (e){ return null; }
+  }
+  function clearBkDraft(){ try { localStorage.removeItem(BK_DRAFT_KEY); } catch (e){} }
+  window.hvClearBookingDraft = clearBkDraft;
+
+  function setBkGated(on){
+    bkGated = !!on;
+    if (bkStep3El) bkStep3El.classList.toggle('bk-gated', bkGated);
+    if (bkAuthGateEl) bkAuthGateEl.hidden = !bkGated;
+    if (bkStep3Title) bkStep3Title.textContent = bkGated ? '3 · Connexion à votre espace' : '3 · Vos coordonnées';
+    updateNav();
+  }
+  function renderBkGateRecap(){
+    var el = document.getElementById('bkAuthGateRecap');
+    var svc = currentService();
+    if (!el) return;
+    var rows = [];
+    if (svc) rows.push(['Prestation', svc.name || svc.title || '']);
+    if (state.date) rows.push(['Date', fmtDateLong(state.date)]);
+    if (state.time !== null && state.time !== undefined) rows.push(['Heure', fmtTime(state.time)]);
+    el.innerHTML = rows.map(function(r){
+      return '<div class="s-row"><span class="s-label">' + r[0] + '</span><span class="s-value">' + String(r[1]).replace(/[&<>"]/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }) + '</span></div>';
+    }).join('');
+    el.hidden = !rows.length;
+  }
+  function applyBkAuthGate(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured){ setBkGated(true); renderBkGateRecap(); return Promise.resolve(); }
+    return sb.client.auth.getSession().then(function(res){
+      var session = res && res.data && res.data.session;
+      if (session){ setBkGated(false); return; }
+      saveBkDraft(true);
+      renderBkGateRecap();
+      setBkGated(true);
+    }).catch(function(){ setBkGated(true); renderBkGateRecap(); });
+  }
+  function openClientAuth(view){
+    saveBkDraft(true);
+    if (window.sudOpenEspace) window.sudOpenEspace('espaceClient');
+    var link = document.getElementById(view === 'signup' ? 'espaceClientShowSignup' : 'espaceClientShowLogin');
+    if (link) link.click();
+    var section = document.getElementById('espaceClient');
+    if (section) section.scrollTop = 0;
+  }
+  var bkGateLogin = document.getElementById('bkGateLogin');
+  var bkGateSignup = document.getElementById('bkGateSignup');
+  var bkGateForgot = document.getElementById('bkGateForgot');
+  if (bkGateLogin) bkGateLogin.addEventListener('click', function(){ openClientAuth('login'); });
+  if (bkGateSignup) bkGateSignup.addEventListener('click', function(){ openClientAuth('signup'); });
+  if (bkGateForgot) bkGateForgot.addEventListener('click', function(e){
+    e.preventDefault();
+    saveBkDraft(true);
+    window.location.href = '/reset-password';
+  });
+
+  // Reprise automatique du brouillon dès qu'une session existe.
+  var bkResuming = false;
+  function resumeBkDraftIfAny(){
+    var d = readBkDraft();
+    if (!d || !d.pendingAuth || bkResuming) return;
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    bkResuming = true;
+    sb.client.auth.getSession().then(function(res){
+      var session = res && res.data && res.data.session;
+      if (!session) return;
+      var known = d.serviceId && (isPackId(d.serviceId) || SERVICES.some(function(s){ return s.id === d.serviceId; }));
+      if (!known) { clearBkDraft(); return; }
+      state.serviceId = d.serviceId;
+      if (d.installType){ var it = installTypeGroup.querySelector('input[value="' + d.installType + '"]'); if (it) it.checked = true; }
+      if (d.unitCount){ var uc = unitCountGroup.querySelector('input[value="' + d.unitCount + '"]'); if (uc) uc.checked = true; }
+      if (typeof updatePackPriceLive === 'function') updatePackPriceLive();
+      if (d.date){ var p = d.date.split('-'); state.date = new Date(+p[0], +p[1] - 1, +p[2]); }
+      state.time = (d.time === null || d.time === undefined) ? null : d.time;
+      if (d.comment && !bkComment.value) bkComment.value = d.comment;
+      saveBkDraft(false);
+      renderDateOptions();
+      renderTimeOptions();
+      // Laisse l'Espace Client finir son propre affichage puis revient à la
+      // réservation, exactement là où le client s'était arrêté.
+      setTimeout(function(){
+        if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+        var portal = document.getElementById('sitePortal');
+        if (portal) portal.hidden = true;
+        document.body.style.overflow = '';
+        showStep(state.date && state.time !== null ? 3 : 2);
+        var rdv = document.getElementById('rdv');
+        if (rdv) rdv.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 700);
+    }).finally(function(){ bkResuming = false; });
+  }
+  (function(){
+    var sb = window.sudSupabase;
+    if (!sb || !sb.configured) return;
+    sb.client.auth.onAuthStateChange(function(event){
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') resumeBkDraftIfAny();
+      if (event === 'SIGNED_OUT' && step === 3) applyBkAuthGate();
+    });
+    resumeBkDraftIfAny();
+  })();
+
+  // Le serveur exige un téléphone valide sur le profil client : le numéro
+  // saisi à l'étape 3 complète un profil qui n'en aurait pas encore.
+  function ensureProfilePhone(uid){
+    var sb = window.sudSupabase;
+    var phone = (bkPhone.value || '').trim();
+    var known = bkAuthContext && bkAuthContext.contact && bkAuthContext.contact.phone;
+    if (!phone || known) return Promise.resolve();
+    return sb.client.from('customer_profiles').update({ phone: phone }).eq('user_id', uid).then(function(){}, function(){});
+  }
+
   function showStep(n, skipScroll){
     step = n;
     if (n === 3 && window.hvRefRefreshAdvantage) window.hvRefRefreshAdvantage();
@@ -11816,6 +11992,7 @@ if ('serviceWorker' in navigator){
     if (n === 1) renderStep1View();
     if (n === 3){
       refreshBkLegalConsentUI();
+      applyBkAuthGate();
       refreshBkAuthContext().then(function(){
         prefillBkContactFields();
         renderBkAddressUI();
@@ -11832,6 +12009,7 @@ if ('serviceWorker' in navigator){
   }
 
   function updateNav(){
+    bkNext.hidden = (step === 3 && bkGated);
     if (step === 1){
       bkNext.disabled = isPackId(state.serviceId) ? false : !state.serviceId;
     } else if (step === 2){
@@ -12152,7 +12330,7 @@ if ('serviceWorker' in navigator){
       return sb.client.from('profiles').select('global_role').eq('user_id', session.user.id).maybeSingle().then(function(pres){
         var role = pres.data ? pres.data.global_role : null;
         if (role !== 'customer') return attemptDirectInsertBooking(svc, null);
-        return fetchBookingCatalog().then(function(catalog){
+        return ensureProfilePhone(session.user.id).then(function(){ return fetchBookingCatalog(); }).then(function(catalog){
           var resolved = resolveBookingParams(svc.id, catalog);
           if (!resolved) return { kind:'not-bookable' };
           if (resolved.quoteOnly) return attemptDirectInsertBooking(svc, session);
@@ -12184,7 +12362,7 @@ if ('serviceWorker' in navigator){
   var submitted = false;
   bkNext.addEventListener('click', function(){
     if (step === 3){
-      if (submitted) return;
+      if (submitted || bkGated) return;
       showBkMsg(bkSubmitError, '');
       var svc = currentService();
       submitted = true;
@@ -12200,6 +12378,7 @@ if ('serviceWorker' in navigator){
           if (window.sudEspaceClientRefresh) window.sudEspaceClientRefresh();
           if (window.sudEspaceProApptRefresh) window.sudEspaceProApptRefresh();
           if (window.sudTrack) window.sudTrack('booking_completed', 'rdv');
+          clearBkDraft();
           var prepBlock = document.getElementById('bkConfirmPrepBlock');
           var prepTextEl = document.getElementById('bkConfirmPrepText');
           if (prepBlock && prepTextEl){
@@ -25329,6 +25508,11 @@ if ('serviceWorker' in navigator){
       var passwordConfirm = document.getElementById('ecSuPasswordConfirm').value;
       if (!firstName || !lastName || !email || !password){
         showMsg(signupError, 'Merci de compléter tous les champs obligatoires.');
+        return;
+      }
+      var phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length < 9 || phoneDigits.length > 15){
+        showMsg(signupError, 'Merci d’indiquer un numéro de téléphone valide (nécessaire pour vos rendez-vous).');
         return;
       }
       if (password !== passwordConfirm){
