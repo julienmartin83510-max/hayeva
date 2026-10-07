@@ -20,6 +20,9 @@
 
 const MAPBOX_PUBLIC_TOKEN = Deno.env.get('MAPBOX_PUBLIC_TOKEN') || '';
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') || '';
+// Clé de SITE Cloudflare Turnstile (publique par conception). La clé
+// SECRÈTE (TURNSTILE_SECRET_KEY) n'est lue que par verify-turnstile.
+const TURNSTILE_SITE_KEY = Deno.env.get('TURNSTILE_SITE_KEY') || '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,7 +31,7 @@ const corsHeaders = {
 
 Deno.serve((req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  return new Response(JSON.stringify({ mapboxPublicToken: MAPBOX_PUBLIC_TOKEN, vapidPublicKey: VAPID_PUBLIC_KEY }), {
+  return new Response(JSON.stringify({ mapboxPublicToken: MAPBOX_PUBLIC_TOKEN, vapidPublicKey: VAPID_PUBLIC_KEY, turnstileSiteKey: TURNSTILE_SITE_KEY }), {
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
 });

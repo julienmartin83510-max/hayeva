@@ -258,6 +258,135 @@
 })();
 
 // ============================================================
+// Protection anti-robot Cloudflare Turnstile (mode Managed, discret :
+// apparence « interaction-only », le widget ne s'affiche que si Cloudflare
+// demande une interaction). Clé de SITE publique servie par l'Edge Function
+// get-public-config (secret de fonction TURNSTILE_SITE_KEY) ; la clé
+// SECRÈTE ne quitte jamais le serveur (Supabase Auth + verify-turnstile).
+//   - hvTurnstile.token(btn)        : jeton pour Supabase Auth (captchaToken)
+//   - hvTurnstile.pass(purpose, btn): laissez-passer serveur (formulaires
+//     publics sans compte, en-tête x-hayeva-captcha de l'appel RPC)
+// Chaque jeton est neuf et à usage unique : le widget est détruit après
+// succès, erreur ou expiration. Sans clé de site configurée, renvoie null
+// et le parcours continue exactement comme avant.
+// ============================================================
+(function(){
+  var FN_BASE = 'https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/';
+  var VERIFY_LABEL = 'Vérification de sécurité…';
+  var keyPromise = null, scriptPromise = null;
+
+  function siteKey(){
+    if (!keyPromise){
+      keyPromise = fetch(FN_BASE + 'get-public-config')
+        .then(function(r){ return r.json(); })
+        .then(function(d){ return (d && d.turnstileSiteKey) || null; })
+        .catch(function(){ keyPromise = null; return null; });
+    }
+    return keyPromise;
+  }
+
+  function loadScript(){
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (!scriptPromise){
+      scriptPromise = new Promise(function(resolve, reject){
+        var s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        s.async = true;
+        s.onload = function(){ window.turnstile ? resolve(window.turnstile) : reject(new Error('turnstile_unavailable')); };
+        s.onerror = function(){ scriptPromise = null; reject(new Error('turnstile_unavailable')); };
+        document.head.appendChild(s);
+      });
+    }
+    return scriptPromise;
+  }
+
+  function captchaError(code){
+    var e = new Error(code === 'rate_limited'
+      ? 'Trop de tentatives. Merci de patienter quelques minutes avant de réessayer.'
+      : code === 'expired'
+        ? 'La vérification de sécurité a expiré. Merci de réessayer.'
+        : 'La vérification anti-robot n\'a pas abouti. Merci de réessayer.');
+    e.hvCaptcha = true;
+    e.code = code;
+    return e;
+  }
+
+  // Affiche le widget (si Cloudflare l'exige) juste sous le bouton concerné,
+  // pleine largeur disponible, jamais de largeur fixe.
+  function token(btn){
+    return siteKey().then(function(key){
+      if (!key) return null;
+      var label = btn ? btn.textContent : null;
+      if (btn){ btn.disabled = true; btn.textContent = VERIFY_LABEL; }
+      var box = document.createElement('div');
+      box.className = 'hv-turnstile';
+      box.style.cssText = 'width:100%;max-width:100%;display:flex;justify-content:center;margin:10px 0 0;overflow:hidden;';
+      if (btn && btn.parentNode) btn.parentNode.insertBefore(box, btn.nextSibling);
+      else document.body.appendChild(box);
+      var widgetId = null;
+      function cleanup(){
+        try { if (widgetId !== null && window.turnstile) window.turnstile.remove(widgetId); } catch(e){}
+        if (box.parentNode) box.parentNode.removeChild(box);
+        if (btn){ btn.textContent = label; }
+      }
+      return loadScript().then(function(ts){
+        return new Promise(function(resolve, reject){
+          var done = false;
+          function finish(fn, v){ if (done) return; done = true; clearTimeout(timer); cleanup(); fn(v); }
+          var timer = setTimeout(function(){ finish(reject, captchaError('expired')); }, 180000);
+          var narrow = (box.getBoundingClientRect().width || 0) < 300;
+          widgetId = ts.render(box, {
+            sitekey: key,
+            size: narrow ? 'compact' : 'flexible',
+            appearance: 'interaction-only',
+            theme: 'light',
+            language: 'fr',
+            callback: function(t){ finish(resolve, t); },
+            'error-callback': function(){ finish(reject, captchaError('error')); return true; },
+            'expired-callback': function(){ finish(reject, captchaError('expired')); },
+            'timeout-callback': function(){ finish(reject, captchaError('expired')); }
+          });
+        });
+      }, function(){ cleanup(); throw captchaError('error'); });
+    });
+  }
+
+  function pass(purpose, btn){
+    return token(btn).then(function(t){
+      if (!t) return null;
+      if (btn){ btn.disabled = true; }
+      return fetch(FN_BASE + 'verify-turnstile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: t, purpose: purpose })
+      }).then(function(r){ return r.json().catch(function(){ return {}; }); }, function(){ return {}; })
+        .then(function(d){
+          if (d && d.success && d.pass) return d.pass;
+          // Secret serveur pas encore configuré : la protection n'est pas
+          // active côté SQL, on laisse passer comme avant.
+          if (d && d.error === 'not_configured') return null;
+          throw captchaError(d && d.error === 'rate_limited' ? 'rate_limited' : (d && d.error === 'expired_token' ? 'expired' : 'error'));
+        });
+    });
+  }
+
+  function isAuthCaptchaError(err){
+    if (!err) return false;
+    return err.hvCaptcha || err.code === 'captcha_failed' || /captcha/i.test(String(err.message || ''));
+  }
+
+  window.hvTurnstile = {
+    token: token,
+    pass: pass,
+    isCaptchaError: isAuthCaptchaError,
+    message: 'La vérification anti-robot n\'a pas abouti. Merci de réessayer.'
+  };
+  // Préchargement discret de la configuration (aucun script Cloudflare
+  // chargé tant qu'aucun formulaire protégé n'est envoyé).
+  siteKey();
+})();
+
+// ============================================================
 // Mesure d'audience interne, anonyme — aucun service tiers (voir la page
 // légale "Cookies" pour le détail). Un seul mécanisme : une table
 // analytics_events, jamais de Realtime Presence (voir 0019_visitor_
@@ -11820,16 +11949,33 @@ if ('serviceWorker' in navigator){
     // un code invalide n'empêche jamais la réservation.
     var refCode = window.hvBookingRefCode ? window.hvBookingRefCode() : null;
     if (refCode) fullParams.p_referral_code = refCode;
-    return sb.client.rpc(fnName, fullParams).then(function(res){
-      if (res.error && res.error.code === 'PGRST202'){
-        console.error('callBookingRpc: paramètres de consentement CGV non reconnus par Supabase (migration 0016 non appliquée ?) — nouvelle tentative sans ces champs.', res.error);
-        return sb.client.rpc(fnName, baseParams);
+    // Demande sans compte : vérification anti-robot (Turnstile) AVANT
+    // l'appel, laissez-passer à usage unique transmis dans l'en-tête
+    // x-hayeva-captcha et revérifié par la fonction SQL. Un visiteur
+    // connecté a déjà été vérifié à la connexion.
+    var passPromise = (fnName === 'create_guest_or_quote_booking' && window.hvTurnstile)
+      ? sb.client.auth.getSession().then(function(r){
+          return (r && r.data && r.data.session) ? null : window.hvTurnstile.pass('booking', bkNext);
+        })
+      : Promise.resolve(null);
+    return passPromise.then(function(captchaPass){
+      function run(params){
+        var q = sb.client.rpc(fnName, params);
+        return (captchaPass && q.setHeader) ? q.setHeader('x-hayeva-captcha', captchaPass) : q;
       }
-      if (!res.error && refCode){
-        if (window.sudTrack) window.sudTrack('referral_booking_completed', 'rdv');
-        if (window.hvRefClear) window.hvRefClear();
-      }
-      return res;
+      return run(fullParams).then(function(res){
+        if (res.error && res.error.code === 'PGRST202'){
+          console.error('callBookingRpc: paramètres de consentement CGV non reconnus par Supabase (migration 0016 non appliquée ?) — nouvelle tentative sans ces champs.', res.error);
+          return run(baseParams);
+        }
+        if (!res.error && refCode){
+          if (window.sudTrack) window.sudTrack('referral_booking_completed', 'rdv');
+          if (window.hvRefClear) window.hvRefClear();
+        }
+        return res;
+      });
+    }, function(err){
+      return { error: { message: (err && err.message) || 'La vérification anti-robot n\'a pas abouti. Merci de réessayer.', hvCaptcha: true } };
     });
   }
 
@@ -11975,7 +12121,7 @@ if ('serviceWorker' in navigator){
           var rmsg = (outcome.error && outcome.error.message) || '';
           if (/authentification requise/i.test(rmsg)){
             msg = 'Votre session a expiré. Merci de vous reconnecter à votre Espace Client avant de confirmer, puis recommencez votre demande.';
-          } else if (/créneau/i.test(rmsg) || /adresse/i.test(rmsg)){
+          } else if (/créneau/i.test(rmsg) || /adresse/i.test(rmsg) || (outcome.error && outcome.error.hvCaptcha) || /vérification de sécurité/i.test(rmsg)){
             msg = rmsg;
           }
         } else if (outcome.kind === 'missing-contact'){
@@ -13886,15 +14032,17 @@ if ('serviceWorker' in navigator){
       var rememberMeEl = document.getElementById('espaceProRememberMe');
       if (window.sudSetRememberMe) window.sudSetRememberMe(!!(rememberMeEl && rememberMeEl.checked));
       loginSubmitBtn.disabled = true;
-      loginSubmitBtn.textContent = 'Connexion…';
-      sb.client.auth.signInWithPassword({ email: email, password: password })
+      (window.hvTurnstile ? window.hvTurnstile.token(loginSubmitBtn) : Promise.resolve(null)).then(function(captchaToken){
+        loginSubmitBtn.textContent = 'Connexion…';
+        return sb.client.auth.signInWithPassword({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
+      })
         .then(function(res){
           loginSubmitBtn.disabled = false;
           loginSubmitBtn.textContent = 'Se connecter';
           if (res.error){
             showMsg(loginError, res.error.message === 'Invalid login credentials'
               ? 'E-mail ou mot de passe incorrect.'
-              : res.error.message);
+              : (window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : res.error.message));
             return;
           }
           var session = res.data && res.data.session;
@@ -13904,10 +14052,10 @@ if ('serviceWorker' in navigator){
             dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
           }
         })
-        .catch(function(){
+        .catch(function(err){
           loginSubmitBtn.disabled = false;
           loginSubmitBtn.textContent = 'Se connecter';
-          showMsg(loginError, 'Connexion impossible pour le moment. Réessayez.');
+          showMsg(loginError, err && err.hvCaptcha ? err.message : 'Connexion impossible pour le moment. Réessayez.');
         });
     });
   }
@@ -13930,8 +14078,12 @@ if ('serviceWorker' in navigator){
         return;
       }
       showMsg(loginError, '');
-      sb.client.auth.resetPasswordForEmail(email).then(function(res){
-        showMsg(loginError, res.error ? res.error.message : 'Si un compte existe pour cet e-mail, un lien de réinitialisation vient d’être envoyé.');
+      (window.hvTurnstile ? window.hvTurnstile.token(forgotLink) : Promise.resolve(null)).then(function(captchaToken){
+        return sb.client.auth.resetPasswordForEmail(email, captchaToken ? { captchaToken: captchaToken } : undefined);
+      }).then(function(res){
+        showMsg(loginError, res.error ? (window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : res.error.message) : 'Si un compte existe pour cet e-mail, un lien de réinitialisation vient d’être envoyé.');
+      }).catch(function(err){
+        showMsg(loginError, err && err.hvCaptcha ? err.message : 'Envoi impossible pour le moment. Réessayez.');
       });
     });
   }
@@ -13990,7 +14142,6 @@ if ('serviceWorker' in navigator){
       }
 
       signupSubmitBtn.disabled = true;
-      signupSubmitBtn.textContent = 'Création en cours…';
 
       // La création de professional_accounts/professional_members/profiles
       // est différée à la première connexion confirmée (voir
@@ -13998,10 +14149,12 @@ if ('serviceWorker' in navigator){
       // confirmé, il n'y a pas de session active et RLS refuserait ces
       // insertions. Les infos du formulaire ne sont donc que temporairement
       // déposées dans user_metadata, comme simple donnée de transfert.
-      sb.client.auth.signUp({
+      (window.hvTurnstile ? window.hvTurnstile.token(signupSubmitBtn) : Promise.resolve(null)).then(function(captchaToken){
+      signupSubmitBtn.textContent = 'Création en cours…';
+      return sb.client.auth.signUp({
         email: email,
         password: password,
-        options: { data: {
+        options: { captchaToken: captchaToken || undefined, data: {
           sud_pending_role: 'professional',
           sud_pending_company: company,
           sud_pending_siret: siret || null,
@@ -14010,11 +14163,12 @@ if ('serviceWorker' in navigator){
           sud_pending_first_name: firstName,
           sud_pending_last_name: lastName
         } }
+      });
       }).then(function(res){
         signupSubmitBtn.disabled = false;
         signupSubmitBtn.textContent = 'Créer mon compte professionnel';
         if (res.error){
-          showMsg(signupError, res.error.message);
+          showMsg(signupError, (window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : res.error.message));
           return;
         }
         var session = res.data && res.data.session;
@@ -24798,8 +24952,10 @@ if ('serviceWorker' in navigator){
       var rememberMeEl = document.getElementById('espaceClientRememberMe');
       if (window.sudSetRememberMe) window.sudSetRememberMe(!!(rememberMeEl && rememberMeEl.checked));
       loginSubmitBtn.disabled = true;
-      loginSubmitBtn.textContent = 'Connexion…';
-      sb.client.auth.signInWithPassword({ email: email, password: password })
+      (window.hvTurnstile ? window.hvTurnstile.token(loginSubmitBtn) : Promise.resolve(null)).then(function(captchaToken){
+        loginSubmitBtn.textContent = 'Connexion…';
+        return sb.client.auth.signInWithPassword({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
+      })
         .then(function(res){
           loginSubmitBtn.disabled = false;
           loginSubmitBtn.textContent = 'Se connecter';
@@ -24812,6 +24968,7 @@ if ('serviceWorker' in navigator){
             if (raw === 'Invalid login credentials') friendly = 'E-mail ou mot de passe incorrect.';
             else if (/email not confirmed/i.test(raw)) friendly = 'Merci de confirmer votre adresse e-mail avant de vous connecter (vérifiez votre boîte mail).';
             else if (/rate limit/i.test(raw)) friendly = 'Trop de tentatives. Merci de patienter quelques instants avant de réessayer.';
+            else if (window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error)) friendly = window.hvTurnstile.message;
             else friendly = 'Connexion impossible pour le moment. Réessayez.';
             showMsg(loginError, friendly);
             return;
@@ -24823,10 +24980,10 @@ if ('serviceWorker' in navigator){
             dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
           }
         })
-        .catch(function(){
+        .catch(function(err){
           loginSubmitBtn.disabled = false;
           loginSubmitBtn.textContent = 'Se connecter';
-          showMsg(loginError, 'Connexion impossible pour le moment. Réessayez.');
+          showMsg(loginError, err && err.hvCaptcha ? err.message : 'Connexion impossible pour le moment. Réessayez.');
         });
     });
   }
@@ -24851,9 +25008,11 @@ if ('serviceWorker' in navigator){
       // Réponse volontairement générique dans tous les cas, y compris en cas
       // d'erreur Supabase : ne jamais révéler si l'adresse correspond à un
       // compte existant, ni exposer un message technique brut.
-      sb.client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo })
-        .then(function(){ showMsg(loginError, genericMsg); })
-        .catch(function(){ showMsg(loginError, genericMsg); });
+      (window.hvTurnstile ? window.hvTurnstile.token(forgotLink) : Promise.resolve(null)).then(function(captchaToken){
+        return sb.client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo, captchaToken: captchaToken || undefined });
+      })
+        .then(function(res){ showMsg(loginError, res && res.error && window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : genericMsg); })
+        .catch(function(err){ showMsg(loginError, err && err.hvCaptcha ? err.message : genericMsg); });
     });
   }
 
@@ -24898,27 +25057,29 @@ if ('serviceWorker' in navigator){
         return;
       }
       signupSubmitBtn.disabled = true;
-      signupSubmitBtn.textContent = 'Création en cours…';
       // Prénom/nom/téléphone stockés temporairement dans user_metadata (jamais
       // utilisés pour autoriser quoi que ce soit) : aucune session n'existe
       // encore entre signUp() et le clic de confirmation d'e-mail, donc ils ne
       // peuvent pas être écrits dans customer_profiles ici. Consommés et
       // effacés par provisionCustomerIfNeeded() à la toute première connexion
       // réelle — même schéma que le flux Professionnel.
-      sb.client.auth.signUp({
-        email: email,
-        password: password,
-        options: { data: {
-          sud_pending_role: 'customer',
-          sud_pending_first_name: firstName,
-          sud_pending_last_name: lastName,
-          sud_pending_phone: phone || null
-        } }
+      (window.hvTurnstile ? window.hvTurnstile.token(signupSubmitBtn) : Promise.resolve(null)).then(function(captchaToken){
+        signupSubmitBtn.textContent = 'Création en cours…';
+        return sb.client.auth.signUp({
+          email: email,
+          password: password,
+          options: { captchaToken: captchaToken || undefined, data: {
+            sud_pending_role: 'customer',
+            sud_pending_first_name: firstName,
+            sud_pending_last_name: lastName,
+            sud_pending_phone: phone || null
+          } }
+        });
       }).then(function(res){
         signupSubmitBtn.disabled = false;
         signupSubmitBtn.textContent = 'Créer mon compte';
         if (res.error){
-          showMsg(signupError, friendlySignupError(res.error.message));
+          showMsg(signupError, window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : friendlySignupError(res.error.message));
           return;
         }
         var session = res.data && res.data.session;
@@ -24930,10 +25091,10 @@ if ('serviceWorker' in navigator){
           setGateView('login');
           showMsg(signupSuccess, 'Votre compte a été créé. Consultez votre boîte mail pour confirmer votre adresse email.');
         }
-      }).catch(function(){
+      }).catch(function(err){
         signupSubmitBtn.disabled = false;
         signupSubmitBtn.textContent = 'Créer mon compte';
-        showMsg(signupError, 'Création du compte impossible pour le moment. Réessayez.');
+        showMsg(signupError, err && err.hvCaptcha ? err.message : 'Création du compte impossible pour le moment. Réessayez.');
       });
     });
   }
@@ -28274,7 +28435,22 @@ if ('serviceWorker' in navigator){
   if (bizClose) bizClose.addEventListener('click', closeBiz);
   if (bizOverlay) bizOverlay.addEventListener('click', function(e){ if (e.target === bizOverlay) closeBiz(); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && bizOverlay && !bizOverlay.hidden) closeBiz(); });
+  // Vérification anti-robot (Turnstile) AVANT l'appel RPC pour un visiteur
+  // non connecté : laissez-passer à usage unique dans l'en-tête
+  // x-hayeva-captcha, revérifié côté SQL. null = connecté ou non configuré.
+  function refCaptchaPass(purpose, btn){
+    if (!window.hvTurnstile) return Promise.resolve(null);
+    return sb.client.auth.getSession().then(function(r){
+      return (r && r.data && r.data.session) ? null : window.hvTurnstile.pass(purpose, btn);
+    });
+  }
+  function refRpc(name, args, captchaPass){
+    var q = sb.client.rpc(name, args);
+    return (captchaPass && q.setHeader) ? q.setHeader('x-hayeva-captcha', captchaPass) : q;
+  }
+  var CAPTCHA_ERR = 'La vérification anti-robot n\'a pas abouti. Merci de réessayer.';
   var BIZ_ERR = {
+    VERIFICATION: CAPTCHA_ERR,
     NOM:'Merci d\'indiquer votre nom ou votre raison sociale.', EMAIL:'Merci d\'indiquer un e-mail valide.',
     SIREN:'Le SIREN comporte 9 chiffres, le SIRET 14 chiffres.', CONSENTEMENT:'Merci de cocher la case d\'accord pour être recontacté.',
     TROP_LONG:'Un des champs est trop long.', TROP_DE_DEMANDES:'Trop de demandes en ce moment : réessayez un peu plus tard.',
@@ -28290,18 +28466,20 @@ if ('serviceWorker' in navigator){
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((document.getElementById('refBizEmail').value || '').trim())){ show(BIZ_ERR.EMAIL); return; }
     if (!document.getElementById('refBizConsent').checked){ show(BIZ_ERR.CONSENTEMENT); return; }
     btn.disabled = true; show('');
-    sb.client.rpc('submit_business_referrer_application', {
-      p_legal_name: document.getElementById('refBizName').value || '', p_contact_name: document.getElementById('refBizContact').value || null,
-      p_email: document.getElementById('refBizEmail').value || '', p_phone: document.getElementById('refBizPhone').value || null,
-      p_siren_siret: document.getElementById('refBizSiren').value || null, p_message: document.getElementById('refBizMessage').value || null,
-      p_contact_consent: document.getElementById('refBizConsent').checked
+    refCaptchaPass('business_application', btn).then(function(captchaPass){
+      return refRpc('submit_business_referrer_application', {
+        p_legal_name: document.getElementById('refBizName').value || '', p_contact_name: document.getElementById('refBizContact').value || null,
+        p_email: document.getElementById('refBizEmail').value || '', p_phone: document.getElementById('refBizPhone').value || null,
+        p_siren_siret: document.getElementById('refBizSiren').value || null, p_message: document.getElementById('refBizMessage').value || null,
+        p_contact_consent: document.getElementById('refBizConsent').checked
+      }, captchaPass);
     }).then(function(r){
       btn.disabled = false;
       var out = (r && r.data) || {};
       if (r.error || !out.ok){ show(BIZ_ERR[out.error] || 'Envoi impossible pour le moment. Réessayez dans un instant.'); return; }
       bizForm.reset();
       show('Merci, votre demande a bien été envoyée. HAYEVA vous recontacte rapidement.', true);
-    }, function(){ btn.disabled = false; show('Connexion impossible. Vérifiez votre réseau et réessayez.'); });
+    }, function(err){ btn.disabled = false; show(err && err.hvCaptcha ? err.message : 'Connexion impossible. Vérifiez votre réseau et réessayez.'); });
   });
 
   // ---------- Demande « Devenir parrain » (particulier) ----------
@@ -28325,6 +28503,7 @@ if ('serviceWorker' in navigator){
   if (indivOverlay) indivOverlay.addEventListener('click', function(e){ if (e.target === indivOverlay) closeIndiv(); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && indivOverlay && !indivOverlay.hidden) closeIndiv(); });
   var INDIV_ERR = {
+    VERIFICATION: CAPTCHA_ERR,
     NOM:'Merci d\'indiquer votre prénom et votre nom.', EMAIL:'Merci d\'indiquer un e-mail valide.', TELEPHONE:'Merci d\'indiquer un numéro de téléphone valide.',
     CONDITIONS:'Merci d\'accepter les conditions du programme.', TROP_DE_DEMANDES:'Trop de demandes en ce moment : réessayez un peu plus tard.',
     INDISPONIBLE:'Les demandes ne sont pas ouvertes pour le moment.'
@@ -28341,16 +28520,18 @@ if ('serviceWorker' in navigator){
     if (val('refIndivPhone').replace(/\D/g, '').length < 9){ show(INDIV_ERR.TELEPHONE); return; }
     if (!document.getElementById('refIndivTerms').checked){ show(INDIV_ERR.CONDITIONS); return; }
     btn.disabled = true; show('');
-    sb.client.rpc('submit_referrer_application', {
-      p_first_name: val('refIndivFirst'), p_last_name: val('refIndivLast'), p_email: val('refIndivEmail'), p_phone: val('refIndivPhone'),
-      p_terms_accepted: document.getElementById('refIndivTerms').checked
+    refCaptchaPass('referrer_application', btn).then(function(captchaPass){
+      return refRpc('submit_referrer_application', {
+        p_first_name: val('refIndivFirst'), p_last_name: val('refIndivLast'), p_email: val('refIndivEmail'), p_phone: val('refIndivPhone'),
+        p_terms_accepted: document.getElementById('refIndivTerms').checked
+      }, captchaPass);
     }).then(function(r){
       btn.disabled = false;
       var out = (r && r.data) || {};
       if (r.error || !out.ok){ show(INDIV_ERR[out.error] || 'Envoi impossible pour le moment. Réessayez dans un instant.'); return; }
       indivForm.reset();
       show('Merci, votre demande a bien été envoyée. HAYEVA l\'étudie et revient vers vous.', true);
-    }, function(){ btn.disabled = false; show('Connexion impossible. Vérifiez votre réseau et réessayez.'); });
+    }, function(err){ btn.disabled = false; show(err && err.hvCaptcha ? err.message : 'Connexion impossible. Vérifiez votre réseau et réessayez.'); });
   });
 
   // ---------- Configuration publique (activations centralisées) ----------
