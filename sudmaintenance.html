@@ -11919,46 +11919,86 @@ if ('serviceWorker' in navigator){
   });
 
   // Reprise automatique du brouillon dès qu'une session existe.
+  // Source de vérité : le brouillon SERVEUR du compte (get_my_booking_draft,
+  // 0120) — fonctionne quel que soit le navigateur ou l'appareil où le lien
+  // de confirmation d'e-mail a été ouvert. Le brouillon local (même
+  // navigateur) est d'abord recopié côté serveur.
   var bkResuming = false;
-  function resumeBkDraftIfAny(){
+  function bkDraftForServer(d){
+    return { serviceId: d.serviceId, date: d.date || null, time: (d.time === null || d.time === undefined) ? null : d.time,
+      installType: d.installType || null, unitCount: d.unitCount || null, comment: d.comment || '', ts: d.ts || Date.now() };
+  }
+  window.hvBookingDraftForAuth = function(){
     var d = readBkDraft();
-    if (!d || !d.pendingAuth || bkResuming) return;
+    return d && d.pendingAuth ? bkDraftForServer(d) : null;
+  };
+  function applyBkDraft(d){
+    var known = d.serviceId && (isPackId(d.serviceId) || SERVICES.some(function(s){ return s.id === d.serviceId; }));
+    if (!known) return false;
+    state.serviceId = d.serviceId;
+    if (d.installType){ var it = installTypeGroup.querySelector('input[value="' + d.installType + '"]'); if (it) it.checked = true; }
+    if (d.unitCount){ var uc = unitCountGroup.querySelector('input[value="' + d.unitCount + '"]'); if (uc) uc.checked = true; }
+    if (typeof updatePackPriceLive === 'function') updatePackPriceLive();
+    state.date = null; state.time = null;
+    if (d.date){
+      var p = d.date.split('-'); var dt = new Date(+p[0], +p[1] - 1, +p[2]);
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      if (dt >= today){
+        state.date = dt;
+        state.time = (d.time === null || d.time === undefined) ? null : Number(d.time);
+      }
+    }
+    if (d.comment && !bkComment.value) bkComment.value = d.comment;
+    renderDateOptions();
+    renderTimeOptions();
+    // Laisse l'Espace Client finir son propre affichage puis revient à la
+    // réservation, exactement là où le client s'était arrêté.
+    setTimeout(function(){
+      if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
+      var portal = document.getElementById('sitePortal');
+      if (portal) portal.hidden = true;
+      document.body.style.overflow = '';
+      showStep(state.date && state.time !== null ? 3 : (state.serviceId ? 2 : 1));
+      var rdv = document.getElementById('rdv');
+      if (rdv) rdv.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 700);
+    return true;
+  }
+  function resumeBkDraftIfAny(){
     var sb = window.sudSupabase;
-    if (!sb || !sb.configured) return;
+    if (!sb || !sb.configured || bkResuming) return;
     bkResuming = true;
     sb.client.auth.getSession().then(function(res){
       var session = res && res.data && res.data.session;
       if (!session) return;
-      var known = d.serviceId && (isPackId(d.serviceId) || SERVICES.some(function(s){ return s.id === d.serviceId; }));
-      if (!known) { clearBkDraft(); return; }
-      state.serviceId = d.serviceId;
-      if (d.installType){ var it = installTypeGroup.querySelector('input[value="' + d.installType + '"]'); if (it) it.checked = true; }
-      if (d.unitCount){ var uc = unitCountGroup.querySelector('input[value="' + d.unitCount + '"]'); if (uc) uc.checked = true; }
-      if (typeof updatePackPriceLive === 'function') updatePackPriceLive();
-      if (d.date){ var p = d.date.split('-'); state.date = new Date(+p[0], +p[1] - 1, +p[2]); }
-      state.time = (d.time === null || d.time === undefined) ? null : d.time;
-      if (d.comment && !bkComment.value) bkComment.value = d.comment;
-      saveBkDraft(false);
-      renderDateOptions();
-      renderTimeOptions();
-      // Laisse l'Espace Client finir son propre affichage puis revient à la
-      // réservation, exactement là où le client s'était arrêté.
-      setTimeout(function(){
-        if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
-        var portal = document.getElementById('sitePortal');
-        if (portal) portal.hidden = true;
-        document.body.style.overflow = '';
-        showStep(state.date && state.time !== null ? 3 : 2);
-        var rdv = document.getElementById('rdv');
-        if (rdv) rdv.scrollIntoView({ behavior:'smooth', block:'start' });
-      }, 700);
-    }).finally(function(){ bkResuming = false; });
+      var local = readBkDraft();
+      if (local && local.pendingAuth){
+        saveBkDraft(false);
+        try { sessionStorage.setItem('hv_draft_resumed', String(local.ts)); } catch (e){}
+        sb.client.rpc('save_my_booking_draft', { p_payload: bkDraftForServer(local) }).then(function(){}, function(){});
+        if (!applyBkDraft(local)) clearBkDraft();
+        return;
+      }
+      return sb.client.rpc('get_my_booking_draft').then(function(r){
+        var d = r && !r.error ? r.data : null;
+        if (!d || !d.serviceId) return;
+        var seen = null;
+        try { seen = sessionStorage.getItem('hv_draft_resumed'); } catch (e){}
+        if (seen && seen === String(d.ts)) return; // déjà repris dans cet onglet
+        try { sessionStorage.setItem('hv_draft_resumed', String(d.ts)); } catch (e){}
+        applyBkDraft(d);
+      });
+    }).catch(function(){}).then(function(){ bkResuming = false; });
+  }
+  function clearServerBkDraft(){
+    var sb = window.sudSupabase;
+    if (sb && sb.configured) sb.client.rpc('clear_my_booking_draft').then(function(){}, function(){});
   }
   (function(){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
     sb.client.auth.onAuthStateChange(function(event){
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') resumeBkDraftIfAny();
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') setTimeout(resumeBkDraftIfAny, 0);
       if (event === 'SIGNED_OUT' && step === 3) applyBkAuthGate();
     });
     resumeBkDraftIfAny();
@@ -12379,6 +12419,7 @@ if ('serviceWorker' in navigator){
           if (window.sudEspaceProApptRefresh) window.sudEspaceProApptRefresh();
           if (window.sudTrack) window.sudTrack('booking_completed', 'rdv');
           clearBkDraft();
+          clearServerBkDraft();
           var prepBlock = document.getElementById('bkConfirmPrepBlock');
           var prepTextEl = document.getElementById('bkConfirmPrepText');
           if (prepBlock && prepTextEl){
@@ -12446,6 +12487,7 @@ if ('serviceWorker' in navigator){
   }
 
   bkRestart.addEventListener('click', function(){
+    clearBkDraft();
     state = { serviceId:null, date:null, time:null };
     raffleTicket = null;
     submitted = false;
@@ -25532,15 +25574,26 @@ if ('serviceWorker' in navigator){
       // réelle — même schéma que le flux Professionnel.
       (window.hvTurnstile ? window.hvTurnstile.token(signupSubmitBtn) : Promise.resolve(null)).then(function(captchaToken){
         signupSubmitBtn.textContent = 'Création en cours…';
+        // Réservation en cours : le brouillon (prestation, date, créneau…)
+        // est confié à Supabase Auth avec le compte, pour être repris après
+        // confirmation de l'e-mail sur n'importe quel navigateur/appareil.
+        var bookingDraft = window.hvBookingDraftForAuth ? window.hvBookingDraftForAuth() : null;
+        var meta = {
+          sud_pending_role: 'customer',
+          sud_pending_first_name: firstName,
+          sud_pending_last_name: lastName,
+          sud_pending_phone: phone || null
+        };
+        if (bookingDraft){
+          meta.hv_booking_draft = bookingDraft;
+          // Si l'e-mail a déjà un compte, le brouillon reste récupérable à
+          // la connexion de ce compte vérifié.
+          sb.client.rpc('stash_booking_draft', { p_email: email, p_payload: bookingDraft }).then(function(){}, function(){});
+        }
         return sb.client.auth.signUp({
           email: email,
           password: password,
-          options: { captchaToken: captchaToken || undefined, data: {
-            sud_pending_role: 'customer',
-            sud_pending_first_name: firstName,
-            sud_pending_last_name: lastName,
-            sud_pending_phone: phone || null
-          } }
+          options: { captchaToken: captchaToken || undefined, data: meta, emailRedirectTo: window.location.origin + '/' }
         });
       }).then(function(res){
         signupSubmitBtn.disabled = false;
@@ -25556,7 +25609,9 @@ if ('serviceWorker' in navigator){
           dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
         } else {
           setGateView('login');
-          showMsg(signupSuccess, 'Votre compte a été créé. Consultez votre boîte mail pour confirmer votre adresse email.');
+          showMsg(signupSuccess, (window.hvBookingDraftForAuth && window.hvBookingDraftForAuth())
+            ? 'Votre compte a été créé. Confirmez votre adresse e-mail avec le lien reçu : votre rendez-vous (prestation, date et heure) sera repris automatiquement, même si vous ouvrez le lien sur un autre appareil.'
+            : 'Votre compte a été créé. Consultez votre boîte mail pour confirmer votre adresse email.');
         }
       }).catch(function(err){
         signupSubmitBtn.disabled = false;
