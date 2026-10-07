@@ -3646,6 +3646,33 @@ if ('serviceWorker' in navigator){
     border-radius:999px; padding:6px 14px;
   }
 
+  /* ---------- Tableau de bord : inscriptions clients ---------- */
+  .adm-signups{ margin:6px 0 4px; }
+  .adm-signup-split{ display:block; font-size:0.72rem; color:var(--adm-ink-soft); margin-top:4px; line-height:1.35; }
+  .adm-signup-head{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin:12px 0 8px; }
+  .adm-signup-head .adm-quicklinks{ margin:0; }
+  .adm-signup-legend{ margin:0; font-size:0.75rem; color:var(--adm-ink-soft); display:flex; align-items:center; gap:6px; }
+  .adm-signup-dot{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-left:6px; }
+  .adm-signup-dot.is-part, .adm-signup-seg.is-part{ background:var(--adm-ocean); }
+  .adm-signup-dot.is-pro, .adm-signup-seg.is-pro{ background:var(--adm-coral, #E07A5F); }
+  .adm-signup-chart{ height:170px; overflow:hidden; }
+  .adm-signup-chart.is-dense{ gap:2px; padding-left:6px; padding-right:6px; }
+  .adm-signup-chart .admin-stats-bar{ display:flex; flex-direction:column-reverse; background:transparent; overflow:hidden; }
+  .adm-signup-chart .admin-stats-bar.is-empty{ background:var(--adm-line); }
+  .adm-signup-seg{ display:block; width:100%; }
+  .adm-signup-chart .admin-stats-bar-col{ min-width:0; }
+  .adm-signup-chart .admin-stats-bar-label.is-last{ justify-content:flex-end; }
+  .adm-signup-chart .admin-stats-bar-label.is-first{ justify-content:flex-start; }
+  .adm-signup-chart .admin-stats-bar-label{ white-space:nowrap; text-transform:none; min-height:1em; width:0; display:flex; justify-content:center; overflow:visible; }
+  .adm-signup-chart.is-dense .admin-stats-bar-value{ font-size:0.6rem; }
+  .adm-signup-caption{ margin:4px 0 0; font-size:0.78rem; color:var(--adm-ink-soft); }
+  .adm-signup-recent{ display:flex; flex-direction:column; gap:6px; }
+  .adm-signup-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--adm-card-bg); border:1px solid var(--adm-line); border-radius:12px; padding:10px 12px; }
+  .adm-signup-row strong{ display:block; font-size:0.9rem; color:var(--adm-ink); overflow-wrap:anywhere; }
+  .adm-signup-row span{ font-size:0.78rem; color:var(--adm-ink-soft); }
+  .adm-signup-type{ flex:0 0 auto; font-size:0.72rem; font-weight:700; border-radius:999px; padding:4px 10px; background:var(--adm-offwhite, #F4F6F8); color:var(--adm-ink); }
+  .adm-signup-type.is-pro{ background:var(--adm-coral-soft, #FCE9E4); color:var(--adm-coral-deep, #B2472B); }
+  .adm-signup-type.is-part{ background:var(--adm-ocean-soft, #E3EEF6); color:var(--adm-ocean, #1F5F8B); }
   /* ---------- Statistiques ---------- */
   .admin-stats-chart{
     display:flex; align-items:flex-end; gap:8px; height:140px; padding:14px 10px 0;
@@ -8587,6 +8614,30 @@ if ('serviceWorker' in navigator){
                     <span class="adm-stat-label">Devis</span>
                   </div>
                 </div>
+                <!-- Inscriptions clients : agrégats calculés côté serveur
+                     (admin_signup_stats, réservé à l'administration). -->
+                <section class="adm-signups" id="admSignups" aria-labelledby="admSignupsTitle">
+                  <p class="adm-subhead" id="admSignupsTitle">Inscriptions clients</p>
+                  <div class="adm-stats-grid" id="admSignupCards">
+                    <div class="adm-stat-card adm-stat-ocean"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" data-signup-v="today">—</span><span class="adm-stat-label">Aujourd'hui</span><span class="adm-signup-split" data-signup-s="today"></span></div>
+                    <div class="adm-stat-card adm-stat-turquoise"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" data-signup-v="week">—</span><span class="adm-stat-label">Cette semaine</span><span class="adm-signup-split" data-signup-s="week"></span></div>
+                    <div class="adm-stat-card adm-stat-sand"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" data-signup-v="month">—</span><span class="adm-stat-label">Ce mois-ci</span><span class="adm-signup-split" data-signup-s="month"></span></div>
+                    <div class="adm-stat-card adm-stat-coral"><span class="adm-stat-icon" aria-hidden="true"></span><span class="adm-stat-value" data-signup-v="total">—</span><span class="adm-stat-label">Total</span><span class="adm-signup-split" data-signup-s="total"></span></div>
+                  </div>
+                  <div class="adm-signup-head">
+                    <div class="adm-quicklinks" id="admSignupRanges" role="group" aria-label="Période du graphique">
+                      <button type="button" class="gallery-filter-btn is-active" data-signup-range="7d">7 jours</button>
+                      <button type="button" class="gallery-filter-btn" data-signup-range="30d">30 jours</button>
+                      <button type="button" class="gallery-filter-btn" data-signup-range="3m">3 mois</button>
+                      <button type="button" class="gallery-filter-btn" data-signup-range="12m">12 mois</button>
+                    </div>
+                    <p class="adm-signup-legend"><span class="adm-signup-dot is-part"></span>Particuliers <span class="adm-signup-dot is-pro"></span>Professionnels</p>
+                  </div>
+                  <div id="admSignupChart" class="admin-stats-chart adm-signup-chart" role="img" aria-label="Évolution des inscriptions"><p class="ec-loading">Chargement…</p></div>
+                  <p class="adm-signup-caption" id="admSignupCaption"></p>
+                  <p class="adm-subhead">Dernières inscriptions</p>
+                  <div id="admSignupRecent" class="adm-signup-recent"><p class="ec-loading">Chargement…</p></div>
+                </section>
                 <p class="adm-subhead" id="admNextApptHeading" hidden>Prochain rendez-vous</p>
                 <div id="admNextApptCard"></div>
                 <p class="adm-subhead">Actions rapides</p>
@@ -28407,5 +28458,121 @@ if ('serviceWorker' in navigator){
     // Client déjà connecté : rattachement immédiat à son compte.
     if (window.sudEcAutoAttachReferral) window.sudEcAutoAttachReferral();
   });
+})();
+</script>
+<script>
+// =====================================================================
+// Administration — tableau de bord : INSCRIPTIONS CLIENTS.
+// Agrégats calculés côté serveur (admin_signup_stats, SECURITY DEFINER +
+// is_admin()) : aucune liste de comptes téléchargée pour compter. Mise à
+// jour en temps réel (Supabase Realtime sur profiles, filtré par RLS) et au
+// retour sur le tableau de bord. Chargé uniquement dans l'administration.
+// =====================================================================
+(function(){
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  var range = '7d', loaded = false, channel = null, timer = null, seq = 0;
+  function panelOpen(){ var p = document.getElementById('espaceProAdminPanel'); return !!(p && !p.hidden); }
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function plural(n, one, many){ return n + ' ' + (n > 1 ? many : one); }
+  var MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var DAYS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  function parseDay(iso){ var p = String(iso).slice(0, 10).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function dd(d){ return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2); }
+
+  function renderCards(d){
+    ['today', 'week', 'month', 'total'].forEach(function(k){
+      var x = d[k] || {}, v = document.querySelector('[data-signup-v="' + k + '"]'), sp = document.querySelector('[data-signup-s="' + k + '"]');
+      if (v) v.textContent = String(x.total || 0);
+      if (sp) sp.textContent = plural(x.particuliers || 0, 'particulier', 'particuliers') + ' · ' + plural(x.pros || 0, 'pro', 'pros') +
+        (x.autres ? ' · ' + plural(x.autres, 'non finalisé', 'non finalisés') : '');
+    });
+  }
+  // Une étiquette toutes les « step » barres (comptées depuis la plus
+  // récente, toujours affichée), selon la place réellement disponible.
+  function label(unit, iso, i, n, step){
+    var d = parseDay(iso);
+    if ((n - 1 - i) % step !== 0) return '';
+    if (unit === 'month') return MONTHS[d.getMonth()] + (d.getMonth() === 0 || i === 0 ? ' ' + String(d.getFullYear()).slice(2) : '');
+    if (unit === 'week' || n > 10) return dd(d);
+    return (step === 1 && n <= 7 ? DAYS[d.getDay()] + ' ' : '') + d.getDate();
+  }
+  function tip(unit, iso, x){
+    var d = parseDay(iso), when;
+    if (unit === 'month') when = MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    else if (unit === 'week') when = 'semaine du ' + dd(d);
+    else when = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+    return when + ' : ' + plural(x.total, 'inscription', 'inscriptions') + ' (' + x.particuliers + ' particulier' + (x.particuliers > 1 ? 's' : '') + ', ' + x.pros + ' pro' + (x.pros > 1 ? 's' : '') + ')';
+  }
+  function renderChart(d){
+    var el = document.getElementById('admSignupChart'); if (!el) return;
+    var series = d.series || [], unit = d.unit || 'day', n = series.length;
+    var max = Math.max.apply(null, series.map(function(x){ return x.total; }).concat([1]));
+    el.classList.toggle('is-dense', n > 14);
+    var width = el.clientWidth || 320, need = unit === 'month' ? 46 : (n <= 7 ? 36 : 40);
+    var step = Math.max(1, Math.ceil(n * need / width));
+    el.innerHTML = series.map(function(x, i){
+      var h = Math.round(x.total / max * 100), other = Math.max(0, x.total - x.particuliers - x.pros);
+      var segs = x.total ? '<span class="adm-signup-seg is-part" style="height:' + ((x.particuliers + other) / x.total * 100) + '%"></span>' +
+                           '<span class="adm-signup-seg is-pro" style="height:' + (x.pros / x.total * 100) + '%"></span>' : '';
+      return '<div class="admin-stats-bar-col" title="' + esc(tip(unit, x.start, x)) + '">' +
+        '<span class="admin-stats-bar-value">' + (x.total || (n > 14 ? '' : '0')) + '</span>' +
+        '<div class="admin-stats-bar' + (x.total ? '' : ' is-empty') + '" style="height:' + Math.max(h, 3) + '%">' + segs + '</div>' +
+        '<span class="admin-stats-bar-label' + (n > 7 && i === n - 1 ? ' is-last' : (n > 7 && i === 0 ? ' is-first' : '')) + '">' + esc(label(unit, x.start, i, n, step)) + '</span></div>';
+    }).join('');
+    var sum = series.reduce(function(t, x){ return t + x.total; }, 0);
+    var cap = document.getElementById('admSignupCaption');
+    if (cap) cap.textContent = plural(sum, 'inscription', 'inscriptions') + ' sur la période' +
+      (unit === 'week' ? ' (par semaine)' : unit === 'month' ? ' (par mois)' : ' (par jour)') + '.';
+    el.setAttribute('aria-label', 'Évolution des inscriptions : ' + plural(sum, 'inscription', 'inscriptions') + ' sur la période');
+  }
+  function renderRecent(d){
+    var el = document.getElementById('admSignupRecent'); if (!el) return;
+    var rows = d.recent || [];
+    el.innerHTML = rows.length ? rows.map(function(r){
+      var dt = new Date(r.created_at), pro = r.kind === 'pro', other = r.kind === 'autre';
+      return '<div class="adm-signup-row"><div><strong>' + esc(r.name || 'Nom non renseigné') + '</strong>' +
+        '<span>' + esc(dt.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })) + ' à ' + esc(dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })) + '</span></div>' +
+        '<span class="adm-signup-type ' + (pro ? 'is-pro' : (other ? '' : 'is-part')) + '">' + (pro ? 'Pro' : (other ? 'Non finalisé' : 'Particulier')) + '</span></div>';
+    }).join('') : '<div class="ec-empty"><strong>Aucune inscription</strong>Les nouveaux comptes apparaîtront ici.</div>';
+  }
+  function load(){
+    if (!panelOpen()) return;
+    var my = ++seq;
+    sb.client.rpc('admin_signup_stats', { p_range: range }).then(function(res){
+      if (my !== seq) return;
+      if (res.error){
+        var c = document.getElementById('admSignupChart');
+        if (c) c.innerHTML = '<div class="ec-empty"><strong>Statistiques indisponibles</strong>Réessayez dans un instant.</div>';
+        return;
+      }
+      var d = res.data || {};
+      renderCards(d); renderChart(d); renderRecent(d);
+    }, function(){});
+  }
+  function refreshSoon(){ clearTimeout(timer); timer = setTimeout(load, 1200); }
+  function subscribe(){
+    if (channel || !sb.client.channel) return;
+    try {
+      channel = sb.client.channel('adm-signups')
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:'profiles' }, refreshSoon)
+        .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles' }, refreshSoon)
+        .subscribe();
+    } catch(e){ channel = null; }
+  }
+  function start(){ if (!panelOpen()) return; if (!loaded){ loaded = true; subscribe(); } load(); }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('[data-signup-range]');
+    if (!b) return;
+    range = b.getAttribute('data-signup-range');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-signup-range]'), function(x){ x.classList.toggle('is-active', x === b); });
+    load();
+  });
+  var prevShow = window.hvProBeforeShowPage;
+  window.hvProBeforeShowPage = function(k){ if (prevShow) prevShow(k); if (k === 'dashboard') setTimeout(start, 0); };
+  var prevOn = window.hvProOnBookings;
+  window.hvProOnBookings = function(){ if (prevOn) prevOn.apply(this, arguments); if (!loaded) start(); };
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && loaded) load(); });
+  window.hvAdmSignupsLoad = load;
 })();
 </script>
