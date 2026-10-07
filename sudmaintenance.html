@@ -7826,7 +7826,7 @@ if ('serviceWorker' in navigator){
           <h3 id="bkStep1Title">1 · Choisissez une prestation</h3>
 
           <div id="step1Search">
-            <input type="search" id="bkSearch" class="bk-search" placeholder="Tapez ce que vous cherchez : robinet, chaudière, climatisation…">
+            <input type="search" id="bkSearch" class="bk-search" aria-label="Rechercher une prestation" placeholder="Tapez ce que vous cherchez : robinet, chaudière, climatisation…">
             <p class="bk-search-hint" id="bkSearchHint">Prestations les plus demandées :</p>
             <div class="service-options" id="serviceOptions"></div>
           </div>
@@ -22952,7 +22952,12 @@ if ('serviceWorker' in navigator){
     ecLoyaltyCache = null;
     var openReferral = false;
     try { openReferral = window.sessionStorage.getItem('hayeva_open_referral') === '1'; window.sessionStorage.removeItem('hayeva_open_referral'); } catch(e){}
-    ecShowTab(openReferral ? 'loyalty' : 'home');
+    // Lien d'e-mail #espaceClient/devis|factures|comptes-rendus : lu ici
+    // directement (la session peut être restaurée avant le script du
+    // portail), avec repli sur la valeur mémorisée par ce dernier.
+    var openTab = { '#espaceclient/devis':'quotes', '#espaceclient/factures':'invoices', '#espaceclient/comptes-rendus':'interventions' }[(window.location.hash || '').toLowerCase()] || null;
+    try { openTab = openTab || window.sessionStorage.getItem('hayeva_open_tab'); window.sessionStorage.removeItem('hayeva_open_tab'); } catch(e){}
+    ecShowTab(openReferral ? 'loyalty' : (/^(quotes|invoices|interventions)$/.test(openTab || '') ? openTab : 'home'));
     ecAutoAttachReferral();
   }
   // Parrainage arrivé par un lien ?ref=CODE (code déjà vérifié côté serveur
@@ -25373,6 +25378,14 @@ if ('serviceWorker' in navigator){
   // saute le portail "Bienvenue" et ouvre directement l'espace concerné, sans
   // transition (le portail n'a jamais été affiché, rien à faire disparaître).
   var initialHash = (window.location.hash || '').toLowerCase();
+  // Liens des e-mails devis / facture / compte rendu :
+  // #espaceClient/devis, /factures, /comptes-rendus → onglet correspondant
+  // après connexion (l'accès reste soumis à la session du client).
+  var ecDeepTab = { '#espaceclient/devis':'quotes', '#espaceclient/factures':'invoices', '#espaceclient/comptes-rendus':'interventions' }[initialHash];
+  if (ecDeepTab){
+    try { window.sessionStorage.setItem('hayeva_open_tab', ecDeepTab); } catch(e){}
+    initialHash = '#espaceclient';
+  }
   if (initialHash === '#espacepro' || initialHash === '#espaceclient'){
     portal.hidden = true;
     var initialTarget = initialHash === '#espacepro' ? 'espacePro' : 'espaceClient';
