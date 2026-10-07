@@ -15638,8 +15638,10 @@ if ('serviceWorker' in navigator){
       sb.client.from('service_contracts').select('id,contract_type,energy_type,status,start_date,end_date,annual_price_cents').eq('client_id', clientId),
       sb.client.from('quotes').select('id,reference,title,status,total_cents,created_at').eq('client_id', clientId),
       sb.client.from('invoices').select('id,reference,status,total_cents,created_at').eq('client_id', clientId),
-      sb.client.from('client_crm').select('tags').eq('client_id', clientId).maybeSingle()
+      sb.client.from('client_crm').select('tags').eq('client_id', clientId).maybeSingle(),
+      sb.client.from('admin_internal_notes').select('note').eq('entity', 'client').eq('entity_id', clientId).maybeSingle()
     ]).then(function(results){
+      var internalNote = (results[7] && results[7].data && results[7].data.note) || '';
       var client = results[0].data;
       var crmTags = (results[6] && results[6].data && Array.isArray(results[6].data.tags)) ? results[6].data.tags : [];
       var equipRows = results[1].data || [];
@@ -15655,7 +15657,7 @@ if ('serviceWorker' in navigator){
         adminClientFicheCache = {
           client: client, equipment: equipRows, bookings: bookings,
           interventions: Array.isArray(ivRes.data) ? ivRes.data : [], contracts: contracts, quotes: quotesRows, invoices: invoiceRows,
-          tags: crmTags
+          tags: crmTags, internalNote: internalNote
         };
         admPaintClientFiche();
       });
@@ -15694,12 +15696,16 @@ if ('serviceWorker' in navigator){
     btn.disabled = true;
     Promise.all([
       sb.client.from('client_crm').upsert({ client_id: d.client.id, tags: tags, updated_at: new Date().toISOString() }),
-      notes !== (d.client.notes || null) ? sb.client.from('clients').update({ notes: notes }).eq('id', d.client.id) : Promise.resolve({})
+      // Notes internes : table admin_internal_notes (admin uniquement, 0109).
+      notes !== (d.internalNote || null)
+        ? (notes ? sb.client.from('admin_internal_notes').upsert({ entity: 'client', entity_id: d.client.id, note: notes, updated_at: new Date().toISOString() })
+                 : sb.client.from('admin_internal_notes').delete().eq('entity', 'client').eq('entity_id', d.client.id))
+        : Promise.resolve({})
     ]).then(function(r){
       btn.disabled = false;
       var err = (r[0] && r[0].error) || (r[1] && r[1].error);
       if (err){ if (msg) msg.textContent = 'Enregistrement impossible : ' + err.message; return; }
-      d.tags = tags; d.client.notes = notes;
+      d.tags = tags; d.internalNote = notes || '';
       admPaintClientFiche();
       var m2 = document.getElementById('adminClientCrmMsg'); if (m2) m2.textContent = '✓ Enregistré';
     });
@@ -15754,7 +15760,7 @@ if ('serviceWorker' in navigator){
         '<h3 class="admin-client-fiche-section-title">Étiquettes</h3>' +
         '<p class="admin-client-tags">' + ((d.tags || []).length ? d.tags.map(function(t){ return '<span class="adm-badge adm-badge-pending">' + admEscape(t) + '</span>'; }).join(' ') : '<span class="admin-accounts-hint">Aucune étiquette.</span>') + '</p>' +
         '<label class="admin-client-crm-field">Étiquettes (séparées par des virgules, ex. VIP, Syndic, Relancer)<input type="text" id="adminClientTagsInput" maxlength="300" value="' + admEscape((d.tags || []).join(', ')) + '"></label>' +
-        '<label class="admin-client-crm-field">Notes internes<textarea id="adminClientNotesInput" rows="3" maxlength="4000">' + admEscape(client.notes || '') + '</textarea></label>' +
+        '<label class="admin-client-crm-field">Notes internes<textarea id="adminClientNotesInput" rows="3" maxlength="4000">' + admEscape(d.internalNote || '') + '</textarea></label>' +
         '<button type="button" class="admin-bk-action-btn" id="adminClientCrmSave">Enregistrer étiquettes et notes</button> <span class="ec-row-meta" id="adminClientCrmMsg" aria-live="polite"></span>';
     } else if (adminClientFicheTab === 'equipment'){
       panel = '<button type="button" class="admin-bk-action-btn" id="adminClientAddEquipBtn">+ Ajouter un équipement</button>' +
@@ -23425,9 +23431,9 @@ if ('serviceWorker' in navigator){
           panel.innerHTML = ecxCompositeSubNavHtml('appointments') + '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
           return;
         }
-        return sb.client.from('launch_campaign_entries')
-          .select('booking_id, status')
-          .in('booking_id', rows.map(function(b){ return b.id; }))
+        // Statut de participation uniquement (jamais la note admin) : lecture
+        // directe de launch_campaign_entries réservée à l'admin (0109).
+        return sb.client.rpc('get_my_launch_entry_statuses', { p_booking_ids: rows.map(function(b){ return b.id; }) })
           .then(function(lcRes){
             var lcMap = {};
             (lcRes.data || []).forEach(function(e){ lcMap[e.booking_id] = e.status; });
