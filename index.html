@@ -3882,6 +3882,7 @@ if ('serviceWorker' in navigator){
   .admin-client-fiche-name{ font-family:"Poppins",sans-serif; font-weight:800; margin:0 0 6px; }
   .admin-client-fiche-contact{ display:flex; flex-wrap:wrap; gap:14px; color:var(--adm-ink-soft); margin-bottom:10px; }
   .admin-client-fiche-actions{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .ec-link-btn{ display:inline-block; margin-top:6px; padding:6px 0; background:none; border:none; color:#1AA6EE; font:inherit; font-size:0.85rem; font-weight:700; text-decoration:underline; cursor:pointer; text-align:left; }
   .admin-client-crm-field{ display:block; margin:8px 0; font-size:0.9rem; color:var(--ink-soft, #5B6B78); }
   .admin-client-crm-field input, .admin-client-crm-field textarea{ display:block; width:100%; box-sizing:border-box; margin-top:4px; font:inherit; padding:8px 10px; border:1px solid #d9dee3; border-radius:10px; }
   .admin-client-tags .adm-badge{ margin:0 4px 4px 0; display:inline-block; }
@@ -15637,7 +15638,7 @@ if ('serviceWorker' in navigator){
         .order('date', { ascending:false }).order('start_time', { ascending:false }).limit(500),
       sb.client.from('service_contracts').select('id,contract_type,energy_type,status,start_date,end_date,annual_price_cents').eq('client_id', clientId),
       sb.client.from('quotes').select('id,reference,title,status,total_cents,created_at').eq('client_id', clientId),
-      sb.client.from('invoices').select('id,reference,status,total_cents,created_at').eq('client_id', clientId),
+      sb.client.from('invoices').select('id,reference,status,total_cents,created_at').eq('client_id', clientId).order('created_at', { ascending:false }),
       sb.client.from('client_crm').select('tags').eq('client_id', clientId).maybeSingle(),
       sb.client.from('admin_internal_notes').select('note').eq('entity', 'client').eq('entity_id', clientId).maybeSingle()
     ]).then(function(results){
@@ -15785,18 +15786,20 @@ if ('serviceWorker' in navigator){
         return '<div class="ec-row admin-bk-archive-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
           '<span class="ec-row-title">' + admEscape((b.services && b.services.name) || 'Intervention') + (equip ? ' — ' + equip : '') + '</span>' +
           '<span class="ec-row-meta">' + admFmtDateTime(iv.ended_at) + (iv.report_number ? ' · ' + admEscape(iv.report_number) : '') + '</span>' +
-          '</div></div>';
+          '</div>' + (iv.report_status === 'FINALIZED' ? '<div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn" data-hv-pdf="report:' + iv.id + '">Compte rendu PDF</button></div>' : '') + '</div>';
       }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucune intervention terminée pour le moment.</p>';
     } else if (adminClientFicheTab === 'documents'){
       panel = '<h3 class="admin-client-fiche-section-title">Devis</h3>' +
         (d.quotes.length ? '<div class="ec-list">' + d.quotes.map(function(q){
           return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">' + admEscape(q.title || q.reference) + '</span>' +
-            '<span class="ec-row-meta">' + admFmtDate((q.created_at||'').slice(0,10)) + ' · ' + admEscape(q.status) + (q.total_cents != null ? ' · ' + admFmtEuros(q.total_cents) : '') + '</span></div></div>';
+            '<span class="ec-row-meta">' + admFmtDate((q.created_at||'').slice(0,10)) + ' · ' + admEscape(q.status) + (q.total_cents != null ? ' · ' + admFmtEuros(q.total_cents) : '') + '</span></div>' +
+            (q.status !== 'DRAFT' ? '<div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn" data-hv-pdf="quote:' + q.id + '">PDF</button></div>' : '') + '</div>';
         }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucun devis.</p>') +
         '<h3 class="admin-client-fiche-section-title">Factures</h3>' +
         (d.invoices.length ? '<div class="ec-list">' + d.invoices.map(function(i){
           return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">Facture ' + admEscape(i.reference) + '</span>' +
-            '<span class="ec-row-meta">' + admFmtDate((i.created_at||'').slice(0,10)) + ' · ' + admEscape(i.status) + (i.total_cents != null ? ' · ' + admFmtEuros(i.total_cents) : '') + '</span></div></div>';
+            '<span class="ec-row-meta">' + admFmtDate((i.created_at||'').slice(0,10)) + ' · ' + admEscape(i.status) + (i.total_cents != null ? ' · ' + admFmtEuros(i.total_cents) : '') + '</span></div>' +
+            (i.status !== 'DRAFT' ? '<div class="admin-bk-row-actions"><button type="button" class="admin-bk-action-btn" data-hv-pdf="invoice:' + i.id + '">PDF</button></div>' : '') + '</div>';
         }).join('') + '</div>' : '<p class="admin-accounts-hint">Aucune facture.</p>');
     } else if (adminClientFicheTab === 'contracts'){
       panel = d.contracts.length ? '<div class="ec-list">' + d.contracts.map(function(c){
@@ -15819,6 +15822,7 @@ if ('serviceWorker' in navigator){
   var adminClientFicheOverlayEl = document.getElementById('adminClientFicheOverlay');
   if (adminClientFicheOverlayEl){
     adminClientFicheOverlayEl.addEventListener('click', function(e){
+      if (e.target.closest('[data-hv-pdf]')) return; // géré par le générateur PDF (document)
       if (e.target.closest('.admin-client-fiche-close') || e.target === adminClientFicheOverlayEl) adminClientFicheOverlayEl.hidden = true;
       var tabBtn = e.target.closest('.admin-client-fiche-tab');
       if (tabBtn){ adminClientFicheTab = tabBtn.getAttribute('data-client-tab'); admPaintClientFiche(); return; }
@@ -20845,6 +20849,7 @@ if ('serviceWorker' in navigator){
     html += '<p class="admin-bk-modal-ref">Statut : ' + qbStatusBadgeHtml(quote.status) +
       (quote.version > 1 ? ' · version ' + quote.version : '') + '</p>';
     if (quote.status !== 'DRAFT') html += '<button type="button" class="admin-bk-modal-propose-toggle" data-hv-pdf="quote:' + quote.id + '">Télécharger le devis (PDF)</button>';
+    if (quote.status === 'ACCEPTED') html += ' <button type="button" class="admin-bk-modal-propose-toggle" id="qbCreateInvoiceBtn">Créer / voir la facture</button>';
 
     if (quote.status === 'DRAFT' || quote.status === 'SENT'){
       // Relances automatiques J+3 / J+7 / J+14 (0102_quote_followups) : coupées
@@ -21084,6 +21089,10 @@ if ('serviceWorker' in navigator){
       if (e.target.id === 'qbAddFromCatalogBtn'){ admOpenCatalogPicker(qbCurrentQuoteId); return; }
       if (e.target.id === 'qbSendBtn'){ qbSendQuote(); return; }
       if (e.target.id === 'qbNewVersionBtn'){ qbCreateNewVersion(); return; }
+      if (e.target.id === 'qbCreateInvoiceBtn' && window.hvpCreateInvoice){
+        var ov = document.getElementById('adminQuoteBuilderOverlay'); if (ov) ov.hidden = true;
+        window.hvpCreateInvoice('quote', qbCurrentQuoteId); return;
+      }
       var removeOptBtn = e.target.closest('.qb-option-remove');
       if (removeOptBtn){ qbRemoveOption(removeOptBtn.getAttribute('data-option-id')); return; }
       var removeAttBtn = e.target.closest('.qb-attachment-remove');
@@ -23768,6 +23777,7 @@ if ('serviceWorker' in navigator){
           }
           if (iv.observations) html += '<p style="margin:8px 0 0;font-size:0.82rem;"><strong>Observations :</strong> ' + ecEscape(iv.observations) + '</p>';
           if (iv.recommendations) html += '<p style="margin:6px 0 0;font-size:0.82rem;"><strong>Recommandations :</strong> ' + ecEscape(iv.recommendations) + '</p>';
+          if (iv.report_status === 'FINALIZED') html += '<button type="button" class="ec-link-btn" data-hv-pdf="report:' + iv.id + '">Télécharger le compte rendu (PDF)</button>';
           html += '</div>';
         });
         html += '</div>';
@@ -24193,6 +24203,7 @@ if ('serviceWorker' in navigator){
           html += '<div class="ec-row ec-quote-list-row" data-quote-id="' + q.id + '"><div class="ec-row-info">' +
             '<span class="ec-row-title">' + ecEscape(q.title || ('Devis ' + q.reference)) + '</span>' +
             '<span class="ec-row-meta">' + new Date(q.created_at).toLocaleDateString('fr-FR') + (showTotal ? ' · ' + ecFmtEuros(q.total_cents) : '') + '</span>' +
+            '<button type="button" class="ec-link-btn" data-hv-pdf="quote:' + q.id + '">Télécharger le PDF</button>' +
             '</div>' + ecBadge(q.status) + '</div>';
         });
         html += '</div>';
@@ -24295,6 +24306,7 @@ if ('serviceWorker' in navigator){
   var ecQuotesPanelEl = document.getElementById('ecPanelQuotes');
   if (ecQuotesPanelEl){
     ecQuotesPanelEl.addEventListener('click', function(e){
+      if (e.target.closest('[data-hv-pdf]')) return;
       var row = e.target.closest('.ec-quote-list-row');
       if (row){ ecOpenQuoteDetail(row.getAttribute('data-quote-id')); return; }
       if (e.target.id === 'ecQuoteBackBtn'){ ecLoadQuotes(); return; }
@@ -24327,13 +24339,19 @@ if ('serviceWorker' in navigator){
   function ecLoadInvoices(){
     var panel = document.getElementById('ecPanelInvoices');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
-    sb.client.from('invoices')
-      .select('id, reference, status, total_cents, created_at')
-      .eq('customer_user_id', ecUser.id)
-      .order('created_at', { ascending:false })
-      .then(function(res){
+    Promise.all([
+      sb.client.from('invoices')
+        .select('id, reference, status, total_cents, created_at, issued_at')
+        .eq('customer_user_id', ecUser.id)
+        .neq('status', 'DRAFT')
+        .order('created_at', { ascending:false }),
+      sb.client.from('credit_notes').select('id, reference, invoice_id, amount_cents, created_at')
+    ]).then(function(all){
+        var res = all[0];
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var rows = res.data || [];
+        var creditsBy = {};
+        ((all[1] && all[1].data) || []).forEach(function(c){ (creditsBy[c.invoice_id] = creditsBy[c.invoice_id] || []).push(c); });
         if (!rows.length){
           panel.innerHTML = ecxCompositeSubNavHtml('invoices') + '<div class="ec-empty"><strong>Aucune facture pour le moment</strong>Vos factures apparaîtront ici après une intervention facturée.</div>';
           return;
@@ -24342,7 +24360,9 @@ if ('serviceWorker' in navigator){
         rows.forEach(function(inv){
           html += '<div class="ec-row"><div class="ec-row-info">' +
             '<span class="ec-row-title">Facture ' + ecEscape(inv.reference) + '</span>' +
-            '<span class="ec-row-meta">' + new Date(inv.created_at).toLocaleDateString('fr-FR') + ' · ' + ecFmtEuros(inv.total_cents) + '</span>' +
+            '<span class="ec-row-meta">' + new Date(inv.issued_at || inv.created_at).toLocaleDateString('fr-FR') + ' · ' + ecFmtEuros(inv.total_cents) + '</span>' +
+            '<button type="button" class="ec-link-btn" data-hv-pdf="invoice:' + inv.id + '">Télécharger la facture (PDF)</button>' +
+            (creditsBy[inv.id] || []).map(function(c){ return '<button type="button" class="ec-link-btn" data-hv-pdf="credit_note:' + c.id + '">Avoir ' + ecEscape(c.reference) + ' (' + ecFmtEuros(c.amount_cents) + ')</button>'; }).join('') +
             '</div>' + ecBadge(inv.status) + '</div>';
         });
         html += '</div>';
@@ -24350,9 +24370,26 @@ if ('serviceWorker' in navigator){
       }).catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
 
+  // Documents : comptes rendus d'intervention validés (téléchargeables en PDF).
+  // Devis et factures restent dans leurs onglets dédiés.
   function ecLoadDocuments(){
     var panel = document.getElementById('ecPanelDocuments');
-    panel.innerHTML = ecxCompositeSubNavHtml('documents') + '<p class="ec-section-title">Documents</p><p class="ec-section-sub">Vos devis, factures et rapports.</p><div class="ec-empty"><strong>Aucun rapport pour le moment</strong>Cette fonctionnalité arrive prochainement : vous pourrez retrouver ici vos comptes-rendus et pièces jointes.</div>';
+    var head = ecxCompositeSubNavHtml('documents') + '<p class="ec-section-title">Documents</p><p class="ec-section-sub">Vos comptes rendus d\'intervention. Vos devis et factures sont dans les onglets « Devis » et « Factures ».</p>';
+    panel.innerHTML = head + '<p class="ec-loading">Chargement…</p>';
+    sb.client.from('interventions').select('id, report_number, report_status, ended_at, performed_at, bookings(reference, date, services(name))')
+      .eq('report_status', 'FINALIZED').order('created_at', { ascending:false })
+      .then(function(res){
+        if (res.error){ panel.innerHTML = head + ecErrorBlock(); return; }
+        var rows = res.data || [];
+        if (!rows.length){ panel.innerHTML = head + '<div class="ec-empty"><strong>Aucun compte rendu pour le moment</strong>Le compte rendu de chaque intervention apparaîtra ici une fois validé.</div>'; return; }
+        panel.innerHTML = head + '<div class="ec-list">' + rows.map(function(iv){
+          var svc = (iv.bookings && iv.bookings.services && iv.bookings.services.name) || 'Intervention';
+          var when = iv.ended_at || iv.performed_at || (iv.bookings && iv.bookings.date);
+          return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">Compte rendu — ' + ecEscape(svc) + '</span>' +
+            '<span class="ec-row-meta">' + (when ? new Date(when).toLocaleDateString('fr-FR') : '') + (iv.report_number ? ' · ' + ecEscape(iv.report_number) : '') + '</span>' +
+            '<button type="button" class="ec-link-btn" data-hv-pdf="report:' + iv.id + '">Télécharger (PDF)</button></div></div>';
+        }).join('') + '</div>';
+      }).catch(function(){ panel.innerHTML = head + ecErrorBlock(); });
   }
 
   function ecFetchAddresses(){
@@ -26679,6 +26716,7 @@ if ('serviceWorker' in navigator){
   .hvp-actions-3{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; margin-top:8px; }
   .hvp-actions-1{ grid-template-columns:1fr !important; margin-top:8px; }
   .hvp-actions-2{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; margin-top:8px; }
+  .hvp-inv-line{ border:1px solid var(--adm-line); border-radius:12px; padding:10px 12px; margin:0 0 10px; background:var(--adm-offwhite); }
   .hvp-act.is-danger{ background:var(--adm-red-soft); color:var(--adm-red); border-color:transparent; }
   .hvp-seg{ display:inline-flex; border:1px solid var(--adm-line); border-radius:12px; overflow:hidden; margin-left:8px; background:var(--adm-card-bg); }
   .hvp-seg button{ border:none; background:transparent; color:var(--adm-ink); font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; padding:10px 14px; min-height:42px; cursor:pointer; }
@@ -26791,7 +26829,9 @@ if ('serviceWorker' in navigator){
         (c.address ? '<a class="hvp-act" target="_blank" rel="noopener" href="' + navUrl(c.address) + '">ITINÉRAIRE</a>' : '<span class="hvp-act" aria-disabled="true" style="opacity:.4">ITINÉRAIRE</span>') +
         (b.client_id ? '<button type="button" class="hvp-act" data-hvp-client="' + b.client_id + '">CLIENT</button>' : '<button type="button" class="hvp-act" data-hvp-open="' + b.id + '">FICHE</button>') +
         main +
-      '</div>' + decisionRow(b) + '</div>';
+      '</div>' + decisionRow(b) +
+      (b.status === 'COMPLETED' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hvp-invoice-booking="' + b.id + '">CRÉER / VOIR LA FACTURE</button></div>' : '') +
+      '</div>';
   }
 
   // ---------------- Aujourd'hui ----------------
@@ -27380,6 +27420,10 @@ if ('serviceWorker' in navigator){
     ['insurance_company', 'Assurance (compagnie)', true], ['insurance_contract_number', 'N° de contrat d\'assurance', true], ['insurance_coverage', 'Couverture géographique', false],
     ['mediator_name', 'Médiateur de la consommation', true], ['mediator_contact', 'Coordonnées du médiateur (site / adresse)', false],
     ['phone', 'Téléphone', false], ['email', 'E-mail', false], ['website', 'Site internet', false],
+    // Facturation (0112) : taux appliqué uniquement si le régime est « assujetti ».
+    ['default_vat_rate', 'Taux de TVA par défaut en % (utilisé seulement si assujetti)', false],
+    ['payment_terms', 'Conditions de paiement imprimées sur devis et factures (ex. paiement à réception)', false],
+    ['quote_validity_days', 'Durée de validité des devis (jours)', false],
     // Vide = aucune demande d'avis envoyée (0106_review_requests).
     ['google_review_url', 'Lien « Laisser un avis » Google (demande d\'avis envoyée au client le lendemain d\'une intervention terminée)', false]
   ];
@@ -27406,6 +27450,7 @@ if ('serviceWorker' in navigator){
               '<option value="franchise_base"' + (c.vat_regime === 'franchise_base' ? ' selected' : '') + '>Franchise en base (TVA non applicable, art. 293 B du CGI)</option>' +
               '<option value="assujetti"' + (c.vat_regime === 'assujetti' ? ' selected' : '') + '>Assujetti à la TVA</option></select></label>';
           }
+          if (f[0] === 'default_vat_rate' || f[0] === 'quote_validity_days') return field(label, f[0], 'number', c[f[0]], f[0] === 'default_vat_rate' ? ' step="0.1" min="0" max="30" inputmode="decimal"' : ' step="1" min="1" max="365" inputmode="numeric"');
           return field(label, f[0], f[0] === 'email' ? 'email' : ((f[0] === 'website' || f[0] === 'google_review_url') ? 'url' : 'text'), c[f[0]], (f[0] === 'siret' || f[0] === 'siren' || f[0] === 'postal_code') ? ' inputmode="numeric"' : (f[0] === 'google_review_url' ? ' placeholder="https://g.page/r/…/review"' : ''));
         }).join('') + '</div>' +
         '<p class="hvp-card-sub">* Obligatoire pour la facturation définitive. Rien n\'est pré-rempli : saisissez uniquement vos informations officielles. Ces informations alimentent aussi automatiquement les mentions légales publiques du site.</p>' +
@@ -27430,7 +27475,7 @@ if ('serviceWorker' in navigator){
   }
 
   // ---------------- Factures ----------------
-  var INV_STATUS = { DRAFT:'Brouillon', ISSUED:'Émise — à régler', PAID:'Payée', CANCELLED:'Annulée' };
+  var INV_STATUS = { DRAFT:'Brouillon', ISSUED:'Émise — à régler', PAID:'Payée', CANCELLED:'Annulée (avoir)' };
   // Paiements partiels et échéance (0105_invoice_payments) : « Partiellement
   // payée » et « En retard » sont des états calculés, le statut ISSUED reste.
   var PAY_METHODS = [['virement','Virement'], ['cheque','Chèque'], ['especes','Espèces'], ['carte','Carte bancaire'], ['autre','Autre']];
@@ -27439,14 +27484,20 @@ if ('serviceWorker' in navigator){
   function renderInvoices(){
     var el = document.getElementById('hvpInvoices');
     if (!el) return;
-    Promise.all([loadCompany(), sb.client.from('invoices').select('id,reference,status,total_cents,created_at,paid_at,client_id,refunded_cents,due_date').order('created_at', { ascending:false }).limit(200),
-      sb.client.from('invoice_payments').select('invoice_id,amount_cents')]).then(function(r){
+    Promise.all([loadCompany(), sb.client.from('invoices').select('id,reference,status,total_cents,created_at,issued_at,paid_at,client_id,refunded_cents,due_date,cancelled_reason,customer_snapshot').order('created_at', { ascending:false }).limit(200),
+      sb.client.from('invoice_payments').select('invoice_id,amount_cents'), loadClients().catch(function(){}),
+      sb.client.from('credit_notes').select('id,reference,invoice_id,amount_cents,reason,created_at').order('created_at', { ascending:true })]).then(function(r){
       var rows = (r[1] && r[1].data) || [];
+      var creditsBy = {};
+      ((r[4] && r[4].data) || []).forEach(function(c){ (creditsBy[c.invoice_id] = creditsBy[c.invoice_id] || []).push(c); });
+      var clientById = {};
+      (clientsCache || []).forEach(function(c){ clientById[c.id] = c; });
       invoicePaidCache = {};
       ((r[2] && r[2].data) || []).forEach(function(p){ invoicePaidCache[p.invoice_id] = (invoicePaidCache[p.invoice_id] || 0) + (Number(p.amount_cents) || 0); });
       var today = invTodayStr();
       el.innerHTML = (billingReady ? '' : '<p class="hvp-banner is-warn">' + esc(BILLING_OFF) + ' <button type="button" class="hvp-link" data-hvp-goto-company>Compléter</button></p>') +
-        '<p class="hvp-card-sub">La création et l\'émission de factures définitives sont désactivées tant que les informations entreprise obligatoires ne sont pas renseignées (contrôle également appliqué côté serveur).</p>' +
+        (billingReady ? '' : '<p class="hvp-card-sub">Vous pouvez préparer des brouillons ; l\'émission (numéro FAC définitif) est bloquée tant que les informations entreprise obligatoires ne sont pas renseignées (contrôle également appliqué côté serveur).</p>') +
+        '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-action="new-invoice">+ NOUVELLE FACTURE</button></div>' +
         (rows.length ? rows.map(function(i){
           var paid = invoicePaidCache[i.id] || 0;
           var remaining = Math.max((i.total_cents || 0) - paid, 0);
@@ -27455,16 +27506,190 @@ if ('serviceWorker' in navigator){
           if (i.status === 'ISSUED' && paid > 0) label = 'Partiellement payée';
           if (overdue) label = 'En retard';
           var pillCls = i.status === 'PAID' ? 'hvp-st-COMPLETED' : (i.status === 'ISSUED' ? (overdue ? 'hvp-st-low' : 'hvp-st-PENDING') : 'hvp-st-CANCELLED');
-          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(i.reference || 'Facture') + '</p><p class="hvp-card-sub">' + esc(fmtDate(i.created_at)) + ' · ' + esc(euros(i.total_cents)) + (i.refunded_cents > 0 ? ' · remboursé ' + esc(euros(i.refunded_cents)) : '') + '</p>' +
+          var who = (i.customer_snapshot && i.customer_snapshot.name) || (clientById[i.client_id] ? clientName(clientById[i.client_id]) : '');
+          var credits = creditsBy[i.id] || [];
+          var credited = credits.reduce(function(sum, c){ return sum + (Number(c.amount_cents) || 0); }, 0);
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(i.status === 'DRAFT' ? 'Brouillon' : (i.reference || 'Facture')) + (who ? ' — ' + esc(who) : '') + '</p><p class="hvp-card-sub">' + esc(fmtDate(i.issued_at || i.created_at)) + ' · ' + esc(euros(i.total_cents)) + (i.refunded_cents > 0 ? ' · remboursé ' + esc(euros(i.refunded_cents)) : '') + '</p>' +
+            (credits.length ? '<p class="hvp-card-sub">Avoirs : ' + credits.map(function(c){ return '<button type="button" class="hvp-link" data-hv-pdf="credit_note:' + c.id + '">' + esc(c.reference) + '</button> (' + esc(euros(c.amount_cents)) + ')'; }).join(', ') + '</p>' : '') +
+            (i.status === 'CANCELLED' && i.cancelled_reason ? '<p class="hvp-card-sub">' + esc(i.cancelled_reason) + '</p>' : '') +
             (i.status === 'ISSUED' && (paid > 0 || i.due_date) ? '<p class="hvp-card-sub">' + (paid > 0 ? 'Encaissé ' + esc(euros(paid)) + ' · reste ' + esc(euros(remaining)) : '') + (paid > 0 && i.due_date ? ' · ' : '') + (i.due_date ? 'Échéance ' + esc(fmtDate(i.due_date)) : '') + '</p>' : '') + '</div>' +
             '<span class="hvp-pill ' + pillCls + '">' + esc(label) + '</span></div>' +
             (i.status === 'ISSUED' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-paid="' + i.id + '">ENREGISTRER LE PAIEMENT</button></div>' +
               '<div class="hvp-actions hvp-actions-2"><button type="button" class="hvp-act" data-hvp-partpay="' + i.id + '" data-remaining="' + remaining + '">PAIEMENT PARTIEL</button><button type="button" class="hvp-act" data-hvp-due="' + i.id + '" data-due="' + esc(i.due_date || '') + '">ÉCHÉANCE</button></div>' : '') +
             (i.status === 'PAID' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hvp-refund="' + i.id + '" data-hvp-refund-max="' + (i.total_cents || 0) + '">ENREGISTRER UN REMBOURSEMENT</button></div>' : '') +
+            (i.status === 'DRAFT' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-inv-edit="' + i.id + '">COMPLÉTER ET ÉMETTRE</button></div>' : '') +
+            ((i.status === 'ISSUED' || i.status === 'PAID') && credited < (i.total_cents || 0) ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hvp-credit="' + i.id + '" data-max="' + ((i.total_cents || 0) - credited) + '">CRÉER UN AVOIR</button></div>' : '') +
             (i.status !== 'DRAFT' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hv-pdf="invoice:' + i.id + '">TÉLÉCHARGER LA FACTURE (PDF)</button></div>' : '') +
             '</div>';
         }).join('') : '<p class="hvp-empty">Aucune facture.</p>');
     }).catch(function(){ el.innerHTML = '<p class="hvp-error">Factures indisponibles.</p>'; });
+  }
+  // ---------------- Facturation (0112_billing_core) ----------------
+  // Brouillon modifiable (lignes, échéance) puis « Émettre » : numéro FAC
+  // définitif attribué côté serveur, montants HT/TVA/TTC figés. Ensuite : plus
+  // de modification ni de suppression, correction uniquement par avoir.
+  var LINE_KINDS = [['prestation','Prestation'], ['main_oeuvre','Main-d\'œuvre'], ['fourniture','Fourniture'], ['deplacement','Déplacement'], ['remise','Remise'], ['autre','Autre']];
+  function vatEnabled(){ return !!(companyCache && companyCache.vat_regime === 'assujetti'); }
+  function invoiceErrorText(err){
+    var m = err && err.message ? String(err.message) : '';
+    return /[a-z]_[a-z]|violates|function|column|relation|syntax/i.test(m) ? 'Action impossible pour le moment. Réessayez.' : (m || 'Action impossible pour le moment.');
+  }
+  window.hvpCreateInvoice = function(source, id){
+    return sb.client.rpc('admin_create_invoice', { p_source: source, p_id: id }).then(function(r){
+      if (r.error){ window.alert(invoiceErrorText(r.error)); return; }
+      if (window.admShowPage) window.admShowPage('invoices');
+      openInvoiceEditor(r.data);
+    });
+  };
+  function newInvoice(){
+    loadClients().then(function(){
+      openSheet('<form id="hvpNewInvForm"><h3>Nouvelle facture</h3><p class="hvp-error" hidden></p>' +
+        '<p class="hvp-card-sub">Pour facturer un devis accepté ou un rendez-vous terminé, utilisez plutôt le bouton « Créer la facture » du devis ou de l\'intervention : les lignes sont reprises automatiquement.</p>' +
+        '<label class="hvp-field">Client<input type="search" id="hvpIClientSearch" placeholder="Rechercher un client…" autocomplete="off"></label>' +
+        '<div class="hvp-picklist" id="hvpIClientPick"></div>' +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Créer le brouillon">Créer le brouillon</button></div></form>');
+      var selected = null;
+      var pickEl = sheet.querySelector('#hvpIClientPick'), searchEl = sheet.querySelector('#hvpIClientSearch');
+      function paint(){
+        var rows = clientsCache.filter(function(c){ return clientMatches(c, searchEl.value.trim()); }).slice(0, 40);
+        pickEl.innerHTML = rows.map(function(c){ return '<button type="button" class="hvp-pick' + (selected && selected.id === c.id ? ' is-selected' : '') + '" data-id="' + c.id + '">' + esc(clientName(c)) + '</button>'; }).join('');
+      }
+      paint();
+      searchEl.addEventListener('input', paint);
+      pickEl.addEventListener('click', function(e){ var b = e.target.closest('.hvp-pick'); if (!b) return; selected = clientsCache.filter(function(c){ return c.id === b.getAttribute('data-id'); })[0]; paint(); });
+      sheet.querySelector('#hvpNewInvForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        if (!selected){ showError('Choisissez un client.'); return; }
+        busy(true);
+        sb.client.rpc('admin_create_invoice', { p_source: 'client', p_id: selected.id }).then(function(r){
+          busy(false);
+          if (r.error){ showError(invoiceErrorText(r.error)); return; }
+          openInvoiceEditor(r.data);
+        });
+      });
+    });
+  }
+  function lineRowHtml(l){
+    l = l || {};
+    var vat = vatEnabled();
+    return '<div class="hvp-inv-line" data-line-id="' + esc(l.id || '') + '">' +
+      '<div class="hvp-grid2"><label class="hvp-field">Type<select name="kind">' + LINE_KINDS.map(function(k){ return '<option value="' + k[0] + '"' + ((l.kind || 'prestation') === k[0] ? ' selected' : '') + '>' + esc(k[1]) + '</option>'; }).join('') + '</select></label>' +
+      field('Désignation', 'label', 'text', l.label || '', ' maxlength="300" required') + '</div>' +
+      field('Détail (facultatif)', 'description', 'text', l.description || '', ' maxlength="500"') +
+      '<div class="hvp-grid2">' + field('Quantité', 'quantity', 'number', l.quantity != null ? Number(l.quantity) : 1, ' step="0.01" min="0.01" inputmode="decimal"') +
+      field('Prix unitaire ' + (vat ? 'TTC' : 'net') + ' (€)', 'unit', 'number', l.unit_ttc_cents != null ? (l.unit_ttc_cents / 100).toFixed(2) : '', ' step="0.01" inputmode="decimal" required') + '</div>' +
+      (vat ? field('TVA (%)', 'vat_rate', 'number', l.vat_rate != null ? Number(l.vat_rate) : (companyCache.default_vat_rate || 0), ' step="0.1" min="0" max="30" inputmode="decimal"') : '') +
+      '<button type="button" class="hvp-link" data-line-remove>Retirer cette ligne</button></div>';
+  }
+  function openInvoiceEditor(invoiceId){
+    Promise.all([
+      loadCompany(),
+      sb.client.from('invoices').select('id,reference,status,total_cents,due_date,client_id,notes').eq('id', invoiceId).maybeSingle(),
+      sb.client.from('invoice_lines').select('*').eq('invoice_id', invoiceId).order('position', { ascending:true }).order('created_at', { ascending:true })
+    ]).then(function(r){
+      var inv = r[1].data, lines = r[2].data || [];
+      if (!inv){ window.alert('Facture introuvable.'); return; }
+      if (inv.status !== 'DRAFT'){ closeSheet(); renderInvoices(); return; }
+      openSheet('<form id="hvpInvForm"><h3>Facture — brouillon</h3><p class="hvp-error" hidden></p>' +
+        (vatEnabled() ? '' : '<p class="hvp-card-sub">Régime : franchise en base de TVA — aucune TVA n\'est appliquée (mention « TVA non applicable, art. 293 B du CGI » sur la facture).</p>') +
+        '<div id="hvpInvLines">' + (lines.length ? lines.map(lineRowHtml).join('') : lineRowHtml()) + '</div>' +
+        '<button type="button" class="hvp-link" id="hvpInvAddLine">+ Ajouter une ligne</button>' +
+        '<p class="hvp-card-title" id="hvpInvTotal" style="margin:12px 0 4px;"></p>' +
+        field('Date d\'échéance (facultatif)', 'due_date', 'date', inv.due_date || '') +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-inv-delete="' + inv.id + '">Supprimer le brouillon</button><button type="submit" class="hvp-btn-ok" data-label="Enregistrer">Enregistrer</button></div>' +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Fermer</button><button type="button" class="hvp-btn-ok" id="hvpInvIssue"' + (billingReady ? '' : ' disabled title="Informations entreprise à compléter"') + '>Émettre la facture</button></div>' +
+        (billingReady ? '' : '<p class="hvp-card-sub">Émission bloquée : informations entreprise obligatoires à compléter (Réglages).</p>') +
+        '</form>');
+      var form = sheet.querySelector('#hvpInvForm'), linesEl = sheet.querySelector('#hvpInvLines');
+      var removed = [];
+      function readLines(){
+        return Array.prototype.map.call(linesEl.querySelectorAll('.hvp-inv-line'), function(row, idx){
+          function v(n){ var el = row.querySelector('[name="' + n + '"]'); return el ? String(el.value || '').trim() : ''; }
+          var unit = Math.round(parseFloat(v('unit').replace(',', '.')) * 100);
+          return { id: row.getAttribute('data-line-id') || null, kind: v('kind') || 'prestation', label: v('label'), description: v('description') || null,
+            quantity: parseFloat(v('quantity').replace(',', '.')) || 1, unit_ttc_cents: unit, vat_rate: vatEnabled() ? (parseFloat(v('vat_rate').replace(',', '.')) || 0) : 0, position: idx + 1 };
+        });
+      }
+      function paintTotal(){
+        var t = readLines().reduce(function(s2, l){ return s2 + (isFinite(l.unit_ttc_cents) ? Math.round(l.quantity * l.unit_ttc_cents) : 0); }, 0);
+        sheet.querySelector('#hvpInvTotal').textContent = 'Total' + (vatEnabled() ? ' TTC' : '') + ' : ' + euros(t);
+      }
+      paintTotal();
+      linesEl.addEventListener('input', paintTotal);
+      sheet.querySelector('#hvpInvAddLine').addEventListener('click', function(){ linesEl.insertAdjacentHTML('beforeend', lineRowHtml()); });
+      linesEl.addEventListener('click', function(e){
+        if (!e.target.closest('[data-line-remove]')) return;
+        var row = e.target.closest('.hvp-inv-line'); var id = row.getAttribute('data-line-id');
+        if (id) removed.push(id);
+        row.remove(); paintTotal();
+      });
+      function save(){
+        var ls = readLines();
+        for (var k = 0; k < ls.length; k++){
+          if (!ls[k].label) return Promise.reject(new Error('Chaque ligne doit avoir une désignation.'));
+          if (!isFinite(ls[k].unit_ttc_cents)) return Promise.reject(new Error('Indiquez le prix de chaque ligne.'));
+        }
+        var ops = removed.map(function(id){ return sb.client.from('invoice_lines').delete().eq('id', id); });
+        ls.forEach(function(l){
+          var row = { invoice_id: inv.id, kind: l.kind, label: l.label, description: l.description, quantity: l.quantity, unit_ttc_cents: l.unit_ttc_cents, vat_rate: l.vat_rate, position: l.position };
+          ops.push(l.id ? sb.client.from('invoice_lines').update(row).eq('id', l.id) : sb.client.from('invoice_lines').insert(row));
+        });
+        var due = String(new FormData(form).get('due_date') || '') || null;
+        ops.push(sb.client.from('invoices').update({ due_date: due }).eq('id', inv.id));
+        return Promise.all(ops).then(function(res){
+          var err = res.filter(function(x){ return x && x.error; })[0];
+          if (err) throw err.error;
+          removed = [];
+        });
+      }
+      form.addEventListener('submit', function(e){
+        e.preventDefault(); busy(true);
+        save().then(function(){ busy(false); openInvoiceEditor(inv.id); renderInvoices(); }).catch(function(err){ busy(false); showError(invoiceErrorText(err)); });
+      });
+      sheet.querySelector('#hvpInvIssue').addEventListener('click', function(){
+        if (!window.confirm('Émettre définitivement cette facture ? Un numéro FAC définitif lui sera attribué ; elle ne pourra plus être modifiée ni supprimée (correction uniquement par avoir).')) return;
+        var btn = this; btn.disabled = true;
+        save().then(function(){
+          return sb.client.rpc('admin_issue_invoice', { p_invoice_id: inv.id, p_due_date: String(new FormData(form).get('due_date') || '') || null });
+        }).then(function(res){
+          btn.disabled = false;
+          if (res.error){ showError(invoiceErrorText(res.error)); return; }
+          closeSheet(); renderInvoices();
+          window.alert('Facture ' + res.data + ' émise.');
+        }).catch(function(err){ btn.disabled = false; showError(invoiceErrorText(err)); });
+      });
+      sheet.querySelector('[data-hvp-inv-delete]').addEventListener('click', function(){
+        if (!window.confirm('Supprimer ce brouillon de facture ?')) return;
+        sb.client.from('invoices').delete().eq('id', inv.id).eq('status', 'DRAFT').then(function(res){
+          if (res.error){ showError(invoiceErrorText(res.error)); return; }
+          closeSheet(); renderInvoices();
+        });
+      });
+    });
+  }
+  window.hvpOpenInvoiceEditor = openInvoiceEditor;
+  function creditNoteForm(invoiceId, max){
+    openSheet('<form id="hvpCreditForm"><h3>Créer un avoir</h3><p class="hvp-error" hidden></p>' +
+      '<p class="hvp-card-sub">L\'avoir reçoit son propre numéro (AV-…), reste rattaché à la facture et ne peut plus être modifié. Un avoir du montant total sur une facture non réglée l\'annule. Maximum : ' + esc(euros(max)) + '.</p>' +
+      field('Montant de l\'avoir (€)', 'amount', 'number', (max / 100).toFixed(2), ' step="0.01" min="0.01" inputmode="decimal" required') +
+      '<label class="hvp-field">Motif<textarea name="reason" rows="2" maxlength="500" required placeholder="Ex. erreur de quantité, geste commercial, prestation annulée…"></textarea></label>' +
+      '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Créer l\'avoir">Créer l\'avoir</button></div></form>');
+    sheet.querySelector('#hvpCreditForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var fd = new FormData(e.target);
+      var cents = Math.round(parseFloat(String(fd.get('amount') || '').replace(',', '.')) * 100);
+      var reason = String(fd.get('reason') || '').trim();
+      if (!(cents > 0) || cents > max){ showError('Montant invalide (maximum ' + euros(max) + ').'); return; }
+      if (reason.length < 3){ showError('Indiquez le motif de l\'avoir.'); return; }
+      if (!window.confirm('Créer définitivement cet avoir de ' + euros(cents) + ' ?')) return;
+      busy(true);
+      sb.client.rpc('admin_create_credit_note', { p_invoice_id: invoiceId, p_amount_cents: cents, p_reason: reason }).then(function(r){
+        busy(false);
+        if (r.error){ showError(invoiceErrorText(r.error)); return; }
+        closeSheet(); renderInvoices();
+        window.alert('Avoir ' + r.data + ' créé.');
+      });
+    });
   }
   function partialPaymentForm(invoiceId, remaining){
     openSheet('<form id="hvpPayForm"><h3>Paiement partiel / acompte</h3><p class="hvp-error" hidden></p>' +
@@ -27506,6 +27731,10 @@ if ('serviceWorker' in navigator){
       });
       return;
     }
+    var ie = e.target.closest('[data-hvp-inv-edit]');
+    if (ie){ openInvoiceEditor(ie.getAttribute('data-hvp-inv-edit')); return; }
+    var cr = e.target.closest('[data-hvp-credit]');
+    if (cr){ creditNoteForm(cr.getAttribute('data-hvp-credit'), Number(cr.getAttribute('data-max')) || 0); return; }
     var pp = e.target.closest('[data-hvp-partpay]');
     if (pp){ partialPaymentForm(pp.getAttribute('data-hvp-partpay'), Number(pp.getAttribute('data-remaining')) || 0); return; }
     var dd = e.target.closest('[data-hvp-due]');
@@ -27663,6 +27892,7 @@ if ('serviceWorker' in navigator){
       else if (act === 'new-booking') newBookingForm();
       else if (act === 'new-intervention') newBookingForm({ startNow: true });
       else if (act === 'new-quote') newQuote();
+      else if (act === 'new-invoice') newInvoice();
       else if (act === 'new-stock') stockForm();
       return;
     }
@@ -27672,6 +27902,8 @@ if ('serviceWorker' in navigator){
     if (rf){ refuseBooking(rf.getAttribute('data-hvp-refuse'), rf); return; }
     var ed = e.target.closest('[data-hvp-edit]');
     if (ed){ editBooking(ed.getAttribute('data-hvp-edit')); return; }
+    var ib = e.target.closest('[data-hvp-invoice-booking]');
+    if (ib && window.hvpCreateInvoice){ window.hvpCreateInvoice('booking', ib.getAttribute('data-hvp-invoice-booking')); return; }
     var orb = e.target.closest('[data-hvp-onroute]');
     if (orb){ if (!orb.disabled) sendOnRoute(orb); return; }
     var st = e.target.closest('[data-hvp-start]');
@@ -27709,176 +27941,267 @@ if ('serviceWorker' in navigator){
 </script>
 <script>
 // =====================================================================
-// Administration — DOCUMENTS PDF (V2 phase 7) : devis et factures.
-// Généré dans le navigateur (jsPDF, déjà utilisé pour les exports), à partir
-// des seules données enregistrées : rien n'est inventé. Bloqué tant que les
-// informations entreprise obligatoires manquent (company_billing_ready) et
-// réservé au régime de franchise en base de TVA (aucune ventilation HT/TVA
-// n'existe dans les données : un document « assujetti » serait incomplet).
+// DOCUMENTS PDF — devis, factures, avoirs, comptes rendus d'intervention.
+// Générés dans le navigateur (jsPDF) à partir des seules données
+// enregistrées. Devis / factures / avoirs : fonction serveur
+// get_document_pdf_data (admin, ou client / pro propriétaire d'un document
+// non brouillon ; jamais de note interne). Comptes rendus : lecture soumise
+// aux règles RLS (le client ne lit que ses propres interventions).
+// TVA : franchise en base → mention art. 293 B du CGI, aucune TVA calculée ;
+// assujetti → HT / TVA / TTC figés à l'émission (0112_billing_core).
+// Utilisable dans l'administration ET dans l'espace client.
 // =====================================================================
 (function(){
   var sb = window.sudSupabase;
   if (!sb || !sb.client) return;
-  function euros(c){ return ((Number(c) || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }).replace(/ | /g, ' ') + ' EUR'; }
+  var NAVY = [16, 27, 36], BLUE = [26, 166, 238], SOFT = [91, 107, 120];
+  function euros(c){ return ((Number(c) || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }).replace(/[  ]/g, ' ') + ' €'; }
   function fmtDate(d){ if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(d); }
   var METHOD = { virement:'Virement', cheque:'Chèque', especes:'Espèces', carte:'Carte bancaire', autre:'Autre' };
+  var KIND = { prestation:'Prestation', main_oeuvre:'Main-d\'œuvre', fourniture:'Fourniture', deplacement:'Déplacement', remise:'Remise', autre:'Autre' };
+  var ITEM_STATUS = { OK:'OK', FUNCTIONAL:'OK', WATCH:'À surveiller', ANOMALY:'Anomalie', INTERVENTION_RECOMMENDED:'Intervention recommandée', NOT_APPLICABLE:'Non applicable' };
 
   function loadLibs(){
     var L = window.SUD_ADMIN_LIBS;
     return window.sudLoadScript(L.jspdf).then(function(){ return window.sudLoadScript(L.autotable); });
   }
-  function recipientOf(doc){
-    if (doc.client_id){
-      return sb.client.from('clients').select('first_name,last_name,address,postal_code,city,email,phone').eq('id', doc.client_id).maybeSingle().then(function(r){
-        var c = r.data || {};
-        return { name: [c.first_name, c.last_name].filter(Boolean).join(' '), lines: [c.address, [c.postal_code, c.city].filter(Boolean).join(' ')].filter(Boolean), email: c.email || '' };
-      });
-    }
-    if (doc.professional_account_id){
-      return sb.client.from('professional_accounts').select('legal_name').eq('id', doc.professional_account_id).maybeSingle().then(function(r){
-        return { name: (r.data && r.data.legal_name) || '', lines: [], email: '' };
-      });
-    }
-    if (doc.customer_user_id){
-      return Promise.all([
-        sb.client.from('customer_profiles').select('first_name,last_name').eq('user_id', doc.customer_user_id).maybeSingle(),
-        sb.client.from('customer_addresses').select('address,postal_code,city').eq('user_id', doc.customer_user_id).limit(1)
-      ]).then(function(r){
-        var cp = r[0].data || {}, a = (r[1].data || [])[0] || {};
-        return { name: [cp.first_name, cp.last_name].filter(Boolean).join(' '), lines: [a.address, [a.postal_code, a.city].filter(Boolean).join(' ')].filter(Boolean), email: '' };
-      });
-    }
-    return Promise.resolve({ name: '', lines: [], email: '' });
-  }
-
-  function header(pdf, co, title, ref, dateLabel){
+  function newPdf(){ return new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' }); }
+  function header(pdf, co, title, ref, dateLabel, statusLabel){
     var W = pdf.internal.pageSize.getWidth();
-    pdf.setFillColor(16, 27, 36); pdf.rect(0, 0, W, 70, 'F');
-    pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20);
-    pdf.text(co.trade_name || co.legal_name || 'HAYEVA', 40, 44);
-    pdf.setFontSize(16); pdf.text(title, W - 40, 36, { align: 'right' });
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
-    pdf.text('N° ' + ref + '  ·  ' + dateLabel, W - 40, 54, { align: 'right' });
-    pdf.setTextColor(16, 27, 36);
+    pdf.setFillColor(NAVY[0], NAVY[1], NAVY[2]); pdf.rect(0, 0, W, 74, 'F');
+    pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(21);
+    pdf.text(co.trade_name || 'HAYEVA', 40, 40);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.text('Plomberie • Chauffage • Climatisation', 40, 56);
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.text(title, W - 40, 36, { align: 'right' });
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    pdf.text((ref ? 'N° ' + ref + '  ·  ' : '') + dateLabel, W - 40, 52, { align: 'right' });
+    if (statusLabel) pdf.text(statusLabel, W - 40, 65, { align: 'right' });
+    pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
   }
-  function parties(pdf, co, rcpt, y){
+  function parties(pdf, co, cu, y){
     var W = pdf.internal.pageSize.getWidth();
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
     pdf.text('Émetteur', 40, y); pdf.text('Client', W / 2 + 10, y);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
-    var left = [co.legal_name, co.owner_name && co.owner_name !== co.legal_name ? co.owner_name : null, co.legal_form, co.address_line1, co.address_line2, [co.postal_code, co.city].filter(Boolean).join(' '),
-      co.siret ? 'SIRET : ' + co.siret : null, co.rcs_number ? co.rcs_number : null, co.phone ? 'Tél. : ' + co.phone : null, co.email || null].filter(Boolean);
-    var right = [rcpt.name || '—'].concat(rcpt.lines || []);
-    left.forEach(function(l, i){ pdf.text(String(l), 40, y + 16 + i * 13); });
-    right.forEach(function(l, i){ pdf.text(String(l), W / 2 + 10, y + 16 + i * 13); });
-    return y + 16 + Math.max(left.length, right.length) * 13 + 14;
+    var left = [co.legal_name, co.owner_name && co.owner_name !== co.legal_name ? co.owner_name : null, co.legal_form,
+      co.address_line1, co.address_line2, [co.postal_code, co.city].filter(Boolean).join(' '),
+      co.siret ? 'SIRET : ' + co.siret : null, co.rcs_number || null, co.vat_regime === 'assujetti' && co.vat_number ? 'TVA intracom. : ' + co.vat_number : null,
+      co.phone ? 'Tél. : ' + co.phone : null, co.email || null].filter(Boolean);
+    var right = [cu.name || '—', cu.address, [cu.postal_code, cu.city].filter(Boolean).join(' '), cu.siret ? 'SIRET : ' + cu.siret : null].filter(Boolean);
+    left.forEach(function(l, i){ pdf.text(String(l), 40, y + 15 + i * 12.5); });
+    right.forEach(function(l, i){ pdf.text(String(l), W / 2 + 10, y + 15 + i * 12.5); });
+    return y + 15 + Math.max(left.length, right.length) * 12.5 + 14;
   }
-  function footer(pdf, co){
+  function footer(pdf, co, extra){
     var W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
-    var lines = ['TVA non applicable, art. 293 B du CGI.'];
+    var lines = [];
+    if (co.vat_regime !== 'assujetti') lines.push('TVA non applicable, art. 293 B du CGI.');
+    (extra || []).forEach(function(x){ if (x) lines.push(x); });
     if (co.insurance_company) lines.push('Assurance professionnelle : ' + co.insurance_company + (co.insurance_contract_number ? ' — contrat n° ' + co.insurance_contract_number : '') + (co.insurance_coverage ? ' — couverture : ' + co.insurance_coverage : '') + '.');
     if (co.mediator_name) lines.push('Médiateur de la consommation : ' + co.mediator_name + (co.mediator_contact ? ' — ' + co.mediator_contact : '') + '.');
-    pdf.setFontSize(8); pdf.setTextColor(91, 107, 120);
-    var y = H - 24 - lines.length * 10;
-    lines.forEach(function(l){ pdf.splitTextToSize(l, W - 80).forEach(function(s){ pdf.text(s, 40, y); y += 10; }); });
-    pdf.setTextColor(16, 27, 36);
+    var pages = pdf.internal.getNumberOfPages();
+    for (var p = 1; p <= pages; p++){
+      pdf.setPage(p);
+      pdf.setFontSize(7.8); pdf.setTextColor(SOFT[0], SOFT[1], SOFT[2]);
+      var wrapped = [];
+      lines.forEach(function(l){ wrapped = wrapped.concat(pdf.splitTextToSize(l, W - 80)); });
+      var y = H - 22 - wrapped.length * 9.5;
+      wrapped.forEach(function(s){ pdf.text(s, 40, y); y += 9.5; });
+      pdf.text('Page ' + p + ' / ' + pages, W - 40, H - 14, { align: 'right' });
+    }
+    pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
   }
-
-  function generate(kind, id){
-    return Promise.all([
-      loadLibs(),
-      sb.client.from('company_settings').select('*').eq('id', 1).maybeSingle(),
-      sb.client.rpc('company_billing_ready')
-    ]).then(function(r){
-      var co = r[1].data || {};
-      if (r[2].error || r[2].data !== true) throw new Error('Complétez d\'abord les informations entreprise obligatoires (Réglages > Entreprise).');
-      if (co.vat_regime !== 'franchise_base') throw new Error('Document PDF disponible uniquement en franchise en base de TVA : HAYEVA n\'enregistre pas encore la ventilation HT / TVA nécessaire à un assujetti.');
-      if (kind === 'quote'){
-        return Promise.all([
-          sb.client.from('quotes').select('*').eq('id', id).maybeSingle(),
-          sb.client.from('quote_options').select('*').eq('quote_id', id).order('sort_order', { ascending: true })
-        ]).then(function(q){
-          var quote = q[0].data; if (!quote) throw new Error('Devis introuvable.');
-          return recipientOf(quote).then(function(rcpt){ return buildQuote(co, quote, q[1].data || [], rcpt); });
-        });
-      }
-      return Promise.all([
-        sb.client.from('invoices').select('*').eq('id', id).maybeSingle(),
-        sb.client.from('invoice_payments').select('amount_cents,method,paid_on').eq('invoice_id', id).order('paid_on', { ascending: true })
-      ]).then(function(q){
-        var inv = q[0].data; if (!inv) throw new Error('Facture introuvable.');
-        if (inv.status === 'DRAFT') throw new Error('Une facture en brouillon ne peut pas être exportée : émettez-la d\'abord.');
-        var lines = inv.quote_id
-          ? Promise.all([sb.client.from('quotes').select('selected_option_id,title').eq('id', inv.quote_id).maybeSingle(), sb.client.from('quote_options').select('*').eq('quote_id', inv.quote_id)])
-          : Promise.resolve(null);
-        return Promise.all([recipientOf(inv), lines]).then(function(x){ return buildInvoice(co, inv, q[1].data || [], x[0], x[1]); });
-      });
+  function totalsTable(pdf, rows, startY){
+    pdf.autoTable({ startY: startY, margin: { left: 300, right: 40 }, theme: 'plain', styles: { fontSize: 9.5, cellPadding: 4 },
+      body: rows, columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } } });
+    return pdf.lastAutoTable.finalY;
+  }
+  function vatRows(lines, assujetti){
+    if (!assujetti) return [];
+    var byRate = {};
+    lines.forEach(function(l){
+      var ttc = Math.round(Number(l.quantity) * Number(l.unit_ttc_cents));
+      var rate = Number(l.vat_rate) || 0;
+      var ht = Math.round(ttc * 100 / (100 + rate));
+      byRate[rate] = byRate[rate] || { ht: 0, vat: 0 };
+      byRate[rate].ht += ht; byRate[rate].vat += ttc - ht;
     });
+    return Object.keys(byRate).map(function(r){ return ['TVA ' + String(r).replace('.', ',') + ' % (base ' + euros(byRate[r].ht) + ')', euros(byRate[r].vat)]; });
   }
 
-  function buildQuote(co, quote, options, rcpt){
-    var pdf = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
-    header(pdf, co, 'DEVIS', quote.reference || '', 'du ' + fmtDate(quote.sent_at || quote.created_at));
-    var y = parties(pdf, co, rcpt, 100);
-    if (quote.title){ pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.text('Objet : ' + quote.title, 40, y); y += 18; }
-    if (options.length > 1){ pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.text('Ce devis propose ' + options.length + ' options au choix (une seule sera retenue).', 40, y); y += 14; }
+  function buildQuote(d){
+    var co = d.company || {}, q = d.doc, options = d.options || [];
+    var assujetti = co.vat_regime === 'assujetti';
+    var pdf = newPdf();
+    var validity = co.quote_validity_days ? 'Valable ' + co.quote_validity_days + ' jours' : '';
+    header(pdf, co, 'DEVIS', q.reference, 'du ' + fmtDate(q.sent_at || q.created_at), validity);
+    var y = parties(pdf, co, d.customer || {}, 96);
+    if (q.title){ pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.text('Objet : ' + q.title, 40, y); y += 16; }
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    if (options.length > 1){ pdf.text('Ce devis propose ' + options.length + ' options au choix (une seule sera retenue).', 40, y); y += 14; }
     pdf.autoTable({
-      startY: y, margin: { left: 40, right: 40 }, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [26, 166, 238] },
-      head: [['Option', 'Description', 'Fourniture', 'Main-d\'œuvre', 'Total']],
-      body: options.map(function(o){ return [(o.label || 'Option') + (quote.selected_option_id === o.id ? ' (retenue)' : '') + (o.reference ? '\nRéf. ' + o.reference : ''), o.description || '', euros(o.supply_cents), euros(o.labor_cents), euros(o.total_cents)]; }),
+      startY: y, margin: { left: 40, right: 40 }, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: BLUE },
+      head: [['Option', 'Description', 'Fourniture', 'Main-d\'œuvre', 'Total' + (assujetti ? ' TTC' : '')]],
+      body: options.map(function(o){ return [(o.label || 'Option') + (q.selected_option_id === o.id ? ' (retenue)' : '') + (o.reference ? '\nRéf. ' + o.reference : ''), o.description || '', euros(o.supply_cents), euros(o.labor_cents), euros(o.total_cents)]; }),
       columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } }
     });
-    var ty = pdf.lastAutoTable.finalY + 20;
+    var rows = [];
+    if (q.travel_fee_cents > 0) rows.push(['Déplacement', euros(q.travel_fee_cents)]);
+    if (q.discount_cents > 0) rows.push(['Remise', '- ' + euros(q.discount_cents)]);
+    var ty = rows.length ? totalsTable(pdf, rows, pdf.lastAutoTable.finalY + 8) : pdf.lastAutoTable.finalY;
+    ty += 18;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
-    pdf.text('Montants en euros' + (options.length > 1 ? ', par option.' : '.'), 40, ty);
-    pdf.text('Bon pour accord — date et signature du client :', 40, ty + 34);
-    pdf.rect(40, ty + 42, 240, 70);
+    pdf.text(assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : 'Montants en euros, nets de taxe.', 40, ty);
+    if (co.payment_terms){ pdf.splitTextToSize('Conditions de paiement : ' + co.payment_terms, 515).forEach(function(s2, k){ pdf.text(s2, 40, ty + 14 + k * 12); }); ty += 14; }
+    pdf.text('Bon pour accord — date et signature du client :', 40, ty + 30);
+    pdf.rect(40, ty + 38, 240, 66);
+    if (q.status === 'ACCEPTED' && q.accepted_at){ pdf.setFontSize(9); pdf.text('Accepté en ligne le ' + fmtDate(q.accepted_at) + '.', 48, ty + 56); }
     footer(pdf, co);
-    pdf.save('Devis-' + (quote.reference || 'HAYEVA') + '.pdf');
+    pdf.save('Devis-' + (q.reference || 'HAYEVA') + '.pdf');
   }
 
-  function buildInvoice(co, inv, payments, rcpt, quoteData){
-    var pdf = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
-    header(pdf, co, 'FACTURE', inv.reference || '', 'du ' + fmtDate(inv.created_at));
-    var y = parties(pdf, co, rcpt, 100);
-    var body = [];
-    if (quoteData && quoteData[0] && quoteData[0].data){
-      var sel = quoteData[0].data.selected_option_id;
-      var opts = (quoteData[1].data || []).filter(function(o){ return !sel || o.id === sel; });
-      if (opts.length === 1) body.push([(opts[0].label || 'Prestation') + (opts[0].description ? '\n' + opts[0].description : ''), euros(opts[0].supply_cents), euros(opts[0].labor_cents), euros(opts[0].total_cents)]);
-    }
-    if (!body.length) body.push(['Prestation' + (quoteData && quoteData[0] && quoteData[0].data && quoteData[0].data.title ? ' — ' + quoteData[0].data.title : ''), '', '', euros(inv.total_cents)]);
-    pdf.autoTable({
-      startY: y, margin: { left: 40, right: 40 }, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [26, 166, 238] },
-      head: [['Désignation', 'Fourniture', 'Main-d\'œuvre', 'Total']], body: body,
-      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } }
+  function buildInvoice(d){
+    var co = d.company || {}, inv = d.doc, lines = d.lines || [];
+    var assujetti = (inv.vat_regime || co.vat_regime) === 'assujetti';
+    var pdf = newPdf();
+    var status = inv.status === 'PAID' ? 'Payée' : inv.status === 'CANCELLED' ? 'Annulée (avoir)' : '';
+    header(pdf, co, 'FACTURE', inv.reference, 'du ' + fmtDate(inv.issued_at || inv.created_at), status);
+    var y = parties(pdf, co, d.customer || {}, 96);
+    var body = lines.map(function(l){
+      var ttc = Math.round(Number(l.quantity) * Number(l.unit_ttc_cents));
+      var row = [(l.label || KIND[l.kind] || 'Ligne') + (l.description ? '\n' + l.description : ''), String(Number(l.quantity)).replace('.', ','), euros(l.unit_ttc_cents)];
+      if (assujetti) row.push(String(Number(l.vat_rate)).replace('.', ',') + ' %');
+      row.push(euros(ttc));
+      return row;
     });
-    var paid = payments.reduce(function(s, p){ return s + (Number(p.amount_cents) || 0); }, 0);
-    if (inv.status === 'PAID' && !paid) paid = inv.total_cents || 0;
-    var rows = [['Total à payer', euros(inv.total_cents)]];
-    if (payments.length) payments.forEach(function(p){ rows.push(['Réglé' + (p.paid_on ? ' le ' + fmtDate(p.paid_on) : '') + (p.method ? ' (' + (METHOD[p.method] || p.method) + ')' : ''), '- ' + euros(p.amount_cents)]); });
-    else if (inv.status === 'PAID') rows.push(['Réglé' + (inv.paid_at ? ' le ' + fmtDate(inv.paid_at) : ''), '- ' + euros(inv.total_cents)]);
+    if (!body.length) body.push(['Prestation', '1', euros(inv.total_cents)].concat(assujetti ? ['—'] : []).concat([euros(inv.total_cents)]));
+    var head = ['Désignation', 'Qté', 'P.U.' + (assujetti ? ' TTC' : '')].concat(assujetti ? ['TVA'] : []).concat(['Montant' + (assujetti ? ' TTC' : '')]);
+    var cs = { 1: { halign: 'right' }, 2: { halign: 'right' } }; cs[head.length - 1] = { halign: 'right', fontStyle: 'bold' }; if (assujetti) cs[3] = { halign: 'right' };
+    pdf.autoTable({ startY: y, margin: { left: 40, right: 40 }, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: BLUE }, head: [head], body: body, columnStyles: cs });
+    var rows = [];
+    if (assujetti){
+      rows.push(['Total HT', euros(inv.total_ht_cents)]);
+      rows = rows.concat(vatRows(lines, true));
+      rows.push(['Total TTC', euros(inv.total_cents)]);
+    } else {
+      rows.push(['Total à payer', euros(inv.total_cents)]);
+    }
+    var paid = 0;
+    (d.payments || []).forEach(function(p){ paid += Number(p.amount_cents) || 0; rows.push(['Réglé' + (p.paid_on ? ' le ' + fmtDate(p.paid_on) : '') + (p.method ? ' (' + (METHOD[p.method] || p.method) + ')' : ''), '- ' + euros(p.amount_cents)]); });
+    if (inv.status === 'PAID' && !paid){ paid = inv.total_cents || 0; rows.push(['Réglé' + (inv.paid_at ? ' le ' + fmtDate(inv.paid_at) : ''), '- ' + euros(inv.total_cents)]); }
+    var credited = 0;
+    (d.credit_notes || []).forEach(function(c){ credited += Number(c.amount_cents) || 0; rows.push(['Avoir ' + c.reference, '- ' + euros(c.amount_cents)]); });
     if (inv.refunded_cents > 0) rows.push(['Remboursé au client', euros(inv.refunded_cents)]);
-    rows.push(['Reste à payer', euros(Math.max((inv.total_cents || 0) - paid, 0))]);
-    pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 12, margin: { left: 300, right: 40 }, styles: { fontSize: 9.5, cellPadding: 5 }, theme: 'plain', body: rows,
-      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } } });
-    var ty = pdf.lastAutoTable.finalY + 20;
+    if (inv.status !== 'CANCELLED') rows.push(['Reste à payer', euros(Math.max((inv.total_cents || 0) - paid - credited, 0))]);
+    var ty = totalsTable(pdf, rows, pdf.lastAutoTable.finalY + 10) + 18;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
-    if (inv.due_date && inv.status !== 'PAID') pdf.text('Date d\'échéance du paiement : ' + fmtDate(inv.due_date) + '.', 40, ty);
-    if (inv.status === 'CANCELLED'){ pdf.setTextColor(178, 58, 58); pdf.setFont('helvetica', 'bold'); pdf.text('FACTURE ANNULÉE', 40, ty + 16); pdf.setTextColor(16, 27, 36); }
+    if (inv.due_date && inv.status === 'ISSUED'){ pdf.text('Date d\'échéance du paiement : ' + fmtDate(inv.due_date) + '.', 40, ty); ty += 14; }
+    if (co.payment_terms){ pdf.splitTextToSize('Conditions de paiement : ' + co.payment_terms, 515).forEach(function(s2){ pdf.text(s2, 40, ty); ty += 12; }); }
+    if (inv.status === 'CANCELLED' && inv.cancelled_reason){ pdf.setTextColor(178, 58, 58); pdf.setFont('helvetica', 'bold'); pdf.text(inv.cancelled_reason, 40, ty + 6); pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]); }
     footer(pdf, co);
     pdf.save('Facture-' + (inv.reference || 'HAYEVA') + '.pdf');
   }
 
+  function buildCreditNote(d){
+    var co = d.company || {}, inv = d.doc, cn = d.credit_note;
+    var assujetti = (inv.vat_regime || co.vat_regime) === 'assujetti';
+    var pdf = newPdf();
+    header(pdf, co, 'AVOIR', cn.reference, 'du ' + fmtDate(cn.created_at), 'Sur facture ' + (inv.reference || ''));
+    var y = parties(pdf, co, d.customer || {}, 96);
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11);
+    pdf.text('Avoir ' + (cn.is_full ? 'total' : 'partiel') + ' sur la facture ' + (inv.reference || '') + ' du ' + fmtDate(inv.issued_at || inv.created_at), 40, y); y += 16;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    pdf.splitTextToSize('Motif : ' + cn.reason, 515).forEach(function(s2){ pdf.text(s2, 40, y); y += 12; });
+    var rows = assujetti
+      ? [['Montant HT', '- ' + euros(cn.amount_ht_cents)], ['TVA', '- ' + euros(cn.vat_cents)], ['Montant TTC de l\'avoir', '- ' + euros(cn.amount_cents)]]
+      : [['Montant de l\'avoir', '- ' + euros(cn.amount_cents)]];
+    totalsTable(pdf, rows, y + 10);
+    footer(pdf, co);
+    pdf.save('Avoir-' + cn.reference + '.pdf');
+  }
+
+  function buildReport(iv, co){
+    var b = iv.bookings || {};
+    var pdf = newPdf();
+    header(pdf, { trade_name: co.trade_name || 'HAYEVA' }, 'COMPTE RENDU', iv.report_number || '', 'Intervention du ' + fmtDate(iv.ended_at || iv.performed_at || b.date), iv.report_status === 'FINALIZED' ? 'Validé' : 'Provisoire');
+    var W = pdf.internal.pageSize.getWidth();
+    var y = 100;
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
+    pdf.text('Intervenant', 40, y); pdf.text('Client', W / 2 + 10, y);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    var left = [co.entrepreneurName || co.legal_name, co.professionalAddress, co.siret ? 'SIRET : ' + co.siret : null, iv.technician_name ? 'Technicien : ' + iv.technician_name : null].filter(Boolean);
+    var right = [b.guest_name || iv._clientName || '—', b.guest_address || iv._clientAddress || null, b.reference ? 'Rendez-vous ' + b.reference : null].filter(Boolean);
+    left.forEach(function(l, i){ pdf.text(String(l), 40, y + 15 + i * 12.5); });
+    right.forEach(function(l, i){ pdf.text(String(l), W / 2 + 10, y + 15 + i * 12.5); });
+    y += 15 + Math.max(left.length, right.length) * 12.5 + 12;
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11);
+    pdf.text((b.services && b.services.name) || 'Intervention', 40, y); y += 6;
+    var eq = iv.customer_equipment;
+    if (eq){ pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); y += 12; pdf.text('Équipement : ' + [eq.brand, eq.model, eq.power_capacity, eq.serial_number ? 'n° ' + eq.serial_number : null].filter(Boolean).join(' · '), 40, y); }
+    var items = (iv.intervention_items || []).filter(function(it){ return it.visibility === 'customer_visible'; }).sort(function(a, c){ return (a.sort_order || 0) - (c.sort_order || 0); });
+    if (items.length){
+      pdf.autoTable({ startY: y + 10, margin: { left: 40, right: 40 }, styles: { fontSize: 8.8, cellPadding: 5 }, headStyles: { fillColor: BLUE },
+        head: [['Contrôle', 'Résultat', 'Observation']],
+        body: items.map(function(it){ return [(it.section ? it.section + ' — ' : '') + it.name, (ITEM_STATUS[it.status] || it.status || '') + (it.measured_value ? ' (' + it.measured_value + ')' : ''), it.observation || '']; }) });
+      y = pdf.lastAutoTable.finalY + 14;
+    } else { y += 20; }
+    pdf.setFontSize(9.5);
+    [['Observations', iv.observations], ['Recommandations', iv.recommendations], ['Réserves', iv.reserves_detail]].forEach(function(s3){
+      if (!s3[1]) return;
+      if (y > 700){ pdf.addPage(); y = 50; }
+      pdf.setFont('helvetica', 'bold'); pdf.text(s3[0], 40, y); y += 13;
+      pdf.setFont('helvetica', 'normal');
+      pdf.splitTextToSize(String(s3[1]), 515).forEach(function(l){ pdf.text(l, 40, y); y += 12; });
+      y += 6;
+    });
+    if (y > 660){ pdf.addPage(); y = 50; }
+    pdf.setFont('helvetica', 'bold'); pdf.text('Signature du client', 40, y + 6); pdf.text('Signature du technicien', W / 2 + 10, y + 6);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
+    [[iv.client_signature_data, iv.client_signature_name, iv.client_signed_at, 40], [iv.technician_signature_data, iv.technician_signature_name, iv.technician_signed_at, W / 2 + 10]].forEach(function(sg){
+      pdf.rect(sg[3], y + 12, 230, 70);
+      if (sg[0] && /^data:image\/(png|jpeg)/.test(sg[0])){ try { pdf.addImage(sg[0], sg[0].indexOf('jpeg') > 0 ? 'JPEG' : 'PNG', sg[3] + 6, y + 16, 140, 60); } catch(e){} }
+      if (sg[1] || sg[2]) pdf.text([sg[1], sg[2] ? 'le ' + fmtDate(sg[2]) : null].filter(Boolean).join(' — '), sg[3], y + 94);
+    });
+    footer(pdf, { vat_regime: 'assujetti', insurance_company: co.insurer, insurance_contract_number: co.insurancePolicyNumber, insurance_coverage: co.insuranceCoverage });
+    pdf.save('Compte-rendu-' + (iv.report_number || b.reference || 'HAYEVA') + '.pdf');
+  }
+
+  function friendly(err){
+    var m = err && err.message ? String(err.message) : '';
+    if (/introuvable|Connexion/i.test(m)) return 'Document indisponible.';
+    if (/Chargement impossible/i.test(m)) return 'Le générateur PDF ne s\'est pas chargé (connexion ?). Réessayez.';
+    return 'Génération du PDF impossible pour le moment. Réessayez.';
+  }
+  function generate(kind, id){
+    if (kind === 'report'){
+      return Promise.all([
+        loadLibs(),
+        sb.client.from('interventions').select('*, bookings(reference, date, guest_name, guest_address, client_id, services(name)), intervention_items(name, status, observation, visibility, measured_value, sort_order, section), customer_equipment(brand, model, power_capacity, serial_number)').eq('id', id).maybeSingle(),
+        sb.client.rpc('get_public_legal_info')
+      ]).then(function(r){
+        if (r[1].error || !r[1].data) throw new Error('Document introuvable.');
+        buildReport(r[1].data, r[2].data || {});
+      });
+    }
+    return Promise.all([loadLibs(), sb.client.rpc('get_document_pdf_data', { p_kind: kind, p_id: id })]).then(function(r){
+      if (r[1].error || !r[1].data) throw new Error('Document introuvable.');
+      var d = r[1].data;
+      if (kind === 'quote') buildQuote(d);
+      else if (kind === 'credit_note') buildCreditNote(d);
+      else buildInvoice(d);
+    });
+  }
   window.hvDocPdf = function(kind, id, btn){
     if (btn){ btn.disabled = true; btn.setAttribute('data-label', btn.textContent); btn.textContent = 'PDF…'; }
     return generate(kind, id).catch(function(err){
-      window.alert(err && err.message ? err.message : 'Génération du PDF impossible.');
+      console.error('hvDocPdf', kind, err);
+      window.alert(friendly(err));
     }).then(function(){ if (btn){ btn.disabled = false; btn.textContent = btn.getAttribute('data-label'); } });
   };
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-hv-pdf]');
     if (!b) return;
+    e.preventDefault();
     var parts = String(b.getAttribute('data-hv-pdf')).split(':');
     window.hvDocPdf(parts[0], parts[1], b);
   });
