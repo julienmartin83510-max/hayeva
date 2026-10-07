@@ -8772,6 +8772,8 @@ if ('serviceWorker' in navigator){
                 </div>
                 <p class="adm-subhead">À traiter</p>
                 <div class="hvp-todo" id="hvpTodo"><p class="ec-loading">Chargement…</p></div>
+                <p class="adm-subhead">Chiffres clés</p>
+                <div class="hvp-todo hvp-kpis" id="hvpKpis"><p class="ec-loading">Chargement…</p></div>
                 <div id="hvpNotifs"></div>
                 <p class="adm-subhead">Interventions du jour</p>
                 <div id="hvpTodayList"><p class="ec-loading">Chargement…</p></div>
@@ -26560,6 +26562,8 @@ if ('serviceWorker' in navigator){
   .hvp-primary-btn{ background:var(--adm-ocean); white-space:nowrap; }
   .hvp-todo{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 18px; }
   @media (min-width:760px){ .hvp-todo{ grid-template-columns:repeat(5,minmax(0,1fr)); } }
+  @media (min-width:760px){ .hvp-kpis{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+  .hvp-kpis .hvp-todo-item strong{ font-size:1.05rem; }
   .hvp-todo-item{
     display:flex; flex-direction:column; gap:2px; text-align:left; background:var(--adm-card-bg); color:var(--adm-ink);
     border:1px solid var(--adm-line); border-radius:14px; padding:12px 14px; cursor:pointer; font-family:"Poppins",sans-serif; min-height:72px;
@@ -26635,6 +26639,7 @@ if ('serviceWorker' in navigator){
   .hvp-pick.is-selected{ background:var(--adm-ocean-soft); font-weight:700; }
   .hvp-actions-3{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; margin-top:8px; }
   .hvp-actions-1{ grid-template-columns:1fr !important; margin-top:8px; }
+  .hvp-actions-2{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; margin-top:8px; }
   .hvp-act.is-danger{ background:var(--adm-red-soft); color:var(--adm-red); border-color:transparent; }
   .hvp-seg{ display:inline-flex; border:1px solid var(--adm-line); border-radius:12px; overflow:hidden; margin-left:8px; background:var(--adm-card-bg); }
   .hvp-seg button{ border:none; background:transparent; color:var(--adm-ink); font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; padding:10px 14px; min-height:42px; cursor:pointer; }
@@ -26787,6 +26792,28 @@ if ('serviceWorker' in navigator){
       counts.stock = r[2].error ? null : (r[2].data || []).filter(function(s){ return Number(s.min_quantity) > 0 && Number(s.quantity) <= Number(s.min_quantity); }).length;
       paint();
     }).catch(function(){});
+    renderKpis();
+  }
+
+  // Chiffres clés (admin_finance_kpis, 0107) : calculés côté serveur.
+  function renderKpis(){
+    var el = document.getElementById('hvpKpis');
+    if (!el) return;
+    sb.client.rpc('admin_finance_kpis').then(function(r){
+      var k = r && r.data;
+      if (r.error || !k){ el.innerHTML = '<p class="hvp-empty">Chiffres clés indisponibles.</p>'; return; }
+      function tile(value, label, goto, alert){
+        return '<button type="button" class="hvp-todo-item' + (alert ? ' is-alert' : '') + '" data-adm-goto="' + goto + '"><strong>' + esc(value) + '</strong><span>' + esc(label) + '</span></button>';
+      }
+      el.innerHTML =
+        tile(euros(k.revenue_month_cents), 'Encaissé ce mois-ci', 'invoices', false) +
+        tile(euros(k.revenue_year_cents), 'Encaissé cette année', 'invoices', false) +
+        tile(euros(k.outstanding_cents), 'Reste à encaisser', 'invoices', false) +
+        tile(k.overdue_count, 'Factures en retard', 'invoices', k.overdue_count > 0) +
+        tile(k.quotes_pending_count + ' · ' + euros(k.quotes_pending_cents), 'Devis en attente', 'quotes', false) +
+        tile(k.quote_conversion_pct == null ? '—' : k.quote_conversion_pct + ' %', 'Devis acceptés (90 j)', 'quotes', false) +
+        tile(k.maintenance_due_30d, 'Entretiens à prévoir (30 j)', 'clients', false);
+    }).catch(function(){ el.innerHTML = '<p class="hvp-empty">Chiffres clés indisponibles.</p>'; });
   }
 
   // ---------------- Interventions ----------------
@@ -27313,7 +27340,9 @@ if ('serviceWorker' in navigator){
     ['vat_regime', 'Régime de TVA', true], ['vat_number', 'N° de TVA intracommunautaire (si assujetti)', false],
     ['insurance_company', 'Assurance (compagnie)', true], ['insurance_contract_number', 'N° de contrat d\'assurance', true], ['insurance_coverage', 'Couverture géographique', false],
     ['mediator_name', 'Médiateur de la consommation', true], ['mediator_contact', 'Coordonnées du médiateur (site / adresse)', false],
-    ['phone', 'Téléphone', false], ['email', 'E-mail', false], ['website', 'Site internet', false]
+    ['phone', 'Téléphone', false], ['email', 'E-mail', false], ['website', 'Site internet', false],
+    // Vide = aucune demande d'avis envoyée (0106_review_requests).
+    ['google_review_url', 'Lien « Laisser un avis » Google (demande d\'avis envoyée au client le lendemain d\'une intervention terminée)', false]
   ];
   var companyCache = null, billingReady = false;
   window.hvpCompany = function(){ return companyCache; };
@@ -27338,7 +27367,7 @@ if ('serviceWorker' in navigator){
               '<option value="franchise_base"' + (c.vat_regime === 'franchise_base' ? ' selected' : '') + '>Franchise en base (TVA non applicable, art. 293 B du CGI)</option>' +
               '<option value="assujetti"' + (c.vat_regime === 'assujetti' ? ' selected' : '') + '>Assujetti à la TVA</option></select></label>';
           }
-          return field(label, f[0], f[0] === 'email' ? 'email' : (f[0] === 'website' ? 'url' : 'text'), c[f[0]], (f[0] === 'siret' || f[0] === 'siren' || f[0] === 'postal_code') ? ' inputmode="numeric"' : '');
+          return field(label, f[0], f[0] === 'email' ? 'email' : ((f[0] === 'website' || f[0] === 'google_review_url') ? 'url' : 'text'), c[f[0]], (f[0] === 'siret' || f[0] === 'siren' || f[0] === 'postal_code') ? ' inputmode="numeric"' : (f[0] === 'google_review_url' ? ' placeholder="https://g.page/r/…/review"' : ''));
         }).join('') + '</div>' +
         '<p class="hvp-card-sub">* Obligatoire pour la facturation définitive. Rien n\'est pré-rempli : saisissez uniquement vos informations officielles. Ces informations alimentent aussi automatiquement les mentions légales publiques du site.</p>' +
         '<div class="hvp-sheet-actions"><button type="submit" class="hvp-btn-ok" data-label="Enregistrer les informations">Enregistrer les informations</button></div></form>';
@@ -27348,6 +27377,7 @@ if ('serviceWorker' in navigator){
         COMPANY_FIELDS.forEach(function(f){ var v = String(fd.get(f[0]) || '').trim(); row[f[0]] = v || null; });
         if (row.siret) row.siret = row.siret.replace(/\s+/g, '');
         if (row.siren) row.siren = row.siren.replace(/\s+/g, '');
+        if (row.google_review_url && !/^https:\/\//i.test(row.google_review_url)){ el.querySelector('.hvp-error').hidden = false; el.querySelector('.hvp-error').textContent = 'Le lien d\'avis Google doit commencer par https://'; return; }
         if (row.siret && !/^\d{14}$/.test(row.siret)){ el.querySelector('.hvp-error').hidden = false; el.querySelector('.hvp-error').textContent = 'Le SIRET doit comporter 14 chiffres.'; return; }
         if (row.siren && !/^\d{9}$/.test(row.siren)){ el.querySelector('.hvp-error').hidden = false; el.querySelector('.hvp-error').textContent = 'Le SIREN doit comporter 9 chiffres.'; return; }
         var btn = e.target.querySelector('[type="submit"]'); btn.disabled = true; btn.textContent = 'Enregistrement…';
@@ -27362,21 +27392,61 @@ if ('serviceWorker' in navigator){
 
   // ---------------- Factures ----------------
   var INV_STATUS = { DRAFT:'Brouillon', ISSUED:'Émise — à régler', PAID:'Payée', CANCELLED:'Annulée' };
+  // Paiements partiels et échéance (0105_invoice_payments) : « Partiellement
+  // payée » et « En retard » sont des états calculés, le statut ISSUED reste.
+  var PAY_METHODS = [['virement','Virement'], ['cheque','Chèque'], ['especes','Espèces'], ['carte','Carte bancaire'], ['autre','Autre']];
+  var invoicePaidCache = {};
+  function invTodayStr(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function renderInvoices(){
     var el = document.getElementById('hvpInvoices');
     if (!el) return;
-    Promise.all([loadCompany(), sb.client.from('invoices').select('id,reference,status,total_cents,created_at,paid_at,client_id,refunded_cents').order('created_at', { ascending:false }).limit(200)]).then(function(r){
+    Promise.all([loadCompany(), sb.client.from('invoices').select('id,reference,status,total_cents,created_at,paid_at,client_id,refunded_cents,due_date').order('created_at', { ascending:false }).limit(200),
+      sb.client.from('invoice_payments').select('invoice_id,amount_cents')]).then(function(r){
       var rows = (r[1] && r[1].data) || [];
+      invoicePaidCache = {};
+      ((r[2] && r[2].data) || []).forEach(function(p){ invoicePaidCache[p.invoice_id] = (invoicePaidCache[p.invoice_id] || 0) + (Number(p.amount_cents) || 0); });
+      var today = invTodayStr();
       el.innerHTML = (billingReady ? '' : '<p class="hvp-banner is-warn">' + esc(BILLING_OFF) + ' <button type="button" class="hvp-link" data-hvp-goto-company>Compléter</button></p>') +
         '<p class="hvp-card-sub">La création et l\'émission de factures définitives sont désactivées tant que les informations entreprise obligatoires ne sont pas renseignées (contrôle également appliqué côté serveur).</p>' +
         (rows.length ? rows.map(function(i){
-          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(i.reference || 'Facture') + '</p><p class="hvp-card-sub">' + esc(fmtDate(i.created_at)) + ' · ' + esc(euros(i.total_cents)) + (i.refunded_cents > 0 ? ' · remboursé ' + esc(euros(i.refunded_cents)) : '') + '</p></div>' +
-            '<span class="hvp-pill ' + (i.status === 'PAID' ? 'hvp-st-COMPLETED' : (i.status === 'ISSUED' ? 'hvp-st-PENDING' : 'hvp-st-CANCELLED')) + '">' + esc(INV_STATUS[i.status] || i.status) + '</span></div>' +
-            (i.status === 'ISSUED' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-paid="' + i.id + '">ENREGISTRER LE PAIEMENT</button></div>' : '') +
+          var paid = invoicePaidCache[i.id] || 0;
+          var remaining = Math.max((i.total_cents || 0) - paid, 0);
+          var overdue = i.status === 'ISSUED' && i.due_date && String(i.due_date).slice(0, 10) < today;
+          var label = INV_STATUS[i.status] || i.status;
+          if (i.status === 'ISSUED' && paid > 0) label = 'Partiellement payée';
+          if (overdue) label = 'En retard';
+          var pillCls = i.status === 'PAID' ? 'hvp-st-COMPLETED' : (i.status === 'ISSUED' ? (overdue ? 'hvp-st-low' : 'hvp-st-PENDING') : 'hvp-st-CANCELLED');
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(i.reference || 'Facture') + '</p><p class="hvp-card-sub">' + esc(fmtDate(i.created_at)) + ' · ' + esc(euros(i.total_cents)) + (i.refunded_cents > 0 ? ' · remboursé ' + esc(euros(i.refunded_cents)) : '') + '</p>' +
+            (i.status === 'ISSUED' && (paid > 0 || i.due_date) ? '<p class="hvp-card-sub">' + (paid > 0 ? 'Encaissé ' + esc(euros(paid)) + ' · reste ' + esc(euros(remaining)) : '') + (paid > 0 && i.due_date ? ' · ' : '') + (i.due_date ? 'Échéance ' + esc(fmtDate(i.due_date)) : '') + '</p>' : '') + '</div>' +
+            '<span class="hvp-pill ' + pillCls + '">' + esc(label) + '</span></div>' +
+            (i.status === 'ISSUED' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-paid="' + i.id + '">ENREGISTRER LE PAIEMENT</button></div>' +
+              '<div class="hvp-actions hvp-actions-2"><button type="button" class="hvp-act" data-hvp-partpay="' + i.id + '" data-remaining="' + remaining + '">PAIEMENT PARTIEL</button><button type="button" class="hvp-act" data-hvp-due="' + i.id + '" data-due="' + esc(i.due_date || '') + '">ÉCHÉANCE</button></div>' : '') +
             (i.status === 'PAID' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hvp-refund="' + i.id + '" data-hvp-refund-max="' + (i.total_cents || 0) + '">ENREGISTRER UN REMBOURSEMENT</button></div>' : '') +
             '</div>';
         }).join('') : '<p class="hvp-empty">Aucune facture.</p>');
     }).catch(function(){ el.innerHTML = '<p class="hvp-error">Factures indisponibles.</p>'; });
+  }
+  function partialPaymentForm(invoiceId, remaining){
+    openSheet('<form id="hvpPayForm"><h3>Paiement partiel / acompte</h3><p class="hvp-error" hidden></p>' +
+      '<p class="hvp-card-sub">Reste à payer : ' + esc(euros(remaining)) + '. Quand le cumul atteint le total, la facture passe automatiquement en « Payée ».</p>' +
+      field('Montant encaissé (€)', 'amount', 'number', '', ' step="0.01" min="0.01" inputmode="decimal" required') +
+      '<label class="hvp-field">Moyen de paiement<select name="method">' + PAY_METHODS.map(function(m){ return '<option value="' + m[0] + '">' + m[1] + '</option>'; }).join('') + '</select></label>' +
+      field('Date d\'encaissement', 'paid_on', 'date', invTodayStr()) +
+      field('Note (facultatif)', 'note', 'text', '') +
+      '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-hvp-cancel>Annuler</button><button type="submit" class="hvp-btn-ok" data-label="Enregistrer">Enregistrer</button></div></form>');
+    sheet.querySelector('#hvpPayForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var fd = new FormData(e.target);
+      var cents = Math.round(parseFloat(String(fd.get('amount') || '').replace(/\s/g, '').replace(',', '.')) * 100);
+      if (!(cents > 0)){ showError('Montant invalide.'); return; }
+      if (cents > remaining){ showError('Le montant dépasse le reste à payer (' + euros(remaining) + ').'); return; }
+      busy(true);
+      sb.client.rpc('admin_record_invoice_payment', { p_invoice_id: invoiceId, p_amount_cents: cents, p_method: fd.get('method'), p_paid_on: fd.get('paid_on') || null, p_note: String(fd.get('note') || '').trim() || null }).then(function(r){
+        busy(false);
+        if (r.error){ showError(r.error.message); return; }
+        closeSheet(); renderInvoices();
+      });
+    });
   }
   document.addEventListener('click', function(e){
     // Remboursement (total ou partiel) : montant final réellement payé =
@@ -27391,6 +27461,26 @@ if ('serviceWorker' in navigator){
       if (!(cents >= 0) || cents > max){ window.alert('Montant invalide.'); return; }
       rf.disabled = true;
       sb.client.rpc('admin_mark_invoice_refunded', { p_invoice_id: rf.getAttribute('data-hvp-refund'), p_refunded_cents: cents }).then(function(r){
+        if (r.error) window.alert(r.error.message);
+        renderInvoices();
+      });
+      return;
+    }
+    var pp = e.target.closest('[data-hvp-partpay]');
+    if (pp){ partialPaymentForm(pp.getAttribute('data-hvp-partpay'), Number(pp.getAttribute('data-remaining')) || 0); return; }
+    var dd = e.target.closest('[data-hvp-due]');
+    if (dd){
+      var cur = dd.getAttribute('data-due');
+      var v2 = window.prompt('Date d\'échéance de la facture (JJ/MM/AAAA), vide pour retirer :', cur ? cur.split('-').reverse().join('/') : '');
+      if (v2 == null) return;
+      v2 = String(v2).trim();
+      var iso = null;
+      if (v2){
+        var m = v2.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!m){ window.alert('Format attendu : JJ/MM/AAAA.'); return; }
+        iso = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+      }
+      sb.client.from('invoices').update({ due_date: iso }).eq('id', dd.getAttribute('data-hvp-due')).then(function(r){
         if (r.error) window.alert(r.error.message);
         renderInvoices();
       });
