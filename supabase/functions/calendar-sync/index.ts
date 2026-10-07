@@ -330,7 +330,7 @@ async function runUpsert(bookingId: string) {
     .select(`
       id, reference, date, start_time, service_duration_minutes, notes,
       guest_name, guest_email, guest_phone, guest_address,
-      customer_user_id, customer_address_id,
+      customer_user_id, customer_address_id, client_id,
       services(name, category, description),
       customer_addresses(address, postal_code, city)
     `)
@@ -340,7 +340,20 @@ async function runUpsert(bookingId: string) {
 
   let clientName = booking.guest_name || '';
   let clientPhone = booking.guest_phone || '';
+  let clientEmail = booking.guest_email || '';
   let clientAddress = booking.guest_address || '';
+  // Fiche client CRM (réservations rattachées à un compte / nouveau parcours).
+  if ((booking as any).client_id) {
+    const { data: cl } = await supabase.from('clients')
+      .select('first_name,last_name,email,phone,address,postal_code,city')
+      .eq('id', (booking as any).client_id).maybeSingle();
+    if (cl) {
+      clientName = [cl.first_name, cl.last_name].filter(Boolean).join(' ') || clientName;
+      clientPhone = cl.phone || clientPhone;
+      clientEmail = cl.email || clientEmail;
+      if (!clientAddress) clientAddress = [cl.address, cl.postal_code, cl.city].filter(Boolean).join(', ');
+    }
+  }
   if (booking.customer_user_id) {
     const { data: cp } = await supabase.from('customer_profiles').select('first_name,last_name,phone').eq('user_id', booking.customer_user_id).maybeSingle();
     if (cp) {
@@ -363,6 +376,7 @@ async function runUpsert(bookingId: string) {
   const descriptionLines = [
     `Client : ${clientName || 'non renseigné'}`,
     `Téléphone : ${clientPhone || 'non renseigné'}`,
+    `Email : ${clientEmail || 'non renseigné'}`,
     `Type : ${serviceName}`,
     category ? `Catégorie : ${category}` : null,
     service?.description ? `Description : ${service.description}` : null,
@@ -405,10 +419,21 @@ async function runUpsert(bookingId: string) {
 // Action: delete — push annulation. Idempotent : un 404 (déjà absent) est
 // traité comme un succès.
 // ------------------------------------------------------------
-async function runDelete(bookingId: string) {
+async function runDelete(bookingId: string, payloadUid?: string) {
   const { data: conn } = await supabase.from('calendar_connections').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
   const { data: booking } = await supabase.from('bookings').select('calendar_event_uid').eq('id', bookingId).maybeSingle();
-  const uid = booking?.calendar_event_uid;
+  // Réservation supprimée de la base : l'UID est transmis par le trigger
+  // AFTER DELETE. On n'accepte que l'UID déterministe de CETTE réservation.
+  const expectedUid = UID_PREFIX + bookingId;
+  const uid = booking?.calendar_event_uid || (!booking && payloadUid === expectedUid ? payloadUid : null);
+  if (!booking && uid) {
+    if (!conn?.connected || !conn.target_calendar_url) throw new Error('not_connected');
+    const url = conn.target_calendar_url.replace(/\/$/, '') + '/' + uid + '.ics';
+    const r = await caldavFetch(conn.apple_id_email, await getAppPassword(), url, 'DELETE', undefined, {});
+    if (!r.ok && r.status !== 404) throw new Error(`caldav_delete_failed_${r.status}`);
+    await logSync('push', 'ok', `delete_ok (booking supprimée) uid=${uid}`);
+    return;
+  }
   if (!conn?.connected || !conn.target_calendar_url || !uid) {
     await supabase.from('bookings').update({ calendar_sync_status: 'NOT_SYNCED', calendar_event_uid: null }).eq('id', bookingId);
     return;
@@ -667,7 +692,7 @@ async function retryFailedPushes() {
   const today = new Date().toISOString().slice(0, 10);
   const { data: failed } = await supabase.from('bookings')
     .select('id, status, calendar_event_uid')
-    .eq('calendar_sync_status', 'ERROR')
+    .in('calendar_sync_status', ['ERROR', 'PENDING'])
     .gte('date', today)
     .order('date', { ascending: true })
     .limit(20);
@@ -677,7 +702,7 @@ async function retryFailedPushes() {
       if (b.status === 'CANCELLED' || b.status === 'NO_SHOW') {
         if (b.calendar_event_uid) await runDelete(b.id);
         else await supabase.from('bookings').update({ calendar_sync_status: 'NOT_SYNCED', calendar_sync_error: null }).eq('id', b.id);
-      } else if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') {
+      } else if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'COMPLETED') {
         await runUpsert(b.id);
       } else {
         continue;
@@ -686,7 +711,7 @@ async function retryFailedPushes() {
     } catch (e) {
       ko++;
       const detail = redactError(e);
-      await supabase.from('bookings').update({ calendar_sync_error: detail }).eq('id', b.id);
+      await supabase.from('bookings').update({ calendar_sync_status: 'ERROR', calendar_sync_error: detail }).eq('id', b.id);
       await logSync('push', 'error', `retry_failed: ${detail}`, b.id);
     }
   }
@@ -769,7 +794,7 @@ Deno.serve(async (req: Request) => {
     }
     if ((action === 'upsert' || action === 'delete') && payload.booking_id) {
       if (action === 'upsert') await runUpsert(payload.booking_id);
-      else await runDelete(payload.booking_id);
+      else await runDelete(payload.booking_id, typeof payload.uid === 'string' ? payload.uid : undefined);
       return json({ ok: true, action, booking_id: payload.booking_id });
     }
     return json({ error: 'invalid_action' }, 400);

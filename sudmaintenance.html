@@ -4288,6 +4288,10 @@ if ('serviceWorker' in navigator){
   }
   .admin-bk-modal-status-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .admin-bk-modal-status-row label{ font-size:0.82rem; font-weight:700; color:var(--adm-ink-soft); }
+  .admin-bk-modal-cal{ margin:6px 0 10px; font-size:0.78rem; color:var(--adm-ink-soft); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .admin-bk-modal-cal-error{ color:#b42318; font-weight:700; }
+  .admin-bk-cal-resync{ font:inherit; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:8px; border:1px solid currentColor; background:transparent; color:var(--adm-ink); cursor:pointer; }
+  .admin-bk-cal-resync:disabled{ opacity:.6; cursor:default; }
 
   /* ---------- Demandes récentes ---------- */
   .admin-req-badge{
@@ -19388,6 +19392,7 @@ if ('serviceWorker' in navigator){
           '<label for="adminBkModalStatusSelect">Statut</label>' +
           '<select class="admin-bk-status-select" id="adminBkModalStatusSelect" data-booking-id="' + b.id + '">' + optionsHtml + '</select>' +
         '</div>' +
+        admCalSyncLineHtml(b) +
         (b.status === 'CONFIRMED' ?
           '<button type="button" class="admin-bk-cancel-confirmed-toggle" data-booking-id="' + b.id + '">Annuler ce rendez-vous</button>' +
           '<div class="admin-bk-refuse-form" data-booking-id="' + b.id + '" hidden>' +
@@ -19573,6 +19578,12 @@ if ('serviceWorker' in navigator){
         if (refuseForm2) refuseForm2.hidden = true;
         if (decisionBlock2) decisionBlock2.hidden = false;
         if (proposeToggle2) proposeToggle2.hidden = false;
+        return;
+      }
+
+      var calResyncBtn = e.target.closest('.admin-bk-cal-resync');
+      if (calResyncBtn){
+        if (!calResyncBtn.disabled) admResyncBookingCalendar(calResyncBtn.getAttribute('data-booking-id'), calResyncBtn);
         return;
       }
 
@@ -20152,6 +20163,50 @@ if ('serviceWorker' in navigator){
     if (status === 'PENDING') return ' <span class="adm-badge adm-badge-pending" title="Synchronisation Apple Calendar en cours">…</span>';
     if (status === 'ERROR') return ' <span class="adm-badge adm-badge-cancelled" title="' + admEscape(b.calendar_sync_error || 'Erreur de synchronisation Apple Calendar') + '"></span>';
     return '';
+  }
+
+  // Ligne discrète « Agenda : … » dans la fiche RDV + bouton de
+  // resynchronisation en cas d'erreur (RPC admin_resync_booking_calendar,
+  // l'appel Apple reste exclusivement côté serveur).
+  function admCalSyncLineHtml(b){
+    var st = b && b.calendar_sync_status;
+    var label = st === 'SYNCED' ? 'Synchronisé' : st === 'ERROR' ? 'Erreur' : st === 'PENDING' ? 'Synchronisation en cours…' : '';
+    if (!label) return '';
+    return '<p class="admin-bk-modal-cal">Agenda : <span class="admin-bk-modal-cal-st admin-bk-modal-cal-' + st.toLowerCase() + '"' +
+      (st === 'ERROR' && b.calendar_sync_error ? ' title="' + admEscape(b.calendar_sync_error) + '"' : '') + '>' + label + '</span>' +
+      (st === 'ERROR' ? ' <button type="button" class="admin-bk-cal-resync" data-booking-id="' + b.id + '">Resynchroniser</button>' : '') +
+      '</p>';
+  }
+
+  function admResyncBookingCalendar(id, btn){
+    var row = adminBookingsCache && adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
+    if (btn){ btn.disabled = true; btn.textContent = 'Resynchronisation…'; }
+    sb.client.rpc('admin_resync_booking_calendar', { p_booking_id: id }).then(function(res){
+      if (res.error){
+        if (btn){ btn.disabled = false; btn.textContent = 'Resynchroniser'; }
+        return;
+      }
+      var tries = 0;
+      (function poll(){
+        tries++;
+        sb.client.from('bookings').select('calendar_sync_status,calendar_sync_error,calendar_event_uid').eq('id', id).maybeSingle().then(function(r){
+          var d = r && r.data;
+          if (d && row){
+            row.calendar_sync_status = d.calendar_sync_status;
+            row.calendar_sync_error = d.calendar_sync_error;
+            row.calendar_event_uid = d.calendar_event_uid;
+          }
+          if (d && d.calendar_sync_status === 'PENDING' && tries < 8){ setTimeout(poll, 1500); return; }
+          var line = adminBkModalOverlayEl && adminBkModalOverlayEl.querySelector('.admin-bk-modal-cal');
+          if (line && d){
+            var tmp = document.createElement('div');
+            tmp.innerHTML = admCalSyncLineHtml({ id: id, calendar_sync_status: d.calendar_sync_status, calendar_sync_error: d.calendar_sync_error });
+            if (tmp.firstChild) line.replaceWith(tmp.firstChild); else line.remove();
+          }
+          admRenderBkArea();
+        });
+      })();
+    });
   }
 
   // Exposés pour le module HAYEVA Pro (pages Aujourd'hui / Clients /
