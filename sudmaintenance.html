@@ -27203,6 +27203,9 @@ if ('serviceWorker' in navigator){
   var lastReload = 0;
   function onForeground(){
     if (document.visibilityState && document.visibilityState !== 'visible') return;
+    // Uniquement dans l'administration réellement ouverte (jamais pour un visiteur).
+    var admPanel = document.getElementById('espaceProAdminPanel');
+    if (!admPanel || admPanel.hidden) return;
     renderTech();
     if (Date.now() - lastReload > 5000 && window.admLoadBookings){ lastReload = Date.now(); window.admLoadBookings(); }
   }
