@@ -43,7 +43,7 @@ city('plombier-chauffagiste-frejus', 'Fréjus',
      ["Déplacement offert dans un rayon de 25 km par la route autour de HAYEVA : la distance est calculée sur l'itinéraire réel jusqu'à votre adresse exacte, et les frais éventuels sont toujours affichés avant confirmation.",
       "Résidences principales, résidences secondaires et locations saisonnières : nous préparons vos équipements avant la saison (climatisation au printemps, chauffage à l'automne) et intervenons en cas de panne.",
       "Chaque intervention donne lieu à un compte rendu numérique, archivé dans votre espace client HAYEVA."],
-     ['Saint-Raphaël', 'Le Muy', 'Var'])
+     ['Saint-Raphaël', 'Puget-sur-Argens', 'Roquebrune-sur-Argens', 'Le Muy'])
 
 city('plombier-chauffagiste-saint-raphael', 'Saint-Raphaël',
      'Plombier, chauffagiste et entretien de climatisation à Saint-Raphaël',
@@ -61,12 +61,28 @@ city('plombier-chauffagiste-le-muy', 'Le Muy',
       "Vous recevez un rappel lorsque l'entretien de vos équipements approche."],
      ['Fréjus', 'Saint-Raphaël', 'Var'])
 
+city('plombier-chauffagiste-puget-sur-argens', 'Puget-sur-Argens',
+     'Plombier, chauffagiste et entretien de climatisation à Puget-sur-Argens',
+     "Puget-sur-Argens est voisine de Fréjus, où HAYEVA est basée. Nous y intervenons pour l'entretien et le dépannage de vos équipements de plomberie, de chauffage et de climatisation.",
+     ["Déplacement offert dans un rayon de 25 km par la route autour de HAYEVA : la distance est calculée sur l'itinéraire réel jusqu'à votre adresse exacte, et les frais éventuels sont toujours affichés avant confirmation.",
+      "Maisons, appartements et résidences secondaires : entretien annuel de chaudière et de climatisation, dépannage plomberie et chauffage.",
+      "Rappel automatique la veille de votre rendez-vous et compte rendu numérique après l'intervention."],
+     ['Fréjus', 'Roquebrune-sur-Argens', 'Le Muy', 'Var'])
+
+city('plombier-chauffagiste-roquebrune-sur-argens', 'Roquebrune-sur-Argens',
+     'Plombier, chauffagiste et entretien de climatisation à Roquebrune-sur-Argens',
+     "Nous intervenons à Roquebrune-sur-Argens, du village aux Issambres en passant par La Bouverie, pour l'entretien et le dépannage de vos équipements.",
+     ["Déplacement offert dans un rayon de 25 km par la route autour de HAYEVA : la distance est calculée sur l'itinéraire réel jusqu'à votre adresse exacte, et les frais éventuels sont toujours affichés avant confirmation.",
+      "Résidences secondaires, locations de vacances et mobil-homes : contrôle des équipements avant la saison et intervention en cas de panne.",
+      "Conciergeries et gestionnaires de plusieurs logements : Checks techniques avec tarif dégressif et rapports avec photos."],
+     ['Fréjus', 'Puget-sur-Argens', 'Saint-Raphaël', 'Var'])
+
 PAGES.append(dict(kind='city', slug='plombier-chauffagiste-var', name='Var',
      title='Plombier chauffagiste et climatisation dans le Var (83) | HAYEVA',
      desc="Plomberie, chauffage et entretien de climatisation dans tout le Var (83) : Fréjus, Saint-Raphaël, Le Muy, Draguignan, Fayence… Réservation en ligne, devis gratuit.",
      h1='Plomberie, chauffage et climatisation dans tout le Var (83)',
      intro="Basée à Fréjus, HAYEVA intervient dans l'ensemble du département du Var, pour les particuliers comme pour les professionnels.",
-     local=["Communes régulièrement desservies : Fréjus, Saint-Raphaël, Le Muy, Draguignan, Saint-Tropez, Hyères, Toulon, ainsi que l'arrière-pays (Bagnols-en-Forêt, Fayence, Tourrettes, Callian, Montauroux, Saint-Paul-en-Forêt, Seillans, Mons, Bargemon).",
+     local=["Communes régulièrement desservies : Fréjus, Saint-Raphaël, Puget-sur-Argens, Roquebrune-sur-Argens, Le Muy, Draguignan, Saint-Tropez, Hyères, Toulon, ainsi que l'arrière-pays (Bagnols-en-Forêt, Fayence, Tourrettes, Callian, Montauroux, Saint-Paul-en-Forêt, Seillans, Mons, Bargemon).",
             "Déplacement offert dans un rayon de 25 km par la route autour de HAYEVA. Au-delà, des frais kilométriques peuvent s'appliquer : ils sont calculés sur l'itinéraire réel et toujours indiqués avant confirmation.",
             "Réservation en ligne, confirmation par e-mail, compte rendu numérique après chaque intervention."],
      neighbours=['Fréjus', 'Saint-Raphaël', 'Le Muy', 'Alpes-Maritimes']))
@@ -102,6 +118,18 @@ PAGES.append(dict(kind='service', slug='entretien-chaudiere-var', name='Entretie
             "Rappel automatique avant l'échéance de votre prochain entretien.",
             "Tarifs affichés sur la page d'accueil avant toute réservation."],
      neighbours=['Fréjus', 'Saint-Raphaël', 'Le Muy', 'Var']))
+
+PAGES.append(dict(kind='service', slug='entretien-mobil-home-var', name='Entretien mobil-home',
+     title='Entretien technique de mobil-home dans le Var | HAYEVA',
+     desc="Contrôle plomberie, chauffage et climatisation de mobil-home à Fréjus, Roquebrune-sur-Argens, Saint-Raphaël et dans le Var : Check technique avec compte rendu et photos.",
+     h1='Entretien technique de mobil-home dans le Var',
+     intro="Propriétaires de mobil-home, campings et parcs résidentiels : HAYEVA contrôle l'essentiel de votre hébergement avant la saison ou entre deux séjours.",
+     local=["Check Express : fuites apparentes, robinets et mitigeurs, WC, douche, évier, évacuations accessibles, eau chaude, test de la climatisation et du chauffage.",
+            "Check Complet et Premium : contrôle plus approfondi, photos des anomalies et compte rendu numérique classant chaque élément en « Fonctionnel », « À surveiller » ou « Intervention recommandée ».",
+            "Aucune réparation n'est ajoutée ni facturée automatiquement : vous décidez ensuite d'une intervention ou d'un devis séparé.",
+            "Plusieurs hébergements : tarif dégressif automatique, affiché avant toute demande.",
+            "Ces contrôles visuels et fonctionnels ne constituent ni une certification officielle, ni un diagnostic réglementaire."],
+     neighbours=['Fréjus', 'Roquebrune-sur-Argens', 'Saint-Raphaël', 'Campings et mobil-homes']))
 
 PAGES.append(dict(kind='pro', slug='professionnels', name='Professionnels',
      title='Check technique pour conciergeries et locations saisonnières | HAYEVA Pro',
@@ -193,7 +221,7 @@ def jsonld(p):
     url = f"{SITE}/{p['slug']}/"
     provider = {"@type": "HomeAndConstructionBusiness", "name": "HAYEVA", "url": SITE + "/",
                 "logo": SITE + "/images/brand/hayeva-logo.png", "telephone": PHONE_TEL, "email": EMAIL,
-                "areaServed": ["Fréjus", "Saint-Raphaël", "Le Muy", "Var", "Alpes-Maritimes"]}
+                "areaServed": ["Fréjus", "Saint-Raphaël", "Puget-sur-Argens", "Roquebrune-sur-Argens", "Le Muy", "Var", "Alpes-Maritimes"]}
     area = p['name'] if p['kind'] == 'city' else ["Fréjus", "Saint-Raphaël", "Le Muy", "Var", "Alpes-Maritimes"]
     graph = [
         {"@type": "Service", "name": p['h1'], "serviceType": "Plomberie, chauffage et climatisation",

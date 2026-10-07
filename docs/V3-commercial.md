@@ -7,10 +7,13 @@
 | Fréjus | https://hayeva.fr/plombier-chauffagiste-frejus/ |
 | Saint-Raphaël | https://hayeva.fr/plombier-chauffagiste-saint-raphael/ |
 | Le Muy | https://hayeva.fr/plombier-chauffagiste-le-muy/ |
+| Puget-sur-Argens | https://hayeva.fr/plombier-chauffagiste-puget-sur-argens/ |
+| Roquebrune-sur-Argens | https://hayeva.fr/plombier-chauffagiste-roquebrune-sur-argens/ |
 | Var (83) | https://hayeva.fr/plombier-chauffagiste-var/ |
 | Alpes-Maritimes (06) | https://hayeva.fr/plombier-chauffagiste-alpes-maritimes/ |
 | Entretien climatisation | https://hayeva.fr/entretien-climatisation-frejus-saint-raphael/ |
 | Entretien chaudière | https://hayeva.fr/entretien-chaudiere-var/ |
+| Entretien mobil-home | https://hayeva.fr/entretien-mobil-home-var/ |
 | Conciergeries / locations | https://hayeva.fr/professionnels/ |
 | Syndics / copropriétés | https://hayeva.fr/syndics-copropriete/ |
 | Campings / mobil-homes | https://hayeva.fr/campings-mobil-homes/ |
@@ -60,7 +63,8 @@ Ces réglages se font uniquement dans le compte Google du propriétaire
    Entreprise de climatisation, Service de réparation de chaudières.
 3. **Type :** entreprise de services de proximité, *adresse masquée*
    (pas de local recevant du public), avec une **zone desservie** : Fréjus,
-   Saint-Raphaël, Le Muy, Var, Alpes-Maritimes.
+   Saint-Raphaël, Puget-sur-Argens, Roquebrune-sur-Argens, Le Muy, Var,
+   Alpes-Maritimes.
 4. **Téléphone :** 06 71 26 23 02 — **Site :** https://hayeva.fr/ —
    **Lien de rendez-vous :** https://hayeva.fr/rdv?src=google
 5. **Date d'ouverture :** 1er janvier 2027. **Horaires :** à renseigner
@@ -89,4 +93,4 @@ Ces réglages se font uniquement dans le compte Google du propriétaire
 1. Ajouter la propriété `hayeva.fr` (vérification par enregistrement DNS TXT
    chez OVH — seule manipulation DNS, à faire vous-même).
 2. Soumettre `https://hayeva.fr/sitemap.xml`.
-3. Demander l'indexation de la page d'accueil et des 11 pages ci-dessus.
+3. Demander l'indexation de la page d'accueil et des 14 pages ci-dessus.

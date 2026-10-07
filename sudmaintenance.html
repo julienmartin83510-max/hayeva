@@ -62,7 +62,7 @@
       "description": "Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, Le Muy, dans le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.",
       "telephone": "+33671262302",
       "email": "contact@hayeva.fr",
-      "areaServed": ["Fréjus", "Saint-Raphaël", "Le Muy", "Var", "Alpes-Maritimes"],
+      "areaServed": ["Fréjus", "Saint-Raphaël", "Puget-sur-Argens", "Roquebrune-sur-Argens", "Le Muy", "Var", "Alpes-Maritimes"],
       "serviceType": ["Dépannage plomberie", "Entretien et dépannage chauffage", "Entretien climatisation"],
       "founder": { "@type": "Person", "name": "Julien Martin" }
     },
@@ -464,6 +464,36 @@
     } catch(e){ console.error('sudTrack: erreur inattendue', eventType, e); }
   }
   window.sudTrack = sudTrack;
+
+  // Surveillance des erreurs critiques (0128_v4_reliability.sql) : message
+  // tronqué et anonymisé côté serveur, jamais d'identifiant ni de saisie.
+  // Au plus 5 remontées par chargement de page, une seule par message.
+  (function(){
+    var sent = {}, n = 0;
+    function report(kind, msg, src){
+      var sb = window.sudSupabase;
+      if (!sb || !sb.configured || n >= 5) return;
+      if (navigator.webdriver) return;
+      msg = String(msg || '').slice(0, 300);
+      if (!msg || msg === 'Script error.' || /ResizeObserver loop/i.test(msg)) return;
+      if (/^(chrome|moz|safari)(-web)?-extension:/i.test(String(src || ''))) return;
+      if (sent[msg]) return; sent[msg] = 1; n++;
+      var adminPanel = document.getElementById('espaceProAdminPanel');
+      var app = (window.HAYEVA_PRO_APP || (adminPanel && !adminPanel.hidden)) ? 'pro' : 'site';
+      try {
+        sb.client.rpc('log_client_error', { p_app: app, p_kind: kind, p_message: msg, p_source: String(src || ''), p_page: String(location.hash || '').slice(0, 80) })
+          .then(function(){}, function(){});
+      } catch(e){}
+    }
+    window.addEventListener('error', function(ev){
+      if (!ev || ev.target !== window && ev.target && ev.target.tagName) return; // ressource (image…) : ignorée
+      report('error', ev.message || (ev.error && ev.error.message), ev.filename);
+    });
+    window.addEventListener('unhandledrejection', function(ev){
+      var r = ev && ev.reason;
+      report('rejection', r && (r.message || r.toString && r.toString()), '');
+    });
+  })();
   // Exposé pour l'Assistant IA (même identifiant anonyme de session que la
   // mesure d'audience, même clé sessionStorage, jamais un second concept de
   // session) — voir sudmaintenance.html, widget Assistant Hayeva.
@@ -6861,7 +6891,7 @@ if ('serviceWorker' in navigator){
         <div class="lc-card lc-card--hero">
           <span class="lc-card-tag lc-card-tag--grand">Lot n°1 — Grand lot</span>
           <div class="lc-card-visual lc-card-visual--hero">
-            <img src="images/campaign/nintendo-switch-2.jpg" alt="Nintendo Switch 2 — visuel produit officiel"
+            <img loading="lazy" decoding="async" src="images/campaign/nintendo-switch-2.jpg" alt="Nintendo Switch 2 — visuel produit officiel"
                  id="lcSwitchImg"
                  onerror="this.hidden=true; var ph=this.nextElementSibling; if(ph) ph.hidden=false;">
             <div class="lc-card-visual-placeholder" id="lcSwitchPlaceholder" hidden>
@@ -8824,6 +8854,12 @@ if ('serviceWorker' in navigator){
                     <span class="adm-stat-label">Devis</span>
                   </div>
                 </div>
+                <!-- Santé du système (admin_system_health, 0128) : e-mails,
+                     Apple Calendar, tâches automatiques, erreurs, facturation. -->
+                <section class="adm-health" id="admHealth" aria-labelledby="admHealthTitle" hidden>
+                  <h3 class="adm-subhead" id="admHealthTitle">Santé du système</h3>
+                  <div class="ec-list" id="admHealthList"></div>
+                </section>
                 <!-- Inscriptions clients : agrégats calculés côté serveur
                      (admin_signup_stats, réservé à l'administration). -->
                 <section class="adm-signups" id="admSignups" aria-labelledby="admSignupsTitle">
@@ -9919,10 +9955,13 @@ if ('serviceWorker' in navigator){
     <a href="/plombier-chauffagiste-frejus/">Fréjus</a>
     <a href="/plombier-chauffagiste-saint-raphael/">Saint-Raphaël</a>
     <a href="/plombier-chauffagiste-le-muy/">Le Muy</a>
+    <a href="/plombier-chauffagiste-puget-sur-argens/">Puget-sur-Argens</a>
+    <a href="/plombier-chauffagiste-roquebrune-sur-argens/">Roquebrune-sur-Argens</a>
     <a href="/plombier-chauffagiste-var/">Var (83)</a>
     <a href="/plombier-chauffagiste-alpes-maritimes/">Alpes-Maritimes (06)</a>
     <a href="/entretien-climatisation-frejus-saint-raphael/">Entretien climatisation</a>
     <a href="/entretien-chaudiere-var/">Entretien chaudière</a>
+    <a href="/entretien-mobil-home-var/">Entretien mobil-home</a>
     <a href="/professionnels/">Conciergeries</a>
     <a href="/syndics-copropriete/">Syndics</a>
     <a href="/campings-mobil-homes/">Campings & mobil-homes</a>
@@ -30153,5 +30192,51 @@ if ('serviceWorker' in navigator){
   window.hvProOnBookings = function(){ if (prevOn) prevOn.apply(this, arguments); if (!loaded) start(); };
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && loaded) load(); });
   window.hvAdmSignupsLoad = load;
+})();
+</script>
+<script>
+// =====================================================================
+// Santé du système — tableau de bord admin (admin_system_health, 0128).
+// Lecture seule, aucune donnée personnelle affichée.
+// =====================================================================
+(function(){
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function row(ok, title, detail){
+    return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">' + (ok ? '✅ ' : '⚠️ ') + esc(title) + '</span>' +
+      (detail ? '<span class="ec-row-meta">' + esc(detail) + '</span>' : '') + '</div></div>';
+  }
+  function ago(iso){
+    if (!iso) return 'jamais';
+    var min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    return min < 1 ? 'à l\'instant' : (min < 60 ? 'il y a ' + min + ' min' : 'il y a ' + Math.round(min / 60) + ' h');
+  }
+  function render(h){
+    var box = document.getElementById('admHealth'), list = document.getElementById('admHealthList');
+    if (!box || !list) return;
+    var mails = (h.emails_failed_7d || 0) + (h.documents_failed_7d || 0);
+    var pullFresh = h.calendar_last_pull && (Date.now() - new Date(h.calendar_last_pull).getTime()) < 3600000;
+    var calOk = h.calendar_connected && !h.calendar_error && pullFresh && !(h.calendar_bookings_in_error > 0);
+    var top = (h.client_errors_top || [])[0];
+    list.innerHTML =
+      row(mails === 0, mails === 0 ? 'E-mails : aucun échec sur 7 jours' : mails + ' e-mail(s) en échec sur 7 jours', mails ? (h.last_email_error || '') : '') +
+      row(calOk, h.calendar_connected ? 'Apple Calendar : dernière synchronisation ' + ago(h.calendar_last_pull) : 'Apple Calendar non connecté',
+        h.calendar_error ? h.calendar_error : (h.calendar_bookings_in_error > 0 ? h.calendar_bookings_in_error + ' rendez-vous non synchronisé(s) — nouvel essai automatique toutes les 15 min' : '')) +
+      row(!(h.cron_failed_24h > 0), h.cron_failed_24h > 0 ? h.cron_failed_24h + ' tâche(s) automatique(s) en échec (24 h)' : 'Tâches automatiques : aucune erreur (24 h)', '') +
+      row(!(h.client_errors_24h > 0), h.client_errors_24h > 0 ? h.client_errors_24h + ' erreur(s) d\'affichage signalée(s) (24 h)' : 'Site et application : aucune erreur signalée (24 h)', top ? top.message : '') +
+      row(!!h.billing_ready, h.billing_ready ? 'Fiche entreprise complète : facturation active' : 'Fiche entreprise incomplète : factures définitives bloquées', h.billing_ready ? '' : 'SIRET, adresse, TVA, assurance et médiateur à renseigner');
+    box.hidden = false;
+  }
+  function load(){
+    var p = document.getElementById('espaceProAdminPanel');
+    if (!p || p.hidden) return;
+    sb.client.rpc('admin_system_health').then(function(res){ if (!res.error && res.data) render(res.data); }, function(){});
+  }
+  var prevShow = window.hvProBeforeShowPage;
+  window.hvProBeforeShowPage = function(k){ if (prevShow) prevShow(k); if (k === 'dashboard') setTimeout(load, 0); };
+  var first = true, prevOn = window.hvProOnBookings;
+  window.hvProOnBookings = function(){ if (prevOn) prevOn.apply(this, arguments); if (first){ first = false; load(); } };
+  window.hvAdmHealthLoad = load;
 })();
 </script>
