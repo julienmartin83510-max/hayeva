@@ -124,3 +124,17 @@
   to = "/404.html"
   status = 404
   force = true
+
+# Mot de passe oublié / nouveau mot de passe : page dédiée (jamais indexée,
+# jamais mise en cache, aucun Referer transmis — le jeton est dans l'URL).
+[[redirects]]
+  from = "/reset-password"
+  to = "/reset-password.html"
+  status = 200
+
+[[headers]]
+  for = "/reset-password*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"

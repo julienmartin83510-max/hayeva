@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /sudmaintenance.html
 Disallow: /rdv-action.html
+Disallow: /reset-password
 
 Sitemap: https://hayeva.fr/sitemap.xml

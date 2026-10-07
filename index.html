@@ -2,6 +2,19 @@
 <html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// Lien e-mail « mot de passe oublié » arrivé sur une autre page que
+// /reset-password (ex. URL du site par défaut de Supabase) : bascule vers la
+// page dédiée AVANT que supabase-js ne lise le jeton dans l'URL.
+(function(){
+  try {
+    var h = location.hash || '', q = location.search || '';
+    if (/(^|[#&?])type=recovery(&|$)/.test(h) || /(^|[#&?])type=recovery(&|$)/.test(q)){
+      location.replace('/reset-password' + q + h);
+    }
+  } catch(e){}
+})();
+</script>
 <title>HAYEVA — Plomberie, chauffage, entretien climatisation à Fréjus & Saint-Raphaël</title>
 <meta name="description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, Le Muy, dans le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <!-- Balises statiques de secours pour les robots/aperçus qui n'exécutent pas
@@ -14151,30 +14164,14 @@ if ('serviceWorker' in navigator){
   }
 
   // ---- Mot de passe oublié ----
+  // Page dédiée /reset-password : anti-robot visible et relançable, puis
+  // lien de récupération ramenant sur cette même page (nouveau mot de passe).
   if (forgotLink){
     forgotLink.addEventListener('click', function(e){
       e.preventDefault();
-      if (!sb.configured){
-        if (devNotice){
-          devNotice.classList.add('is-highlight');
-          devNotice.scrollIntoView({ behavior:'smooth', block:'center' });
-          setTimeout(function(){ devNotice.classList.remove('is-highlight'); }, 1600);
-        }
-        return;
-      }
-      var email = document.getElementById('espaceProEmail').value.trim();
-      if (!email){
-        showMsg(loginError, 'Indiquez votre e-mail ci-dessus puis cliquez à nouveau sur « Mot de passe oublié ? ».');
-        return;
-      }
-      showMsg(loginError, '');
-      (window.hvTurnstile ? window.hvTurnstile.token(forgotLink) : Promise.resolve(null)).then(function(captchaToken){
-        return sb.client.auth.resetPasswordForEmail(email, captchaToken ? { captchaToken: captchaToken } : undefined);
-      }).then(function(res){
-        showMsg(loginError, res.error ? (window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : res.error.message) : 'Si un compte existe pour cet e-mail, un lien de réinitialisation vient d’être envoyé.');
-      }).catch(function(err){
-        showMsg(loginError, err && err.hvCaptcha ? err.message : 'Envoi impossible pour le moment. Réessayez.');
-      });
+      var email = (document.getElementById('espaceProEmail') || {}).value || '';
+      try { if (email.trim()) sessionStorage.setItem('hayeva_reset_email', email.trim()); } catch(err){}
+      window.location.href = '/reset-password';
     });
   }
 
@@ -25235,31 +25232,15 @@ if ('serviceWorker' in navigator){
     });
   }
 
+  // Mot de passe oublié : page dédiée /reset-password (anti-robot visible et
+  // relançable, message identique que le compte existe ou non, puis choix du
+  // nouveau mot de passe au retour du lien e-mail).
   if (forgotLink){
     forgotLink.addEventListener('click', function(e){
       e.preventDefault();
-      if (!sb.configured) return;
-      var email = document.getElementById('espaceClientEmail').value.trim();
-      if (!email){
-        showMsg(loginError, 'Indiquez votre e-mail ci-dessus puis cliquez à nouveau sur « Mot de passe oublié ? ».');
-        return;
-      }
-      showMsg(loginError, '');
-      // redirectTo calculé dynamiquement (origine réelle de la page servie) :
-      // aucun domaine codé en dur. Une fois le site hébergé, il suffira
-      // d'ajouter cette même origine à la liste "Redirect URLs" du projet
-      // Supabase (Authentication > URL Configuration) — aucun changement de
-      // code ne sera nécessaire ici.
-      var redirectTo = window.location.origin + window.location.pathname;
-      var genericMsg = 'Si un compte existe pour cet e-mail, un lien de réinitialisation vient d’être envoyé.';
-      // Réponse volontairement générique dans tous les cas, y compris en cas
-      // d'erreur Supabase : ne jamais révéler si l'adresse correspond à un
-      // compte existant, ni exposer un message technique brut.
-      (window.hvTurnstile ? window.hvTurnstile.token(forgotLink) : Promise.resolve(null)).then(function(captchaToken){
-        return sb.client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo, captchaToken: captchaToken || undefined });
-      })
-        .then(function(res){ showMsg(loginError, res && res.error && window.hvTurnstile && window.hvTurnstile.isCaptchaError(res.error) ? window.hvTurnstile.message : genericMsg); })
-        .catch(function(err){ showMsg(loginError, err && err.hvCaptcha ? err.message : genericMsg); });
+      var email = (document.getElementById('espaceClientEmail') || {}).value || '';
+      try { if (email.trim()) sessionStorage.setItem('hayeva_reset_email', email.trim()); } catch(err){}
+      window.location.href = '/reset-password';
     });
   }
 
