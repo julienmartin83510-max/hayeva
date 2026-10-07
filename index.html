@@ -2,7 +2,7 @@
 <html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HAYEVA — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël</title>
+<title>HAYEVA — Plomberie, chauffage, entretien climatisation à Fréjus & Saint-Raphaël</title>
 <meta name="description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, Le Muy, dans le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <!-- Balises statiques de secours pour les robots/aperçus qui n'exécutent pas
      le JavaScript (partage iMessage/WhatsApp/réseaux sociaux, premier
@@ -17,12 +17,12 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HAYEVA">
 <meta property="og:locale" content="fr_FR">
-<meta property="og:title" content="HAYEVA — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël">
+<meta property="og:title" content="HAYEVA — Plomberie, chauffage, entretien climatisation à Fréjus & Saint-Raphaël">
 <meta property="og:description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, Le Muy, dans le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <meta property="og:url" content="https://hayeva.fr/">
 <meta property="og:image" content="https://hayeva.fr/images/portal/portal-bg-lg.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="HAYEVA — Plomberie, chauffage, climatisation à Fréjus & Saint-Raphaël">
+<meta name="twitter:title" content="HAYEVA — Plomberie, chauffage, entretien climatisation à Fréjus & Saint-Raphaël">
 <meta name="twitter:description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, Le Muy, dans le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
 <meta name="twitter:image" content="https://hayeva.fr/images/portal/portal-bg-lg.jpg">
 <!-- Données structurées Schema.org (JSON-LD) — uniquement des champs vérifiés
@@ -437,6 +437,9 @@
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
     if (sudTrackIsInternalContext()) return;
+    // Navigateurs automatisés (robots, aperçus de déploiement, tests) : jamais
+    // comptés comme visiteurs.
+    if (navigator.webdriver || /HeadlessChrome|bot|crawler|spider|Lighthouse/i.test(navigator.userAgent || '')) return;
     try {
       sb.client.from('analytics_events').insert({
         event_type: eventType,
@@ -544,6 +547,8 @@
     }
     if (acceptBtn) acceptBtn.addEventListener('click', function(){ choose('accepted'); });
     if (refuseBtn) refuseBtn.addEventListener('click', function(){ choose('refused'); });
+    var continueBtn = document.getElementById('cookieBannerContinue');
+    if (continueBtn) continueBtn.addEventListener('click', function(){ choose('refused'); });
 
     if (!readConsent()){
       banner.hidden = false;
@@ -3274,6 +3279,7 @@ if ('serviceWorker' in navigator){
   }
   .cookie-banner.is-visible{ opacity:1; pointer-events:auto; }
   .cookie-banner[hidden]{ display:none; }
+  .cookie-banner-continue{ display:block; margin:0 0 6px auto; background:none; border:none; padding:4px 0; font:inherit; font-size:0.82rem; color:inherit; opacity:0.75; text-decoration:underline; cursor:pointer; }
   .cookie-banner-box{
     background:var(--navy-fixed); color:#fff; border-radius:22px; padding:34px 30px;
     max-width:460px; width:100%; text-align:center;
@@ -6608,6 +6614,7 @@ if ('serviceWorker' in navigator){
 
 <div class="cookie-banner" id="cookieBanner" hidden role="dialog" aria-modal="true" aria-label="Préférences cookies">
   <div class="cookie-banner-box">
+    <button type="button" class="cookie-banner-continue" id="cookieBannerContinue">Continuer sans accepter</button>
     <p class="cookie-banner-icon" aria-hidden="true"></p>
     <p class="cookie-banner-text">Ce site n'utilise aucun cookie ni traceur nécessitant votre consentement (pas d'outil de mesure d'audience tiers, pas de publicité). Seuls des éléments strictement nécessaires au fonctionnement du site sont utilisés. <a href="#legal/cookies" data-legal-link="cookies">En savoir plus</a></p>
     <div class="cookie-banner-actions">
@@ -6621,7 +6628,7 @@ if ('serviceWorker' in navigator){
 <div class="edge-glow edge-glow-right" aria-hidden="true"></div>
 
 <div class="opening-banner" role="note">
-  <p>Entreprise en cours de création — Interventions disponibles à partir du <strong>2 janvier 2027</strong></p>
+  <p>Entreprise en cours de création — Interventions disponibles à partir du <strong id="hvOpeningDateText">2 janvier 2027</strong></p>
 </div>
 
 <header>
@@ -8697,6 +8704,12 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="stock" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Stock</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="partners" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Partenaires</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="gear" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Matériel</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="catalog" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Catalogue</span>
                 </button>
@@ -9184,6 +9197,7 @@ if ('serviceWorker' in navigator){
                       <option value="waze">Waze</option>
                     </select>
                   </label>
+                  <button type="button" class="hvp-link" data-biz-route>Proposer un ordre de tournée</button>
                 </div>
                 <div id="hvtList"><p class="ec-loading">Chargement de vos interventions…</p></div>
               </section>
@@ -9274,6 +9288,31 @@ if ('serviceWorker' in navigator){
                   <button type="button" class="hvp-primary-btn" data-hvp-action="new-stock">+ Nouvelle pièce</button>
                 </div>
                 <div id="hvpStockList"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPagePartners" data-adm-page="partners" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Professionnels</p>
+                  <h2 class="adm-page-title">Partenaires</h2>
+                  <p class="adm-page-sub">Prospects, partenaires et sous-traitance — relances à faire en tête de liste.</p>
+                </div>
+                <div class="hvp-toolbar">
+                  <input type="search" id="hvpPartnerSearch" class="hvp-search" placeholder="Société, contact, ville…" autocomplete="off">
+                  <select id="hvpPartnerFilter" class="hvp-search" aria-label="Filtrer par statut">
+                    <option value="">Tous les statuts</option><option value="A_CONTACTER">À contacter</option><option value="CONTACTE">Contacté</option><option value="A_RELANCER">À relancer</option><option value="INTERESSE">Intéressé</option><option value="PARTENAIRE">Partenaire</option><option value="REFUSE">Refusé</option>
+                  </select>
+                  <button type="button" class="hvp-primary-btn" data-biz-partner-new>+ Nouveau contact</button>
+                </div>
+                <div id="hvpPartners"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageGear" data-adm-page="gear" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Matériel</p>
+                  <h2 class="adm-page-title">Véhicule &amp; outillage</h2>
+                  <p class="adm-page-sub">Kilométrage, entretiens, dépenses et outils.</p>
+                </div>
+                <div id="hvpGear"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageSettings" data-adm-page="settings" hidden>
@@ -9439,6 +9478,8 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="hv-more-item" data-hv-nav="requests">Demandes de RDV</button>
                 <button type="button" class="hv-more-item" data-hv-nav="quotes">Devis</button>
                 <button type="button" class="hv-more-item" data-hv-nav="stock">Stock</button>
+                <button type="button" class="hv-more-item" data-hv-nav="partners">Partenaires &amp; sous-traitance</button>
+                <button type="button" class="hv-more-item" data-hv-nav="gear">Véhicule &amp; outillage</button>
                 <button type="button" class="hv-more-item" data-hv-nav="invoices">Factures</button>
                 <button type="button" class="hv-more-item" data-hv-nav="settings" data-hvp-company-link>Informations entreprise</button>
                 <button type="button" class="hv-more-item" data-hv-nav="settings">Paramètres (notifications…)</button>
@@ -10833,6 +10874,7 @@ if ('serviceWorker' in navigator){
   // d'ouverture et horizon de réservation en jours glissants.
   var HAYEVA_OPENING_DATE = new Date(2027, 0, 2);
   var HAYEVA_BOOKING_HORIZON_DAYS = 90;
+  window.hvOpeningDateLabel = function(){ return HAYEVA_OPENING_DATE.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }); };
   (function loadBookingSettings(){
     var sbc = window.sudSupabase;
     if (!sbc || !sbc.configured) return;
@@ -10841,6 +10883,8 @@ if ('serviceWorker' in navigator){
       if (!d) return;
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d.opening_date || ''));
       if (m) HAYEVA_OPENING_DATE = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      var openEl = document.getElementById('hvOpeningDateText');
+      if (openEl) openEl.textContent = window.hvOpeningDateLabel();
       if (Number(d.booking_horizon_days) > 0) HAYEVA_BOOKING_HORIZON_DAYS = Number(d.booking_horizon_days);
     }).catch(function(){});
   })();
@@ -13494,7 +13538,7 @@ if ('serviceWorker' in navigator){
     { cat:'reservation-faq', popular:false, q:"Pourquoi l'adresse exacte est-elle demandée ?",
       a:"Elle permet notamment d'organiser l'intervention, de calculer le trajet et, lorsque cela s'applique, les éventuels frais de déplacement." },
     { cat:'reservation-faq', popular:true, q:"À partir de quand puis-je réserver une intervention ?",
-      a:"{{BRAND}} ouvre officiellement le 2 janvier 2027. Vous pouvez dès maintenant consulter les prestations et tarifs, et réserver un rendez-vous à partir du 2 janvier 2027 — y compris pendant le Grand Jeu de lancement HAYEVA (réservations du {{LAUNCH_BOOKING_START}} au {{LAUNCH_BOOKING_END}})." },
+      a:"{{BRAND}} ouvre officiellement le {{OPENING_DATE}}. Vous pouvez dès maintenant consulter les prestations et tarifs, et réserver un rendez-vous à partir du 2 janvier 2027 — y compris pendant le Grand Jeu de lancement HAYEVA (réservations du {{LAUNCH_BOOKING_START}} au {{LAUNCH_BOOKING_END}})." },
 
     // ---- Particulier : Zone d'intervention ----
     { cat:'zone-faq', popular:true, q:"Dans quelles villes intervenez-vous ?",
@@ -13580,7 +13624,8 @@ if ('serviceWorker' in navigator){
     // fichier) : un futur changement de nom se répercute dans les 14 réponses
     // de FAQ qui l'utilisent sans avoir à les modifier une par une.
     var tokens = {
-      BRAND: (window.SUD_BRAND && window.SUD_BRAND.name) || 'HAYEVA'
+      BRAND: (window.SUD_BRAND && window.SUD_BRAND.name) || 'HAYEVA',
+      OPENING_DATE: window.hvOpeningDateLabel ? window.hvOpeningDateLabel() : '2 janvier 2027'
     };
     if (window.sudBooking){
       var rules = window.sudBooking.travelRules();
@@ -16134,7 +16179,7 @@ if ('serviceWorker' in navigator){
     });
   }
 
-  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, equipment_id, client_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, cancelled_by, cancelled_at, cancellation_type, cancellation_reason_code, cancellation_reason_detail, calendar_sync_status, calendar_sync_error, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city), customer_equipment(brand,model,equipment_type)';
+  var ADMIN_BOOKING_SELECT_COLUMNS = 'id, reference, date, start_time, status, service_duration_minutes, notes, guest_name, guest_email, guest_phone, guest_address, customer_user_id, professional_account_id, equipment_id, client_id, service_price_cents, travel_fee_cents, total_cents, one_way_distance_km, intervention_lat, intervention_lng, included_radius_km, travel_rate_per_km_cents, distance_calculation_status, created_at, admin_viewed_at, cancelled_by, cancelled_at, cancellation_type, cancellation_reason_code, cancellation_reason_detail, calendar_sync_status, calendar_sync_error, services(name,slug,category), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city), customer_equipment(brand,model,equipment_type)';
 
   var CANCELLATION_REASON_LABELS = {
     creneau_indisponible: 'Créneau indisponible',
@@ -26774,6 +26819,9 @@ if ('serviceWorker' in navigator){
   .hvp-actions-3{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; margin-top:8px; }
   .hvp-actions-1{ grid-template-columns:1fr !important; margin-top:8px; }
   .hvp-actions-2{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; margin-top:8px; }
+  #admPagePartners .hvp-toolbar{ flex-wrap:wrap; }
+  #admPagePartners #hvpPartnerSearch{ flex:1 1 100%; min-width:0; }
+  #admPagePartners #hvpPartnerFilter{ flex:1 1 140px; }
   .hvp-inv-line{ border:1px solid var(--adm-line); border-radius:12px; padding:10px 12px; margin:0 0 10px; background:var(--adm-offwhite); }
   .hvp-act.is-danger{ background:var(--adm-red-soft); color:var(--adm-red); border-color:transparent; }
   .hvp-seg{ display:inline-flex; border:1px solid var(--adm-line); border-radius:12px; overflow:hidden; margin-left:8px; background:var(--adm-card-bg); }
@@ -27023,7 +27071,7 @@ if ('serviceWorker' in navigator){
         var low = Number(s.min_quantity) > 0 && Number(s.quantity) <= Number(s.min_quantity);
         return '<div class="hvp-card"><div class="hvp-row"><div class="hvp-grow" data-hvp-stock-edit="' + s.id + '" role="button" tabindex="0">' +
           '<p class="hvp-card-title">' + esc(s.name) + (low ? ' <span class="hvp-pill hvp-st-low">Stock faible</span>' : '') + '</p>' +
-          '<p class="hvp-card-sub">' + esc([s.brand, s.reference, s.supplier].filter(Boolean).join(' · ')) + '</p>' +
+          '<p class="hvp-card-sub">' + esc([s.category, s.brand, s.reference, s.supplier].filter(Boolean).join(' · ')) + '</p>' +
           '<p class="hvp-card-sub">' + (s.sale_price_cents != null ? 'Vente ' + esc(euros(s.sale_price_cents)) : '') + (s.purchase_price_cents != null ? ' · Achat ' + esc(euros(s.purchase_price_cents)) : '') + '</p></div>' +
           '<div class="hvp-qty"><button type="button" data-hvp-stock-delta="-1" data-id="' + s.id + '" aria-label="Retirer 1">−</button><strong>' + esc(Number(s.quantity)) + '</strong><button type="button" data-hvp-stock-delta="1" data-id="' + s.id + '" aria-label="Ajouter 1">+</button></div>' +
         '</div></div>';
@@ -27191,7 +27239,7 @@ if ('serviceWorker' in navigator){
     openSheet('<form id="hvpStockForm"><h3>' + (item.id ? 'Modifier la pièce' : 'Nouvelle pièce') + '</h3><p class="hvp-error" hidden></p>' +
       field('Nom de la pièce', 'name', 'text', item.name) +
       '<div class="hvp-grid2">' + field('Référence', 'reference', 'text', item.reference) + field('Marque', 'brand', 'text', item.brand) + '</div>' +
-      field('Fournisseur', 'supplier', 'text', item.supplier) +
+      '<div class="hvp-grid2">' + field('Fournisseur', 'supplier', 'text', item.supplier) + field('Catégorie', 'category', 'text', item.category, ' placeholder="Ex. Robinetterie, Clim, Chauffage"') + '</div>' +
       '<div class="hvp-grid2">' + field('Prix achat (€)', 'purchase', 'number', item.purchase_price_cents != null ? item.purchase_price_cents / 100 : '', ' step="0.01" min="0" inputmode="decimal"') + field('Prix vente (€)', 'sale', 'number', item.sale_price_cents != null ? item.sale_price_cents / 100 : '', ' step="0.01" min="0" inputmode="decimal"') + '</div>' +
       '<div class="hvp-grid2">' + (item.id ? '' : field('Quantité', 'quantity', 'number', 0, ' step="1" min="0" inputmode="numeric"')) + field('Alerte si ≤', 'min_quantity', 'number', item.min_quantity != null ? Number(item.min_quantity) : 0, ' step="1" min="0" inputmode="numeric"') + '</div>' +
       field('Emplacement (camion, dépôt…)', 'location', 'text', item.location) +
@@ -27204,7 +27252,7 @@ if ('serviceWorker' in navigator){
       function cents(v){ v = String(v || '').replace(',', '.').trim(); return v === '' ? null : Math.round(parseFloat(v) * 100); }
       var row = {
         name: name, reference: String(fd.get('reference') || '').trim() || null, brand: String(fd.get('brand') || '').trim() || null,
-        supplier: String(fd.get('supplier') || '').trim() || null, purchase_price_cents: cents(fd.get('purchase')), sale_price_cents: cents(fd.get('sale')),
+        supplier: String(fd.get('supplier') || '').trim() || null, category: String(fd.get('category') || '').trim() || null, purchase_price_cents: cents(fd.get('purchase')), sale_price_cents: cents(fd.get('sale')),
         min_quantity: Number(fd.get('min_quantity') || 0), location: String(fd.get('location') || '').trim() || null, updated_at: new Date().toISOString()
       };
       busy(true);
@@ -27995,6 +28043,285 @@ if ('serviceWorker' in navigator){
     else if (key === 'invoices') renderInvoices();
   };
   window.hvProOnBookings = function(){ renderTech(); renderToday(); renderInterventions(); renderNotifs(); if (!companyCache) loadCompany().catch(function(){}); };
+})();
+</script>
+<script>
+// =====================================================================
+// HAYEVA Pro — gestion légère (0114) : PARTENAIRES (prospects, partenaires,
+// sous-traitance) et MATÉRIEL (véhicule, dépenses, outillage), plus une
+// PROPOSITION d'ordre de tournée (jamais appliquée automatiquement : aucun
+// rendez-vous n'est déplacé, l'admin décide). Tout est réservé à l'admin
+// (RLS is_admin()).
+// =====================================================================
+(function(){
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  var modal = document.getElementById('hvpModal'), sheet = document.getElementById('hvpSheet');
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function euros(c){ return ((Number(c) || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €'; }
+  function fmtDate(d){ if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d; }
+  function today(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function cents(v){ v = String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.'); return v === '' ? null : Math.round(parseFloat(v) * 100); }
+  function open(html){ if (!modal || !sheet) return; sheet.innerHTML = html; modal.hidden = false; }
+  function close(){ if (modal){ modal.hidden = true; } if (sheet) sheet.innerHTML = ''; }
+  function fld(label, name, type, value, extra){ return '<label class="hvp-field">' + esc(label) + '<input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value == null ? '' : value) + '"' + (extra || '') + '></label>'; }
+  function sel(label, name, opts, value){ return '<label class="hvp-field">' + esc(label) + '<select name="' + name + '">' + opts.map(function(o){ return '<option value="' + o[0] + '"' + (o[0] === value ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>'; }
+  function area(label, name, value){ return '<label class="hvp-field">' + esc(label) + '<textarea name="' + name + '" rows="2">' + esc(value || '') + '</textarea></label>'; }
+  function actions(label){ return '<p class="hvp-error" hidden></p><div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-biz-cancel>Annuler</button><button type="submit" class="hvp-btn-ok">' + esc(label) + '</button></div>'; }
+  function err(msg){ var e = sheet.querySelector('.hvp-error'); if (e){ e.hidden = false; e.textContent = msg; } }
+  function friendly(e){ var m = e && e.message ? String(e.message) : ''; return /violates|column|relation|function|syntax/i.test(m) ? 'Enregistrement impossible. Vérifiez les champs.' : (m || 'Enregistrement impossible.'); }
+  if (sheet) sheet.addEventListener('click', function(e){ if (e.target.closest('[data-biz-cancel]')) close(); });
+
+  var CATS = [['syndic','Syndic'],['camping','Camping'],['hotel','Hôtel'],['agence_immobiliere','Agence immobilière'],['conciergerie','Conciergerie'],['plombier','Plombier'],['chauffagiste','Chauffagiste'],['entreprise_generale','Entreprise générale'],['sous_traitant','Sous-traitant'],['fournisseur','Fournisseur'],['assurance','Assurance'],['autre','Autre partenaire']];
+  var STATUS = [['A_CONTACTER','À contacter'],['CONTACTE','Contacté'],['A_RELANCER','À relancer'],['INTERESSE','Intéressé'],['PARTENAIRE','Partenaire'],['REFUSE','Refusé']];
+  var SUB_STATUS = [['PROPOSE','Proposé'],['ACCEPTE','Accepté'],['EN_COURS','En cours'],['TERMINE','Terminé'],['ANNULE','Annulé']];
+  var EXP_KIND = [['carburant','Carburant'],['entretien','Entretien'],['reparation','Réparation'],['pneus','Pneus'],['assurance','Assurance'],['controle_technique','Contrôle technique'],['peage_parking','Péage / parking'],['autre','Autre']];
+  var COND = [['BON','Bon état'],['A_SURVEILLER','À surveiller'],['HS','Hors service']];
+  function label(list, v){ return (list.filter(function(o){ return o[0] === v; })[0] || [v, v])[1]; }
+  function formData(form, keys){ var fd = new FormData(form), o = {}; keys.forEach(function(k){ var v = String(fd.get(k) == null ? '' : fd.get(k)).trim(); o[k] = v === '' ? null : v; }); return o; }
+
+  // ------------------------------------------------------------ PARTENAIRES
+  var partnersCache = [];
+  function renderPartners(){
+    var el = document.getElementById('hvpPartners'); if (!el) return;
+    var q = String((document.getElementById('hvpPartnerSearch') || {}).value || '').toLowerCase();
+    var fstat = String((document.getElementById('hvpPartnerFilter') || {}).value || '');
+    Promise.all([
+      sb.client.from('partners').select('*').order('next_followup_at', { ascending:true, nullsFirst:false }).order('company', { ascending:true }),
+      sb.client.from('subcontracts').select('*, partners(company), bookings(reference, date)').order('created_at', { ascending:false }).limit(100)
+    ]).then(function(r){
+      if (r[0].error){ el.innerHTML = '<p class="hvp-error">Partenaires indisponibles.</p>'; return; }
+      partnersCache = r[0].data || [];
+      var t = today();
+      var rows = partnersCache.filter(function(p){
+        if (fstat && p.status !== fstat) return false;
+        return !q || [p.company, p.contact_name, p.city, p.phone, p.email, label(CATS, p.category)].join(' ').toLowerCase().indexOf(q) !== -1;
+      });
+      var due = partnersCache.filter(function(p){ return p.next_followup_at && p.next_followup_at <= t && p.status !== 'REFUSE' && p.status !== 'PARTENAIRE'; }).length;
+      var subs = r[1].data || [];
+      el.innerHTML = (due ? '<p class="hvp-banner is-warn">' + due + ' relance(s) à faire aujourd\'hui ou en retard.</p>' : '') +
+        (rows.length ? rows.map(function(p){
+          var late = p.next_followup_at && p.next_followup_at <= t && p.status !== 'REFUSE' && p.status !== 'PARTENAIRE';
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(p.company) + '</p>' +
+            '<p class="hvp-card-sub">' + esc([label(CATS, p.category), p.contact_name, p.city].filter(Boolean).join(' · ')) + '</p>' +
+            '<p class="hvp-card-sub">' + (p.last_contact_at ? 'Dernier contact ' + esc(fmtDate(p.last_contact_at)) : 'Jamais contacté') + (p.next_followup_at ? ' · relance ' + esc(fmtDate(p.next_followup_at)) : '') + '</p>' +
+            (p.notes ? '<p class="hvp-card-sub">' + esc(p.notes) + '</p>' : '') + '</div>' +
+            '<span class="hvp-pill ' + (late ? 'hvp-st-low' : (p.status === 'PARTENAIRE' ? 'hvp-st-COMPLETED' : (p.status === 'REFUSE' ? 'hvp-st-CANCELLED' : 'hvp-st-PENDING'))) + '">' + esc(label(STATUS, p.status)) + '</span></div>' +
+            '<div class="hvp-actions hvp-actions-3">' +
+              (p.phone ? '<a class="hvp-act" href="tel:' + esc(String(p.phone).replace(/\s+/g, '')) + '">APPELER</a>' : '<span class="hvp-act" style="opacity:.4">APPELER</span>') +
+              '<button type="button" class="hvp-act" data-biz-partner-contacted="' + p.id + '">CONTACTÉ</button>' +
+              '<button type="button" class="hvp-act" data-biz-partner-edit="' + p.id + '">MODIFIER</button>' +
+            '</div></div>';
+        }).join('') : '<p class="hvp-empty">' + (partnersCache.length ? 'Aucun résultat.' : 'Aucun partenaire. Ajoutez votre premier contact professionnel.') + '</p>') +
+        '<p class="hvp-section-title">Sous-traitance (' + subs.length + ')</p>' +
+        '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-biz-sub-new>+ NOUVELLE SOUS-TRAITANCE</button></div>' +
+        (subs.length ? subs.map(function(s){
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc((s.partners && s.partners.company) || 'Partenaire') + '</p>' +
+            '<p class="hvp-card-sub">' + esc(s.description) + '</p>' +
+            '<p class="hvp-card-sub">' + (s.bookings ? 'RDV ' + esc(s.bookings.reference) + ' du ' + esc(fmtDate(s.bookings.date)) + ' · ' : '') + (s.agreed_amount_cents != null ? 'Montant convenu ' + esc(euros(s.agreed_amount_cents)) : 'Montant non fixé') + '</p>' +
+            '<p class="hvp-card-sub">Historique : ' + (s.history || []).map(function(h){ return esc(fmtDate(h.at)) + ' ' + esc(label(SUB_STATUS, h.status)); }).join(' → ') + '</p></div>' +
+            '<span class="hvp-pill ' + (s.status === 'TERMINE' ? 'hvp-st-COMPLETED' : s.status === 'ANNULE' ? 'hvp-st-CANCELLED' : 'hvp-st-PENDING') + '">' + esc(label(SUB_STATUS, s.status)) + '</span></div>' +
+            '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-biz-sub-edit="' + s.id + '">MODIFIER</button></div></div>';
+        }).join('') : '<p class="hvp-empty">Aucune sous-traitance enregistrée.</p>');
+      el._subs = subs;
+    }).catch(function(){ el.innerHTML = '<p class="hvp-error">Partenaires indisponibles.</p>'; });
+  }
+  function partnerForm(p){
+    p = p || {};
+    open('<form id="bizPartnerForm"><h3>' + (p.id ? 'Modifier le contact' : 'Nouveau contact professionnel') + '</h3>' +
+      fld('Société', 'company', 'text', p.company, ' required maxlength="200"') +
+      '<div class="hvp-grid2">' + sel('Catégorie', 'category', CATS, p.category || 'autre') + sel('Statut', 'status', STATUS, p.status || 'A_CONTACTER') + '</div>' +
+      '<div class="hvp-grid2">' + fld('Contact', 'contact_name', 'text', p.contact_name) + fld('Ville', 'city', 'text', p.city) + '</div>' +
+      '<div class="hvp-grid2">' + fld('Téléphone', 'phone', 'tel', p.phone, ' inputmode="tel"') + fld('E-mail', 'email', 'email', p.email) + '</div>' +
+      '<div class="hvp-grid2">' + fld('Dernier contact', 'last_contact_at', 'date', p.last_contact_at) + fld('Prochaine relance', 'next_followup_at', 'date', p.next_followup_at) + '</div>' +
+      area('Notes commerciales', 'notes', p.notes) + actions('Enregistrer') + '</form>');
+    sheet.querySelector('#bizPartnerForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var row = formData(e.target, ['company','category','status','contact_name','city','phone','email','last_contact_at','next_followup_at','notes']);
+      if (!row.company){ err('Indiquez la société.'); return; }
+      row.updated_at = new Date().toISOString();
+      var q = p.id ? sb.client.from('partners').update(row).eq('id', p.id) : sb.client.from('partners').insert(row);
+      q.then(function(r){ if (r.error){ err(friendly(r.error)); return; } close(); renderPartners(); });
+    });
+  }
+  function subForm(s){
+    s = s || {};
+    var bookings = ((window.admGetBookingsCache && window.admGetBookingsCache()) || {}).rows || [];
+    var recent = bookings.filter(function(b){ return b.status !== 'CANCELLED'; }).slice(0, 80);
+    if (!partnersCache.length){ window.alert('Ajoutez d\'abord un partenaire.'); return; }
+    open('<form id="bizSubForm"><h3>' + (s.id ? 'Modifier la sous-traitance' : 'Nouvelle sous-traitance') + '</h3>' +
+      sel('Partenaire', 'partner_id', partnersCache.map(function(p){ return [p.id, p.company]; }), s.partner_id) +
+      sel('Intervention concernée (facultatif)', 'booking_id', [['', '— Aucune —']].concat(recent.map(function(b){ return [b.id, (b.reference || '') + ' · ' + fmtDate(b.date) + ' · ' + ((b.services && b.services.name) || '')]; })), s.booking_id || '') +
+      fld('Description', 'description', 'text', s.description, ' required maxlength="500"') +
+      '<div class="hvp-grid2">' + sel('Statut', 'status', SUB_STATUS, s.status || 'PROPOSE') + fld('Montant convenu (€)', 'amount', 'number', s.agreed_amount_cents != null ? (s.agreed_amount_cents / 100).toFixed(2) : '', ' step="0.01" min="0" inputmode="decimal"') + '</div>' +
+      area('Notes / documents (références)', 'notes', s.notes) + actions('Enregistrer') + '</form>');
+    sheet.querySelector('#bizSubForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var row = formData(e.target, ['partner_id','booking_id','description','status','notes']);
+      var amt = cents(new FormData(e.target).get('amount'));
+      row.agreed_amount_cents = amt;
+      if (!row.description){ err('Indiquez une description.'); return; }
+      var q = s.id ? sb.client.from('subcontracts').update(row).eq('id', s.id) : sb.client.from('subcontracts').insert(row);
+      q.then(function(r){ if (r.error){ err(friendly(r.error)); return; } close(); renderPartners(); });
+    });
+  }
+
+  // -------------------------------------------------------------- MATÉRIEL
+  function renderGear(){
+    var el = document.getElementById('hvpGear'); if (!el) return;
+    Promise.all([
+      sb.client.from('vehicles').select('*').order('created_at', { ascending:true }),
+      sb.client.from('vehicle_expenses').select('*').order('spent_on', { ascending:false }).limit(200),
+      sb.client.from('tools').select('*').order('name', { ascending:true })
+    ]).then(function(r){
+      if (r[0].error){ el.innerHTML = '<p class="hvp-error">Matériel indisponible.</p>'; return; }
+      var vehicles = r[0].data || [], exps = r[1].data || [], tools = r[2].data || [];
+      var t = today(), y = t.slice(0, 4);
+      el.innerHTML = '<p class="hvp-section-title">Véhicules</p>' +
+        '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-biz-vehicle-new>+ AJOUTER UN VÉHICULE</button></div>' +
+        (vehicles.length ? vehicles.map(function(v){
+          var vexp = exps.filter(function(x){ return x.vehicle_id === v.id; });
+          var yearTotal = vexp.filter(function(x){ return String(x.spent_on).slice(0, 4) === y; }).reduce(function(s, x){ return s + x.amount_cents; }, 0);
+          var serviceDue = (v.next_service_date && v.next_service_date <= t) || (v.next_service_km && v.mileage_km && v.mileage_km >= v.next_service_km);
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(v.name) + (v.plate ? ' · ' + esc(v.plate) : '') + '</p>' +
+            '<p class="hvp-card-sub">' + (v.mileage_km != null ? esc(Number(v.mileage_km).toLocaleString('fr-FR')) + ' km' : 'Kilométrage non renseigné') +
+            (v.next_service_date || v.next_service_km ? ' · prochain entretien ' + [v.next_service_date ? esc(fmtDate(v.next_service_date)) : null, v.next_service_km ? esc(Number(v.next_service_km).toLocaleString('fr-FR')) + ' km' : null].filter(Boolean).join(' ou ') : '') + '</p>' +
+            '<p class="hvp-card-sub">Dépenses ' + y + ' : ' + esc(euros(yearTotal)) + (vexp[0] ? ' · dernière : ' + esc(label(EXP_KIND, vexp[0].kind)) + ' ' + esc(euros(vexp[0].amount_cents)) + ' le ' + esc(fmtDate(vexp[0].spent_on)) : '') + '</p></div>' +
+            (serviceDue ? '<span class="hvp-pill hvp-st-low">Entretien dû</span>' : '') + '</div>' +
+            '<div class="hvp-actions hvp-actions-2"><button type="button" class="hvp-act" data-biz-expense-new="' + v.id + '">+ DÉPENSE</button><button type="button" class="hvp-act" data-biz-vehicle-edit="' + v.id + '">MODIFIER</button></div></div>';
+        }).join('') : '<p class="hvp-empty">Aucun véhicule.</p>') +
+        '<p class="hvp-section-title">Outillage (' + tools.length + ')</p>' +
+        '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-biz-tool-new>+ AJOUTER UN OUTIL</button></div>' +
+        (tools.length ? tools.map(function(o){
+          var warrantyOk = o.warranty_until && o.warranty_until >= t;
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(o.name) + '</p>' +
+            '<p class="hvp-card-sub">' + esc([o.brand, o.reference, o.purchase_date ? 'acheté le ' + fmtDate(o.purchase_date) : null].filter(Boolean).join(' · ')) + '</p>' +
+            (o.warranty_until ? '<p class="hvp-card-sub">Garantie ' + (warrantyOk ? 'jusqu\'au ' : 'expirée le ') + esc(fmtDate(o.warranty_until)) + '</p>' : '') + '</div>' +
+            '<span class="hvp-pill ' + (o.condition === 'BON' ? 'hvp-st-COMPLETED' : o.condition === 'HS' ? 'hvp-st-low' : 'hvp-st-PENDING') + '">' + esc(label(COND, o.condition)) + '</span></div>' +
+            '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-biz-tool-edit="' + o.id + '">MODIFIER</button></div></div>';
+        }).join('') : '<p class="hvp-empty">Aucun outil enregistré.</p>');
+      el._data = { vehicles: vehicles, tools: tools };
+    }).catch(function(){ el.innerHTML = '<p class="hvp-error">Matériel indisponible.</p>'; });
+  }
+  function vehicleForm(v){
+    v = v || {};
+    open('<form id="bizVehicleForm"><h3>' + (v.id ? 'Modifier le véhicule' : 'Nouveau véhicule') + '</h3>' +
+      '<div class="hvp-grid2">' + fld('Véhicule', 'name', 'text', v.name, ' required placeholder="Ex. Renault Kangoo"') + fld('Immatriculation', 'plate', 'text', v.plate) + '</div>' +
+      fld('Kilométrage actuel', 'mileage_km', 'number', v.mileage_km, ' min="0" step="1" inputmode="numeric"') +
+      '<div class="hvp-grid2">' + fld('Prochain entretien (date)', 'next_service_date', 'date', v.next_service_date) + fld('Prochain entretien (km)', 'next_service_km', 'number', v.next_service_km, ' min="0" step="1" inputmode="numeric"') + '</div>' +
+      area('Notes', 'notes', v.notes) + actions('Enregistrer') + '</form>');
+    sheet.querySelector('#bizVehicleForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var row = formData(e.target, ['name','plate','mileage_km','next_service_date','next_service_km','notes']);
+      if (!row.name){ err('Indiquez le véhicule.'); return; }
+      row.mileage_km = row.mileage_km != null ? parseInt(row.mileage_km, 10) : null;
+      row.next_service_km = row.next_service_km != null ? parseInt(row.next_service_km, 10) : null;
+      row.updated_at = new Date().toISOString();
+      var q = v.id ? sb.client.from('vehicles').update(row).eq('id', v.id) : sb.client.from('vehicles').insert(row);
+      q.then(function(r){ if (r.error){ err(friendly(r.error)); return; } close(); renderGear(); });
+    });
+  }
+  function expenseForm(vehicleId){
+    open('<form id="bizExpenseForm"><h3>Nouvelle dépense</h3>' +
+      '<div class="hvp-grid2">' + sel('Type', 'kind', EXP_KIND, 'carburant') + fld('Date', 'spent_on', 'date', today()) + '</div>' +
+      '<div class="hvp-grid2">' + fld('Montant (€)', 'amount', 'number', '', ' step="0.01" min="0" required inputmode="decimal"') + fld('Kilométrage (facultatif)', 'mileage_km', 'number', '', ' min="0" step="1" inputmode="numeric"') + '</div>' +
+      fld('Note', 'note', 'text', '') + actions('Enregistrer') + '</form>');
+    sheet.querySelector('#bizExpenseForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var row = formData(e.target, ['kind','spent_on','mileage_km','note']);
+      row.vehicle_id = vehicleId; row.amount_cents = cents(new FormData(e.target).get('amount'));
+      if (!(row.amount_cents >= 0)){ err('Montant invalide.'); return; }
+      row.mileage_km = row.mileage_km != null ? parseInt(row.mileage_km, 10) : null;
+      sb.client.from('vehicle_expenses').insert(row).then(function(r){
+        if (r.error){ err(friendly(r.error)); return; }
+        // Kilométrage du véhicule tenu à jour (jamais diminué).
+        var gear = (document.getElementById('hvpGear') || {})._data || { vehicles: [] };
+        var v = gear.vehicles.filter(function(x){ return x.id === vehicleId; })[0];
+        var next = (row.mileage_km && v && (!v.mileage_km || row.mileage_km > v.mileage_km)) ? sb.client.from('vehicles').update({ mileage_km: row.mileage_km, updated_at: new Date().toISOString() }).eq('id', vehicleId) : Promise.resolve({});
+        Promise.resolve(next).then(function(){ close(); renderGear(); });
+      });
+    });
+  }
+  function toolForm(o){
+    o = o || {};
+    open('<form id="bizToolForm"><h3>' + (o.id ? 'Modifier l\'outil' : 'Nouvel outil') + '</h3>' +
+      fld('Outil', 'name', 'text', o.name, ' required placeholder="Ex. Pompe à vide"') +
+      '<div class="hvp-grid2">' + fld('Marque', 'brand', 'text', o.brand) + fld('Référence', 'reference', 'text', o.reference) + '</div>' +
+      '<div class="hvp-grid2">' + fld('Date d\'achat', 'purchase_date', 'date', o.purchase_date) + fld('Garantie jusqu\'au', 'warranty_until', 'date', o.warranty_until) + '</div>' +
+      sel('État', 'condition', COND, o.condition || 'BON') + area('Notes', 'notes', o.notes) + actions('Enregistrer') + '</form>');
+    sheet.querySelector('#bizToolForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      var row = formData(e.target, ['name','brand','reference','purchase_date','warranty_until','condition','notes']);
+      if (!row.name){ err('Indiquez l\'outil.'); return; }
+      row.updated_at = new Date().toISOString();
+      var q = o.id ? sb.client.from('tools').update(row).eq('id', o.id) : sb.client.from('tools').insert(row);
+      q.then(function(r){ if (r.error){ err(friendly(r.error)); return; } close(); renderGear(); });
+    });
+  }
+
+  // -------------------------------------------- PROPOSITION DE TOURNÉE
+  // Plus proche voisin à partir du point de départ (travel_settings_public),
+  // sur les rendez-vous confirmés du jour géolocalisés. Uniquement une
+  // proposition : aucun horaire n'est modifié, l'admin décide.
+  function km(a, b){
+    var R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function routeLength(origin, list){ var d = 0, cur = origin; list.forEach(function(p){ d += km(cur, p); cur = p; }); return d + km(cur, origin); }
+  window.hvpProposeRoute = function(){
+    var bookings = ((window.admGetBookingsCache && window.admGetBookingsCache()) || {}).rows || [];
+    var t = today();
+    var stops = bookings.filter(function(b){ return b.date === t && (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS'); })
+      .map(function(b){ return { b: b, lat: Number(b.intervention_lat), lng: Number(b.intervention_lng) }; });
+    var located = stops.filter(function(s){ return isFinite(s.lat) && isFinite(s.lng) && s.lat && s.lng; });
+    sb.client.from('travel_settings_public').select('origin_lat,origin_lng,origin_label').maybeSingle().then(function(r){
+      var o = r.data && r.data.origin_lat ? { lat: Number(r.data.origin_lat), lng: Number(r.data.origin_lng) } : (located[0] || { lat: 43.433, lng: 6.737 });
+      var current = located.slice().sort(function(a, c){ return String(a.b.start_time).localeCompare(String(c.b.start_time)); });
+      var left = located.slice(), proposal = [], cur = o;
+      while (left.length){
+        left.sort(function(a, c){ return km(cur, a) - km(cur, c); });
+        cur = left.shift(); proposal.push(cur);
+      }
+      var dNow = routeLength(o, current), dNew = routeLength(o, proposal);
+      function line(s, i){ var b = s.b; var c = {}; try { c = window.admContactFor ? window.admContactFor(b) : {}; } catch(e){} return '<li>' + (i + 1) + '. ' + esc(String(b.start_time || '').slice(0, 5)) + ' — ' + esc(c.name || b.guest_name || 'Client') + (c.address || b.guest_address ? ' · ' + esc(c.address || b.guest_address) : '') + '</li>'; }
+      open('<div><h3>Proposition d\'ordre de tournée</h3>' +
+        (located.length < 2 ? '<p class="hvp-card-sub">Pas assez de rendez-vous géolocalisés aujourd\'hui (' + located.length + ' sur ' + stops.length + ') pour proposer un ordre.</p>' :
+          '<p class="hvp-card-sub">Ordre actuel (horaires) : environ ' + Math.round(dNow) + ' km à vol d\'oiseau, aller-retour.</p><ol style="padding-left:18px;">' + current.map(line).join('') + '</ol>' +
+          '<p class="hvp-card-sub"><strong>Ordre suggéré</strong> (plus proche voisin) : environ ' + Math.round(dNew) + ' km' + (dNew < dNow - 1 ? ' — gain estimé ' + Math.round(dNow - dNew) + ' km' : ' — l\'ordre actuel est déjà efficace') + '.</p><ol style="padding-left:18px;">' + proposal.map(line).join('') + '</ol>' +
+          '<p class="hvp-card-sub">Simple proposition : aucun rendez-vous n\'est déplacé. Pour changer un horaire confirmé, utilisez « Modifier » sur le rendez-vous (le client est prévenu).</p>') +
+        (stops.length > located.length ? '<p class="hvp-card-sub">' + (stops.length - located.length) + ' rendez-vous sans coordonnées ne sont pas pris en compte.</p>' : '') +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-ok" data-biz-cancel>Fermer</button></div></div>');
+    });
+  };
+
+  // -------------------------------------------------------------- liens
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if (t.closest('[data-biz-partner-new]')){ partnerForm(); return; }
+    var pe = t.closest('[data-biz-partner-edit]'); if (pe){ partnerForm(partnersCache.filter(function(p){ return p.id === pe.getAttribute('data-biz-partner-edit'); })[0]); return; }
+    var pc = t.closest('[data-biz-partner-contacted]');
+    if (pc){
+      var next = new Date(); next.setDate(next.getDate() + 7);
+      var nextIso = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') + '-' + String(next.getDate()).padStart(2, '0');
+      var p0 = partnersCache.filter(function(p){ return p.id === pc.getAttribute('data-biz-partner-contacted'); })[0] || {};
+      sb.client.from('partners').update({ last_contact_at: today(), status: p0.status === 'A_CONTACTER' ? 'CONTACTE' : p0.status, next_followup_at: (p0.status === 'PARTENAIRE' || p0.status === 'REFUSE') ? p0.next_followup_at : nextIso, updated_at: new Date().toISOString() })
+        .eq('id', pc.getAttribute('data-biz-partner-contacted')).then(function(){ renderPartners(); });
+      return;
+    }
+    if (t.closest('[data-biz-sub-new]')){ subForm(); return; }
+    var se = t.closest('[data-biz-sub-edit]'); if (se){ var subs = (document.getElementById('hvpPartners') || {})._subs || []; subForm(subs.filter(function(s){ return s.id === se.getAttribute('data-biz-sub-edit'); })[0]); return; }
+    if (t.closest('[data-biz-vehicle-new]')){ vehicleForm(); return; }
+    var ve = t.closest('[data-biz-vehicle-edit]'); if (ve){ var g = (document.getElementById('hvpGear') || {})._data || { vehicles: [] }; vehicleForm(g.vehicles.filter(function(v){ return v.id === ve.getAttribute('data-biz-vehicle-edit'); })[0]); return; }
+    var ex = t.closest('[data-biz-expense-new]'); if (ex){ expenseForm(ex.getAttribute('data-biz-expense-new')); return; }
+    if (t.closest('[data-biz-tool-new]')){ toolForm(); return; }
+    var te = t.closest('[data-biz-tool-edit]'); if (te){ var g2 = (document.getElementById('hvpGear') || {})._data || { tools: [] }; toolForm(g2.tools.filter(function(o){ return o.id === te.getAttribute('data-biz-tool-edit'); })[0]); return; }
+    if (t.closest('[data-biz-route]')){ window.hvpProposeRoute(); return; }
+  });
+  var ps = document.getElementById('hvpPartnerSearch'); if (ps) ps.addEventListener('input', renderPartners);
+  var pf = document.getElementById('hvpPartnerFilter'); if (pf) pf.addEventListener('change', renderPartners);
+  var prev = window.hvProBeforeShowPage;
+  window.hvProBeforeShowPage = function(k){ if (prev) prev(k); if (k === 'partners') renderPartners(); if (k === 'gear') renderGear(); };
 })();
 </script>
 <script>
