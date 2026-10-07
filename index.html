@@ -11055,7 +11055,7 @@ if ('serviceWorker' in navigator){
   (function loadTravelSettings(){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
-    sb.client.from('travel_settings_public').select('*').maybeSingle().then(function(res){
+    sb.client.rpc('get_public_travel_settings').then(function(res){
       if (!res || res.error || !res.data) return;
       TRAVEL_ORIGIN = { label: res.data.origin_label || TRAVEL_ORIGIN.label, lat: res.data.origin_lat, lon: res.data.origin_lng };
       FREE_TRAVEL_KM = res.data.included_radius_km;
@@ -26264,8 +26264,8 @@ if ('serviceWorker' in navigator){
   function checkEnabled(){
     var sb = window.sudSupabase;
     if (!sb || !sb.configured) return;
-    sb.client.from('ai_settings_public').select('enabled').maybeSingle().then(function(res){
-      if (!res.error && res.data && res.data.enabled){
+    sb.client.rpc('get_public_ai_enabled').then(function(res){
+      if (!res.error && res.data === true){
         toggleBtn.hidden = false;
         startInvite();
       }
@@ -28275,7 +28275,7 @@ if ('serviceWorker' in navigator){
     var stops = bookings.filter(function(b){ return b.date === t && (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS'); })
       .map(function(b){ return { b: b, lat: Number(b.intervention_lat), lng: Number(b.intervention_lng) }; });
     var located = stops.filter(function(s){ return isFinite(s.lat) && isFinite(s.lng) && s.lat && s.lng; });
-    sb.client.from('travel_settings_public').select('origin_lat,origin_lng,origin_label').maybeSingle().then(function(r){
+    sb.client.rpc('get_public_travel_settings').then(function(r){
       var o = r.data && r.data.origin_lat ? { lat: Number(r.data.origin_lat), lng: Number(r.data.origin_lng) } : (located[0] || { lat: 43.433, lng: 6.737 });
       var current = located.slice().sort(function(a, c){ return String(a.b.start_time).localeCompare(String(c.b.start_time)); });
       var left = located.slice(), proposal = [], cur = o;
