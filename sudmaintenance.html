@@ -3882,6 +3882,9 @@ if ('serviceWorker' in navigator){
   .admin-client-fiche-name{ font-family:"Poppins",sans-serif; font-weight:800; margin:0 0 6px; }
   .admin-client-fiche-contact{ display:flex; flex-wrap:wrap; gap:14px; color:var(--adm-ink-soft); margin-bottom:10px; }
   .admin-client-fiche-actions{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .admin-client-crm-field{ display:block; margin:8px 0; font-size:0.9rem; color:var(--ink-soft, #5B6B78); }
+  .admin-client-crm-field input, .admin-client-crm-field textarea{ display:block; width:100%; box-sizing:border-box; margin-top:4px; font:inherit; padding:8px 10px; border:1px solid #d9dee3; border-radius:10px; }
+  .admin-client-tags .adm-badge{ margin:0 4px 4px 0; display:inline-block; }
   .admin-client-fiche-section-title{
     font-family:"Poppins",sans-serif; font-weight:800; font-size:0.9rem; text-transform:uppercase;
     letter-spacing:0.03em; color:var(--adm-ink-soft); margin:20px 0 10px; border-top:1px solid var(--adm-line); padding-top:16px;
@@ -15634,9 +15637,11 @@ if ('serviceWorker' in navigator){
         .order('date', { ascending:false }).order('start_time', { ascending:false }).limit(500),
       sb.client.from('service_contracts').select('id,contract_type,energy_type,status,start_date,end_date,annual_price_cents').eq('client_id', clientId),
       sb.client.from('quotes').select('id,reference,title,status,total_cents,created_at').eq('client_id', clientId),
-      sb.client.from('invoices').select('id,reference,status,total_cents,created_at').eq('client_id', clientId)
+      sb.client.from('invoices').select('id,reference,status,total_cents,created_at').eq('client_id', clientId),
+      sb.client.from('client_crm').select('tags').eq('client_id', clientId).maybeSingle()
     ]).then(function(results){
       var client = results[0].data;
+      var crmTags = (results[6] && results[6].data && Array.isArray(results[6].data.tags)) ? results[6].data.tags : [];
       var equipRows = results[1].data || [];
       var bookings = results[2].data || [];
       var contracts = results[3].data || [];
@@ -15649,7 +15654,8 @@ if ('serviceWorker' in navigator){
       ivQuery.then(function(ivRes){
         adminClientFicheCache = {
           client: client, equipment: equipRows, bookings: bookings,
-          interventions: Array.isArray(ivRes.data) ? ivRes.data : [], contracts: contracts, quotes: quotesRows, invoices: invoiceRows
+          interventions: Array.isArray(ivRes.data) ? ivRes.data : [], contracts: contracts, quotes: quotesRows, invoices: invoiceRows,
+          tags: crmTags
         };
         admPaintClientFiche();
       });
@@ -15677,6 +15683,26 @@ if ('serviceWorker' in navigator){
       parts.push('Prochain entretien : ' + d.toLocaleDateString('fr-FR') + (eq.maintenance_reminders_enabled === false ? ' (rappels coupés)' : ''));
     }
     return parts.length ? '<span class="ec-row-meta">' + parts.join(' · ') + '</span>' : '';
+  }
+  function admSaveClientCrm(btn){
+    var d = adminClientFicheCache; if (!d || !d.client) return;
+    var tags = String((document.getElementById('adminClientTagsInput') || {}).value || '').split(',')
+      .map(function(t){ return t.trim().slice(0, 30); }).filter(Boolean)
+      .filter(function(t, i, a){ return a.map(function(x){ return x.toLowerCase(); }).indexOf(t.toLowerCase()) === i; }).slice(0, 12);
+    var notes = String((document.getElementById('adminClientNotesInput') || {}).value || '').trim() || null;
+    var msg = document.getElementById('adminClientCrmMsg');
+    btn.disabled = true;
+    Promise.all([
+      sb.client.from('client_crm').upsert({ client_id: d.client.id, tags: tags, updated_at: new Date().toISOString() }),
+      notes !== (d.client.notes || null) ? sb.client.from('clients').update({ notes: notes }).eq('id', d.client.id) : Promise.resolve({})
+    ]).then(function(r){
+      btn.disabled = false;
+      var err = (r[0] && r[0].error) || (r[1] && r[1].error);
+      if (err){ if (msg) msg.textContent = 'Enregistrement impossible : ' + err.message; return; }
+      d.tags = tags; d.client.notes = notes;
+      admPaintClientFiche();
+      var m2 = document.getElementById('adminClientCrmMsg'); if (m2) m2.textContent = '✓ Enregistré';
+    });
   }
   function admPaintClientFiche(){
     var body = document.getElementById('adminClientFicheBody');
@@ -15724,7 +15750,12 @@ if ('serviceWorker' in navigator){
           : '<p class="admin-accounts-hint">Aucune intervention terminée pour le moment.</p>') +
         '<h3 class="admin-client-fiche-section-title">Équipements connus (' + d.equipment.length + ')</h3>' +
         (d.equipment.length ? d.equipment.map(function(eq){ return '<div class="admin-client-fiche-equip">' + admEscape(admEquipmentLabel(eq)) + '</div>'; }).join('') : '<p class="admin-accounts-hint">Aucun équipement enregistré.</p>') +
-        (client.notes ? '<h3 class="admin-client-fiche-section-title">Notes internes</h3><p>' + admEscape(client.notes) + '</p>' : '');
+        // CRM (V2) : étiquettes (client_crm, admin uniquement) et notes modifiables.
+        '<h3 class="admin-client-fiche-section-title">Étiquettes</h3>' +
+        '<p class="admin-client-tags">' + ((d.tags || []).length ? d.tags.map(function(t){ return '<span class="adm-badge adm-badge-pending">' + admEscape(t) + '</span>'; }).join(' ') : '<span class="admin-accounts-hint">Aucune étiquette.</span>') + '</p>' +
+        '<label class="admin-client-crm-field">Étiquettes (séparées par des virgules, ex. VIP, Syndic, Relancer)<input type="text" id="adminClientTagsInput" maxlength="300" value="' + admEscape((d.tags || []).join(', ')) + '"></label>' +
+        '<label class="admin-client-crm-field">Notes internes<textarea id="adminClientNotesInput" rows="3" maxlength="4000">' + admEscape(client.notes || '') + '</textarea></label>' +
+        '<button type="button" class="admin-bk-action-btn" id="adminClientCrmSave">Enregistrer étiquettes et notes</button> <span class="ec-row-meta" id="adminClientCrmMsg" aria-live="polite"></span>';
     } else if (adminClientFicheTab === 'equipment'){
       panel = '<button type="button" class="admin-bk-action-btn" id="adminClientAddEquipBtn">+ Ajouter un équipement</button>' +
         (d.equipment.length ? '<div class="ec-list">' + d.equipment.map(function(eq){
@@ -15786,6 +15817,7 @@ if ('serviceWorker' in navigator){
       var tabBtn = e.target.closest('.admin-client-fiche-tab');
       if (tabBtn){ adminClientFicheTab = tabBtn.getAttribute('data-client-tab'); admPaintClientFiche(); return; }
       if (e.target.closest('#adminClientAddEquipBtn')){ admOpenEquipmentEditor(null); return; }
+      if (e.target.closest('#adminClientCrmSave')){ admSaveClientCrm(e.target.closest('#adminClientCrmSave')); return; }
       var editEquipBtn = e.target.closest('.admin-client-edit-equip-btn');
       if (editEquipBtn){ admOpenEquipmentEditor(editEquipBtn.getAttribute('data-equip-id')); return; }
       var row = e.target.closest('.admin-bk-archive-row');
