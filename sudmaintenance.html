@@ -27373,7 +27373,7 @@ if ('serviceWorker' in navigator){
         '<span class="hvp-pill ' + (RCLASS[x.status] || '') + '">' + esc(RSTATUS[x.status] || x.status) + '</span></div>' +
         (x.clawback ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-ref-detail="' + esc(x.referrer_client_id) + '">VOIR LA FICHE</button></div>'
           : '<div class="hvp-actions hvp-actions-3">' +
-            '<button type="button" class="hvp-act is-main" data-ref-validate="' + esc(x.reward_id) + '" data-ref-paid="' + (x.paid_amount_cents == null ? '' : x.paid_amount_cents) + '">VALIDER</button>' +
+            '<button type="button" class="hvp-act is-main" data-ref-validate="' + esc(x.reward_id) + '" data-ref-paid="' + (x.paid_amount_cents == null ? '' : x.paid_amount_cents) + '">CONFIRMER LE PAIEMENT</button>' +
             '<button type="button" class="hvp-act is-danger" data-ref-reject="' + esc(x.reward_id) + '">REFUSER</button>' +
             '<button type="button" class="hvp-act" data-ref-recheck="' + esc(x.reward_id) + '">REVÉRIFIER</button></div>') +
         '</div>';
@@ -27622,7 +27622,7 @@ if ('serviceWorker' in navigator){
         var ds = w.display_status || w.status;
         var acts = [];
         if (w.status === 'PENDING' || w.status === 'REVIEW'){
-          acts.push('<button type="button" class="hvp-act is-main" data-ref-validate="' + esc(w.id) + '" data-ref-paid="' + (w.paid_amount_cents == null ? (w.booking_total_cents || '') : w.paid_amount_cents) + '">VALIDER</button>');
+          acts.push('<button type="button" class="hvp-act is-main" data-ref-validate="' + esc(w.id) + '" data-ref-paid="' + (w.paid_amount_cents == null ? (w.booking_total_cents || '') : w.paid_amount_cents) + '">CONFIRMER LE PAIEMENT</button>');
           acts.push('<button type="button" class="hvp-act is-danger" data-ref-reject="' + esc(w.id) + '">REFUSER</button>');
           acts.push('<button type="button" class="hvp-act" data-ref-recheck="' + esc(w.id) + '">REVÉRIFIER</button>');
         } else if (w.status === 'VALIDATED' && !w.payout_no && !w.clawback){
@@ -27748,14 +27748,30 @@ if ('serviceWorker' in navigator){
       return;
     }
     if ((t = e.target.closest('[data-ref-validate]'))){
+      // Validation manuelle = confirmation explicite d'un paiement réellement encaissé.
       var def = t.getAttribute('data-ref-paid');
-      var val2 = window.prompt('Montant final RÉELLEMENT payé par le client pour l\'intervention (en € TTC) — la récompense est calculée selon les règles configurées :', def ? String(Number(def) / 100).replace('.', ',') : '');
+      var val2 = window.prompt('Montant RÉELLEMENT encaissé pour l\'intervention (en € TTC) — la récompense est calculée selon les règles configurées :', def ? String(Number(def) / 100).replace('.', ',') : '');
       if (val2 == null) return;
       var cents = toCents(val2);
-      if (!(cents >= 0)){ window.alert('Montant invalide.'); return; }
-      if (!window.confirm('Valider la récompense de ce parrainage ?')) return;
+      if (!(cents > 0)){ window.alert('Montant invalide.'); return; }
+      var METHODS = { '1': 'virement', '2': 'carte', '3': 'especes', '4': 'cheque', '5': 'autre' };
+      var METHOD_LABEL = { virement: 'virement', carte: 'carte bancaire', especes: 'espèces', cheque: 'chèque', autre: 'autre' };
+      var mRaw = window.prompt('Moyen de paiement : 1 = virement, 2 = carte bancaire, 3 = espèces, 4 = chèque, 5 = autre', '');
+      if (mRaw == null) return;
+      var method = METHODS[String(mRaw).trim()];
+      if (!method){ window.alert('Moyen de paiement invalide.'); return; }
+      var now2 = new Date(), today = ('0' + now2.getDate()).slice(-2) + '/' + ('0' + (now2.getMonth() + 1)).slice(-2) + '/' + now2.getFullYear();
+      var dRaw = window.prompt('Date du paiement (JJ/MM/AAAA) :', today);
+      if (dRaw == null) return;
+      var dm = String(dRaw).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!dm){ window.alert('Date invalide.'); return; }
+      var payDate = dm[3] + '-' + ('0' + dm[2]).slice(-2) + '-' + ('0' + dm[1]).slice(-2);
+      var payRef = window.prompt('Référence du paiement (n° de transaction, de chèque… — facultatif) :', '');
+      if (payRef == null) return;
+      if (!window.confirm('Je confirme avoir réellement encaissé ' + euros(cents) + ' (' + METHOD_LABEL[method] + ', le ' + dRaw.trim() + ') pour cette intervention. Valider la récompense ?')) return;
       t.disabled = true;
-      rpc('admin_validate_referral_reward', { p_reward_id: t.getAttribute('data-ref-validate'), p_paid_cents: cents, p_note: 'Paiement confirmé par l\'administration' }).then(after, function(err){ fail(err); after(); });
+      rpc('admin_confirm_payment_and_validate', { p_reward_id: t.getAttribute('data-ref-validate'), p_paid_cents: cents, p_method: method,
+        p_payment_date: payDate, p_reference: payRef.trim() || null, p_note: null }).then(after, function(err){ fail(err); after(); });
       return;
     }
     if ((t = e.target.closest('[data-ref-reject]'))){
