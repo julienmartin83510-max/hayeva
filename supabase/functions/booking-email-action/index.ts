@@ -30,7 +30,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ALLOWED_ORIGINS = new Set(
-  (Deno.env.get('ACTION_ALLOWED_ORIGINS') || 'https://hayeva.netlify.app,https://hayeva.fr,https://www.hayeva.fr')
+  (Deno.env.get('ACTION_ALLOWED_ORIGINS') || 'https://hayeva.fr,https://www.hayeva.fr,https://hayeva.netlify.app')
     .split(',').map((s) => s.trim()).filter(Boolean),
 );
 

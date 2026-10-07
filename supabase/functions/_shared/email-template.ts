@@ -19,7 +19,7 @@
 // (et non en fond CSS) pour un affichage fiable partout, y compris Outlook
 // desktop, et une couleur de secours (#101B24) si l'image ne s'affiche pas.
 
-const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.netlify.app';
+const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.fr';
 const HEADER_IMAGE_URL = `${SITE_BASE_URL}/images/email/hayeva-email-header.jpg`;
 const NAVY = '#101B24';
 

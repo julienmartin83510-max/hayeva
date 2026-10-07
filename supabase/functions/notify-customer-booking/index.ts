@@ -33,7 +33,7 @@ import { sendEmailOnce } from '../_shared/mail.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.netlify.app/#espaceClient';
+const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.fr/#espaceClient';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => (

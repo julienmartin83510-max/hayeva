@@ -51,8 +51,8 @@ import { escapeHtml, fmtDate, fmtDuration, fmtTime, resolveBookingContact, rowHt
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
-const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.netlify.app';
+const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.fr/#espacePro';
+const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.fr';
 // Page de validation (site Netlify) : le jeton est passé dans le fragment
 // (#...), jamais envoyé à un serveur ni dans un en-tête Referer.
 const ACTION_PAGE_URL = `${SITE_BASE_URL}/rdv-action.html`;

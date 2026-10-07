@@ -34,7 +34,7 @@ supabase secrets set ADMIN_NOTIFICATION_EMAIL=contact@hayeva.fr
 # Optionnel :
 supabase secrets set RESEND_FROM_EMAIL="HAYEVA <contact@hayeva.fr>"
 supabase secrets set REPLY_TO_EMAIL=contact@hayeva.fr
-supabase secrets set ADMIN_PANEL_URL=https://hayeva.netlify.app/#espacePro
+supabase secrets set ADMIN_PANEL_URL=https://hayeva.fr/#espacePro
 ```
 
 `REPLY_TO_EMAIL` est optionnel — toutes les fonctions d'e-mail du projet

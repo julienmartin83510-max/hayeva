@@ -31,8 +31,8 @@ import { escapeHtml, fmtDate, fmtTime, resolveBookingContact, rowHtml } from '..
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.netlify.app/#espacePro';
-const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.netlify.app/#espaceClient';
+const ADMIN_PANEL_URL = Deno.env.get('ADMIN_PANEL_URL') || 'https://hayeva.fr/#espacePro';
+const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.fr/#espaceClient';
 
 function fmtDateTime(d: string, t: string): string {
   return `${fmtDate(d)} à ${fmtTime(t)}`;
