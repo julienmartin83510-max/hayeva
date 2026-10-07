@@ -107,3 +107,6 @@ select cron.schedule(
   );
   $$
 );
+
+-- Fonction de déclencheur : jamais appelable en RPC.
+revoke all on function public.intervention_update_equipment_service() from public, anon, authenticated;

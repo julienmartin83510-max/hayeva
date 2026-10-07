@@ -20806,6 +20806,7 @@ if ('serviceWorker' in navigator){
     html += '<h3 class="admin-bk-modal-title">Devis ' + admEscape(quote.reference) + '</h3>';
     html += '<p class="admin-bk-modal-ref">Statut : ' + qbStatusBadgeHtml(quote.status) +
       (quote.version > 1 ? ' · version ' + quote.version : '') + '</p>';
+    if (quote.status !== 'DRAFT') html += '<button type="button" class="admin-bk-modal-propose-toggle" data-hv-pdf="quote:' + quote.id + '">Télécharger le devis (PDF)</button>';
 
     if (quote.status === 'DRAFT' || quote.status === 'SENT'){
       // Relances automatiques J+3 / J+7 / J+14 (0102_quote_followups) : coupées
@@ -27422,6 +27423,7 @@ if ('serviceWorker' in navigator){
             (i.status === 'ISSUED' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-main" data-hvp-paid="' + i.id + '">ENREGISTRER LE PAIEMENT</button></div>' +
               '<div class="hvp-actions hvp-actions-2"><button type="button" class="hvp-act" data-hvp-partpay="' + i.id + '" data-remaining="' + remaining + '">PAIEMENT PARTIEL</button><button type="button" class="hvp-act" data-hvp-due="' + i.id + '" data-due="' + esc(i.due_date || '') + '">ÉCHÉANCE</button></div>' : '') +
             (i.status === 'PAID' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hvp-refund="' + i.id + '" data-hvp-refund-max="' + (i.total_cents || 0) + '">ENREGISTRER UN REMBOURSEMENT</button></div>' : '') +
+            (i.status !== 'DRAFT' ? '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act" data-hv-pdf="invoice:' + i.id + '">TÉLÉCHARGER LA FACTURE (PDF)</button></div>' : '') +
             '</div>';
         }).join('') : '<p class="hvp-empty">Aucune facture.</p>');
     }).catch(function(){ el.innerHTML = '<p class="hvp-error">Factures indisponibles.</p>'; });
@@ -27665,6 +27667,183 @@ if ('serviceWorker' in navigator){
     else if (key === 'invoices') renderInvoices();
   };
   window.hvProOnBookings = function(){ renderTech(); renderToday(); renderInterventions(); renderNotifs(); if (!companyCache) loadCompany().catch(function(){}); };
+})();
+</script>
+<script>
+// =====================================================================
+// Administration — DOCUMENTS PDF (V2 phase 7) : devis et factures.
+// Généré dans le navigateur (jsPDF, déjà utilisé pour les exports), à partir
+// des seules données enregistrées : rien n'est inventé. Bloqué tant que les
+// informations entreprise obligatoires manquent (company_billing_ready) et
+// réservé au régime de franchise en base de TVA (aucune ventilation HT/TVA
+// n'existe dans les données : un document « assujetti » serait incomplet).
+// =====================================================================
+(function(){
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  function euros(c){ return ((Number(c) || 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }).replace(/ | /g, ' ') + ' EUR'; }
+  function fmtDate(d){ if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(d); }
+  var METHOD = { virement:'Virement', cheque:'Chèque', especes:'Espèces', carte:'Carte bancaire', autre:'Autre' };
+
+  function loadLibs(){
+    var L = window.SUD_ADMIN_LIBS;
+    return window.sudLoadScript(L.jspdf).then(function(){ return window.sudLoadScript(L.autotable); });
+  }
+  function recipientOf(doc){
+    if (doc.client_id){
+      return sb.client.from('clients').select('first_name,last_name,address,postal_code,city,email,phone').eq('id', doc.client_id).maybeSingle().then(function(r){
+        var c = r.data || {};
+        return { name: [c.first_name, c.last_name].filter(Boolean).join(' '), lines: [c.address, [c.postal_code, c.city].filter(Boolean).join(' ')].filter(Boolean), email: c.email || '' };
+      });
+    }
+    if (doc.professional_account_id){
+      return sb.client.from('professional_accounts').select('legal_name').eq('id', doc.professional_account_id).maybeSingle().then(function(r){
+        return { name: (r.data && r.data.legal_name) || '', lines: [], email: '' };
+      });
+    }
+    if (doc.customer_user_id){
+      return Promise.all([
+        sb.client.from('customer_profiles').select('first_name,last_name').eq('user_id', doc.customer_user_id).maybeSingle(),
+        sb.client.from('customer_addresses').select('address,postal_code,city').eq('user_id', doc.customer_user_id).limit(1)
+      ]).then(function(r){
+        var cp = r[0].data || {}, a = (r[1].data || [])[0] || {};
+        return { name: [cp.first_name, cp.last_name].filter(Boolean).join(' '), lines: [a.address, [a.postal_code, a.city].filter(Boolean).join(' ')].filter(Boolean), email: '' };
+      });
+    }
+    return Promise.resolve({ name: '', lines: [], email: '' });
+  }
+
+  function header(pdf, co, title, ref, dateLabel){
+    var W = pdf.internal.pageSize.getWidth();
+    pdf.setFillColor(16, 27, 36); pdf.rect(0, 0, W, 70, 'F');
+    pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20);
+    pdf.text(co.trade_name || co.legal_name || 'HAYEVA', 40, 44);
+    pdf.setFontSize(16); pdf.text(title, W - 40, 36, { align: 'right' });
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
+    pdf.text('N° ' + ref + '  ·  ' + dateLabel, W - 40, 54, { align: 'right' });
+    pdf.setTextColor(16, 27, 36);
+  }
+  function parties(pdf, co, rcpt, y){
+    var W = pdf.internal.pageSize.getWidth();
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
+    pdf.text('Émetteur', 40, y); pdf.text('Client', W / 2 + 10, y);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    var left = [co.legal_name, co.owner_name && co.owner_name !== co.legal_name ? co.owner_name : null, co.legal_form, co.address_line1, co.address_line2, [co.postal_code, co.city].filter(Boolean).join(' '),
+      co.siret ? 'SIRET : ' + co.siret : null, co.rcs_number ? co.rcs_number : null, co.phone ? 'Tél. : ' + co.phone : null, co.email || null].filter(Boolean);
+    var right = [rcpt.name || '—'].concat(rcpt.lines || []);
+    left.forEach(function(l, i){ pdf.text(String(l), 40, y + 16 + i * 13); });
+    right.forEach(function(l, i){ pdf.text(String(l), W / 2 + 10, y + 16 + i * 13); });
+    return y + 16 + Math.max(left.length, right.length) * 13 + 14;
+  }
+  function footer(pdf, co){
+    var W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
+    var lines = ['TVA non applicable, art. 293 B du CGI.'];
+    if (co.insurance_company) lines.push('Assurance professionnelle : ' + co.insurance_company + (co.insurance_contract_number ? ' — contrat n° ' + co.insurance_contract_number : '') + (co.insurance_coverage ? ' — couverture : ' + co.insurance_coverage : '') + '.');
+    if (co.mediator_name) lines.push('Médiateur de la consommation : ' + co.mediator_name + (co.mediator_contact ? ' — ' + co.mediator_contact : '') + '.');
+    pdf.setFontSize(8); pdf.setTextColor(91, 107, 120);
+    var y = H - 24 - lines.length * 10;
+    lines.forEach(function(l){ pdf.splitTextToSize(l, W - 80).forEach(function(s){ pdf.text(s, 40, y); y += 10; }); });
+    pdf.setTextColor(16, 27, 36);
+  }
+
+  function generate(kind, id){
+    return Promise.all([
+      loadLibs(),
+      sb.client.from('company_settings').select('*').eq('id', 1).maybeSingle(),
+      sb.client.rpc('company_billing_ready')
+    ]).then(function(r){
+      var co = r[1].data || {};
+      if (r[2].error || r[2].data !== true) throw new Error('Complétez d\'abord les informations entreprise obligatoires (Réglages > Entreprise).');
+      if (co.vat_regime !== 'franchise_base') throw new Error('Document PDF disponible uniquement en franchise en base de TVA : HAYEVA n\'enregistre pas encore la ventilation HT / TVA nécessaire à un assujetti.');
+      if (kind === 'quote'){
+        return Promise.all([
+          sb.client.from('quotes').select('*').eq('id', id).maybeSingle(),
+          sb.client.from('quote_options').select('*').eq('quote_id', id).order('sort_order', { ascending: true })
+        ]).then(function(q){
+          var quote = q[0].data; if (!quote) throw new Error('Devis introuvable.');
+          return recipientOf(quote).then(function(rcpt){ return buildQuote(co, quote, q[1].data || [], rcpt); });
+        });
+      }
+      return Promise.all([
+        sb.client.from('invoices').select('*').eq('id', id).maybeSingle(),
+        sb.client.from('invoice_payments').select('amount_cents,method,paid_on').eq('invoice_id', id).order('paid_on', { ascending: true })
+      ]).then(function(q){
+        var inv = q[0].data; if (!inv) throw new Error('Facture introuvable.');
+        if (inv.status === 'DRAFT') throw new Error('Une facture en brouillon ne peut pas être exportée : émettez-la d\'abord.');
+        var lines = inv.quote_id
+          ? Promise.all([sb.client.from('quotes').select('selected_option_id,title').eq('id', inv.quote_id).maybeSingle(), sb.client.from('quote_options').select('*').eq('quote_id', inv.quote_id)])
+          : Promise.resolve(null);
+        return Promise.all([recipientOf(inv), lines]).then(function(x){ return buildInvoice(co, inv, q[1].data || [], x[0], x[1]); });
+      });
+    });
+  }
+
+  function buildQuote(co, quote, options, rcpt){
+    var pdf = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+    header(pdf, co, 'DEVIS', quote.reference || '', 'du ' + fmtDate(quote.sent_at || quote.created_at));
+    var y = parties(pdf, co, rcpt, 100);
+    if (quote.title){ pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.text('Objet : ' + quote.title, 40, y); y += 18; }
+    if (options.length > 1){ pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.text('Ce devis propose ' + options.length + ' options au choix (une seule sera retenue).', 40, y); y += 14; }
+    pdf.autoTable({
+      startY: y, margin: { left: 40, right: 40 }, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [26, 166, 238] },
+      head: [['Option', 'Description', 'Fourniture', 'Main-d\'œuvre', 'Total']],
+      body: options.map(function(o){ return [(o.label || 'Option') + (quote.selected_option_id === o.id ? ' (retenue)' : '') + (o.reference ? '\nRéf. ' + o.reference : ''), o.description || '', euros(o.supply_cents), euros(o.labor_cents), euros(o.total_cents)]; }),
+      columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } }
+    });
+    var ty = pdf.lastAutoTable.finalY + 20;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    pdf.text('Montants en euros' + (options.length > 1 ? ', par option.' : '.'), 40, ty);
+    pdf.text('Bon pour accord — date et signature du client :', 40, ty + 34);
+    pdf.rect(40, ty + 42, 240, 70);
+    footer(pdf, co);
+    pdf.save('Devis-' + (quote.reference || 'HAYEVA') + '.pdf');
+  }
+
+  function buildInvoice(co, inv, payments, rcpt, quoteData){
+    var pdf = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+    header(pdf, co, 'FACTURE', inv.reference || '', 'du ' + fmtDate(inv.created_at));
+    var y = parties(pdf, co, rcpt, 100);
+    var body = [];
+    if (quoteData && quoteData[0] && quoteData[0].data){
+      var sel = quoteData[0].data.selected_option_id;
+      var opts = (quoteData[1].data || []).filter(function(o){ return !sel || o.id === sel; });
+      if (opts.length === 1) body.push([(opts[0].label || 'Prestation') + (opts[0].description ? '\n' + opts[0].description : ''), euros(opts[0].supply_cents), euros(opts[0].labor_cents), euros(opts[0].total_cents)]);
+    }
+    if (!body.length) body.push(['Prestation' + (quoteData && quoteData[0] && quoteData[0].data && quoteData[0].data.title ? ' — ' + quoteData[0].data.title : ''), '', '', euros(inv.total_cents)]);
+    pdf.autoTable({
+      startY: y, margin: { left: 40, right: 40 }, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [26, 166, 238] },
+      head: [['Désignation', 'Fourniture', 'Main-d\'œuvre', 'Total']], body: body,
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } }
+    });
+    var paid = payments.reduce(function(s, p){ return s + (Number(p.amount_cents) || 0); }, 0);
+    if (inv.status === 'PAID' && !paid) paid = inv.total_cents || 0;
+    var rows = [['Total à payer', euros(inv.total_cents)]];
+    if (payments.length) payments.forEach(function(p){ rows.push(['Réglé' + (p.paid_on ? ' le ' + fmtDate(p.paid_on) : '') + (p.method ? ' (' + (METHOD[p.method] || p.method) + ')' : ''), '- ' + euros(p.amount_cents)]); });
+    else if (inv.status === 'PAID') rows.push(['Réglé' + (inv.paid_at ? ' le ' + fmtDate(inv.paid_at) : ''), '- ' + euros(inv.total_cents)]);
+    if (inv.refunded_cents > 0) rows.push(['Remboursé au client', euros(inv.refunded_cents)]);
+    rows.push(['Reste à payer', euros(Math.max((inv.total_cents || 0) - paid, 0))]);
+    pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 12, margin: { left: 300, right: 40 }, styles: { fontSize: 9.5, cellPadding: 5 }, theme: 'plain', body: rows,
+      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } } });
+    var ty = pdf.lastAutoTable.finalY + 20;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
+    if (inv.due_date && inv.status !== 'PAID') pdf.text('Date d\'échéance du paiement : ' + fmtDate(inv.due_date) + '.', 40, ty);
+    if (inv.status === 'CANCELLED'){ pdf.setTextColor(178, 58, 58); pdf.setFont('helvetica', 'bold'); pdf.text('FACTURE ANNULÉE', 40, ty + 16); pdf.setTextColor(16, 27, 36); }
+    footer(pdf, co);
+    pdf.save('Facture-' + (inv.reference || 'HAYEVA') + '.pdf');
+  }
+
+  window.hvDocPdf = function(kind, id, btn){
+    if (btn){ btn.disabled = true; btn.setAttribute('data-label', btn.textContent); btn.textContent = 'PDF…'; }
+    return generate(kind, id).catch(function(err){
+      window.alert(err && err.message ? err.message : 'Génération du PDF impossible.');
+    }).then(function(){ if (btn){ btn.disabled = false; btn.textContent = btn.getAttribute('data-label'); } });
+  };
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-hv-pdf]');
+    if (!b) return;
+    var parts = String(b.getAttribute('data-hv-pdf')).split(':');
+    window.hvDocPdf(parts[0], parts[1], b);
+  });
 })();
 </script>
 <script>
