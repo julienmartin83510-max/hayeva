@@ -3,7 +3,7 @@
 // à jour quand le réseau répond ; la copie locale ne sert qu'en cas de
 // coupure réelle. CACHE_VERSION : à incrémenter pour purger les anciennes
 // copies lors d'un déploiement (activate supprime tout autre cache).
-var CACHE_VERSION = 'hayeva-v15';
+var CACHE_VERSION = 'hayeva-v16';
 
 self.addEventListener('install', function(event){
   self.skipWaiting();

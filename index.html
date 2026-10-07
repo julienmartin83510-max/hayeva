@@ -8274,13 +8274,6 @@ if ('serviceWorker' in navigator){
               <a href="#" id="espaceProShowLogin">Déjà un compte ? Se connecter</a>
             </div>
           </form>
-
-          <p class="espace-pro-dev-notice" id="espaceProDevNotice">Authentification sécurisée à connecter : l'espace professionnel n'est pas encore relié à une base de données distante ni à un système de comptes. En attendant, vous pouvez essayer une démonstration locale ci-dessous.</p>
-
-          <div class="espace-pro-demo-divider"><span>ou</span></div>
-
-          <button type="button" class="btn-secondary espace-pro-demo-btn" id="espaceProDemoBtn">Continuer avec la démonstration locale</button>
-          <p class="espace-pro-local-note">Mode démonstration : vos logements sont stockés uniquement sur cet appareil et ce navigateur, sans compte ni synchronisation entre appareils.</p>
         </div>
       </div>
 
@@ -9696,9 +9689,9 @@ if ('serviceWorker' in navigator){
         <p class="legal-updated">Dernière mise à jour : 24/09/2026</p>
 
         <div class="legal-inprogress-banner" id="legalInProgressBanner" hidden>
-          <strong>HAYEVA — entreprise en cours de création.</strong>
-          Les informations légales obligatoires (SIRET, assurance professionnelle, médiateur de la consommation)
-          seront complétées ici dès l'immatriculation officielle et la souscription effective des garanties.
+          <strong>Informations administratives en cours de finalisation.</strong>
+          Les informations légales (immatriculation, adresse professionnelle, assurance, médiateur de la consommation)
+          seront affichées ici dès qu'elles seront officiellement disponibles.
         </div>
 
         <h3>Édition du site</h3>
@@ -9724,7 +9717,7 @@ if ('serviceWorker' in navigator){
           <tr><th>Adresse</th><td>44 Montgomery Street, Suite 300, San Francisco, CA 94104, États-Unis</td></tr>
           <tr><th>Site internet</th><td>https://www.netlify.com</td></tr>
         </table>
-        <p style="font-size:0.82rem; color:var(--ink-soft);">Ces informations correspondent à l'hébergeur techniquement utilisé au moment de la rédaction de cette page (nom de domaine <code>hayeva.netlify.app</code> constaté en production). À vérifier et mettre à jour avant l'ouverture commerciale si l'hébergement change (par exemple lors du passage à un nom de domaine définitif). Le bureau d'enregistrement (registrar) du nom de domaine, le cas échéant différent de l'hébergeur, sera ajouté ici séparément si nécessaire.</p>
+        <p style="font-size:0.82rem; color:var(--ink-soft);">Nom de domaine : <code>hayeva.fr</code>.</p>
 
         <h3>Assurance professionnelle</h3>
         <table>
@@ -9732,7 +9725,7 @@ if ('serviceWorker' in navigator){
           <tr><th>N° de police</th><td><span class="legal-placeholder" data-legal-field="insurancePolicyNumber"></span></td></tr>
           <tr><th>Couverture géographique</th><td><span class="legal-placeholder" data-legal-field="insuranceCoverage"></span></td></tr>
         </table>
-        <p style="font-size:0.82rem; color:var(--ink-soft);">Ces informations seront complétées dès la souscription effective des garanties professionnelles applicables à l'activité de HAYEVA. Aucune mention de garantie (assurance responsabilité civile professionnelle, garantie décennale ou autre) n'est affirmée tant que les références réelles n'ont pas été renseignées ici.</p>
+        <p style="font-size:0.82rem; color:var(--ink-soft);" data-legal-when-missing="insurer">Ces informations seront complétées dès la souscription effective des garanties professionnelles applicables à l'activité de HAYEVA. Aucune mention de garantie (assurance responsabilité civile professionnelle, garantie décennale ou autre) n'est affirmée tant que les références réelles n'ont pas été renseignées ici.</p>
 
         <h3>Propriété intellectuelle</h3>
         <p>L'ensemble des contenus présents sur ce site (textes, photographies, logo, mise en page) est la propriété de HAYEVA ou de ses partenaires, sauf mention contraire, et ne peut être reproduit sans autorisation préalable.</p>
@@ -9904,7 +9897,7 @@ if ('serviceWorker' in navigator){
           <tr><th>Adresse</th><td><span class="legal-placeholder" data-legal-field="mediatorAddress"></span></td></tr>
           <tr><th>Site internet</th><td><span class="legal-placeholder" data-legal-field="mediatorWebsite"></span></td></tr>
         </table>
-        <p style="font-size:0.82rem; color:var(--ink-soft);">HAYEVA adhérera à un médiateur de la consommation habilité avant l'ouverture commerciale officielle du site ; les coordonnées exactes seront renseignées ici et dans les CGV dès l'adhésion effective.</p>
+        <p style="font-size:0.82rem; color:var(--ink-soft);" data-legal-when-missing="mediatorName">Informations administratives en cours de finalisation : les coordonnées du médiateur de la consommation seront affichées ici dès l'adhésion effective.</p>
       </article>
 
       <!-- ========== RÉTRACTATION ========== -->
@@ -10356,21 +10349,45 @@ if ('serviceWorker' in navigator){
     var info = window.SUD_LEGAL_INFO || {};
     var banner = document.getElementById('legalInProgressBanner');
     if (banner) banner.hidden = !!info.companyRegistered;
+    overlay.querySelectorAll('[data-legal-when-missing]').forEach(function(el){
+      el.hidden = !!info[el.getAttribute('data-legal-when-missing')];
+    });
     var fields = overlay.querySelectorAll('[data-legal-field]');
     fields.forEach(function(el){
       var key = el.getAttribute('data-legal-field');
       var value = info[key];
+      if (!value && key === 'vatNumber' && info.vatRegime === 'franchise_base') value = 'TVA non applicable, art. 293 B du CGI';
+      if (!value && (key === 'mediatorAddress' || key === 'mediatorWebsite') && info.mediatorName) value = '—';
       if (value){
         el.textContent = value;
         el.classList.remove('legal-placeholder');
-      } else if (key === 'entrepreneurName'){
-        el.textContent = 'HAYEVA — entreprise en cours de création';
       } else {
-        el.textContent = 'En cours d\'immatriculation';
+        el.textContent = key === 'entrepreneurName' ? 'HAYEVA' : 'En cours de finalisation';
+        el.classList.add('legal-placeholder');
       }
     });
   }
   legalRenderPlaceholders();
+
+  // Valeurs officielles saisies dans Administration › Paramètres ›
+  // Informations entreprise (lecture publique limitée, voir
+  // 0099_public_legal_info.sql). Un champ absent reste « En cours de
+  // finalisation », jamais une valeur inventée.
+  (function loadPublicLegalInfo(){
+    var sbl = window.sudSupabase;
+    if (!sbl || !sbl.configured) return;
+    sbl.client.rpc('get_public_legal_info').then(function(res){
+      var d = res && !res.error && res.data;
+      if (!d || typeof d !== 'object') return;
+      var info = window.SUD_LEGAL_INFO || (window.SUD_LEGAL_INFO = {});
+      Object.keys(d).forEach(function(k){ if (d[k] !== null && d[k] !== '') info[k] = d[k]; });
+      if (d.mediatorContact){
+        if (/^(https?:\/\/|www\.)/i.test(d.mediatorContact)) info.mediatorWebsite = d.mediatorContact;
+        else info.mediatorAddress = d.mediatorContact;
+      }
+      legalRenderPlaceholders();
+    }).catch(function(){});
+  })();
 
   function openLegal(key, opts){
     if (VALID_KEYS.indexOf(key) === -1) key = 'mentions';
@@ -13670,9 +13687,6 @@ if ('serviceWorker' in navigator){
 
   function showMsg(el, msg){ if (!el) return; el.textContent = msg || ''; el.hidden = !msg; }
 
-  function isDemoUnlocked(){
-    try { return sessionStorage.getItem(DEMO_SESSION_KEY) === '1'; } catch(e){ return false; }
-  }
   function setDemoUnlocked(v){
     try {
       if (v) sessionStorage.setItem(DEMO_SESSION_KEY, '1');
@@ -13824,7 +13838,6 @@ if ('serviceWorker' in navigator){
   // ---- État initial ----
   if (!sb.configured){
     renderLocked();
-    if (isDemoUnlocked()) renderUnlocked('demo', 'Espace professionnel — démonstration locale');
   } else {
     if (devNotice) devNotice.hidden = true; // Supabase configuré : la note "à connecter" n'a plus lieu d'être
     // Idem pour le mode démonstration locale : avec une authentification
@@ -13842,7 +13855,6 @@ if ('serviceWorker' in navigator){
         handleRealSession(session);
       } else {
         if (window.hvpBootDone) window.hvpBootDone();
-        if (isDemoUnlocked()) renderUnlocked('demo', 'Espace professionnel — démonstration locale');
       }
     }).catch(function(){ if (window.hvpBootDone) window.hvpBootDone(); });
     sb.client.auth.onAuthStateChange(function(event, session){
@@ -14020,16 +14032,6 @@ if ('serviceWorker' in navigator){
         signupSubmitBtn.textContent = 'Créer mon compte professionnel';
         showMsg(signupError, (err && err.message) || 'Création du compte impossible pour le moment.');
       });
-    });
-  }
-
-  // ---- Démonstration locale ----
-  if (demoBtn){
-    demoBtn.addEventListener('click', function(){
-      setDemoUnlocked(true);
-      if (window.sudFlashVeil) window.sudFlashVeil();
-      renderUnlocked('demo', 'Espace professionnel — démonstration locale');
-      dashboard.scrollIntoView({ behavior:'smooth', block:'start' });
     });
   }
 
@@ -17535,77 +17537,11 @@ if ('serviceWorker' in navigator){
     // réinsère en entier, dupliquant les lignes en base à chaque tap
     // impatient — exactement ce qui est arrivé en production (4 taps -> 36
     // lignes au lieu de 9 pour une même intervention).
-    // ------------------------------------------------------------
-    // DIAGNOSTIC TEMPORAIRE — bannière visible + logs [HAYEVA INTERVENTION].
-    // Demandé explicitement pour localiser précisément, depuis un vrai
-    // iPhone, l'étape exacte où "Commencer l'intervention"/"Reprendre la
-    // fiche d'intervention" s'arrête, sans dépendre d'un accès à la console
-    // Safari. Reste actif tant que ce commentaire n'a pas été retiré à la
-    // demande explicite de l'utilisateur une fois le bug confirmé résolu
-    // sur son appareil réel.
-    // ------------------------------------------------------------
-    // Petit badge replié par défaut (coin haut-droit, hors du chemin des
-    // boutons) — un tap l'ouvre en panneau de logs complet, un second tap le
-    // referme en badge. Remplace la grande bannière permanente d'origine
-    // (trop envahissante sur petit écran, retour explicite de l'utilisateur).
-    var admIvDebugLines = [];
-    var admIvDebugExpanded = false;
-    function admIvDebugRenderBadge(){
-      var badge = document.getElementById('admIvDebugBadge');
-      if (!badge) return;
-      if (admIvDebugExpanded){
-        badge.innerHTML = '<div style="padding:10px 12px 6px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);">DEBUG INTERVENTION</div>' +
-          '<div style="padding:8px 12px;white-space:pre-wrap;word-break:break-word;overflow-y:auto;max-height:40vh;">' +
-          admEscape(admIvDebugLines.join('\n')) + '</div>';
-        badge.style.width = 'min(340px, calc(100vw - 24px))';
-        badge.style.borderRadius = '12px';
-      } else {
-        badge.textContent = 'DEBUG INTERVENTION';
-        badge.style.width = 'auto';
-        badge.style.borderRadius = '999px';
-      }
-    }
+    // Trace console des seuls échecs d'ouverture de fiche (le diagnostic
+    // visuel temporaire « DEBUG INTERVENTION » a été retiré pour la V1).
     function admIvDebugLog(step, detail){
-      var msg = detail !== undefined
-        ? (typeof detail === 'string' ? detail : (function(){ try { return JSON.stringify(detail); } catch(e){ return String(detail); } })())
-        : '';
-      try { console.log('[HAYEVA INTERVENTION]', step, msg); } catch(e){}
-      var badge = document.getElementById('admIvDebugBadge');
-      if (!badge){
-        badge = document.createElement('div');
-        badge.id = 'admIvDebugBadge';
-        badge.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:2147483647;' +
-          'background:#101B24;color:#EAF2F8;font:11px/1.45 -apple-system,Menlo,monospace;' +
-          'padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,0.35);cursor:pointer;';
-        badge.addEventListener('click', function(){ admIvDebugExpanded = !admIvDebugExpanded; admIvDebugRenderBadge(); });
-        document.body.appendChild(badge);
-      }
-      var line = '[' + new Date().toLocaleTimeString('fr-FR') + '] ' + step + (msg ? ' — ' + msg : '');
-      admIvDebugLines.push(line);
-      if (admIvDebugLines.length > 40) admIvDebugLines.shift();
-      admIvDebugRenderBadge();
+      if (/FAILED/.test(step)) { try { console.error('[HAYEVA INTERVENTION]', step, detail); } catch(e){} }
     }
-
-    // Capture au niveau document, en phase de capture (AVANT toute synthèse
-    // click/délégation) : détecte si le doigt atteint réellement le bouton,
-    // ou si un élément invisible superposé (overlay, barre de navigation,
-    // etc.) intercepte le geste avant même que le code applicatif ne le
-    // voie. Couvre pointerdown (desktop/Android) et touchstart (fallback
-    // Safari iOS plus ancien) — les deux sont sans risque à logguer en plus
-    // l'un de l'autre, ils décrivent le même geste physique.
-    function admIvTouchProbe(e){
-      var hit = e.target.closest && e.target.closest('.admin-bk-start-btn, .admin-bk-resume-btn, .admin-bk-modal-iv-btn');
-      if (!hit) return;
-      var pt = (e.touches && e.touches[0]) || e;
-      var atPoint = (pt.clientX != null) ? document.elementFromPoint(pt.clientX, pt.clientY) : null;
-      admIvDebugLog('TOUCH REÇU sur bouton', {
-        type: e.type, texte: hit.textContent.trim(),
-        elementAuPointExact: atPoint ? (atPoint.tagName + (atPoint.className ? '.' + String(atPoint.className).split(' ').join('.') : '')) : null,
-        estLeBonElement: atPoint ? (atPoint === hit || hit.contains(atPoint)) : null
-      });
-    }
-    document.addEventListener('pointerdown', admIvTouchProbe, true);
-    document.addEventListener('touchstart', admIvTouchProbe, true);
 
     var admIvOpening = false;
     window.admOpenInterventionSheet = function(id, cb){ return admOpenInterventionSheet(id, cb); };
@@ -27132,6 +27068,7 @@ if ('serviceWorker' in navigator){
   // ---------------- Informations entreprise ----------------
   var COMPANY_FIELDS = [
     ['legal_name', 'Raison sociale', true], ['trade_name', 'Nom commercial', false], ['owner_name', 'Nom de l\'entrepreneur', true],
+    ['legal_form', 'Forme juridique (micro-entreprise, EI, EURL, SASU…)', false], ['rcs_number', 'RCS / Répertoire des métiers', false], ['publication_director', 'Directeur de la publication (par défaut : l\'entrepreneur)', false],
     ['address_line1', 'Adresse', true], ['address_line2', 'Complément d\'adresse', false], ['postal_code', 'Code postal', true], ['city', 'Ville', true],
     ['siren', 'SIREN (9 chiffres)', false], ['siret', 'SIRET (14 chiffres)', true],
     ['vat_regime', 'Régime de TVA', true], ['vat_number', 'N° de TVA intracommunautaire (si assujetti)', false],
@@ -27164,7 +27101,7 @@ if ('serviceWorker' in navigator){
           }
           return field(label, f[0], f[0] === 'email' ? 'email' : (f[0] === 'website' ? 'url' : 'text'), c[f[0]], (f[0] === 'siret' || f[0] === 'siren' || f[0] === 'postal_code') ? ' inputmode="numeric"' : '');
         }).join('') + '</div>' +
-        '<p class="hvp-card-sub">* Obligatoire pour la facturation définitive. Rien n\'est pré-rempli : saisissez uniquement vos informations officielles.</p>' +
+        '<p class="hvp-card-sub">* Obligatoire pour la facturation définitive. Rien n\'est pré-rempli : saisissez uniquement vos informations officielles. Ces informations alimentent aussi automatiquement les mentions légales publiques du site.</p>' +
         '<div class="hvp-sheet-actions"><button type="submit" class="hvp-btn-ok" data-label="Enregistrer les informations">Enregistrer les informations</button></div></form>';
       el.querySelector('#hvpCompanyForm').addEventListener('submit', function(e){
         e.preventDefault();
