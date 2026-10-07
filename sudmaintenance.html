@@ -9170,6 +9170,14 @@ if ('serviceWorker' in navigator){
                 <div class="hvt-head">
                   <h2 class="hvt-hello">Bonjour Julien</h2>
                   <p class="hvt-date" id="hvtDate"></p>
+                  <label class="hvt-gps">GPS
+                    <select id="hvtGpsApp" aria-label="Application de navigation">
+                      <option value="auto">Automatique</option>
+                      <option value="apple">Plans (Apple)</option>
+                      <option value="google">Google Maps</option>
+                      <option value="waze">Waze</option>
+                    </select>
+                  </label>
                 </div>
                 <div id="hvtList"><p class="ec-loading">Chargement de vos interventions…</p></div>
               </section>
@@ -15653,7 +15661,20 @@ if ('serviceWorker' in navigator){
     ['documents', 'Documents'], ['contracts', 'Contrats'], ['history', 'Historique']
   ];
   function admEquipmentLabel(eq){
-    return [eq.equipment_type, eq.brand, eq.model, eq.power_capacity].filter(Boolean).join(' ');
+    return [EQUIPMENT_TYPE_LABEL[eq.equipment_type] || eq.equipment_type, eq.brand, eq.model, eq.power_capacity].filter(Boolean).join(' ');
+  }
+  // Prochain entretien : même calcul que equipment_next_maintenance_due (SQL).
+  function admEquipmentMaintenanceMeta(eq){
+    var parts = [];
+    if (eq.last_service_at) parts.push('Dernier entretien le ' + admFmtDate(eq.last_service_at));
+    var base = eq.last_service_at || eq.installed_at;
+    var months = eq.maintenance_interval_months || EQUIPMENT_DEFAULT_INTERVAL[eq.equipment_type];
+    if (base && months){
+      var d = new Date(base + 'T12:00:00');
+      d.setMonth(d.getMonth() + months);
+      parts.push('Prochain entretien : ' + d.toLocaleDateString('fr-FR') + (eq.maintenance_reminders_enabled === false ? ' (rappels coupés)' : ''));
+    }
+    return parts.length ? '<span class="ec-row-meta">' + parts.join(' · ') + '</span>' : '';
   }
   function admPaintClientFiche(){
     var body = document.getElementById('adminClientFicheBody');
@@ -15711,6 +15732,7 @@ if ('serviceWorker' in navigator){
             (eq.reference ? '<span class="ec-row-meta">Réf. ' + admEscape(eq.reference) + '</span>' : '') +
             (eq.location ? '<span class="ec-row-meta">' + admEscape(eq.location) + '</span>' : '') +
             (eq.installed_at ? '<span class="ec-row-meta">Installé le ' + admFmtDate(eq.installed_at) + '</span>' : (eq.approx_year ? '<span class="ec-row-meta">Année approx. ' + eq.approx_year + '</span>' : '')) +
+            admEquipmentMaintenanceMeta(eq) +
             (eq.notes ? '<span class="ec-row-meta">' + admEscape(eq.notes) + '</span>' : '') +
             '</div><div class="admin-bk-row-actions">' +
             '<button type="button" class="admin-bk-action-btn admin-client-edit-equip-btn" data-equip-id="' + eq.id + '">Modifier</button>' +
@@ -15773,7 +15795,15 @@ if ('serviceWorker' in navigator){
   // Aucun champ obligatoire hormis la catégorie — un technicien pressé doit
   // pouvoir enregistrer "Climatisation Mitsubishi" sans renseigner le
   // numéro de série tout de suite, et compléter plus tard.
-  var EQUIPMENT_CATEGORIES = ['Climatisation', 'Chaudière gaz', 'Chaudière fioul', 'Chauffage', 'Chauffe-eau', 'Plomberie', 'Sanitaire', 'Autre'];
+  // Codes exacts de la contrainte customer_equipment_equipment_type_check
+  // (les libellés seuls étaient refusés à l'enregistrement).
+  var EQUIPMENT_TYPE_LABEL = {
+    climatisation:'Climatisation', chaudiere_gaz:'Chaudière gaz', chaudiere_fioul:'Chaudière fioul', pac:'Pompe à chaleur',
+    radiateur:'Chauffage / radiateur', circulateur:'Circulateur', chauffe_eau:'Chauffe-eau', robinetterie:'Robinetterie',
+    wc:'WC', sanitaire_autre:'Sanitaire', autre:'Autre'
+  };
+  // Périodicité d'entretien appliquée par défaut (0103_equipment_maintenance_reminders).
+  var EQUIPMENT_DEFAULT_INTERVAL = { climatisation:12, chaudiere_gaz:12, chaudiere_fioul:12, pac:12 };
   function admOpenEquipmentEditor(equipId){
     var overlay = document.getElementById('adminEquipEditorOverlay');
     var body = document.getElementById('adminEquipEditorBody');
@@ -15782,7 +15812,7 @@ if ('serviceWorker' in navigator){
     var v = function(f){ return eq && eq[f] != null ? admEscape(eq[f]) : ''; };
     body.innerHTML = '<h2>' + (eq ? 'Modifier l\'équipement' : 'Nouvel équipement') + '</h2>' +
       '<form id="adminEquipForm" class="admin-equip-form">' +
-        '<label>Catégorie<select name="equipment_type">' + EQUIPMENT_CATEGORIES.map(function(c){ return '<option' + (eq && eq.equipment_type === c ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></label>' +
+        '<label>Catégorie<select name="equipment_type">' + Object.keys(EQUIPMENT_TYPE_LABEL).map(function(k){ return '<option value="' + k + '"' + (eq && eq.equipment_type === k ? ' selected' : '') + '>' + EQUIPMENT_TYPE_LABEL[k] + '</option>'; }).join('') + '</select></label>' +
         '<label>Marque<input name="brand" value="' + v('brand') + '"></label>' +
         '<label>Modèle<input name="model" value="' + v('model') + '"></label>' +
         '<label>Référence<input name="reference" value="' + v('reference') + '"></label>' +
@@ -15791,6 +15821,9 @@ if ('serviceWorker' in navigator){
         '<label>Année approximative<input name="approx_year" type="number" min="1950" max="2100" value="' + v('approx_year') + '"></label>' +
         '<label>Date d\'installation<input name="installed_at" type="date" value="' + v('installed_at') + '"></label>' +
         '<label>Emplacement<input name="location" placeholder="ex. Garage, combles…" value="' + v('location') + '"></label>' +
+        '<label>Dernier entretien<input name="last_service_at" type="date" value="' + v('last_service_at') + '"></label>' +
+        '<label>Périodicité d\'entretien (mois)<input name="maintenance_interval_months" type="number" min="1" max="120" placeholder="12 par défaut (clim, chaudière, PAC)" value="' + v('maintenance_interval_months') + '"></label>' +
+        '<label style="display:flex; gap:8px; align-items:center;"><input name="maintenance_reminders_enabled" type="checkbox"' + (eq && eq.maintenance_reminders_enabled === false ? '' : ' checked') + '> Rappels d\'entretien automatiques (J-30, J-7, échéance)</label>' +
         '<label>Observations<textarea name="notes">' + v('notes') + '</textarea></label>' +
         '<div class="admin-bk-propose-form-row">' +
           '<button type="submit" class="admin-bk-action-btn">Enregistrer</button>' +
@@ -15808,6 +15841,9 @@ if ('serviceWorker' in navigator){
         reference: fd.get('reference') || null, serial_number: fd.get('serial_number') || null,
         power_capacity: fd.get('power_capacity') || null, approx_year: fd.get('approx_year') ? Number(fd.get('approx_year')) : null,
         installed_at: fd.get('installed_at') || null, location: fd.get('location') || null, notes: fd.get('notes') || null,
+        last_service_at: fd.get('last_service_at') || null,
+        maintenance_interval_months: fd.get('maintenance_interval_months') ? Number(fd.get('maintenance_interval_months')) : null,
+        maintenance_reminders_enabled: fd.get('maintenance_reminders_enabled') === 'on',
         client_id: adminClientFicheCache.client.id,
         // customer_user_id posé en plus quand le client a un compte — garde
         // l'équipement visible dans "Mes équipements" (espace client) et
@@ -20725,14 +20761,17 @@ if ('serviceWorker' in navigator){
     qbRefresh();
   }
 
+  var qbFollowupsHistory = [];
   function qbRefresh(){
     var quoteId = qbCurrentQuoteId;
     if (!quoteId) return;
     Promise.all([
       sb.client.from('quotes').select('*').eq('id', quoteId).maybeSingle(),
       sb.client.from('quote_options').select('*').eq('quote_id', quoteId).order('sort_order', { ascending:true }).order('created_at', { ascending:true }),
-      sb.client.from('quote_attachments').select('*').eq('quote_id', quoteId).order('created_at', { ascending:true })
+      sb.client.from('quote_attachments').select('*').eq('quote_id', quoteId).order('created_at', { ascending:true }),
+      sb.client.from('quote_followups').select('step, status, sent_at').eq('quote_id', quoteId).order('step', { ascending:true })
     ]).then(function(results){
+      qbFollowupsHistory = (results[3] && results[3].data) || [];
       var quote = results[0].data;
       var options = results[1].data || [];
       var attachments = results[2].data || [];
@@ -20765,6 +20804,20 @@ if ('serviceWorker' in navigator){
     html += '<h3 class="admin-bk-modal-title">Devis ' + admEscape(quote.reference) + '</h3>';
     html += '<p class="admin-bk-modal-ref">Statut : ' + qbStatusBadgeHtml(quote.status) +
       (quote.version > 1 ? ' · version ' + quote.version : '') + '</p>';
+
+    if (quote.status === 'DRAFT' || quote.status === 'SENT'){
+      // Relances automatiques J+3 / J+7 / J+14 (0102_quote_followups) : coupées
+      // d'office dès que le devis est accepté, refusé ou expiré.
+      html += '<label class="qb-followups-toggle" style="display:flex; gap:8px; align-items:center; margin:10px 0;">' +
+        '<input type="checkbox" id="qbFollowupsToggle"' + (quote.followups_enabled === false ? '' : ' checked') + '> ' +
+        'Relances automatiques du client (J+3, J+7, J+14 après envoi)</label>';
+    }
+    if (qbFollowupsHistory.length){
+      html += '<p class="admin-bk-modal-note">Relances : ' + qbFollowupsHistory.map(function(f){
+        var label = { sent:'envoyée', skipped:'non envoyée', failed:'échec', pending:'en cours' }[f.status] || f.status;
+        return 'J+' + f.step + ' ' + label + (f.sent_at ? ' le ' + new Date(f.sent_at).toLocaleDateString('fr-FR') : '');
+      }).join(' · ') + '</p>';
+    }
 
     if (!editable){
       html += '<p class="admin-bk-modal-note">Ce devis a été envoyé (ou accepté/refusé) : il n\'est plus modifiable. Pour changer une option ou une photo, créez une nouvelle version.</p>';
@@ -21001,6 +21054,14 @@ if ('serviceWorker' in navigator){
         if (card && e.target.files && e.target.files.length){
           qbUploadFiles(card.getAttribute('data-option-id'), e.target.files);
         }
+        return;
+      }
+      if (e.target.id === 'qbFollowupsToggle'){
+        if (!qbCurrentQuoteId) return;
+        var enabled = !!e.target.checked;
+        sb.client.from('quotes').update({ followups_enabled: enabled }).eq('id', qbCurrentQuoteId).then(function(res){
+          if (res.error){ e.target.checked = !enabled; window.alert('Impossible de modifier les relances : ' + res.error.message); }
+        });
         return;
       }
       if (e.target.id === 'qbTitleInput'){
@@ -26619,6 +26680,10 @@ if ('serviceWorker' in navigator){
   .hvt-btn{ display:flex; align-items:center; justify-content:center; min-height:56px; border-radius:14px; border:none; font-family:"Poppins",sans-serif; font-weight:800; font-size:0.95rem; text-decoration:none; cursor:pointer; padding:8px 12px; text-align:center; }
   .hvt-btn-call{ flex:0 0 56px; background:var(--adm-offwhite); border:1px solid var(--adm-line); font-size:1.4rem; }
   .hvt-btn-nav{ flex:1 1 0; background:var(--adm-ocean); color:#fff; }
+  .hvt-btn-route{ flex:1 1 0; background:#101B24; color:#fff; }
+  .hvt-btn-route[disabled]{ opacity:0.6; cursor:default; }
+  .hvt-gps{ display:flex; align-items:center; gap:8px; font-size:0.9rem; color:var(--adm-ink-soft); margin:6px 0 0; }
+  .hvt-gps select{ font:inherit; padding:6px 8px; border-radius:10px; border:1px solid var(--adm-line); background:#fff; }
   .hvt-btn-go{ flex:1 1 100%; background:var(--adm-green); color:#fff; font-size:1.02rem; min-height:60px; }
   @media (min-width:700px){ .hvt-btn-go{ flex:1.6 1 0; } }
   .hvt-btn-ghost{ flex:1 1 auto; background:var(--adm-offwhite); color:var(--adm-ink); border:1px solid var(--adm-line); }
@@ -27354,11 +27419,43 @@ if ('serviceWorker' in navigator){
   // Écran d'ouverture de l'application HAYEVA Pro. Uniquement les
   // interventions de la date LOCALE du jour, dans l'ordre chronologique.
   var CAT_LABEL = { climatisation:'Climatisation', chauffage:'Chauffage', plomberie:'Plomberie', multi:'Multi-services', pro:'Professionnel' };
+  // Application GPS choisie dans la vue technicien (mémorisée sur l'appareil) ;
+  // « Automatique » = Plans sur Apple, Google Maps ailleurs.
+  function gpsPref(){ try { return localStorage.getItem('hvp_gps_app') || 'auto'; } catch(e){ return 'auto'; } }
   function navUrl(addr){
-    var ua = navigator.userAgent || '';
-    var apple = /iPhone|iPad|iPod|Macintosh/.test(ua);
-    return apple ? 'https://maps.apple.com/?daddr=' + encodeURIComponent(addr)
-                 : 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(addr);
+    var pref = gpsPref();
+    var q = encodeURIComponent(addr);
+    if (pref === 'waze') return 'https://waze.com/ul?q=' + q + '&navigate=yes';
+    if (pref === 'google') return 'https://www.google.com/maps/dir/?api=1&destination=' + q;
+    if (pref === 'apple') return 'https://maps.apple.com/?daddr=' + q;
+    var apple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent || '');
+    return apple ? 'https://maps.apple.com/?daddr=' + q : 'https://www.google.com/maps/dir/?api=1&destination=' + q;
+  }
+  var gpsSel = document.getElementById('hvtGpsApp');
+  if (gpsSel){
+    gpsSel.value = gpsPref();
+    gpsSel.addEventListener('change', function(){
+      try { localStorage.setItem('hvp_gps_app', gpsSel.value); } catch(e){}
+      renderTech();
+    });
+  }
+  // « Je suis en route » : e-mail au client avec l'heure d'arrivée estimée
+  // (Edge Function notify-on-the-way, une seule fois par rendez-vous).
+  var onRouteSent = {};
+  function sendOnRoute(btn){
+    var id = btn.getAttribute('data-hvp-onroute');
+    var v = window.prompt('Arrivée estimée chez le client dans combien de minutes ?', '20');
+    if (v == null) return;
+    var eta = parseInt(String(v).replace(/\D/g, ''), 10);
+    if (!(eta >= 5 && eta <= 180)){ window.alert('Indiquez une durée entre 5 et 180 minutes.'); return; }
+    btn.disabled = true; btn.textContent = 'ENVOI…';
+    sb.client.functions.invoke('notify-on-the-way', { body: { booking_id: id, eta_minutes: eta } }).then(function(res){
+      var code = res && res.error && res.error.context && res.error.context.status;
+      if (!res.error){ onRouteSent[id] = true; btn.textContent = 'CLIENT PRÉVENU ✓'; return; }
+      if (code === 409){ onRouteSent[id] = true; btn.textContent = 'DÉJÀ PRÉVENU ✓'; return; }
+      btn.disabled = false; btn.textContent = '🚐 EN ROUTE';
+      window.alert(code === 422 ? 'Aucune adresse e-mail pour ce client.' : 'Envoi impossible pour le moment. Réessayez.');
+    });
   }
   window.hvpNavUrl = navUrl;
   function techCard(b){
@@ -27384,6 +27481,7 @@ if ('serviceWorker' in navigator){
       '<div class="hvt-actions">' +
         (phone ? '<a class="hvt-btn hvt-btn-call" href="tel:' + esc(phone) + '" aria-label="Appeler le client">📞</a>' : '') +
         (c.address ? '<a class="hvt-btn hvt-btn-nav" href="' + navUrl(c.address) + '" target="_blank" rel="noopener">ITINÉRAIRE</a>' : '') +
+        (b.status === 'CONFIRMED' ? '<button type="button" class="hvt-btn hvt-btn-route" data-hvp-onroute="' + b.id + '"' + (onRouteSent[b.id] ? ' disabled>CLIENT PRÉVENU ✓' : '>🚐 EN ROUTE') + '</button>' : '') +
         main +
       '</div></article>';
   }
@@ -27444,6 +27542,8 @@ if ('serviceWorker' in navigator){
     if (rf){ refuseBooking(rf.getAttribute('data-hvp-refuse'), rf); return; }
     var ed = e.target.closest('[data-hvp-edit]');
     if (ed){ editBooking(ed.getAttribute('data-hvp-edit')); return; }
+    var orb = e.target.closest('[data-hvp-onroute]');
+    if (orb){ if (!orb.disabled) sendOnRoute(orb); return; }
     var st = e.target.closest('[data-hvp-start]');
     if (st && window.admOpenInterventionSheet){ window.admOpenInterventionSheet(st.getAttribute('data-hvp-start')); return; }
     var op = e.target.closest('[data-hvp-open]');
