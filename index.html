@@ -1469,9 +1469,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
        ~9px — texte lisible et zones tactiles plus hautes, sans menu ☰.
        Le léger fondu à droite signale qu'il reste des liens à faire
        défiler. */
-    nav.links a{ font-size:0.74rem; padding:12px 6px; }
+    nav.links a{ font-size:0.74rem; padding:12px 6px; min-height:44px; display:inline-flex; align-items:center; }
     .mode-btn-text{ font-size:0.62rem; }
-    button.mode-btn{ padding:6px 8px; }
+    /* Cibles tactiles au doigt (V4) : sélecteur et bouton d'appel à 40-44 px
+       au lieu de 24-28 px (signalés par axe, WCAG 2.5.8). */
+    button.mode-btn{ padding:6px 10px; min-height:40px; }
+    .call-btn{ min-width:44px; min-height:44px; justify-content:center; }
+    button.header-login-link{ min-height:40px; }
     .headerbar-scroll{
       -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 22px), transparent);
               mask-image:linear-gradient(to right, #000 calc(100% - 22px), transparent);
@@ -3909,6 +3913,15 @@ window.HV_APP_VERSION = 'hayeva-v39';
   }
   .adm-main{ flex:1 1 auto; min-width:0; padding:32px 34px 46px; background:var(--adm-offwhite); }
   .adm-page[hidden]{ display:none; }
+  /* Les pages internes des espaces sont des <section> : sans ceci elles
+     héritent du padding-block:64px des sections de la vitrine, soit ~64 px
+     vides avant chaque titre (≈170 px cumulés sur mobile). Le bas est
+     conservé (dégagement au-dessus de la navigation inférieure). */
+  .adm-page, .pro-page, .ec-panel{ padding-top:0; }
+  @media (max-width:880px){
+    #espaceProAdminPanel{ margin-top:8px; }
+    #espacePro .pro-shell{ margin-top:8px; }
+  }
   .adm-page-head{ margin-bottom:22px; }
   .adm-eyebrow{
     font-family:"Poppins",sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase;
@@ -4846,6 +4859,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
 
   .pro-stats-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:22px; }
   @media (max-width:900px){ .pro-stats-grid{ grid-template-columns:repeat(2,1fr); gap:10px; } }
+  .pro-stat-card[hidden]{ display:none !important; }
   .pro-stat-card{
     background:var(--pro-card-bg); border:1px solid var(--pro-line); border-radius:16px; padding:16px 16px 14px;
     display:flex; flex-direction:column; gap:6px; box-shadow:var(--pro-shadow-sm); position:relative; overflow:hidden;
@@ -5881,6 +5895,12 @@ window.HV_APP_VERSION = 'hayeva-v39';
   }
   .footer-legal-row a:hover, .footer-legal-row a:focus-visible{
     color:var(--beige-fixed); border-bottom-color:currentColor;
+  }
+  /* Liens du pied de page au doigt : 15 px de haut auparavant (axe,
+     WCAG 2.5.8). Hauteur de zone tactile portée à 44 px sur téléphone. */
+  @media (max-width:760px){
+    .footer-legal-row{ gap:0 14px; }
+    .footer-legal-row a{ display:inline-flex; align-items:center; min-height:44px; }
   }
 
   /* ---------- Overlay juridique (Mentions légales, CGV, Confidentialité,
@@ -7915,13 +7935,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
   </section>
 
   <script>
-    try{
-      var promo = document.getElementById('climPromo');
-      var now = new Date();
-      var start = new Date(now.getFullYear(), 9, 15);
-      var end = new Date(now.getFullYear(), 10, 15, 23, 59, 59);
-      if (now >= start && now <= end) promo.hidden = false;
-    }catch(e){}
+    // Bannière « Offre exclusive Noël — Pack Découverte 99 € » désactivée le
+    // 08/10/2026 à la demande du gérant : ce pack n'existe pas au catalogue
+    // (prix non réservable). #climPromo reste masqué en permanence.
 
     try{
       var priceLogos = document.getElementById('priceLogos');
@@ -8894,12 +8910,12 @@ window.HV_APP_VERSION = 'hayeva-v39';
                   <span class="pro-stat-value" id="proStatUpcoming">—</span>
                   <span class="pro-stat-label">Rendez-vous à venir</span>
                 </div>
-                <div class="pro-stat-card pro-stat-coral">
+                <div hidden data-v4-pending="lot5" class="pro-stat-card pro-stat-coral">
                   <span class="pro-stat-icon" aria-hidden="true"></span>
                   <span class="pro-stat-value" id="proStatReports">Bientôt</span>
                   <span class="pro-stat-label">Rapports disponibles</span>
                 </div>
-                <div class="pro-stat-card pro-stat-sand">
+                <div hidden data-v4-pending="lot5" class="pro-stat-card pro-stat-sand">
                   <span class="pro-stat-icon" aria-hidden="true"></span>
                   <span class="pro-stat-value" id="proStatInvoices">Bientôt</span>
                   <span class="pro-stat-label">Factures disponibles</span>
@@ -9187,6 +9203,24 @@ window.HV_APP_VERSION = 'hayeva-v39';
                     <span class="adm-stat-label">Devis</span>
                   </div>
                 </div>
+                <!-- V4 : la journée d'abord (interventions du jour, à traiter, prochain
+                     rendez-vous, actions rapides), puis indicateurs, santé et inscriptions. -->
+                <p class="adm-subhead">Interventions du jour</p>
+                <div id="hvpTodayList"><p class="ec-loading">Chargement…</p></div>
+                <p class="adm-subhead">À traiter</p>
+                <div class="hvp-todo" id="hvpTodo"><p class="ec-loading">Chargement…</p></div>
+                <p class="adm-subhead" id="admNextApptHeading" hidden>Prochain rendez-vous</p>
+                <div id="admNextApptCard"></div>
+                <p class="adm-subhead">Actions rapides</p>
+                <div class="hvp-quick">
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-client">+ Nouveau client</button>
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-booking">+ Nouveau RDV</button>
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-quote">+ Nouveau devis</button>
+                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-intervention">+ Nouvelle intervention</button>
+                </div>
+                <p class="adm-subhead">Chiffres clés</p>
+                <div class="hvp-todo hvp-kpis" id="hvpKpis"><p class="ec-loading">Chargement…</p></div>
+                <div id="hvpNotifs"></div>
                 <!-- Santé du système (admin_system_health, 0128) : e-mails,
                      Apple Calendar, tâches automatiques, erreurs, facturation. -->
                 <section class="adm-health" id="admHealth" aria-labelledby="admHealthTitle" hidden>
@@ -9217,22 +9251,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
                   <p class="adm-subhead">Dernières inscriptions</p>
                   <div id="admSignupRecent" class="adm-signup-recent"><p class="ec-loading">Chargement…</p></div>
                 </section>
-                <p class="adm-subhead" id="admNextApptHeading" hidden>Prochain rendez-vous</p>
-                <div id="admNextApptCard"></div>
-                <p class="adm-subhead">Actions rapides</p>
-                <div class="hvp-quick">
-                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-client">+ Nouveau client</button>
-                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-booking">+ Nouveau RDV</button>
-                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-quote">+ Nouveau devis</button>
-                  <button type="button" class="hvp-quick-btn" data-hvp-action="new-intervention">+ Nouvelle intervention</button>
-                </div>
-                <p class="adm-subhead">À traiter</p>
-                <div class="hvp-todo" id="hvpTodo"><p class="ec-loading">Chargement…</p></div>
-                <p class="adm-subhead">Chiffres clés</p>
-                <div class="hvp-todo hvp-kpis" id="hvpKpis"><p class="ec-loading">Chargement…</p></div>
-                <div id="hvpNotifs"></div>
-                <p class="adm-subhead">Interventions du jour</p>
-                <div id="hvpTodayList"><p class="ec-loading">Chargement…</p></div>
                 <div class="adm-quicklinks">
                   <button type="button" class="adm-quicklink-btn" data-adm-goto="planning">Planning</button>
                   <button type="button" class="adm-quicklink-btn" data-adm-goto="requests">Demandes récentes</button>
