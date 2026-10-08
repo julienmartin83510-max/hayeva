@@ -31812,6 +31812,23 @@ window.HV_APP_VERSION = 'hayeva-v38';
   .lc-draw{ color:#FFD9B8; }
   .map-card-caption b{ color:#FFFFFF; }
 
+  /* Carte « prochain rendez-vous » (fond bleu nuit) : titres et statut
+     forcés en clair — dans l'administration ils héritaient du texte foncé
+     du thème admin (invisibles). */
+  .ec-next-appt h3, .ec-next-appt .ec-eyebrow{ color:#FFFFFF !important; }
+  .ec-next-appt .ec-badge{ background:rgba(255,255,255,0.16) !important; color:#FFFFFF !important; }
+  /* Univers chauffage : les cartes de packs restent blanches → accent
+     rouge soutenu lisible sur blanc (6,2:1 ; badge blanc sur ce rouge). */
+  :root[data-universe="chauffage"] .price-group .hvk{ --hvk-accent:#B5321F; }
+  /* Carte « zone d'intervention » : fond orange HAYEVA fixe, quel que soit
+     l'univers métier actif (le fond devenait clair en plomberie). */
+  .map-card{ background:linear-gradient(165deg, var(--hv-orange) 0%, var(--hv-orange-deep) 100%); }
+  /* FAQ : la section redéfinissait ses propres jetons (ancien gris). */
+  #faq{ --ink:var(--hv-text); --ink-soft:var(--hv-text-2); --line:var(--hv-border); }
+  /* Barre de navigation basse : rubrique active en orange soutenu. */
+  .hv-bottomnav-item{ color:var(--hv-text-2); }
+  .hv-bottomnav-item.is-active{ color:var(--hv-orange-deep); }
+
   /* Mode sombre de l'appareil (administration et Espace Pro le suivent) :
      textes secondaires moins transparents, statuts en teintes claires. */
   @media (prefers-color-scheme: dark){
@@ -31829,7 +31846,19 @@ window.HV_APP_VERSION = 'hayeva-v38';
     .hvp-pill, #espaceProAdminPanel .ec-badge{ background:rgba(255,255,255,0.08); }
     /* Textes secondaires et libellés de formulaire hérités du thème clair
        (#34445A) : clairs sur fond sombre. */
-    #espaceProAdminPanel, .admin-bk-modal-overlay, .hvp-modal, .pro-shell{ --ink-soft:rgba(241,245,249,0.86); --ink-soft-fixed:rgba(241,245,249,0.86); }
+    #espaceProAdminPanel, .admin-bk-modal-overlay, .hvp-modal, .pro-shell, #adminClientFicheOverlay{ --ink-soft:rgba(241,245,249,0.86); --ink-soft-fixed:rgba(241,245,249,0.86); }
+    #adminClientFicheOverlay .ec-row-meta{ color:rgba(241,245,249,0.86); }
+    /* Espace Pro : cartes de rendez-vous et états vides sur fond de carte sombre. */
+    .pro-shell .espace-pro-appt-item{ background:var(--pro-card-bg); }
+    .pro-shell .espace-pro-appt-date, .pro-shell .espace-pro-appt-service{ color:var(--pro-ink); }
+    .pro-shell .espace-pro-appt-address, .pro-shell .espace-pro-appt-meta{ color:var(--pro-ink-soft); }
+    .pro-shell .ec-empty, #espaceProAdminPanel .ec-empty{ background:rgba(255,255,255,0.05); color:rgba(241,245,249,0.86); }
+    /* Boutons d'action du planning (texte coloré sur carte sombre). */
+    .admin-bk-accept-btn, .admin-bk-start-btn, .admin-bk-resume-btn{ color:#86E0AE !important; border-color:rgba(134,224,174,0.6) !important; }
+    .admin-bk-refuse-btn{ color:#FFA696 !important; border-color:rgba(255,166,150,0.6) !important; }
+    .admin-bk-propose-btn, .admin-bk-move-btn, .admin-bk-ics-btn{ color:#9CC8F2 !important; border-color:rgba(156,200,242,0.6) !important; }
+    .admin-bk-accept-btn:hover, .admin-bk-start-btn:hover, .admin-bk-resume-btn:hover, .admin-bk-refuse-btn:hover,
+    .admin-bk-propose-btn:hover, .admin-bk-move-btn:hover, .admin-bk-ics-btn:hover{ color:#FFFFFF !important; }
     #espaceProAdminPanel .ec-form label, .pro-shell .ec-form label, .admin-bk-modal-overlay .ec-form label,
     #espaceProAdminPanel .ec-row-meta, .pro-shell .ec-row-meta, .admin-client-crm-field{ color:rgba(241,245,249,0.86); }
     /* Liens et actions en bleu (bleu soutenu illisible sur fond sombre). */
