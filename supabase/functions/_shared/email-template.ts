@@ -3,32 +3,25 @@
 // resend-booking-email) — une seule source de vérité pour l'identité
 // visuelle, garantissant que tous les e-mails se ressemblent.
 //
-// Reprend EXACTEMENT l'identité déjà présente sur les pages de connexion
-// Espace Particulier/Professionnel (voir sudmaintenance.html : #sitePortal,
-// .portal-bg-img, .portal-bg-overlay) : la même photo (images/portal/
-// portal-bg-sm.jpg) et le même fichier logo (images/brand/hayeva-logo.png)
-// déjà présents dans le dépôt, servis depuis le site déployé — AUCUNE image
-// générée ou recréée. Le voile bleu marine semi-transparent superposé au
-// paysage reproduit celui de .portal-bg-overlay, uniquement pour garantir la
-// lisibilité du logo quelle que soit la photo.
-//
+// En-tête : bannière HAYEVA officielle (paysage + logo centré, fichier
+// images/email/hayeva-email-header.jpg, 1200×675 pour les écrans Retina),
+// affichée EN ENTIER (largeur 100 %, hauteur proportionnelle) : jamais
+// recadrée ni zoomée, quel que soit l'écran. Couleur de secours marine et
+// texte alternatif lisible si le client mail bloque les images.
+
 // Ce module ne construit QUE l'enveloppe visuelle (en-tête + pied de page) :
 // chaque fonction appelante continue de construire son propre contenu
 // (bodyHtml) exactement comme avant — aucune logique d'envoi, de données
 // Supabase ni de réservation n'est concernée par ce fichier.
 //
 // Contraintes e-mail : HTML à base de <table> et styles inline (pas de
-// classes CSS externes, peu fiables selon les clients), un bloc VML pour que
-// l'image de fond s'affiche aussi sur Outlook desktop (moteur Word), et une
-// couleur de secours (#101B24, même teinte que --terracotta-deep du site)
-// partout où l'image ne peut pas s'afficher (bloquée par le client mail,
-// erreur réseau, etc.).
+// classes CSS externes, peu fiables selon les clients), image en <img>
+// (et non en fond CSS) pour un affichage fiable partout, y compris Outlook
+// desktop, et une couleur de secours (#101B24) si l'image ne s'affiche pas.
 
-const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.netlify.app';
-const HEADER_IMAGE_URL = `${SITE_BASE_URL}/images/portal/portal-bg-sm.jpg`;
-const LOGO_URL = `${SITE_BASE_URL}/images/brand/hayeva-logo.png`;
+const SITE_BASE_URL = Deno.env.get('SITE_BASE_URL') || 'https://hayeva.fr';
+const HEADER_IMAGE_URL = `${SITE_BASE_URL}/images/email/hayeva-email-header.jpg`;
 const NAVY = '#101B24';
-const NAVY_OVERLAY = 'rgba(9,20,32,0.55)';
 
 type BadgeTone = 'received' | 'confirmed' | 'cancelled' | 'rescheduled';
 
@@ -54,7 +47,7 @@ export function statusBadgeHtml(label: string, tone: BadgeTone): string {
     </table>`;
 }
 
-// Enveloppe complète : en-tête (photo + logo), bodyHtml fourni par
+// Enveloppe complète : en-tête (bannière HAYEVA), bodyHtml fourni par
 // l'appelant, puis pied de page (équipe + activités + référence). reference
 // est déjà échappée par l'appelant (même habitude que le reste du fichier
 // source, même si booking.reference est en pratique un slug généré côté
@@ -77,25 +70,8 @@ export function renderEmailShell(bodyHtml: string, reference?: string): string {
       <td align="center" style="padding:24px 12px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden;">
           <tr>
-            <td style="padding:0; line-height:0; font-size:0;">
-              <!--[if gte mso 9]>
-              <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:170px;">
-                <v:fill type="frame" src="${HEADER_IMAGE_URL}" color="${NAVY}" />
-                <v:textbox inset="0,0,0,0">
-              <![endif]-->
-              <div style="background-image:url('${HEADER_IMAGE_URL}'); background-repeat:no-repeat; background-position:center center; background-size:cover; background-color:${NAVY};">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                  <tr>
-                    <td align="center" valign="middle" bgcolor="#0f1e2c" style="height:170px; background-color:${NAVY_OVERLAY}; padding:28px 20px;">
-                      <img src="${LOGO_URL}" width="168" alt="HAYEVA" style="display:block; border:0; outline:none; max-width:168px; height:auto; margin:0 auto;">
-                    </td>
-                  </tr>
-                </table>
-              </div>
-              <!--[if gte mso 9]>
-                </v:textbox>
-              </v:rect>
-              <![endif]-->
+            <td align="center" bgcolor="${NAVY}" style="padding:0; background-color:${NAVY};">
+              <img src="${HEADER_IMAGE_URL}" width="600" alt="HAYEVA — Plomberie • Chauffage • Climatisation" style="display:block; width:100%; max-width:600px; height:auto; border:0; outline:none; text-decoration:none; color:#ffffff; font-family:Arial,Helvetica,sans-serif; font-size:18px; font-weight:700; text-align:center;">
             </td>
           </tr>
           <tr>

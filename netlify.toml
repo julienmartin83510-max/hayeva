@@ -45,3 +45,96 @@
   from = "/admin/interventions/*"
   to = "/index.html"
   status = 200
+
+# Page de validation des demandes de RDV depuis l'e-mail admin (boutons
+# CONFIRMER / REFUSER) : jamais indexée, jamais mise en cache, aucun
+# Referer transmis (le jeton à usage unique est dans le fragment #...).
+[[headers]]
+  for = "/rdv-action.html"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+
+# Application technicien/admin HAYEVA Pro : point d'entrée dédié /app
+# (start_url de pro-manifest.json). Même application monopage (index.html),
+# ouverte directement sur « Mes interventions — Aujourd'hui ».
+[[redirects]]
+  from = "/app"
+  to = "/index.html"
+  status = 200
+
+# Service worker et manifestes : toujours revalidés (jamais une ancienne
+# version de l'application conservée sur l'iPhone).
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/pro-manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# Pages HTML : toujours revalidées auprès du CDN après chaque déploiement
+# (jamais une ancienne version du site servie depuis un cache navigateur).
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/sudmaintenance.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# Lien personnel de parrainage (https://hayeva.fr/rdv?ref=CODE) : même
+# application monopage, ouverte directement sur la prise de rendez-vous.
+[[redirects]]
+  from = "/rdv"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/rdv/"
+  to = "/index.html"
+  status = 200
+
+# Dossiers internes du dépôt (migrations SQL, code des Edge Functions,
+# documentation de production) : jamais servis publiquement. Le site est
+# publié depuis la racine du dépôt, ces chemins renvoient donc un 404.
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# Mot de passe oublié / nouveau mot de passe : page dédiée (jamais indexée,
+# jamais mise en cache, aucun Referer transmis — le jeton est dans l'URL).
+[[redirects]]
+  from = "/reset-password"
+  to = "/reset-password.html"
+  status = 200
+
+[[headers]]
+  for = "/reset-password*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"

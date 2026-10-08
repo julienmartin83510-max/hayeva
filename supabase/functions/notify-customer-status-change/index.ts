@@ -17,14 +17,13 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
+import { sendEmailOnce } from '../_shared/mail.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
-const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
-const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.netlify.app/#espaceClient';
+const BOOKING_URL = `${Deno.env.get('SITE_BASE_URL') || 'https://hayeva.fr'}/#rdv`;
+const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.fr/#espaceClient';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => (
@@ -79,21 +78,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { data: logRow } = await supabase
-      .from('booking_emails')
-      .insert({ booking_id: booking.id, email_type: emailType, status: 'pending', recipient_email: contactEmail || null })
-      .select('id')
-      .maybeSingle();
-
-    if (!contactEmail) {
-      if (logRow) await supabase.from('booking_emails').update({ status: 'failed', error_message: 'Aucune adresse e-mail associée à cette réservation.' }).eq('id', logRow.id);
-      return new Response('no contact email', { status: 200 });
-    }
-    if (!RESEND_API_KEY) {
-      if (logRow) await supabase.from('booking_emails').update({ status: 'failed', error_message: 'RESEND_API_KEY manquant.' }).eq('id', logRow.id);
-      return new Response('missing config', { status: 200 });
-    }
-
     let serviceName = 'Intervention';
     let prepInstructionKey: string | null = null;
     if (booking.service_id) {
@@ -141,26 +125,38 @@ Deno.serve(async (req: Request) => {
     // (colonne posée uniquement par cancel_own_booking(), présente dans
     // to_jsonb(NEW) sans requête supplémentaire).
     const isCustomerCancellation = emailType === 'cancelled' && booking.cancelled_by === 'customer';
+    // Refus d'une DEMANDE (bouton "REFUSER" de l'e-mail admin ou bouton
+    // "Refuser" de l'espace administration) : texte dédié + bouton pour
+    // choisir un autre créneau.
+    const isRefusal = emailType === 'cancelled' && !isCustomerCancellation && booking.cancellation_type === 'refused';
 
     let subject: string;
     let introText: string;
     let badgeLabel: string;
     let badgeTone: 'confirmed' | 'cancelled';
+    let ctaHtml = '';
     if (emailType === 'confirmed') {
-      subject = '✓ Votre rendez-vous HAYEVA est confirmé';
+      subject = '✅ Rendez-vous HAYEVA confirmé';
       introText = 'Bonne nouvelle, votre rendez-vous HAYEVA est <strong>confirmé</strong>.';
-      badgeLabel = '✅ Confirmée';
+      badgeLabel = '✅ Rendez-vous confirmé';
       badgeTone = 'confirmed';
     } else if (isCustomerCancellation) {
       subject = 'Votre rendez-vous HAYEVA a bien été annulé';
       introText = 'Votre rendez-vous HAYEVA a bien été <strong>annulé</strong>, comme demandé. Le créneau a été libéré. Vous pouvez prendre un nouveau rendez-vous depuis votre espace client dès que vous le souhaitez.';
       badgeLabel = '✖ Annulé par vous';
       badgeTone = 'cancelled';
-    } else {
-      subject = 'Votre demande de rendez-vous HAYEVA a été annulée';
-      introText = 'Votre demande de rendez-vous n\'a malheureusement pas pu être retenue. N\'hésitez pas à nous contacter ou à effectuer une nouvelle demande pour un autre créneau.';
-      badgeLabel = '✖ Annulée';
+    } else if (isRefusal) {
+      subject = 'Votre demande de rendez-vous HAYEVA';
+      introText = 'Votre demande de rendez-vous n\'a malheureusement pas pu être acceptée. Nous vous invitons à sélectionner un autre créneau disponible.';
+      badgeLabel = '✖ Demande non retenue';
       badgeTone = 'cancelled';
+      ctaHtml = `<p style="margin:24px 0 0;text-align:center;"><a href="${BOOKING_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:16px 28px;border-radius:12px;font-weight:700;font-size:16px;">CHOISIR UN AUTRE CRÉNEAU</a></p>`;
+    } else {
+      subject = 'Votre rendez-vous HAYEVA a été annulé';
+      introText = 'Votre rendez-vous HAYEVA a été annulé. N\'hésitez pas à nous contacter ou à effectuer une nouvelle demande pour un autre créneau.';
+      badgeLabel = '✖ Annulé';
+      badgeTone = 'cancelled';
+      ctaHtml = `<p style="margin:24px 0 0;text-align:center;"><a href="${BOOKING_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:12px;font-weight:700;font-size:15px;">CHOISIR UN AUTRE CRÉNEAU</a></p>`;
     }
 
     const detailsRows = emailType === 'confirmed' ? `
@@ -191,24 +187,21 @@ Deno.serve(async (req: Request) => {
         ${detailsRows}
       </table>
       ${prepBlockHtml}
-      ${booking.customer_user_id ? `<p style="margin:22px 0 0;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir mon rendez-vous</a></p>` : ''}
+      ${ctaHtml}
+      ${booking.customer_user_id && !ctaHtml ? `<p style="margin:22px 0 0;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir mon rendez-vous</a></p>` : ''}
     `, escapeHtml(booking.reference || ''));
 
-    const emailRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [contactEmail], reply_to: REPLY_TO_EMAIL, subject, html }),
+    // Envoi unique par (réservation, statut, variante) : un trigger rejoué
+    // ou un double clic ne renvoie jamais le même e-mail.
+    const variant = emailType === 'confirmed' ? 'confirmed' : (isCustomerCancellation ? 'cancelled_client' : (isRefusal ? 'refused' : 'cancelled_admin'));
+    await sendEmailOnce(supabase, {
+      dedupeKey: `client_status:${booking.id}:${variant}`,
+      bookingId: booking.id,
+      emailType,
+      to: contactEmail,
+      subject,
+      html,
     });
-
-    if (logRow) {
-      if (emailRes.ok) {
-        await supabase.from('booking_emails').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', logRow.id);
-      } else {
-        const errText = await emailRes.text();
-        console.error('notify-customer-status-change: échec envoi Resend', emailRes.status, errText);
-        await supabase.from('booking_emails').update({ status: 'failed', error_message: `Resend ${emailRes.status}: ${errText.slice(0, 500)}` }).eq('id', logRow.id);
-      }
-    }
 
     return new Response('ok', { status: 200 });
   } catch (err) {

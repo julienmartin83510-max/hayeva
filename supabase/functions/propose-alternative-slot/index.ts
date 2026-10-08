@@ -21,6 +21,7 @@
 // téléphone, ou en confirmant manuellement une fois d'accord).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -104,19 +105,17 @@ Deno.serve(async (req: Request) => {
     const svcName = (booking.services as { name?: string } | null)?.name || 'votre intervention';
     const subject = `HAYEVA — Nouveau créneau proposé pour votre rendez-vous`;
 
-    const html = `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#16222c;">
-        <h2 style="color:#101B24;margin-bottom:14px;">Bonjour ${escapeHtml(contactName)},</h2>
-        <p>Le créneau initialement demandé pour <strong>${escapeHtml(svcName)}</strong> (réf. ${escapeHtml(booking.reference || '')}, initialement le ${fmtDate(booking.date)} à ${(booking.start_time || '').slice(0, 5)}) n'est finalement pas disponible.</p>
-        <p>Nous vous proposons à la place :</p>
-        <p style="font-size:17px;font-weight:700;background:#F3F1EC;padding:12px 16px;border-radius:10px;">
-          📅 ${fmtDate(proposedDate)} à ${String(proposedTime).slice(0, 5)}
-        </p>
-        ${message ? `<p>${escapeHtml(message)}</p>` : ''}
-        <p>Pour confirmer ce nouveau créneau ou nous en demander un autre, répondez simplement à cet e-mail ou appelez-nous au <strong>06 71 26 23 02</strong>.</p>
-        <p style="margin-top:24px;color:#5B6B78;font-size:13px;">HAYEVA — Plomberie, chauffage, climatisation à Fréjus</p>
-      </div>
-    `;
+    const html = renderEmailShell(`
+      <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour ${escapeHtml(contactName)},</h2>
+      <p style="margin:0 0 18px; font-size:15px;">Le créneau initialement demandé pour <strong>${escapeHtml(svcName)}</strong> (initialement le ${fmtDate(booking.date)} à ${(booking.start_time || '').slice(0, 5)}) n'est finalement pas disponible.</p>
+      ${statusBadgeHtml('🕐 Nouveau créneau proposé', 'rescheduled')}
+      <p style="margin:0 0 8px; font-size:15px;">Nous vous proposons à la place :</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 16px;">
+        <tr><td style="background:#EAF4FB;border-radius:12px;padding:14px 16px;font-size:17px;font-weight:700;color:#101B24;">📅 ${fmtDate(proposedDate)} à ${String(proposedTime).slice(0, 5)}</td></tr>
+      </table>
+      ${message ? `<p style="margin:0 0 16px; font-size:14px;">${escapeHtml(message)}</p>` : ''}
+      <p style="margin:0; font-size:14px;">Pour confirmer ce nouveau créneau ou nous en demander un autre, répondez simplement à cet e-mail ou appelez-nous au <strong>06 71 26 23 02</strong>.</p>
+    `, escapeHtml(booking.reference || ''));
 
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',

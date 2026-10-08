@@ -23,6 +23,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
 const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
+const SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || 'https://hayeva.fr';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => (
@@ -268,11 +269,13 @@ Deno.serve(async (req: Request) => {
       </p>
       ${attestationHtml}
       <p style="margin-top:20px;padding:12px 14px;background:#FAF8F2;border-radius:8px;font-size:11px;line-height:1.5;color:#5B6B78;">${escapeHtml(LEGAL_SCOPE_MENTION)}</p>
+      ${booking?.customer_user_id ? `<p style="margin:24px 0 0;"><a href="${SITE_URL}/#espaceClient/comptes-rendus" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-weight:700;font-size:15px;">Retrouver mon compte rendu</a></p>
+      <p style="margin:8px 0 0;font-size:12px;color:#8A97A3;">Archivé dans votre espace client HAYEVA (connexion requise).</p>` : ''}
       <p style="margin-top:24px;">Pour toute question sur cette intervention, répondez à cet e-mail ou appelez-nous au <strong>06 71 26 23 02</strong>.</p>
     `;
 
     const html = renderEmailShell(bodyHtml, booking?.reference);
-    const subject = 'Compte rendu de votre intervention HAYEVA';
+    const subject = 'Votre compte rendu d\'intervention HAYEVA';
 
     await supabase.from('interventions').update({ email_status: 'PENDING' }).eq('id', interventionId);
 

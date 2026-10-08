@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Validation rendez-vous — HAYEVA</title>
+<link rel="icon" href="images/brand/hayeva-logo-xs.png">
+<style>
+  :root{--bg:#F4F1EA;--card:#fff;--ink:#16222C;--muted:#5B6B78;--line:#EFE9DB;--ok:#2F9E5B;--ko:#C8423B;--navy:#101B24}
+  @media (prefers-color-scheme: dark){:root{--bg:#0d1720;--card:#16222c;--ink:#EEF2F5;--muted:#A9B6C1;--line:#22313d}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.5}
+  header{background:var(--navy);padding:18px 16px;text-align:center}
+  header img{height:44px;width:auto}
+  main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+  .card{background:var(--card);border-radius:16px;padding:22px 18px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  h1{font-size:1.45rem;margin:0 0 12px;line-height:1.25}
+  p{margin:0 0 12px}
+  .muted{color:var(--muted);font-size:.92rem}
+  dl{margin:16px 0 0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:1rem}
+  dt{color:var(--muted)} dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
+  button{display:block;width:100%;border:0;border-radius:14px;padding:18px 12px;margin-top:22px;font-size:1.08rem;font-weight:800;color:#fff;cursor:pointer}
+  button.ok{background:var(--ok)} button.ko{background:var(--ko)} button.mv{background:#1AA6EE}
+  .lbl{display:block;font-weight:700;margin:20px 0 8px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .chip,.slot{flex:0 0 auto;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:1rem;font-weight:700;margin:0;width:auto;display:inline-block}
+  .chip small{display:block;font-weight:600;color:var(--muted);font-size:.75rem}
+  .chip.sel,.slot.sel{border-color:#1AA6EE;background:#1AA6EE;color:#fff}
+  .chip.sel small{color:#fff}
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .slot{width:100%;text-align:center}
+  input[type=date]{width:100%;font-size:1rem;padding:12px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);margin-top:8px}
+  button[disabled]{opacity:.6;cursor:wait}
+  .big{font-size:3rem;line-height:1;margin-bottom:10px}
+  a{color:#1AA6EE}
+</style>
+</head>
+<body>
+<header><img src="images/brand/hayeva-logo-sm.png" onerror="this.src='images/brand/hayeva-logo-xs.png'" alt="HAYEVA"></header>
+<main><div class="card" id="box"><p class="muted">Chargement…</p></div></main>
+<script>
+(function(){
+  var ENDPOINT = 'https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/booking-email-action';
+  var box = document.getElementById('box');
+  var params = {};
+  (location.hash || '').replace(/^#/, '').split('&').forEach(function(kv){
+    var i = kv.indexOf('='); if (i > 0) params[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1));
+  });
+  var action = params.a, token = params.t;
+  var mv = { date:null, time:null };
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function fmtDate(d){ if (!d) return '—'; var p = String(d).slice(0,10).split('-'); var dt = new Date(+p[0], +p[1]-1, +p[2]);
+    try { return dt.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch(e){ return p[2]+'/'+p[1]+'/'+p[0]; } }
+  function details(b){
+    if (!b) return '';
+    return '<dl><dt>Client</dt><dd>' + esc(b.client) + '</dd>' +
+      '<dt>Date</dt><dd>' + esc(fmtDate(b.date)) + '</dd>' +
+      '<dt>Heure</dt><dd>' + esc(b.start_time) + '</dd>' +
+      '<dt>Prestation</dt><dd>' + esc(b.service) + '</dd>' +
+      (b.reference ? '<dt>Référence</dt><dd>' + esc(b.reference) + '</dd>' : '') + '</dl>';
+  }
+  function statusText(b){
+    if (!b) return '';
+    if (b.status === 'CONFIRMED') return 'Statut actuel : confirmé.';
+    if (b.status === 'CANCELLED') return b.cancellation_type === 'refused' ? 'Statut actuel : refusé.' : 'Statut actuel : annulé.';
+    if (b.status === 'COMPLETED') return 'Statut actuel : terminé.';
+    return '';
+  }
+  function show(html){ box.innerHTML = html; }
+  function call(execute, extra){
+    var body = { a: action, t: token, execute: !!execute };
+    if (extra){ for (var k in extra) body[k] = extra[k]; }
+    return fetch(ENDPOINT, { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(body) })
+      .then(function(r){ return r.json(); });
+  }
+  function iso(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function moveDays(){
+    var out = [], d = new Date(); d.setHours(12,0,0,0);
+    while (out.length < 12){ if (d.getDay() !== 0) out.push(new Date(d)); d.setDate(d.getDate()+1); }
+    return out;
+  }
+  // DÉPLACER : choix d'une date puis d'un créneau libre calculé côté
+  // serveur ; rien n'est modifié avant l'appui sur « Confirmer ».
+  function renderMove(b, slotsRes, msg){
+    var days = moveDays();
+    var chips = days.map(function(d){
+      var v = iso(d);
+      var label = d.toLocaleDateString('fr-FR', { weekday:'short' }).replace('.','');
+      return '<button type="button" class="chip' + (mv.date === v ? ' sel' : '') + '" data-d="' + v + '">' + esc(label) + ' ' + d.getDate() +
+        '<small>' + esc(d.toLocaleDateString('fr-FR', { month:'short' }).replace('.','')) + '</small></button>';
+    }).join('');
+    var slotsHtml = '';
+    if (mv.date){
+      if (!slotsRes) slotsHtml = '<p class="muted">Recherche des créneaux libres…</p>';
+      else if (!slotsRes.length) slotsHtml = '<p class="muted">Aucun créneau libre ce jour-là. Choisissez une autre date.</p>';
+      else slotsHtml = '<div class="slots">' + slotsRes.map(function(h){
+        return '<button type="button" class="slot' + (mv.time === h ? ' sel' : '') + '" data-h="' + esc(h) + '">' + esc(h) + '</button>';
+      }).join('') + '</div>';
+    }
+    show('<h1>Déplacer le rendez-vous</h1>' +
+      '<dl><dt>Client</dt><dd>' + esc(b.client) + '</dd><dt>Prestation</dt><dd>' + esc(b.service) + '</dd>' +
+      '<dt>Date actuelle</dt><dd>' + esc(fmtDate(b.date)) + ' à ' + esc(b.start_time) + '</dd></dl>' +
+      '<span class="lbl">Nouvelle date</span><div class="chips">' + chips + '</div>' +
+      '<input type="date" id="mvDate" value="' + (mv.date || '') + '" aria-label="Autre date">' +
+      (mv.date ? '<span class="lbl">Nouvelle heure — ' + esc(fmtDate(mv.date)) + '</span>' + slotsHtml : '') +
+      (msg ? '<p class="muted" style="color:var(--ko);margin-top:12px">' + esc(msg) + '</p>' : '') +
+      '<button type="button" id="mvGo" class="mv"' + (mv.date && mv.time ? '' : ' disabled') + '>CONFIRMER LE DÉPLACEMENT</button>' +
+      (b.status === 'PENDING' ? '<p class="muted" style="margin-top:10px">La demande sera acceptée à la nouvelle date : le client reçoit la confirmation et le rendez-vous est ajouté à Apple Calendar.</p>'
+                              : '<p class="muted" style="margin-top:10px">Le client sera prévenu et l\'événement Apple Calendar sera mis à jour.</p>'));
+    function pickDate(v){
+      mv.date = v; mv.time = null;
+      renderMove(b, null);
+      call(false, { d: v }).then(function(r){
+        if (r && r.result === 'slots' && mv.date === v) renderMove(b, r.slots || []);
+        else if (r && r.result !== 'slots') render(r);
+      }).catch(fail);
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('.chip'), function(el){
+      el.addEventListener('click', function(){ pickDate(el.getAttribute('data-d')); });
+    });
+    var di = document.getElementById('mvDate');
+    di.min = iso(new Date());
+    di.addEventListener('change', function(){ if (di.value) pickDate(di.value); });
+    Array.prototype.forEach.call(box.querySelectorAll('.slot'), function(el){
+      el.addEventListener('click', function(){ mv.time = el.getAttribute('data-h'); renderMove(b, slotsRes); });
+    });
+    var go = document.getElementById('mvGo');
+    go.addEventListener('click', function(){
+      if (!mv.date || !mv.time) return;
+      go.disabled = true; go.textContent = 'Déplacement…';
+      call(true, { d: mv.date, h: mv.time }).then(function(r){
+        if (r && r.result === 'slot_taken'){ mv.time = null; renderMove(b, r.slots || [], 'Ce créneau vient d\'être pris. Choisissez-en un autre.'); return; }
+        render(r);
+      }).catch(fail);
+    });
+  }
+  function render(res){
+    var b = res && res.booking;
+    switch (res && res.result){
+      case 'ready':
+        if (action === 'move'){ renderMove(b, null); break; }
+        var isConfirm = action === 'confirm';
+        show('<h1>' + (isConfirm ? 'Accepter ce rendez-vous ?' : 'Refuser cette demande ?') + '</h1>' +
+          '<p class="muted">' + (isConfirm
+            ? 'Le client recevra l\'e-mail « Rendez-vous confirmé » et le rendez-vous sera ajouté à Apple Calendar.'
+            : 'Le client sera informé et invité à choisir un autre créneau. Le créneau sera libéré.') + '</p>' +
+          details(b) +
+          '<button type="button" id="go" class="' + (isConfirm ? 'ok' : 'ko') + '">' +
+          (isConfirm ? '✓ ACCEPTER' : '✕ REFUSER') + '</button>');
+        document.getElementById('go').addEventListener('click', function(){
+          this.disabled = true; this.textContent = 'Traitement…';
+          call(true).then(render).catch(fail);
+        });
+        break;
+      case 'done':
+        if (res.action === 'move'){
+          show('<div class="big">✅</div><h1>Rendez-vous déplacé ✓</h1><p class="muted">' + (b && b.was_pending ? 'Demande acceptée à la nouvelle date. ' : '') + 'Le client a été prévenu par e-mail et Apple Calendar est mis à jour. Vous pouvez fermer cette page.</p>' + details(b));
+        } else if (res.action === 'confirm'){
+          show('<div class="big">✅</div><h1>Rendez-vous accepté ✓</h1><p class="muted">Le client a été prévenu par e-mail. Le rendez-vous est ajouté à Apple Calendar.</p>' + details(b));
+        } else {
+          show('<div class="big">❌</div><h1>Rendez-vous refusé</h1><p class="muted">Le client a été prévenu et invité à choisir un autre créneau.</p>' + details(b));
+        }
+        break;
+      case 'already':
+        show('<div class="big">ℹ️</div><h1>Cette demande a déjà été traitée.</h1><p class="muted">' + esc(statusText(b)) + '</p>' + details(b));
+        break;
+      case 'expired':
+        show('<div class="big">⌛</div><h1>Ce lien a expiré.</h1><p class="muted">Traitez cette demande depuis l\'espace administration.</p>' + details(b) +
+          '<p style="margin-top:18px"><a href="/#espacePro">Ouvrir l\'administration</a></p>');
+        break;
+      default:
+        show('<div class="big">⚠️</div><h1>Lien invalide.</h1><p class="muted">Ce lien n\'est pas valide. Traitez la demande depuis l\'espace administration.</p><p><a href="/#espacePro">Ouvrir l\'administration</a></p>');
+    }
+  }
+  function fail(){
+    show('<div class="big">⚠️</div><h1>Connexion impossible</h1><p class="muted">Vérifiez votre connexion puis rechargez ce lien depuis l\'e-mail. Rien n\'a été modifié si vous n\'avez pas vu l\'écran de confirmation.</p>');
+  }
+  if ((action !== 'confirm' && action !== 'refuse' && action !== 'move') || !token){ render({ result:'invalid' }); return; }
+  call(false).then(render).catch(fail);
+})();
+</script>
+</body>
+</html>

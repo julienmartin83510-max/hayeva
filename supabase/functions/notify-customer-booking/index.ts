@@ -28,14 +28,12 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { renderEmailShell, statusBadgeHtml } from '../_shared/email-template.ts';
+import { sendEmailOnce } from '../_shared/mail.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'HAYEVA <onboarding@resend.dev>';
-const REPLY_TO_EMAIL = Deno.env.get('REPLY_TO_EMAIL') || 'contact@hayeva.fr';
-const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.netlify.app/#espaceClient';
+const CLIENT_PANEL_URL = Deno.env.get('CLIENT_PANEL_URL') || 'https://hayeva.fr/#espaceClient';
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => (
@@ -60,6 +58,11 @@ Deno.serve(async (req: Request) => {
       return new Response('ignored', { status: 200 });
     }
     const booking = payload.record;
+    // "Demande reçue — en attente de validation" : uniquement pour une
+    // demande réellement en attente (jamais pour un RDV créé déjà confirmé).
+    if (booking.status !== 'PENDING') {
+      return new Response('ignored status', { status: 200 });
+    }
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // ---- Contact réel du client (invité ou compte particulier) ----
@@ -85,25 +88,6 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
         if (addr) contactAddress = [addr.address, addr.postal_code, addr.city].filter(Boolean).join(', ');
       }
-    }
-
-    // Journalise l'intention d'envoi AVANT de tenter (pending), pour que même
-    // une fonction qui crashe avant l'appel Resend laisse une trace visible
-    // côté admin plutôt qu'un silence total.
-    const { data: logRow } = await supabase
-      .from('booking_emails')
-      .insert({ booking_id: booking.id, email_type: 'received', status: 'pending', recipient_email: contactEmail || null })
-      .select('id')
-      .maybeSingle();
-
-    if (!contactEmail) {
-      if (logRow) await supabase.from('booking_emails').update({ status: 'failed', error_message: 'Aucune adresse e-mail associée à cette réservation.' }).eq('id', logRow.id);
-      return new Response('no contact email', { status: 200 });
-    }
-    if (!RESEND_API_KEY) {
-      if (logRow) await supabase.from('booking_emails').update({ status: 'failed', error_message: 'RESEND_API_KEY manquant.' }).eq('id', logRow.id);
-      console.error('notify-customer-booking: RESEND_API_KEY manquant — e-mail client non envoyé, réservation non affectée.');
-      return new Response('missing config', { status: 200 });
     }
 
     // ---- Prestation ----
@@ -133,11 +117,11 @@ Deno.serve(async (req: Request) => {
       ? fmtEuros(booking.service_price_cents || 0) + ' + déplacement à vérifier'
       : fmtEuros(booking.total_cents || 0);
 
-    const subject = 'Votre demande de rendez-vous HAYEVA a bien été reçue';
+    const subject = 'Demande de rendez-vous HAYEVA reçue';
     const html = renderEmailShell(`
       <h2 style="margin:0 0 4px; font-size:20px; color:#101B24;">Bonjour ${escapeHtml(firstName || '')},</h2>
-      <p style="margin:0 0 18px; font-size:15px;">Merci d'avoir choisi HAYEVA. Votre demande de rendez-vous a bien été enregistrée.</p>
-      ${statusBadgeHtml('📩 Demande reçue', 'received')}
+      <p style="margin:0 0 18px; font-size:15px;">Votre demande de rendez-vous a bien été reçue. Elle est actuellement <strong>en attente de validation</strong> par HAYEVA. Vous recevrez un email dès qu'elle sera confirmée.</p>
+      ${statusBadgeHtml('⏳ En attente de validation', 'received')}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">
         <tr><td style="padding:7px 0;color:#5B6B78;width:150px;">Prestation</td><td style="padding:7px 0;font-weight:600;text-align:right;">${escapeHtml(serviceName)}</td></tr>
         <tr><td style="padding:7px 0;color:#5B6B78;">Date demandée</td><td style="padding:7px 0;text-align:right;">${fmtDate(booking.date)}</td></tr>
@@ -147,25 +131,19 @@ Deno.serve(async (req: Request) => {
         <tr><td style="padding:7px 0;color:#5B6B78;">Frais de déplacement</td><td style="padding:7px 0;text-align:right;">${travelLine}</td></tr>
         <tr><td style="padding:10px 0 0;color:#101B24;font-weight:700;border-top:1px solid #E5E0D5;">Total estimé</td><td style="padding:10px 0 0;font-weight:700;text-align:right;border-top:1px solid #E5E0D5;">${totalLine}</td></tr>
       </table>
-      <p style="margin:20px 0 0; font-size:14px;">Votre rendez-vous n'est <strong>pas encore confirmé</strong>. Nous allons vérifier votre demande et vous recevrez un nouvel e-mail dès sa confirmation.</p>
       ${booking.customer_user_id ? `<p style="margin:22px 0 0;"><a href="${CLIENT_PANEL_URL}" style="display:inline-block;background:#1AA6EE;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;font-size:14px;">Voir ma demande</a></p>` : ''}
     `, escapeHtml(booking.reference || ''));
 
-    const emailRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [contactEmail], reply_to: REPLY_TO_EMAIL, subject, html }),
+    // Envoi unique (anti-doublon) — l'e-mail admin est un flux SÉPARÉ
+    // (notify-admin-booking) : aucune copie de cet e-mail client à l'admin.
+    await sendEmailOnce(supabase, {
+      dedupeKey: `client_received:${booking.id}`,
+      bookingId: booking.id,
+      emailType: 'received',
+      to: contactEmail,
+      subject,
+      html,
     });
-
-    if (logRow) {
-      if (emailRes.ok) {
-        await supabase.from('booking_emails').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', logRow.id);
-      } else {
-        const errText = await emailRes.text();
-        console.error('notify-customer-booking: échec envoi Resend', emailRes.status, errText);
-        await supabase.from('booking_emails').update({ status: 'failed', error_message: `Resend ${emailRes.status}: ${errText.slice(0, 500)}` }).eq('id', logRow.id);
-      }
-    }
 
     return new Response('ok', { status: 200 });
   } catch (err) {

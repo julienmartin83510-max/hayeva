@@ -19,7 +19,7 @@ export async function sendReminderSMS(toPhoneNumber: string, message: string): P
   const provider = Deno.env.get('SMS_PROVIDER');
 
   if (!provider) {
-    console.warn('sendReminderSMS: aucun SMS_PROVIDER configuré — SMS_READY_NOT_CONFIGURED', { toPhoneNumber });
+    console.warn('sendReminderSMS: aucun SMS_PROVIDER configuré — SMS_READY_NOT_CONFIGURED');
     return { ok: false, reason: 'SMS_READY_NOT_CONFIGURED' };
   }
 

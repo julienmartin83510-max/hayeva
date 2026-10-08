@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
 
         if ((job as any).channel === 'sms') {
           if (!cp?.phone) throw new Error('no_contact_phone');
-          const smsMessage = `HAYEVA : votre entretien ${equipmentTypeLabel} approche. Prenez rendez-vous sur https://hayeva.netlify.app/#rdv`;
+          const smsMessage = `HAYEVA : votre entretien ${equipmentTypeLabel} approche. Prenez rendez-vous sur https://hayeva.fr/#rdv`;
           const smsRes = await sendReminderSMS(cp.phone, smsMessage);
           if (!smsRes.ok) throw new Error(smsRes.reason);
           await supabase.from('reminder_jobs').update({
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
           <p>Votre entretien ${escapeHtml(equipmentTypeLabel)} arrive prochainement à échéance${contract?.end_date ? ` (échéance de votre contrat : ${escapeHtml(new Date(contract.end_date).toLocaleDateString('fr-FR'))})` : ''}.</p>
           <p><strong>Équipement :</strong> ${escapeHtml(equipLabel)}</p>
           <p>Vous pouvez réserver votre prochain rendez-vous directement depuis votre espace HAYEVA.</p>
-          <p style="margin-top:20px;"><a href="https://hayeva.netlify.app/#rdv" style="background:#E85A12;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Prendre rendez-vous</a></p>
+          <p style="margin-top:20px;"><a href="https://hayeva.fr/#rdv" style="background:#E85A12;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Prendre rendez-vous</a></p>
           <p style="margin-top:24px;color:#5B6B78;font-size:13px;">HAYEVA — Climatisation • Chauffage • Plomberie</p>
         `;
         const html = renderEmailShell(bodyHtml);
