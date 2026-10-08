@@ -649,6 +649,37 @@ if ('serviceWorker' in navigator){
     }).catch(function(){});
   });
 }
+// Application installée restée ouverte en arrière-plan : la page déjà
+// chargée n'est jamais remplacée d'elle-même. Au retour au premier plan, on
+// compare la version déployée (CACHE_VERSION de sw.js, mise à jour à chaque
+// déploiement) à celle de cette page ; si elle a changé, un bandeau propose
+// de mettre à jour en un geste (jamais de rechargement forcé : aucune
+// saisie en cours n'est perdue).
+window.HV_APP_VERSION = 'hayeva-v38';
+(function(){
+  var shown = false, lastCheck = 0;
+  function showBanner(){
+    if (shown || !document.body) return;
+    shown = true;
+    var b = document.createElement('div');
+    b.className = 'hv-update-banner';
+    b.setAttribute('role', 'status');
+    b.innerHTML = '<span>Une nouvelle version d’HAYEVA est disponible.</span><button type="button">Mettre à jour</button>';
+    b.querySelector('button').addEventListener('click', function(){ this.disabled = true; this.textContent = 'Mise à jour…'; window.location.reload(); });
+    document.body.appendChild(b);
+  }
+  function check(){
+    if (Date.now() - lastCheck < 30000) return;
+    lastCheck = Date.now();
+    fetch('sw.js?v=' + Date.now(), { cache:'no-store' }).then(function(r){ return r.ok ? r.text() : ''; }).then(function(t){
+      var m = /CACHE_VERSION\s*=\s*'([^']+)'/.exec(t || '');
+      if (m && m[1] !== window.HV_APP_VERSION) showBanner();
+    }).catch(function(){});
+  }
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') check(); });
+  window.addEventListener('pageshow', function(e){ if (e.persisted) check(); });
+  window.hvCheckAppUpdate = function(){ lastCheck = 0; check(); };
+})();
 </script>
 <script>
   // Configuration de marque centralisée — utilisée par le portail d'entrée.
@@ -2655,8 +2686,8 @@ if ('serviceWorker' in navigator){
     white-space:nowrap;
   }
   /* Déplacement offert MÊME hors de la zone de 25 km : initialement
-     réservé au Pack Premium, étendu au Pack Confort sur demande explicite
-     (voir isFreeTravelPack côté JS / is_free_travel_pack côté SQL) — le
+     réservé au Pack Premium (voir isFreeTravelPack côté JS /
+     is_free_travel_pack côté SQL ; le Pack Confort n'en bénéficie pas) — le
      déplacement offert DANS la zone de 25 km, lui, s'applique à toutes les
      prestations, pas seulement à ces deux paliers (voir
      0024_pricing_tiers_plomberie_chauffage.sql). Élégant et discret plutôt
@@ -4962,6 +4993,13 @@ if ('serviceWorker' in navigator){
     .hv-more-card{ animation:none !important; }
     .hv-more-sheet.is-closing, .hv-more-sheet.is-closing .hv-more-card{ transition:none; }
   }
+  .hv-update-banner{
+    position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom, 0px)); z-index:2147483640;
+    display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap;
+    background:#102039; color:#FFFFFF; border-radius:14px; padding:12px 14px; box-shadow:0 18px 40px -18px rgba(0,0,0,0.6);
+    font-family:"Poppins",sans-serif; font-size:0.92rem; font-weight:600; max-width:560px; margin-inline:auto;
+  }
+  .hv-update-banner button{ min-height:44px; padding:10px 16px; border:none; border-radius:10px; background:#C2410C; color:#FFFFFF; font:inherit; font-weight:700; cursor:pointer; }
   /* Arrière-plan bloqué pendant que le menu est ouvert (page ET espace). */
   html.hv-more-open, html.hv-more-open body{ overflow:hidden !important; }
   html.hv-more-open #espaceClient.is-open, html.hv-more-open #espacePro.is-open{ overflow:hidden !important; }
@@ -7461,8 +7499,7 @@ if ('serviceWorker' in navigator){
               <p class="pack-extra">2ᵉ unité : -10 € (49 € TTC)</p>
               <button type="button" class="pack-cta" data-pack="clim-essentiel">Choisir Essentiel</button>
             </div>
-            <div class="pack-card pack-featured pack-free-travel">
-              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
+            <div class="pack-card pack-featured">
               <span class="pack-badge">Le plus choisi</span>
               <h4>Pack Confort</h4>
               <p class="pack-tagline">L'entretien complet</p>
@@ -7473,7 +7510,6 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle unité extérieure</li>
                 <li>Contrôle chaud / froid</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
-                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">79 € <small>TTC</small></p>
               <p class="pack-extra">2ᵉ unité : -20 € (59 € TTC)</p>
@@ -7559,8 +7595,7 @@ if ('serviceWorker' in navigator){
               <p class="pack-price">99 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-essentiel">Choisir Essentiel</button>
             </div>
-            <div class="pack-card pack-featured pack-free-travel">
-              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
+            <div class="pack-card pack-featured">
               <span class="pack-badge">Le plus choisi</span>
               <h4>Pack Confort</h4>
               <p class="pack-tagline">L'entretien complet</p>
@@ -7573,7 +7608,6 @@ if ('serviceWorker' in navigator){
                 <li>Contrôle de la combustion et des réglages</li>
                 <li>Conseils d'optimisation de l'installation</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
-                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-gaz-confort">Choisir Confort</button>
@@ -7616,8 +7650,7 @@ if ('serviceWorker' in navigator){
               <p class="pack-price">129 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-essentiel">Choisir Essentiel</button>
             </div>
-            <div class="pack-card pack-featured pack-free-travel">
-              <span class="pack-badge pack-badge-travel">Déplacement offert même hors zone</span>
+            <div class="pack-card pack-featured">
               <span class="pack-badge">Le plus choisi</span>
               <h4>Pack Confort</h4>
               <p class="pack-tagline">L'entretien complet</p>
@@ -7630,7 +7663,6 @@ if ('serviceWorker' in navigator){
                 <li>Analyse et réglage de la combustion</li>
                 <li>Contrôle du vase d'expansion et de la pression</li>
                 <li>✓ Déplacement offert dans la zone de 25 km</li>
-                <li class="pack-feature-highlight">Déplacement offert même en dehors de la zone de 25 km</li>
               </ul>
               <p class="pack-price">169 € <small>TTC</small></p>
               <button type="button" class="pack-cta-service" data-service="chauffage-chaudiere-fioul-confort">Choisir Confort</button>
@@ -31709,7 +31741,6 @@ if ('serviceWorker' in navigator){
   .hvp-card-sub{ font-size:0.9rem; color:var(--adm-ink-soft, var(--hv-text-2)); }
   .adm-badge-review{ background:rgba(91,33,182,0.10); color:#5B21B6; }
   #espaceProAdminPanel .deco-blob{ display:none; } /* halo décoratif passé sous le menu (« Matériel » à 2,1:1) */
-  #espaceProAdminPanel .admin-bk-planning-day-date{ color:#FFFFFF; }
 
   /* ---------- En-tête : liens lisibles sur portable et tablette ----------
      Entre 601 et 1365 px les liens tombaient à 9 px et le sélecteur
@@ -31752,6 +31783,35 @@ if ('serviceWorker' in navigator){
     .mode-btn-text{ font-size:max(0.72rem, 11.5px); }
   }
 
+  /* Univers chauffage : badges et bouton gaz/fioul de la grille des prix
+     (couleur d'accent posée en ligne par le script) — texte foncé sur
+     rouge 3,1:1 → même famille de rouge, plus clair (5,2:1). */
+  :root[data-universe="chauffage"] .price-group{ --accent-cat:#E8735F !important; }
+  /* Espace Client : onglet actif (dégradé couleur métier → bleu nuit,
+     texte blanc à 2,2:1 sur l'ambre) — fond toujours sombre. */
+  .ec-tab.is-active{ background:linear-gradient(135deg, color-mix(in srgb, var(--ec-tab-c, var(--turquoise)) 38%, #102039) 0%, #102039 100%); }
+  /* Boutons posés sur la carte bleu nuit « prochain rendez-vous ». */
+  .ec-next-appt .ec-appt-move-btn{ color:#FFFFFF; border-color:rgba(255,255,255,0.75); }
+  .ec-next-appt .ec-appt-move-btn:hover{ background:#FFFFFF; color:#102039; }
+  .ec-next-appt .ec-appt-cancel-btn{ color:#FFD2CB; border-color:rgba(255,210,203,0.7); }
+  .ec-next-appt .ec-appt-cancel-btn:hover{ background:#FFD2CB; color:#5A1A12; border-color:#FFD2CB; }
+  /* Onglets du planning : fond de carte (et non blanc fixe) pour suivre
+     le mode sombre. */
+  .admin-bk-main-tab{ background:var(--adm-card-bg, #fff); }
+  .admin-bk-main-tab.is-active{ background:var(--adm-ink); color:var(--adm-card-bg, #fff); border-color:var(--adm-ink); }
+  .offer-cancel, .offer-form label{ color:var(--adm-ink); }
+  .ref-adm-help{ color:var(--adm-ink-soft, var(--hv-text-2)); }
+  .pro-check-book-title{ color:var(--pro-ink, var(--hv-text)); }
+  .pro-check-book .pro-page-sub{ color:var(--pro-ink-soft, var(--hv-text-2)); }
+  #catalogImportFile{ color:var(--adm-ink); }
+
+  /* Jeu de lancement (fond bleu nuit) : noms des lots en titre h3 qui
+     héritaient du bleu nuit du thème (invisibles), bandeau « Tirage au
+     sort » sans couleur de texte. */
+  .lc-card-name{ color:#FFFFFF; }
+  .lc-draw{ color:#FFD9B8; }
+  .map-card-caption b{ color:#FFFFFF; }
+
   /* Mode sombre de l'appareil (administration et Espace Pro le suivent) :
      textes secondaires moins transparents, statuts en teintes claires. */
   @media (prefers-color-scheme: dark){
@@ -31767,5 +31827,17 @@ if ('serviceWorker' in navigator){
     .adm-badge-review{ color:#C9B2FA; }
     .adm-badge-confirmed, .adm-badge-pending, .adm-badge-completed, .adm-badge-cancelled, .adm-badge-progress, .adm-badge-review,
     .hvp-pill, #espaceProAdminPanel .ec-badge{ background:rgba(255,255,255,0.08); }
+    /* Textes secondaires et libellés de formulaire hérités du thème clair
+       (#34445A) : clairs sur fond sombre. */
+    #espaceProAdminPanel, .admin-bk-modal-overlay, .hvp-modal, .pro-shell{ --ink-soft:rgba(241,245,249,0.86); --ink-soft-fixed:rgba(241,245,249,0.86); }
+    #espaceProAdminPanel .ec-form label, .pro-shell .ec-form label, .admin-bk-modal-overlay .ec-form label,
+    #espaceProAdminPanel .ec-row-meta, .pro-shell .ec-row-meta, .admin-client-crm-field{ color:rgba(241,245,249,0.86); }
+    /* Liens et actions en bleu (bleu soutenu illisible sur fond sombre). */
+    .offer-edit, .admin-req-open-hint, .hvt-link, #espaceProAdminPanel button[data-biz-route], [data-hvp-notif-readall],
+    .admin-bk-planning-today-btn, [data-hvp-goto-company], #qcAddSupplyBtn, .admin-req-new-badge, .admin-bk-event-time,
+    .pro-eyebrow, .pro-empty-badge, #espaceProAdminPanel .adm-eyebrow{ color:#9CC8F2 !important; }
+    .admin-stats-funnel-rate{ color:#86E0AE; }
+    #espaceProAdminPanel .is-danger, .admin-bk-cancel-confirmed-toggle, .hvp-error, .hvp-modal .hvp-error{ color:#FFA696; }
+    #espaceProApptAllBtn{ color:#FFB38A; }
   }
 </style>
