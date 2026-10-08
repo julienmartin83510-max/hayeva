@@ -147,6 +147,17 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- V4 : animations (Motion 14, sous-ensemble hébergé ici, MIT) + module commun HAYEVA. -->
+<script>
+  /* Chemins absolus en ligne (la page est aussi servie sous /admin/interventions/…,
+     où un chemin relatif pointerait dans le vide) ; relatifs en local (file://). */
+  (function(){
+    var base = location.protocol === 'file:' ? '' : '/';
+    ['vendor/hayeva-motion-14.0.0.min.js', 'assets/hv-fx.js'].forEach(function(f){
+      var s = document.createElement('script'); s.src = base + f; s.async = false; document.head.appendChild(s);
+    });
+  })();
+</script>
 <!-- Bibliothèques réservées à l'administration (≈1,2 Mo) : lecture
      CSV/XLSX du catalogue fournisseurs et génération PDF réelle (exports
      Statistiques/Archives). Elles ne sont plus téléchargées par chaque
@@ -32294,5 +32305,37 @@ window.HV_APP_VERSION = 'hayeva-v39';
     .admin-stats-funnel-rate{ color:#86E0AE; }
     #espaceProAdminPanel .is-danger, .admin-bk-cancel-confirmed-toggle, .hvp-error, .hvp-modal .hvp-error{ color:#FFA696; }
     #espaceProApptAllBtn{ color:#FFB38A; }
+  }
+</style>
+
+<style id="hv-tokens-v4">
+  /* =====================================================================
+     HAYEVA V4 — jetons d'espacement, rayons, ombres et mouvement.
+     Socle commun aux 4 interfaces ; les animations JS (assets/hv-fx.js)
+     lisent les mêmes durées. Règle : opacity/transform uniquement.
+     ===================================================================== */
+  :root{
+    --hv-space-1:4px; --hv-space-2:8px; --hv-space-3:12px; --hv-space-4:16px;
+    --hv-space-5:24px; --hv-space-6:32px; --hv-space-7:48px; --hv-space-8:64px;
+    --hv-radius-sm:8px; --hv-radius-md:12px; --hv-radius-lg:16px; --hv-radius-xl:22px; --hv-radius-pill:999px;
+    --hv-shadow-1:0 1px 2px rgba(16,32,57,.06), 0 1px 3px rgba(16,32,57,.08);
+    --hv-shadow-2:0 4px 12px rgba(16,32,57,.08), 0 2px 4px rgba(16,32,57,.06);
+    --hv-shadow-3:0 12px 32px rgba(16,32,57,.14), 0 4px 8px rgba(16,32,57,.06);
+    --hv-dur-micro:140ms; --hv-dur-card:240ms; --hv-dur-page:220ms; --hv-dur-panel:300ms;
+    --hv-ease-out:cubic-bezier(.22,1,.36,1); --hv-ease-in-out:cubic-bezier(.65,0,.35,1);
+  }
+  @media (prefers-reduced-motion: reduce){
+    :root{ --hv-dur-micro:0ms; --hv-dur-card:0ms; --hv-dur-page:0ms; --hv-dur-panel:0ms; }
+  }
+  /* Retour tactile « appui » (boutons qui n'utilisent pas transform pour leur mise en page). */
+  @media (prefers-reduced-motion: no-preference){
+    .btn-primary, .btn-secondary, .ecx-cat-chip, .ecx-promo-cta, .ecx-section-link, .ecx-option-row,
+    .hvp-quick-btn, .adm-quicklink-btn, .ecx-svc-card, .hv-bottomnav-item{
+      transition-property:transform, opacity, background-color, border-color, color, box-shadow, filter;
+      transition-duration:var(--hv-dur-micro); transition-timing-function:var(--hv-ease-out);
+    }
+    .btn-primary:active, .btn-secondary:active, .ecx-cat-chip:active, .ecx-promo-cta:active, .ecx-section-link:active,
+    .ecx-option-row:active, .hvp-quick-btn:active, .adm-quicklink-btn:active, .hv-bottomnav-item:active{ transform:scale(.97); }
+    .ecx-svc-card:active{ transform:scale(.985); }
   }
 </style>
