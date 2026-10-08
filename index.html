@@ -6440,6 +6440,20 @@ if ('serviceWorker' in navigator){
     content:"HAYEVA"; position:fixed; inset:0; z-index:2147483600; display:flex; align-items:center; justify-content:center;
     background:#101B24 url("images/brand/hayeva-logo-sm.png") center 38% / 180px auto no-repeat; color:transparent;
   }
+  /* ---------- Centre SMS (0129) ---------- */
+  .sms-banner{ padding:12px 14px; border-radius:12px; margin:0 0 16px; font-weight:600; font-size:0.9rem; line-height:1.45; }
+  .sms-banner.is-off{ background:#FCEFD9; color:#8A6416; }
+  .sms-banner.is-test{ background:#D9EAFB; color:#205A8F; }
+  .sms-banner.is-on{ background:#DFF3E6; color:#2F7A4F; }
+  .sms-check{ display:flex !important; flex-direction:row !important; align-items:center; gap:10px; font-weight:600; }
+  .sms-check input{ width:20px; height:20px; flex:0 0 auto; }
+  .sms-keys{ font-size:0.85rem; margin:4px 0 0; color:var(--adm-ink-soft, #5B6B78); }
+  .sms-body{ white-space:pre-wrap; word-break:break-word; }
+  .sms-optout{ display:flex; align-items:center; gap:10px; margin:0 0 14px; font-size:0.85rem; font-weight:600; color:var(--adm-ink, #16222C); }
+  .sms-optout input{ width:20px; height:20px; margin:0; flex:0 0 auto; }
+  .sms-counter{ font-size:0.8rem; font-weight:600; color:var(--adm-ink-soft, #5B6B78); margin:-6px 0 12px; }
+  .ec-sms-pref{ display:flex !important; flex-direction:row !important; align-items:flex-start; gap:10px; font-size:0.9rem; }
+  .ec-sms-pref input{ width:20px; height:20px; margin-top:2px; flex:0 0 auto; }
 </style>
 
 <div class="sud-veil" id="sudTransitionVeil" aria-hidden="true"></div>
@@ -8792,6 +8806,9 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="adm-nav-btn" data-adm-page="contracts" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Contrats chaudière</span>
                 </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="sms" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">SMS clients</span>
+                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="stats" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Statistiques</span>
                 </button>
@@ -9157,6 +9174,45 @@ if ('serviceWorker' in navigator){
 
                 <h3 class="adm-subhead">QR codes et liens de campagne</h3>
                 <div id="admStatsCampaigns" class="ec-list"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageSms" data-adm-page="sms" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">SMS clients</h2>
+                  <p class="adm-page-sub">Confirmation, rappel la veille, déplacement, annulation, « technicien en route » et messages manuels. Aucun SMS ne part tant que le service n'est pas activé ici.</p>
+                </div>
+                <div id="smsStatusBanner" class="sms-banner is-off">Chargement…</div>
+                <h3 class="adm-subhead">Réglages</h3>
+                <form id="smsSettingsForm" class="admin-travel-settings-form">
+                  <label>Fournisseur SMS
+                    <select id="smsProvider">
+                      <option value="">Aucun (service inactif)</option>
+                      <option value="brevo">Brevo (recommandé)</option>
+                      <option value="twilio">Twilio</option>
+                    </select>
+                  </label>
+                  <p class="sms-keys" id="smsKeysStatus"></p>
+                  <label>Nom d'expéditeur (3 à 11 caractères, sans accent)
+                    <input type="text" id="smsSender" maxlength="11" pattern="[A-Za-z][A-Za-z0-9 ]{2,10}" required>
+                  </label>
+                  <label class="sms-check"><input type="checkbox" id="smsAutoConfirmation"> Confirmation de rendez-vous</label>
+                  <label class="sms-check"><input type="checkbox" id="smsAutoReminder"> Rappel 24 h avant</label>
+                  <label class="sms-check"><input type="checkbox" id="smsAutoChange"> Déplacement et annulation</label>
+                  <label class="sms-check"><input type="checkbox" id="smsAutoOnTheWay"> « Votre technicien est en route »</label>
+                  <label class="sms-check"><input type="checkbox" id="smsTestMode"> Mode test : envoyer uniquement à mon numéro, jamais aux clients</label>
+                  <label>Mon numéro de test (mobile)
+                    <input type="tel" id="smsTestPhone" inputmode="tel" placeholder="06 12 34 56 78">
+                  </label>
+                  <label class="sms-check"><input type="checkbox" id="smsEnabled"> Activer l'envoi de SMS</label>
+                  <p class="admin-travel-settings-hint">Les SMS partent de l'expéditeur « HAYEVA » (les clients ne peuvent pas y répondre) : votre numéro 06 71 26 23 02 figure dans chaque message. Heures calmes : aucun envoi automatique entre 21 h et 8 h.</p>
+                  <div class="admin-bk-propose-form-row">
+                    <button type="submit" id="smsSettingsSave">Enregistrer</button>
+                    <p class="admin-travel-settings-msg" id="smsSettingsMsg" hidden></p>
+                  </div>
+                </form>
+                <h3 class="adm-subhead">Historique (30 jours : <span id="smsCounts">—</span>)</h3>
+                <div id="smsHistory" class="ec-list"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPagePricing" data-adm-page="pricing" hidden>
@@ -9597,6 +9653,7 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
                 <button type="button" class="hv-more-item" data-hv-nav="launch-campaign">Jeu de lancement</button>
                 <button type="button" class="hv-more-item" data-hv-nav="referrals">Parrainages</button>
+                <button type="button" class="hv-more-item" data-hv-nav="sms">SMS clients</button>
                 <button type="button" class="hv-more-item" data-hv-nav="stats">Statistiques</button>
                 <button type="button" class="hv-more-item" data-hv-nav="pricing">Chiffrage</button>
                 <button type="button" class="hv-more-item" data-hv-nav="catalog">Catalogue</button>
@@ -16122,6 +16179,7 @@ if ('serviceWorker' in navigator){
       '<div class="admin-client-fiche-actions">' +
         (client.phone ? '<a class="admin-bk-action-btn" href="tel:' + admEscape(client.phone) + '">Appeler</a>' : '') +
         (client.email ? '<a class="admin-bk-action-btn" href="mailto:' + admEscape(client.email) + '">E-mail</a>' : '') +
+        (client.id ? '<button type="button" class="admin-bk-action-btn" data-sms-client="' + admEscape(client.id) + '">SMS</button>' : '') +
       '</div>' + tabsHtml;
 
     var panel = '';
@@ -25347,12 +25405,14 @@ if ('serviceWorker' in navigator){
       html += '<form class="ec-form" id="ecProfileForm">' +
         '<label>E-mail<input type="email" value="' + ecEscape(ecUser.email) + '" disabled></label>' +
         '<label>Téléphone<input type="tel" id="ecProfPhone" value="' + ecEscape(p.phone || '') + '" placeholder="06 12 34 56 78"></label>' +
+        '<label class="ec-sms-pref ec-form-full" id="ecSmsPrefWrap" hidden><input type="checkbox" id="ecProfSms"> <span>Recevoir par SMS la confirmation, le rappel et les changements de mes rendez-vous <small id="ecSmsPrefNote"></small></span></label>' +
         '<label>Prénom<input type="text" id="ecProfFirst" value="' + ecEscape(p.first_name || '') + '"></label>' +
         '<label>Nom<input type="text" id="ecProfLast" value="' + ecEscape(p.last_name || '') + '"></label>' +
         '<p class="espace-pro-form-success ec-form-full" id="ecProfileSuccess" hidden></p>' +
         '<button type="submit" class="btn-primary ec-form-full">Enregistrer</button>' +
       '</form>';
       panel.innerHTML = html;
+      if (window.hvSmsPrefInit) window.hvSmsPrefInit();
       Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(el){
         el.addEventListener('click', function(){ ecShowTab(el.getAttribute('data-ec-goto')); });
         el.addEventListener('keydown', function(e){
@@ -25393,6 +25453,7 @@ if ('serviceWorker' in navigator){
           btn.disabled = false;
           if (!res.error){
             showMsg(successEl, 'Profil mis à jour.');
+            if (window.hvSmsPrefSave) window.hvSmsPrefSave();
             // Invalide le cache + force un rechargement de l'Accueil pour que
             // le "Bonjour [Prénom]" reflète immédiatement le nouveau prénom.
             ecProfileCache = updated;
@@ -30238,5 +30299,218 @@ if ('serviceWorker' in navigator){
   var first = true, prevOn = window.hvProOnBookings;
   window.hvProOnBookings = function(){ if (prevOn) prevOn.apply(this, arguments); if (first){ first = false; load(); } };
   window.hvAdmHealthLoad = load;
+})();
+</script>
+<script>
+// =====================================================================
+// Centre SMS (0129_sms_center.sql + Edge Function sms-dispatch).
+// Administration : réglages, historique, envoi manuel depuis la fiche
+// client, désinscription. Espace client : préférence SMS.
+// Inactif par défaut : tant que le service n'est pas activé, un message
+// est enregistré dans l'historique avec le statut « Non envoyé — service
+// inactif », jamais transmis à un fournisseur.
+// =====================================================================
+(function(){
+  var sb = window.sudSupabase;
+  if (!sb || !sb.client) return;
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  var KIND = { confirmation:'Confirmation', reminder:'Rappel J-1', rescheduled:'Déplacement', cancelled:'Annulation', on_the_way:'En route', manual:'Manuel' };
+  var STATUS = {
+    not_activated:['Non envoyé — service inactif', 'pending'], queued:['En attente d’envoi', 'review'], sending:['Envoi en cours', 'progress'],
+    sent:['Envoyé', 'confirmed'], failed:['Échec', 'cancelled'], skipped_opt_out:['Non envoyé — client désinscrit', 'cancelled'],
+    skipped_no_mobile:['Non envoyé — pas de mobile', 'cancelled'], test_blocked:['Bloqué — mode test sans numéro', 'review']
+  };
+  function badge(st){ var x = STATUS[st] || [st, 'pending']; return '<span class="adm-badge adm-badge-' + x[1] + '">' + esc(x[0]) + '</span>'; }
+  function when(iso){ var d = new Date(iso); return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }); }
+  function maskPhone(p){ p = String(p || ''); return p ? p.replace(/^\+33/, '0').replace(/(\d{2})(?=\d)/g, '$1 ').replace(/^(\d{2} \d{2} )\d{2} \d{2}/, '$1•• ••') : '—'; }
+  // Même règle que sms-dispatch : 160 caractères par SMS, 153 par segment au-delà.
+  function smsCount(t){ var n = Array.from(String(t || '')).length; return n <= 160 ? 1 : Math.ceil(n / 153); }
+  function friendly(e){ var m = e && e.message ? String(e.message) : ''; return /permission|violates|column|relation|function|syntax/i.test(m) ? 'Action impossible.' : (m || 'Action impossible.'); }
+  function $(id){ return document.getElementById(id); }
+
+  // ---------------- Page « SMS clients » ----------------
+  var center = null;
+  function renderBanner(st, keys){
+    var el = $('smsStatusBanner'); if (!el) return;
+    if (!st.enabled || !st.provider){
+      el.className = 'sms-banner is-off';
+      el.textContent = 'Service SMS inactif : aucun SMS n’est envoyé. Les messages qui auraient été envoyés apparaissent dans l’historique avec la mention « Non envoyé — service inactif ».';
+    } else if (st.test_mode){
+      el.className = 'sms-banner is-test';
+      el.textContent = 'Mode test actif : les SMS partent uniquement vers votre numéro de test (' + maskPhone(st.test_phone) + '), jamais vers les clients.';
+    } else {
+      el.className = 'sms-banner is-on';
+      el.textContent = 'Service SMS actif (' + (st.provider === 'twilio' ? 'Twilio' : 'Brevo') + ') : les SMS automatiques et manuels sont envoyés aux clients.';
+    }
+    var k = $('smsKeysStatus');
+    if (k){
+      if (!keys) k.textContent = '';
+      else k.textContent = 'Clé Brevo : ' + (keys.brevo_key ? 'configurée' : 'non configurée') + ' · Clés Twilio : ' + (keys.twilio_keys ? 'configurées' : 'non configurées') +
+        (keys.legacy_sms_provider_set ? ' · ⚠️ le secret SMS_PROVIDER est défini : supprimez-le pour éviter des doublons « en route ».' : '');
+    }
+  }
+  function fill(st){
+    $('smsProvider').value = st.provider || '';
+    $('smsSender').value = st.sender_name || 'HAYEVA';
+    $('smsAutoConfirmation').checked = !!st.auto_confirmation;
+    $('smsAutoReminder').checked = !!st.auto_reminder;
+    $('smsAutoChange').checked = !!st.auto_change;
+    $('smsAutoOnTheWay').checked = !!st.auto_on_the_way;
+    $('smsTestMode').checked = !!st.test_mode;
+    $('smsTestPhone').value = st.test_phone ? String(st.test_phone).replace(/^\+33/, '0') : '';
+    $('smsEnabled').checked = !!st.enabled;
+    $('smsEnabled').disabled = !st.provider && !st.enabled;
+  }
+  function renderHistory(d){
+    var el = $('smsHistory'); if (!el) return;
+    var c = d.counts_30d || {};
+    var cnt = $('smsCounts');
+    if (cnt) cnt.textContent = (c.sent || 0) + ' envoyé(s), ' + (c.not_activated || 0) + ' non envoyé(s) (service inactif), ' + (c.failed || 0) + ' échec(s) · ' + (d.opt_outs || 0) + ' désinscrit(s)';
+    var rows = d.messages || [];
+    el.innerHTML = rows.length ? rows.map(function(m){
+      return '<div class="ec-row"><div class="ec-row-info">' +
+        '<span class="ec-row-title">' + esc(KIND[m.kind] || m.kind) + ' — ' + esc(m.client_name || 'Client') + (m.reference ? ' · ' + esc(m.reference) : '') + '</span>' +
+        '<span class="ec-row-meta">' + esc(when(m.created_at)) + ' · ' + esc(maskPhone(m.to_phone)) + (m.test_redirect ? ' · envoyé au numéro de test' : '') + '</span>' +
+        '<span class="ec-row-meta sms-body">' + esc(m.body) + '</span>' +
+        (m.error ? '<span class="ec-row-meta">' + esc(m.error) + '</span>' : '') +
+        '</div>' + badge(m.status) + '</div>';
+    }).join('') : '<div class="ec-empty"><strong>Aucun message</strong>Les SMS préparés et envoyés apparaîtront ici.</div>';
+  }
+  function load(){
+    sb.client.rpc('admin_get_sms_center', { p_limit: 100 }).then(function(res){
+      if (res.error || !res.data){ var h = $('smsHistory'); if (h) h.innerHTML = '<div class="ec-empty"><strong>Centre SMS indisponible</strong>Réessayez dans un instant.</div>'; return; }
+      center = res.data;
+      fill(center.settings || {});
+      renderBanner(center.settings || {}, null);
+      renderHistory(center);
+      if (sb.client.functions && sb.client.functions.invoke){
+        sb.client.functions.invoke('sms-dispatch', { body: { action: 'status' } }).then(function(r){
+          if (r && !r.error && r.data) renderBanner(center.settings || {}, r.data);
+        }, function(){});
+      }
+    }, function(){});
+  }
+  var form = $('smsSettingsForm');
+  if (form){
+    $('smsProvider').addEventListener('change', function(){
+      var has = !!this.value;
+      $('smsEnabled').disabled = !has;
+      if (!has) $('smsEnabled').checked = false;
+    });
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var msg = $('smsSettingsMsg'), btn = $('smsSettingsSave');
+      var wantOn = $('smsEnabled').checked, wasOn = !!(center && center.settings && center.settings.enabled);
+      var testMode = $('smsTestMode').checked;
+      if (wantOn && !wasOn){
+        var txt = testMode
+          ? 'Activer le service SMS en MODE TEST ?\n\nLes SMS seront réellement envoyés (et facturés par le fournisseur), mais uniquement vers votre numéro de test.'
+          : 'Activer l’envoi RÉEL de SMS aux clients ?\n\nChaque SMS est facturé par le fournisseur choisi.';
+        if (!window.confirm(txt)) return;
+      }
+      if (wantOn && !testMode && center && center.settings && center.settings.test_mode){
+        if (!window.confirm('Désactiver le mode test ? Les SMS partiront désormais vers les clients.')) return;
+      }
+      btn.disabled = true;
+      sb.client.rpc('admin_update_sms_settings', { p: {
+        provider: $('smsProvider').value || '', sender_name: $('smsSender').value.trim(),
+        auto_confirmation: $('smsAutoConfirmation').checked, auto_reminder: $('smsAutoReminder').checked,
+        auto_change: $('smsAutoChange').checked, auto_on_the_way: $('smsAutoOnTheWay').checked,
+        test_mode: testMode, test_phone: $('smsTestPhone').value.trim(), enabled: wantOn
+      } }).then(function(res){
+        btn.disabled = false;
+        msg.hidden = false;
+        if (res.error){ msg.textContent = friendly(res.error); return; }
+        msg.textContent = '✓ Réglages enregistrés';
+        load();
+      }, function(){ btn.disabled = false; msg.hidden = false; msg.textContent = 'Erreur réseau. Réessayez.'; });
+    });
+  }
+  var prevShow = window.hvProBeforeShowPage;
+  window.hvProBeforeShowPage = function(k){ if (prevShow) prevShow(k); if (k === 'sms') setTimeout(load, 0); };
+  window.hvSmsCenterLoad = load;
+
+  // ---------------- Envoi manuel depuis la fiche client ----------------
+  var TEMPLATES = [
+    ['', 'Message libre'],
+    ['Bonjour, ici HAYEVA. Je serai chez vous vers [heure]. Contact : 06 71 26 23 02', 'Heure d’arrivée'],
+    ['Bonjour, ici HAYEVA. Merci de me rappeler au 06 71 26 23 02 au sujet de votre demande.', 'Demande de rappel'],
+    ['Bonjour, ici HAYEVA. Votre devis est disponible dans votre espace client sur hayeva.fr. Questions : 06 71 26 23 02', 'Devis disponible']
+  ];
+  function openClientSms(clientId){
+    var modal = $('hvpModal'), sheet = $('hvpSheet');
+    if (!modal || !sheet) return;
+    sheet.innerHTML = '<p class="ec-loading">Chargement…</p>'; modal.hidden = false;
+    sb.client.rpc('admin_get_client_sms', { p_client_id: clientId }).then(function(res){
+      if (res.error || !res.data){ sheet.innerHTML = '<p class="hvp-error">Impossible de charger les SMS de ce client.</p><div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-sms-close>Fermer</button></div>'; return; }
+      var d = res.data;
+      var hist = (d.messages || []).map(function(m){
+        return '<div class="ec-row"><div class="ec-row-info"><span class="ec-row-title">' + esc(KIND[m.kind] || m.kind) + ' · ' + esc(when(m.created_at)) + '</span><span class="ec-row-meta sms-body">' + esc(m.body) + '</span></div>' + badge(m.status) + '</div>';
+      }).join('') || '<p class="ec-row-meta">Aucun SMS pour ce client.</p>';
+      var canSend = d.mobile && !d.opted_out;
+      sheet.innerHTML = '<form id="smsClientForm"><h3>SMS au client</h3>' +
+        (d.enabled ? '' : '<div class="sms-banner is-off">Service SMS inactif : le message sera enregistré dans l’historique mais ne sera pas envoyé.</div>') +
+        '<p class="ec-row-meta">Mobile : ' + (d.mobile ? esc(maskPhone(d.mobile)) : 'aucun numéro de mobile valide sur la fiche') + '</p>' +
+        (d.mobile ? '<label class="sms-optout"><input type="checkbox" id="smsClientOptOut"' + (d.opted_out ? ' checked' : '') + '> Ce client ne souhaite pas recevoir de SMS</label>' : '') +
+        (canSend ?
+          '<label class="hvp-field">Modèle<select id="smsClientTpl">' + TEMPLATES.map(function(t, i){ return '<option value="' + i + '">' + esc(t[1]) + '</option>'; }).join('') + '</select></label>' +
+          '<label class="hvp-field">Message<textarea id="smsClientBody" rows="4" maxlength="459"></textarea></label>' +
+          '<p class="sms-counter" id="smsClientCounter">0 caractère · 1 SMS</p>' : '') +
+        '<p class="hvp-error" hidden></p>' +
+        '<div class="hvp-sheet-actions"><button type="button" class="hvp-btn-cancel" data-sms-close>Fermer</button>' +
+        (canSend ? '<button type="submit" class="hvp-btn-ok">' + (d.enabled ? 'Envoyer le SMS' : 'Enregistrer (non envoyé)') + '</button>' : '') + '</div>' +
+        '<h3 class="admin-client-fiche-section-title">Historique</h3><div class="ec-list">' + hist + '</div></form>';
+      var bodyEl = $('smsClientBody'), counter = $('smsClientCounter'), tpl = $('smsClientTpl');
+      function upd(){ if (!bodyEl || !counter) return; var n = Array.from(bodyEl.value).length; counter.textContent = n + ' caractère' + (n > 1 ? 's' : '') + ' · ' + smsCount(bodyEl.value) + ' SMS'; }
+      if (bodyEl) bodyEl.addEventListener('input', upd);
+      if (tpl) tpl.addEventListener('change', function(){ var t = TEMPLATES[Number(tpl.value)]; if (t && t[0]) bodyEl.value = t[0]; upd(); });
+      var opt = $('smsClientOptOut');
+      if (opt) opt.addEventListener('change', function(){
+        opt.disabled = true;
+        sb.client.rpc('admin_set_sms_opt_out', { p_client_id: clientId, p_opt_out: opt.checked }).then(function(r){
+          opt.disabled = false;
+          if (r.error){ opt.checked = !opt.checked; var e = sheet.querySelector('.hvp-error'); e.hidden = false; e.textContent = friendly(r.error); return; }
+          openClientSms(clientId);
+        });
+      });
+      var f = $('smsClientForm');
+      f.addEventListener('submit', function(e){
+        e.preventDefault();
+        var errEl = sheet.querySelector('.hvp-error'), btn = f.querySelector('[type="submit"]');
+        var text = bodyEl ? bodyEl.value.trim() : '';
+        if (/\[heure\]/.test(text)){ errEl.hidden = false; errEl.textContent = 'Remplacez [heure] par l’heure réelle avant l’envoi.'; return; }
+        if (d.enabled && !window.confirm('Envoyer ce SMS (' + smsCount(text) + ' SMS facturé' + (smsCount(text) > 1 ? 's' : '') + ') ?')) return;
+        btn.disabled = true;
+        sb.client.rpc('admin_queue_sms', { p_client_id: clientId, p_body: text }).then(function(r){
+          btn.disabled = false;
+          if (r.error){ errEl.hidden = false; errEl.textContent = friendly(r.error); return; }
+          openClientSms(clientId);
+        }, function(){ btn.disabled = false; errEl.hidden = false; errEl.textContent = 'Erreur réseau. Réessayez.'; });
+      });
+    }, function(){});
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('[data-sms-client]');
+    if (b){ e.preventDefault(); openClientSms(b.getAttribute('data-sms-client')); return; }
+    if (e.target.closest && e.target.closest('[data-sms-close]')){ var m = $('hvpModal'); if (m) m.hidden = true; }
+  });
+  window.hvOpenClientSms = openClientSms;
+
+  // ---------------- Espace client : préférence SMS ----------------
+  window.hvSmsPrefInit = function(){
+    var wrap = $('ecSmsPrefWrap'), box = $('ecProfSms'), note = $('ecSmsPrefNote');
+    if (!wrap || !box) return;
+    sb.client.rpc('get_my_sms_preference').then(function(res){
+      if (res.error || !res.data) return;
+      box.checked = !!res.data.receive;
+      if (note) note.textContent = res.data.mobile ? '' : '(indiquez un numéro de mobile ci-dessus)';
+      wrap.hidden = false;
+    }, function(){});
+  };
+  window.hvSmsPrefSave = function(){
+    var box = $('ecProfSms'), wrap = $('ecSmsPrefWrap');
+    if (!box || !wrap || wrap.hidden) return;
+    sb.client.rpc('set_my_sms_preference', { p_receive: box.checked }).then(function(){ window.hvSmsPrefInit(); }, function(){});
+  };
 })();
 </script>
