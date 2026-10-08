@@ -2175,6 +2175,26 @@ if ('serviceWorker' in navigator){
   }
   .pack-card.is-selected .pack-select-badge{ opacity:1; transform:scale(1); }
   .pack-select-badge svg{ width:14px; height:14px; }
+  /* Prévisualisation au clic sur la carte elle-même (pas le bouton) : met la
+     carte en avant avant tout engagement, distinct du pulse de confirmation
+     "is-selected" ci-dessus qui ne se joue qu'au clic sur "Choisir...". */
+  .pack-card{ cursor:pointer; }
+  .pack-card.is-previewing{
+    border-color:var(--accent-cat, var(--terracotta));
+    box-shadow:0 14px 28px -18px var(--accent-cat, var(--terracotta));
+  }
+  /* translateY réservé au-delà de 760px : sous ce seuil, .pack-card porte déjà
+     sa propre transition "transform" pour le centrage du carrousel (scroll-snap,
+     voir .pack-card.is-centered plus haut) — cumuler un second translateY sur
+     la même propriété transform écraserait l'effet de centrage au lieu de s'y
+     ajouter. */
+  @media (min-width:761px){
+    .pack-card{ transition:box-shadow .3s ease, border-color .3s ease, transform .25s ease; }
+    .pack-card.is-previewing{ transform:translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .pack-card.is-previewing{ transform:none; }
+  }
   .pack-card h4{
     font-family:"Poppins",sans-serif;
     font-size:0.98rem;
@@ -7116,6 +7136,29 @@ if ('serviceWorker' in navigator){
       var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       setTimeout(done, reduced ? 0 : 420);
     };
+
+    // Prévisualisation au clic sur la carte elle-même (section 4 du cahier
+    // des charges UX) : met la carte en avant avant tout engagement, sans
+    // toucher au contenu/prix/logique existants. Un seul écouteur délégué au
+    // document couvre toutes les grilles de packs actuelles et futures (site
+    // public ET #pro, mêmes classes .pack-grid/.pack-card) — jamais déclenché
+    // par un clic sur un bouton/lien à l'intérieur de la carte (CTA "Choisir"
+    // garde son propre comportement de confirmation, inchangé ci-dessous).
+    try{
+      document.addEventListener('click', function(e){
+        if (e.target.closest('button, a')) return;
+        var card = e.target.closest('.pack-card');
+        if (!card) return;
+        var grid = card.closest('.pack-grid');
+        var already = card.classList.contains('is-previewing');
+        if (grid){
+          Array.prototype.forEach.call(grid.querySelectorAll('.pack-card.is-previewing'), function(c){
+            c.classList.remove('is-previewing');
+          });
+        }
+        if (!already) card.classList.add('is-previewing');
+      });
+    }catch(e){}
 
     try{
       Array.prototype.forEach.call(document.querySelectorAll('.pack-cta'), function(btn){
