@@ -4921,6 +4921,51 @@ if ('serviceWorker' in navigator){
   .hv-more-item:active{ background:#F3F1EC; }
   .hv-more-item-danger{ color:#C1503B; border-top:1px solid rgba(22,34,44,0.1); margin-top:6px; padding-top:16px; }
 
+  /* Menu « Plus » — version plein écran (mobile). La feuille est déplacée
+     sous <body> à l'initialisation (voir hvWireBottomNav) : elle ne dépend
+     plus du conteneur défilant de l'espace (position:fixed fiable sur
+     Safari iOS et en PWA, aucun ancêtre transform/overflow), et s'affiche
+     au premier plan quelle que soit la position de défilement. */
+  .hv-more-sheet{ z-index:2147483300; }
+  @media (max-width:899px){
+    .hv-more-sheet{ align-items:stretch; background:rgba(16,27,46,0.4); }
+    .hv-more-card{
+      max-width:none; width:100%; height:100vh; height:100dvh; max-height:none; border-radius:0;
+      padding:env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+    }
+    .hv-more-head{ padding:14px 16px; min-height:60px; }
+    .hv-more-title{ font-size:1.15rem; }
+    .hv-more-list{
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; align-content:start;
+      padding:12px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+    .hv-more-list{ gap:6px; padding-top:10px; }
+    .hv-more-item{ background:#F4F6FA; border:1px solid #DCE3EC; border-radius:12px; padding:9px 12px; font-size:0.92rem; line-height:1.2; min-height:46px; display:flex; align-items:center; }
+    .hv-more-item-danger{ justify-content:center; }
+    .hv-more-head{ min-height:56px; padding:8px 12px 8px 16px; }
+    .hv-more-item-danger{ grid-column:1 / -1; margin-top:6px; padding-top:12px; border-top:1px solid #DCE3EC; background:#FDF1EF; color:#A3311F; }
+  }
+  /* Petits écrans (iPhone SE…) : 3 colonnes, texte un peu plus compact,
+     pour que toutes les rubriques restent visibles sans défiler. */
+  @media (max-width:899px) and (max-height:640px){
+    .hv-more-list{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+    .hv-more-item{ font-size:0.78rem; padding:6px 7px; min-height:44px; line-height:1.15; -webkit-hyphens:auto; hyphens:auto; overflow-wrap:break-word; }
+  }
+  .hv-more-close{ width:44px; height:44px; }
+  .hv-more-close svg{ width:18px; height:18px; }
+  .hv-more-item{ color:#142238; }
+  .hv-more-item.hv-more-item-danger{ color:#A3311F; }
+  .hv-more-item.is-current{ border-color:#C2410C; color:#9A3412; font-weight:800; }
+  .hv-more-sheet.is-closing{ opacity:0; transition:opacity .18s ease; }
+  .hv-more-sheet.is-closing .hv-more-card{ transform:translateY(16px); transition:transform .18s ease; }
+  @media (prefers-reduced-motion: reduce){
+    .hv-more-card{ animation:none !important; }
+    .hv-more-sheet.is-closing, .hv-more-sheet.is-closing .hv-more-card{ transition:none; }
+  }
+  /* Arrière-plan bloqué pendant que le menu est ouvert (page ET espace). */
+  html.hv-more-open, html.hv-more-open body{ overflow:hidden !important; }
+  html.hv-more-open #espaceClient.is-open, html.hv-more-open #espacePro.is-open{ overflow:hidden !important; }
+
   /* ---------- Assistant flottant Espace Client / Espace Pro ----------
      Même contrainte que .ecx-bottomnav : les conteneurs #espaceClient et
      #espacePro sont eux-mêmes position:fixed + overflow-y:auto (le vrai
@@ -4973,6 +5018,9 @@ if ('serviceWorker' in navigator){
     background:rgba(16,27,46,0.32);
   }
   .ecx-assist-sheet[hidden]{ display:none; }
+  /* Rattachée à <body> (voir ecxInitAssistant) : doit passer au-dessus de
+     l'espace plein écran (#espaceClient/#espacePro, z-index 9990). */
+  .ecx-assist-sheet{ z-index:2147483300; }
   .ecx-assist-card{
     width:100%; max-width:460px; max-height:min(78vh, 640px); max-height:min(72dvh, 640px); background:#fff; border-radius:20px 20px 0 0;
     display:flex; flex-direction:column; overflow:hidden; animation:ecxAssistSheetIn .22s ease;
@@ -8722,7 +8770,7 @@ if ('serviceWorker' in navigator){
         <div class="hv-more-sheet" id="proMoreSheet" hidden role="dialog" aria-modal="true" aria-label="Plus de fonctions">
           <div class="hv-more-card">
             <div class="hv-more-head">
-              <p class="hv-more-title">Plus</p>
+              <p class="hv-more-title">Menu</p>
               <button type="button" class="hv-more-close" id="proMoreCloseBtn" aria-label="Fermer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
@@ -9673,7 +9721,7 @@ if ('serviceWorker' in navigator){
           <div class="hv-more-sheet" id="admMoreSheet" hidden role="dialog" aria-modal="true" aria-label="Plus de fonctions">
             <div class="hv-more-card">
               <div class="hv-more-head">
-                <p class="hv-more-title">Plus</p>
+                <p class="hv-more-title">Menu</p>
                 <button type="button" class="hv-more-close" id="admMoreCloseBtn" aria-label="Fermer">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
@@ -9687,7 +9735,6 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="hv-more-item" data-hv-nav="gear">Véhicule &amp; outillage</button>
                 <button type="button" class="hv-more-item" data-hv-nav="invoices">Factures</button>
                 <button type="button" class="hv-more-item" data-hv-nav="settings" data-hvp-company-link>Informations entreprise</button>
-                <button type="button" class="hv-more-item" data-hv-nav="settings">Paramètres (notifications…)</button>
                 <button type="button" class="hv-more-item" data-hv-nav="contracts">Contrats chaudière</button>
                 <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
@@ -14363,6 +14410,7 @@ if ('serviceWorker' in navigator){
 
   function hvSyncBottomNav(navEl, key, primaryKeys){
     if (!navEl) return;
+    navEl.setAttribute('data-hv-current', key);
     Array.prototype.forEach.call(navEl.querySelectorAll('.hv-bottomnav-item'), function(btn){
       var navKey = btn.getAttribute('data-hv-nav');
       var active = navKey ? (navKey === key) : (primaryKeys.indexOf(key) === -1);
@@ -14373,11 +14421,47 @@ if ('serviceWorker' in navigator){
   function hvWireBottomNav(navId, sheetId, closeBtnId, logoutBtnId, showPageFn){
     var navEl = document.getElementById(navId);
     var sheetEl = document.getElementById(sheetId);
-    function closeSheet(){ if (sheetEl) sheetEl.hidden = true; }
+    // Portail : la feuille quitte le conteneur défilant de l'espace pour
+    // être un enfant direct de <body> (position:fixed toujours relative à
+    // l'écran, y compris Safari iOS / PWA). Les écouteurs restent attachés.
+    if (sheetEl && sheetEl.parentNode !== document.body) document.body.appendChild(sheetEl);
+    var lastFocus = null, closeTimer = null;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    function openSheet(){
+      if (!sheetEl) return;
+      clearTimeout(closeTimer);
+      lastFocus = document.activeElement;
+      // Rubrique en cours mise en évidence.
+      var current = navEl && navEl.getAttribute('data-hv-current');
+      Array.prototype.forEach.call(sheetEl.querySelectorAll('.hv-more-item[data-hv-nav]'), function(it){
+        var on = it.getAttribute('data-hv-nav') === current;
+        it.classList.toggle('is-current', on);
+        if (on) it.setAttribute('aria-current', 'page'); else it.removeAttribute('aria-current');
+      });
+      sheetEl.classList.remove('is-closing');
+      sheetEl.hidden = false;
+      document.documentElement.classList.add('hv-more-open');
+      var list = sheetEl.querySelector('.hv-more-list');
+      if (list) list.scrollTop = 0;
+      var c = sheetEl.querySelector('.hv-more-close');
+      if (c) try { c.focus({ preventScroll:true }); } catch (err){ c.focus(); }
+    }
+    function closeSheet(){
+      if (!sheetEl || sheetEl.hidden) return;
+      var finish = function(){
+        sheetEl.hidden = true;
+        sheetEl.classList.remove('is-closing');
+        document.documentElement.classList.remove('hv-more-open');
+        if (lastFocus && lastFocus.focus && document.contains(lastFocus)) try { lastFocus.focus({ preventScroll:true }); } catch (err){}
+      };
+      if (reduceMotion && reduceMotion.matches){ finish(); return; }
+      sheetEl.classList.add('is-closing');
+      closeTimer = setTimeout(finish, 180);
+    }
     if (navEl){
       navEl.addEventListener('click', function(e){
         var moreBtn = e.target.closest('[data-hv-more]');
-        if (moreBtn){ if (sheetEl) sheetEl.hidden = false; return; }
+        if (moreBtn){ openSheet(); return; }
         var btn = e.target.closest('[data-hv-nav]');
         if (!btn) return;
         showPageFn(btn.getAttribute('data-hv-nav'));
@@ -27814,6 +27898,9 @@ if ('serviceWorker' in navigator){
     var calloutEl = document.getElementById('ecxAssistCallout' + suffix);
     var calloutCloseBtn = document.getElementById('ecxAssistCalloutClose' + suffix);
     if (!btn || !sheet || !form) return;
+    // Même principe que le menu « Plus » : fenêtre rattachée à <body> pour
+    // rester fixée à l'écran (Safari iOS / PWA), arrière-plan bloqué.
+    if (sheet.parentNode !== document.body) document.body.appendChild(sheet);
 
     var conversationId = null;
     var requestInFlight = false;
@@ -27845,6 +27932,7 @@ if ('serviceWorker' in navigator){
 
     function openSheet(){
       sheet.hidden = false;
+      document.documentElement.classList.add('hv-more-open');
       renderChips();
       if (form) form.hidden = false;
       if (chipsEl) chipsEl.hidden = false;
@@ -27856,6 +27944,7 @@ if ('serviceWorker' in navigator){
     }
     function closeSheet(){
       sheet.hidden = true;
+      document.documentElement.classList.remove('hv-more-open');
     }
 
     btn.addEventListener('click', openSheet);
