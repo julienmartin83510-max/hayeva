@@ -31478,3 +31478,205 @@ if ('serviceWorker' in navigator){
   window.hvProBeforeShowPage = function(k){ if (prevShow) prevShow(k); if (k === 'offers'){ msg(''); setTimeout(load, 0); } };
 })();
 </script>
+
+<style id="hv-design-system">
+  /* =====================================================================
+     HAYEVA — SYSTÈME DE LISIBILITÉ CENTRALISÉ (audit contraste oct. 2026)
+     Dernier bloc de styles de la page : il redéfinit, à un seul endroit,
+     les jetons de couleur et la typographie utilisés par TOUTES les
+     interfaces (site public, Espace Client, Espace Pro, administration,
+     fenêtres). Mesures réelles (axe-core 4.10, WCAG 2.2 AA) avant/après
+     dans docs/accessibilite/. Logo et wordmark HAYEVA non modifiés.
+     Règles : texte foncé sur fond clair, texte clair sur fond foncé,
+     4,5:1 minimum pour le texte courant (7:1 visé pour le texte
+     principal), 3:1 pour les contours de champs.
+     ===================================================================== */
+  :root{
+    /* Référence */
+    --hv-text:#142238;        /* 15,6:1 sur blanc */
+    --hv-title:#102039;       /* 16,4:1 */
+    --hv-text-2:#34445A;      /* 9,9:1  */
+    --hv-text-3:#4A5A70;      /* 7,1:1 — mentions discrètes */
+    --hv-bg:#F7F9FC;
+    --hv-card:#FFFFFF;
+    --hv-border:#CBD5E1;      /* séparateurs décoratifs */
+    --hv-field-border:#7A8699;/* 3,6:1 — contour des champs (WCAG 1.4.11) */
+    --hv-placeholder:#5B6B78; /* 5,5:1 */
+    /* Orange HAYEVA : la teinte officielle #E85A12 reste celle du logo, du
+       hero et des éléments décoratifs ; mais du texte blanc dessus ne donne
+       que 3,56:1 (et 3,55:1 en texte orange sur blanc). Pour le texte et
+       les boutons, même famille d'orange, plus soutenue : 5,18:1. */
+    --hv-orange-brand:#E85A12;
+    --hv-orange:#C2410C;
+    --hv-orange-deep:#9A3412;
+    --hv-blue:#1F5A8F;        /* 7,2:1 */
+    --hv-success:#1E6B43; --hv-warning:#8A5A12; --hv-danger:#A3311F; --hv-info:#1F5A8F; --hv-neutral:#4A5568;
+    --hv-gold-text:#8A5A12;   /* avantages « déplacement offert », cadeau */
+
+    /* Jetons historiques du site, réalignés */
+    --ink:var(--hv-text);
+    --ink-soft:var(--hv-text-2);
+    --ink-soft-fixed:var(--hv-text-2);
+    --navy-fixed:var(--hv-text);
+    --terracotta:var(--hv-orange);
+    --terracotta-deep:var(--hv-orange-deep);
+    --terracotta-fixed:var(--hv-orange);
+    --terracotta-deep-fixed:var(--hv-orange-deep);
+    --line:var(--hv-border);
+  }
+  /* Univers métier (page entière recolorée) : seules les valeurs qui
+     échouaient à la mesure sont corrigées, l'ambiance reste la même. */
+  :root[data-universe="chauffage"]{ --terracotta:#E8735F; --terracotta-deep:#D85A45; } /* texte #44150D : 3,11 → 5,19:1 */
+  :root[data-universe="plomberie"]{ --cream:#456E7E; }                                /* texte #F2F8F9 : 4,48 → 5,17:1 */
+  :root[data-universe="clim"]{ --terracotta:#4A5560; --terracotta-deep:#343C44; }
+  :root[data-universe="chauffage"] .price-group h3, :root[data-universe="plomberie"] .price-group h3,
+  :root[data-universe="chauffage"] .pack-price, :root[data-universe="plomberie"] .pack-price,
+  :root[data-universe="chauffage"] .price-from-tag, :root[data-universe="plomberie"] .price-from-tag,
+  :root[data-universe="chauffage"] .price-row-quote .p-value, :root[data-universe="plomberie"] .price-row-quote .p-value{ color:var(--ink); }
+  :root[data-universe="chauffage"] .pack-features li.pack-feature-highlight,
+  :root[data-universe="plomberie"] .pack-features li.pack-feature-highlight{ color:#F4D58A; }
+  .hero{ --hl-navy-soft:var(--hv-text-2); }
+  /* Écran de connexion sur photo sombre : bouton bleu clair à texte blanc
+     (2,59:1) → texte bleu nuit sur ce même bleu (6,13:1). */
+  .gate-bg-active #espaceClientLoginSubmit, .gate-bg-active #espaceClientSignupSubmit, .gate-bg-active #espaceProLoginSubmit{ color:#0A2436; }
+
+  /* ---------- Typographie ---------- */
+  /* Le texte courant était en « Outfit » graisse 300 (très fine) et gris
+     moyen : principale cause de fatigue de lecture. */
+  p{ font-weight:400; }
+  .besoin-cat-sub{ font-weight:400; }
+  .section-head p{ font-size:1.06rem; }
+  /* Plus aucun texte utile sous 12 px (badges, étiquettes, durées, menus). */
+  .opt-duration, .ba-slider-tag, .lc-timeline-label, .lc-card-tag, .chip-subhead, .multi-badge, .call-btn-text,
+  .photo-frame-tag, .price-from-tag, .map-card-caption, .ecx-svc-card-duration, .d-name, .d-month, .pack-badge,
+  .hvk-badge, .hvk-new, .hvk-detail-eyebrow, .ec-eyebrow, .pro-eyebrow, .adm-eyebrow, .ec-badge, .adm-badge,
+  .hvp-pill, .pro-empty-badge, .adm-signup-split, .adm-cal-card-title, .legal-placeholder{ font-size:max(0.78rem, 12.5px); }
+  .mode-btn-text, .header-login-link{ font-size:max(0.76rem, 12px); }
+  input::placeholder, textarea::placeholder{ color:var(--hv-placeholder); opacity:1; }
+
+  /* ---------- Champs de saisie : contour visible (3:1) ---------- */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="file"]), select, textarea{ border-color:var(--hv-field-border) !important; }
+  .gate-bg-active input:not([type="checkbox"]):not([type="radio"]), .gate-bg-active select, .gate-bg-active textarea{ border-color:rgba(255,255,255,0.55) !important; }
+
+  /* ---------- États des boutons ---------- */
+  button:disabled, button[aria-disabled="true"], .btn-primary[aria-disabled="true"]{ cursor:not-allowed; }
+  button[aria-busy="true"]{ cursor:progress; }
+
+  /* ---------- Composant packs : surfaces claires quel que soit l'univers ---------- */
+  .hvk{ --hvk-accent:var(--accent-cat, var(--hv-orange)); }
+  :root[data-universe] .hvk{ --hvk-accent:var(--accent-cat, #142238); }
+  .hvk-card, .hvk-detail-inner, .hvk-compare, .hvk-table th:first-child, .hvk-table td:first-child{ background:#FFFFFF; color:var(--hv-text); }
+  .hvk-card.is-selected{ background:#FFFFFF; }
+  .hvk-card{ border-color:var(--hv-border); }
+  .hvk-tagline, .hvk-dur, .hvk-peek li, .hvk-cond, .hvk-detail-price span, .hvk-exc li{ color:var(--hv-text-2); }
+  .hvk-name, .hvk-detail-head h4, .hvk-h, .hvk-list li, .hvk-table td, .hvk-table th{ color:var(--hv-text); }
+  .hvk-perks li, .hvk-table tr.is-perk td:first-child{ color:var(--hv-gold-text); }
+  .hvk-badge-gold{ background:linear-gradient(135deg, #9A6A1C, #7A5410); }
+  .hvk-new{ background:#F1F5F9; color:var(--hv-text); border:1px solid var(--hv-border); }
+  .hvk-table .hvk-no{ color:#5B6B78; }
+  .hvk-compare-btn{ color:var(--hv-text); border-color:var(--hv-field-border); background:#FFFFFF; }
+  .hvk-info-btn{ color:var(--hv-text); border-color:var(--hv-field-border); }
+  .hvk-sheet{ background:#FFFFFF; color:var(--hv-text); }
+  .bk-svc-detail{ background:#FFFFFF; color:var(--hv-text); }
+  .bk-svc-detail-meta{ color:var(--hv-text-2); }
+  .pack-features li.pack-feature-highlight{ color:var(--hv-gold-text); }
+  .summary-card .s-row-warning .s-label, .summary-card .s-row-warning .s-value{ color:var(--hv-warning); }
+  .price-from-tag, .price-row-quote .p-value{ color:var(--hv-blue); }
+
+  /* ---------- Espace Client / Espace Pro : badges et liens ---------- */
+  .ec-badge-pending{ background:#FBF1DC; color:#6B4F0E; }
+  .ec-badge-confirmed, .ec-badge-progress{ background:#E3EDF7; color:var(--hv-blue); }
+  .ec-badge-completed{ background:#E2F0E8; color:var(--hv-success); }
+  .ec-badge-cancelled{ background:#F8E4E1; color:var(--hv-danger); }
+  .ec-badge-professionnel{ background:#FBF1DC; color:#6B4F0E; }
+  .ec-link-btn{ color:var(--hv-blue); }
+  .espace-pro-appt-meta .is-pending{ color:var(--hv-warning); }
+  .ec-row-title{ font-size:1rem; color:var(--hv-text); }
+  .ec-row-meta{ font-size:0.88rem; color:var(--hv-text-2); }
+  .ecx-svc-card-desc{ color:var(--hv-text-2); }
+  .ecx-svc-card-duration{ color:var(--hv-text-2); }
+  .pro-shell{
+    --pro-ocean:#245F9C; --pro-ocean-soft:rgba(36,95,156,0.12); --pro-turquoise:#17695E; --pro-coral:#B4471F;
+    --pro-ink:var(--hv-text); --pro-ink-soft:var(--hv-text-2); --pro-line:rgba(20,34,56,0.16);
+  }
+  .pro-empty-badge{ color:var(--hv-blue); }
+
+  /* ---------- Administration : jetons uniques pour toutes ses surfaces ---------- */
+  #espaceProAdminPanel, .admin-bk-modal-overlay, .hvp-modal, #refAdmModal{
+    --adm-ink:var(--hv-text); --adm-ink-soft:var(--hv-text-2); --adm-line:rgba(20,34,56,0.16);
+    --adm-ocean:#245F9C; --adm-ocean-deep:#1B4A7A; --adm-ocean-soft:rgba(36,95,156,0.12);
+    --adm-turquoise:#17695E; --adm-turquoise-soft:rgba(23,105,94,0.12);
+    --adm-coral:#B4471F; --adm-coral-deep:#9A3412;
+    --adm-green:#1E6B43; --adm-green-soft:rgba(30,107,67,0.12);
+    --adm-amber:#8A5A12; --adm-amber-soft:rgba(138,90,18,0.12);
+    --adm-grey:#4A5568; --adm-grey-soft:rgba(74,85,104,0.12);
+    --adm-red:#A3311F; --adm-red-soft:rgba(163,49,31,0.10);
+    --adm-blue:#1F5A8F; --adm-blue-soft:rgba(31,90,143,0.12);
+  }
+  /* Chiffres, noms, horaires, montants : plus grands et plus foncés. */
+  #espaceProAdminPanel .adm-stat-value{ color:var(--adm-ink); }
+  #espaceProAdminPanel .adm-stat-label{ font-size:0.86rem; color:var(--adm-ink-soft); }
+  .hvp-card-title{ color:var(--adm-ink, var(--hv-text)); }
+  .hvp-card-sub{ font-size:0.9rem; color:var(--adm-ink-soft, var(--hv-text-2)); }
+  .adm-badge-review{ background:rgba(91,33,182,0.10); color:#5B21B6; }
+  #espaceProAdminPanel .deco-blob{ display:none; } /* halo décoratif passé sous le menu (« Matériel » à 2,1:1) */
+  #espaceProAdminPanel .admin-bk-planning-day-date{ color:#FFFFFF; }
+
+  /* ---------- En-tête : liens lisibles sur portable et tablette ----------
+     Entre 601 et 1365 px les liens tombaient à 9 px et le sélecteur
+     Particulier/Professionnel à 8 px pour tout faire tenir sur une ligne.
+     Taille minimale relevée ; la barre défile horizontalement si besoin
+     (déjà le cas sur téléphone), avec le même fondu à droite. */
+  :root{ --hdr-navy-soft:var(--hv-text-2); }
+  .headerbar, .hdr, header{ --hdr-navy-soft:var(--hv-text-2); }
+  @media (max-width:1365px){
+    nav.links a{ font-size:max(0.78rem, 12.5px); padding:10px 5px; }
+    .mode-btn-text{ font-size:max(0.72rem, 11.5px); }
+    button.header-login-link{ font-size:max(0.74rem, 12px); height:auto; min-height:32px; }
+    .call-btn{ font-size:max(0.76rem, 12px); }
+    .headerbar-scroll{
+      -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 22px), transparent);
+              mask-image:linear-gradient(to right, #000 calc(100% - 22px), transparent);
+      padding-right:16px;
+    }
+  }
+  /* Bouton téléphone de l'en-tête : bleu clair à texte blanc (2,7:1) →
+     même bleu HAYEVA, plus soutenu (5,3:1). */
+  .call-btn{ background:linear-gradient(135deg, #1F6FAE 0%, #185A8F 100%); }
+  .map-card-caption{ color:rgba(255,255,255,0.94); font-size:max(0.74rem, 12px); }
+  /* Section « Grand jeu de lancement » (fond bleu nuit) : textes blancs
+     semi-transparents remontés à 85 % minimum. */
+  .lc-timeline-label{ color:rgba(255,255,255,0.88); }
+  .lc-intro-note, .lc-terms-link{ color:rgba(255,255,255,0.88); }
+  .lc-card-desc{ color:rgba(255,255,255,0.92); }
+  .lc-card-fineprint{ color:rgba(255,255,255,0.84); }
+  .ec-next-appt .ec-eyebrow{ opacity:1; color:rgba(255,255,255,0.9); }
+
+  /* Hero (sur photo très claire) : surtitre bleu clair à 2,7:1 → même bleu
+     plus soutenu (5,9:1) ; lien « Mon histoire » en orange lisible. */
+  .hero-eyebrow-light{ color:#0A6399; }
+  .hero-founder-link{ color:var(--hv-orange); }
+  .hero-subtitle-light, .trustline{ color:var(--hv-text-2); }
+  /* En-tête sur grand écran : liens à 13 px minimum (11,8 px avant). */
+  @media (min-width:1366px){
+    nav.links a{ font-size:max(0.82rem, 13px); }
+    .mode-btn-text{ font-size:max(0.72rem, 11.5px); }
+  }
+
+  /* Mode sombre de l'appareil (administration et Espace Pro le suivent) :
+     textes secondaires moins transparents, statuts en teintes claires. */
+  @media (prefers-color-scheme: dark){
+    #espaceProAdminPanel, .admin-bk-modal-overlay, .hvp-modal{ --adm-ink:#F1F5F9; --adm-ink-soft:rgba(241,245,249,0.86); --adm-line:rgba(241,245,249,0.18); }
+    .pro-shell{ --pro-ink:#F1F5F9; --pro-ink-soft:rgba(241,245,249,0.86); --pro-line:rgba(241,245,249,0.18); }
+    .adm-badge-confirmed, .hvp-st-COMPLETED{ color:#86E0AE; }
+    .adm-badge-pending, .hvp-st-PENDING, #espaceProAdminPanel .ec-badge-pending{ color:#F5C977; }
+    .adm-badge-completed, .hvp-st-CANCELLED, .hvp-st-REFUSED, .hvp-st-NO_SHOW, #espaceProAdminPanel .ec-badge-completed{ color:#CBD5E1; }
+    .adm-badge-cancelled, .hvp-st-low, #espaceProAdminPanel .ec-badge-cancelled{ color:#FFA696; }
+    .adm-badge-progress, .hvp-st-CONFIRMED, #espaceProAdminPanel .ec-badge-confirmed, #espaceProAdminPanel .ec-badge-progress{ color:#9CC8F2; }
+    .hvp-st-IN_PROGRESS, #espaceProAdminPanel .ec-badge-particulier{ color:#7FDCD0; }
+    #espaceProAdminPanel .ec-badge-professionnel{ color:#FFB59A; }
+    .adm-badge-review{ color:#C9B2FA; }
+    .adm-badge-confirmed, .adm-badge-pending, .adm-badge-completed, .adm-badge-cancelled, .adm-badge-progress, .adm-badge-review,
+    .hvp-pill, #espaceProAdminPanel .ec-badge{ background:rgba(255,255,255,0.08); }
+  }
+</style>
