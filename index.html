@@ -31829,6 +31829,10 @@ window.HV_APP_VERSION = 'hayeva-v38';
   .hv-bottomnav-item{ color:var(--hv-text-2); }
   .hv-bottomnav-item.is-active{ color:var(--hv-orange-deep); }
 
+  /* Écrans de connexion / inscription sur photo sombre : liens en bleu
+     clair (le bleu soutenu tombait à 1,8:1 sur le fond). */
+  .gate-bg-active a, .gate-bg-active #espaceClientShowLogin{ color:#BFE3F5; }
+
   /* Mode sombre de l'appareil (administration et Espace Pro le suivent) :
      textes secondaires moins transparents, statuts en teintes claires. */
   @media (prefers-color-scheme: dark){
@@ -31853,6 +31857,9 @@ window.HV_APP_VERSION = 'hayeva-v38';
     .pro-shell .espace-pro-appt-date, .pro-shell .espace-pro-appt-service{ color:var(--pro-ink); }
     .pro-shell .espace-pro-appt-address, .pro-shell .espace-pro-appt-meta{ color:var(--pro-ink-soft); }
     .pro-shell .ec-empty, #espaceProAdminPanel .ec-empty{ background:rgba(255,255,255,0.05); color:rgba(241,245,249,0.86); }
+    .pro-shell .ec-empty strong{ color:var(--pro-ink); }
+    .pro-shell .espace-pro-appt-meta .is-confirmed{ color:#86E0AE; }
+    .pro-shell .espace-pro-appt-meta .is-pending{ color:#F5C977; }
     /* Boutons d'action du planning (texte coloré sur carte sombre). */
     .admin-bk-accept-btn, .admin-bk-start-btn, .admin-bk-resume-btn{ color:#86E0AE !important; border-color:rgba(134,224,174,0.6) !important; }
     .admin-bk-refuse-btn{ color:#FFA696 !important; border-color:rgba(255,166,150,0.6) !important; }
