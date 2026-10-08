@@ -655,7 +655,7 @@ if ('serviceWorker' in navigator){
 // déploiement) à celle de cette page ; si elle a changé, un bandeau propose
 // de mettre à jour en un geste (jamais de rechargement forcé : aucune
 // saisie en cours n'est perdue).
-window.HV_APP_VERSION = 'hayeva-v38';
+window.HV_APP_VERSION = 'hayeva-v39';
 (function(){
   var shown = false, lastCheck = 0;
   function showBanner(){
@@ -13204,6 +13204,12 @@ window.HV_APP_VERSION = 'hayeva-v38';
   .hvk-fact{ background:var(--sand); border:1px solid var(--line); border-radius:10px; padding:8px 10px; }
   .hvk-fact span{ display:block; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
   .hvk-fact strong{ font-size:0.95rem; }
+  .hvk-sheet-back{ margin-top:10px; }
+  .hvk-back{
+    min-height:48px; padding:12px 20px; border-radius:12px; cursor:pointer; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.95rem;
+    background:#FFFFFF; color:#142238; border:1.5px solid #7A8699;
+  }
+  @media (max-width:520px){ .hvk-back{ flex:1; } }
   .hvk-info-btn{
     min-height:40px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--ink);
     font:inherit; font-size:0.84rem; font-weight:700; cursor:pointer;
@@ -13540,6 +13546,7 @@ window.HV_APP_VERSION = 'hayeva-v38';
     if (!modal || modal.hidden) return;
     modal.hidden = true;
     document.documentElement.style.overflow = '';
+    document.documentElement.classList.remove('hv-more-open');
     if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (e){}
   }
   function ensureModal(){
@@ -13588,12 +13595,14 @@ window.HV_APP_VERSION = 'hayeva-v38';
         '<p class="hvk-cond">Déplacement offert jusqu\'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s\'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>' +
         (opts.onChoose ? '<div class="hvk-actions"><button type="button" class="hvk-choose" style="background:var(--terracotta);" data-hvk-choose="' + esc(id) + '">' + esc(opts.chooseLabel || 'Réserver cette prestation') + '</button></div>' : '');
     }
-    sheet.innerHTML = '<button type="button" class="hvk-close" data-hvk-close aria-label="Fermer">×</button>' + html;
+    sheet.innerHTML = '<button type="button" class="hvk-close" data-hvk-close aria-label="Fermer">×</button>' + html +
+      '<div class="hvk-actions hvk-sheet-back"><button type="button" class="hvk-back" data-hvk-close>← Retour</button></div>';
     var choose = sheet.querySelector('[data-hvk-choose]');
     if (choose) choose.addEventListener('click', function(){ closeModal(); opts.onChoose(id, choose); });
     lastFocus = document.activeElement;
     modal.hidden = false;
     document.documentElement.style.overflow = 'hidden';
+    document.documentElement.classList.add('hv-more-open');
     if (!reduced()){ modal.classList.remove('hvk-anim-in'); void modal.offsetWidth; modal.classList.add('hvk-anim-in'); }
     sheet.scrollTop = 0;
     var closeBtn = sheet.querySelector('.hvk-close');
@@ -24588,6 +24597,20 @@ window.HV_APP_VERSION = 'hayeva-v38';
   // réservation existant (sudBooking.selectService + scroll vers #rdv),
   // jamais un second système de réservation propre à l'Espace Client.
   var ecxSvcCategoryFilter = 'all';
+  var ecxSvcPendingCat = null; // catégorie choisie depuis l'accueil, appliquée une fois
+  // Catégorie de la page Prestations choisie depuis l'accueil (pastille ou
+  // « Tout voir ») : appliquée tout de suite si la page est déjà construite,
+  // sinon à sa construction.
+  function ecxSetServicesCategory(cat){
+    var filtersEl = document.getElementById('ecxSvcFilters');
+    if (filtersEl){
+      ecxSvcCategoryFilter = cat;
+      Array.prototype.forEach.call(filtersEl.querySelectorAll('.ecx-filter-pill'), function(p){ p.classList.toggle('is-active', p.getAttribute('data-cat') === cat); });
+      ecxRenderServicesList();
+    } else {
+      ecxSvcPendingCat = cat === 'all' ? null : cat;
+    }
+  }
   var ecxSvcQuery = '';
   function ecxGoToBookingTunnel(serviceId){
     // Packs clim : passent par l'étape « nombre d'unités » (selectPack),
@@ -24652,12 +24675,18 @@ window.HV_APP_VERSION = 'hayeva-v38';
     Array.prototype.forEach.call(wrap.querySelectorAll('[data-svc-book]'), function(btn){
       btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
     });
-    Array.prototype.forEach.call(wrap.querySelectorAll('[data-svc-info]'), function(btn){
-      btn.addEventListener('click', function(){
-        if (window.HvPacks) window.HvPacks.openService(btn.getAttribute('data-svc-info'), { chooseLabel:'Réserver cette prestation', onChoose: ecxGoToBookingTunnel });
-      });
-    });
   }
+  // Boutons « Détails » des cartes de prestations : un seul écouteur
+  // délégué pour TOUTES les cartes de l'Espace Client (page Prestations ET
+  // carrousel « les plus demandées » de l'accueil, dont les boutons
+  // n'étaient pas câblés). La fiche ouverte est toujours celle de l'id porté
+  // par le bouton cliqué.
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('#espaceClient [data-svc-info]') : null;
+    if (!btn) return;
+    e.preventDefault();
+    if (window.HvPacks) window.HvPacks.openService(btn.getAttribute('data-svc-info'), { chooseLabel:'Réserver cette prestation', onChoose: ecxGoToBookingTunnel });
+  });
   document.addEventListener('hvpacks:ready', function(){ if (document.getElementById('ecxSvcResults')) ecxRenderServicesList(); });
   function ecLoadServices(){
     var panel = document.getElementById('ecPanelServices');
@@ -24671,7 +24700,11 @@ window.HV_APP_VERSION = 'hayeva-v38';
       '</div>' +
       '<div id="ecxSvcResults"></div>';
     panel.innerHTML = html;
-    ecxSvcCategoryFilter = 'all';
+    // Catégorie choisie depuis l'accueil (pastilles) : conservée et
+    // affichée active, au lieu d'être remise à « Tout ».
+    var wanted = ecxSvcPendingCat; ecxSvcPendingCat = null;
+    ecxSvcCategoryFilter = (wanted && cats.some(function(c){ return c.id === wanted && c.id !== 'pro'; })) ? wanted : 'all';
+    Array.prototype.forEach.call(panel.querySelectorAll('#ecxSvcFilters .ecx-filter-pill'), function(p){ p.classList.toggle('is-active', p.getAttribute('data-cat') === ecxSvcCategoryFilter); });
     ecxSvcQuery = '';
     ecxRenderServicesList();
     var searchInput = document.getElementById('ecxSvcSearchInput');
@@ -24802,12 +24835,15 @@ window.HV_APP_VERSION = 'hayeva-v38';
           catsWrap.addEventListener('click', function(e){
             var chip = e.target.closest ? e.target.closest('[data-cat]') : null;
             if (!chip) return;
-            ecxSvcCategoryFilter = chip.getAttribute('data-cat');
+            ecxSetServicesCategory(chip.getAttribute('data-cat'));
             ecShowTab('services');
           });
         }
         Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(card){
-          card.addEventListener('click', function(){ ecShowTab(card.getAttribute('data-ec-goto')); });
+          card.addEventListener('click', function(){
+            if (card.getAttribute('data-ec-goto') === 'services') ecxSetServicesCategory('all'); // « Tout voir »
+            ecShowTab(card.getAttribute('data-ec-goto'));
+          });
           card.addEventListener('keydown', function(e){
             if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); ecShowTab(card.getAttribute('data-ec-goto')); }
           });
