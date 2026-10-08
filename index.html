@@ -10182,9 +10182,12 @@ window.HV_APP_VERSION = 'hayeva-v39';
             <button type="button" class="ec-tab" data-ec-tab="documents">Mes documents</button>
             <button type="button" class="ec-tab" data-ec-tab="addresses">Mes adresses</button>
             <button type="button" class="ec-tab" data-ec-tab="loyalty">Mon parrainage</button>
-            <button type="button" class="ec-tab" data-ec-tab="profile">Mon profil</button>
+            <button type="button" class="ec-tab" data-ec-tab="profile">Mon compte</button>
           </nav>
 
+          <div class="ecx-backbar" id="ecxBackBar" hidden>
+            <button type="button" class="ecx-back-btn" data-ecx-back>‹ Mon compte</button>
+          </div>
           <div class="ec-panels">
             <section class="ec-panel" id="ecPanelHome" data-ec-panel="home"></section>
             <section class="ec-panel" id="ecPanelServices" data-ec-panel="services" hidden></section>
@@ -10211,11 +10214,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
           <button type="button" class="ecx-bottomnav-item" data-ecx-section="appointments" aria-label="Rendez-vous">
             <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>Rendez-vous
           </button>
-          <button type="button" class="ecx-bottomnav-item" data-ecx-section="documents" aria-label="Documents">
-            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>Documents
-          </button>
-          <button type="button" class="ecx-bottomnav-item" data-ecx-section="profile" aria-label="Profil">
-            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>Profil
+          <button type="button" class="ecx-bottomnav-item" data-ecx-section="profile" aria-label="Mon compte">
+            <span class="ecx-bn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>Mon compte
           </button>
         </nav>
 
@@ -12441,7 +12441,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
     } catch (e){ return null; }
   }
   function clearBkDraft(){ try { localStorage.removeItem(BK_DRAFT_KEY); } catch (e){} }
-  window.hvClearBookingDraft = clearBkDraft;
+  window.hvClearBookingDraft = function(){ clearBkDraft(); clearServerBkDraft(); };
+  window.hvBookingDraftPeek = function(){ var d = readBkDraft(); return d && d.serviceId ? d : null; };
+  window.hvResumeBookingDraft = function(){ var d = readBkDraft(); return d ? applyBkDraft(d) : false; };
 
   function setBkGated(on){
     bkGated = !!on;
@@ -12592,6 +12594,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
   function showStep(n, skipScroll){
     step = n;
     if (n === 3 && window.hvRefRefreshAdvantage) window.hvRefRefreshAdvantage();
+    // Prestation choisie : conservée localement (48 h) pour pouvoir la
+    // reprendre depuis l'Espace Client après une connexion — sans jamais
+    // relancer seule une réservation (seul le passage par l'écran de
+    // connexion du tunnel marque le brouillon « à reprendre »).
+    if (n === 2 && state.serviceId){
+      var exDraft = readBkDraft();
+      saveBkDraft(!!(exDraft && exDraft.pendingAuth && exDraft.serviceId === state.serviceId));
+    }
     if (n === 2 && !bookingStartedTracked && window.sudTrack){
       bookingStartedTracked = true;
       window.sudTrack('booking_started', 'rdv');
@@ -24775,10 +24785,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
   var ECX_SECTION_FOR_TAB = {
     home:'home', services:'services',
     appointments:'appointments', interventions:'appointments',
-    quotes:'documents', invoices:'documents', documents:'documents',
+    quotes:'profile', invoices:'profile', documents:'profile', contracts:'profile',
     equipment:'profile', addresses:'profile', profile:'profile', loyalty:'profile'
   };
-  var ECX_DEFAULT_TAB_FOR_SECTION = { home:'home', services:'services', appointments:'appointments', documents:'quotes', profile:'profile' };
+  // V4 : 4 sections (Accueil, Prestations, Rendez-vous, Mon compte) ;
+  // documents, équipements, adresses, contrats et parrainage s'ouvrent
+  // depuis « Mon compte », avec un bouton de retour (#ecxBackBar).
+  var ECX_DEFAULT_TAB_FOR_SECTION = { home:'home', services:'services', appointments:'appointments', profile:'profile' };
 
   // Sous-navigation par pastilles, mobile uniquement (masquée ≥900px via
   // .ecx-subnav en CSS — la sidebar y affiche déjà les 10 onglets) : sans
@@ -24789,8 +24802,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
     appointments: [['appointments', 'Rendez-vous'], ['interventions', 'Interventions']]
   };
   function ecxCompositeSubNavHtml(activeTab){
-    var section = ECX_SECTION_FOR_TAB[activeTab];
-    var group = ECX_COMPOSITE_GROUPS[section];
+    var group = null;
+    Object.keys(ECX_COMPOSITE_GROUPS).forEach(function(k){
+      if (ECX_COMPOSITE_GROUPS[k].some(function(pair){ return pair[0] === activeTab; })) group = ECX_COMPOSITE_GROUPS[k];
+    });
     if (!group) return '';
     return '<div class="ecx-filter-row ecx-subnav">' + group.map(function(pair){
       return '<button type="button" class="ecx-filter-pill' + (pair[0] === activeTab ? ' is-active' : '') + '" data-ecx-subnav="' + pair[0] + '">' + ecEscape(pair[1]) + '</button>';
@@ -24820,7 +24835,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
       panels[j].hidden = panels[j].getAttribute('data-ec-panel') !== tab;
     }
     ecxSyncBottomNav(tab);
+    var back = document.getElementById('ecxBackBar');
+    if (back) back.hidden = !(ECX_SECTION_FOR_TAB[tab] === 'profile' && tab !== 'profile');
     ecLoadTab(tab);
+    if (tab === 'home') ecxRefreshResume();
   }
   function ecLoadTab(tab){
     if (ecLoaded[tab] || !ecUser) return;
@@ -24956,6 +24974,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
       ecShowTab(ECX_DEFAULT_TAB_FOR_SECTION[section] || section);
     });
   }
+  var ecxBackBarEl = document.getElementById('ecxBackBar');
+  if (ecxBackBarEl) ecxBackBarEl.addEventListener('click', function(e){ if (e.target.closest && e.target.closest('[data-ecx-back]')) ecShowTab('profile'); });
   var ecPanelsEl = document.querySelector('.ec-panels');
   if (ecPanelsEl){
     ecPanelsEl.addEventListener('click', function(e){
@@ -24964,28 +24984,26 @@ window.HV_APP_VERSION = 'hayeva-v39';
     });
   }
 
-  // "Prestations" (marketplace) — lit le catalogue déjà chargé par le
-  // module de réservation public (window.sudBooking, voir ses ajouts
-  // allServices/popularServices/categoriesList) : aucune nouvelle requête
-  // Supabase, aucun prix dupliqué. Réserver relance le VRAI tunnel de
-  // réservation existant (sudBooking.selectService + scroll vers #rdv),
-  // jamais un second système de réservation propre à l'Espace Client.
-  var ecxSvcCategoryFilter = 'all';
-  var ecxSvcPendingCat = null; // catégorie choisie depuis l'accueil, appliquée une fois
-  // Catégorie de la page Prestations choisie depuis l'accueil (pastille ou
-  // « Tout voir ») : appliquée tout de suite si la page est déjà construite,
-  // sinon à sa construction.
-  function ecxSetServicesCategory(cat){
-    var filtersEl = document.getElementById('ecxSvcFilters');
-    if (filtersEl){
-      ecxSvcCategoryFilter = cat;
-      Array.prototype.forEach.call(filtersEl.querySelectorAll('.ecx-filter-pill'), function(p){ p.classList.toggle('is-active', p.getAttribute('data-cat') === cat); });
-      ecxRenderServicesList();
-    } else {
-      ecxSvcPendingCat = cat === 'all' ? null : cat;
-    }
-  }
+  // ---------- Prestations : trois familles (V4) ----------
+  // Climatisation, Plomberie, Chauffage. Le catalogue vient du tunnel de
+  // réservation (window.sudBooking) et du catalogue partagé HvPacks (textes,
+  // rubriques et formules saisis en base) : aucun prix ni contenu dupliqué
+  // ici. « Détails » ouvre la fiche partagée (inclus, non compris,
+  // conditions) ; « Réserver » relance le VRAI tunnel de réservation.
+  var ECX_FAMILIES = [['clim', 'Climatisation', 'snowflake'], ['plomberie', 'Plomberie', 'droplet'], ['chauffage', 'Chauffage', 'flame']];
+  var ecxSvcFamily = 'clim';
   var ecxSvcQuery = '';
+  function ecxIsFamily(cat){ return ECX_FAMILIES.some(function(f){ return f[0] === cat; }); }
+  // Famille ouverte depuis l'accueil (tuiles) : appliquée tout de suite si
+  // la page est déjà construite, sinon à sa construction.
+  function ecxSetServicesCategory(cat){
+    if (ecxIsFamily(cat)) ecxSvcFamily = cat;
+    ecxSvcQuery = '';
+    var input = document.getElementById('ecxSvcSearchInput');
+    if (input) input.value = '';
+    ecxSyncFamilyTabs();
+    ecxRenderServicesList();
+  }
   function ecxGoToBookingTunnel(serviceId){
     // Packs clim : passent par l'étape « nombre d'unités » (selectPack),
     // comme depuis le site public — jamais directement au créneau.
@@ -24997,64 +25015,104 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var el = document.getElementById('rdv');
     if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
   }
-  function ecxServiceCardHtml(s){
-    var cat = window.sudBooking && window.sudBooking.serviceCategory ? window.sudBooking.serviceCategory(s.id) : '';
-    var iconName = ECX_CATEGORY_ICON[cat] || 'wrench';
-    var priceLine = window.sudBooking ? window.sudBooking.priceLine(s) : s.price;
-    return '<div class="ecx-svc-card" data-svc-id="' + ecEscape(s.id) + '">' +
-      '<div class="ecx-svc-card-visual ecx-cat-' + ecEscape(cat || 'multi') + '">' + ecxIcon(iconName) + '</div>' +
-      '<div class="ecx-svc-card-body">' +
-        '<p class="ecx-svc-card-title">' + ecEscape(s.title) + '</p>' +
-        '<p class="ecx-svc-card-desc">' + ecEscape(s.desc || '') + '</p>' +
-        '<div class="ecx-svc-card-meta">' +
-          '<span class="ecx-svc-card-price">' + ecEscape(priceLine) + '</span>' +
-          (s.duration ? '<span class="ecx-svc-card-duration">' + ecFmtDuration(s.duration) + '</span>' : '') +
-        '</div>' +
-        '<div class="ecx-svc-card-actions">' +
-          '<button type="button" class="hvk-info-btn" data-svc-info="' + ecEscape(s.id) + '">Détails</button>' +
-          '<button type="button" class="ecx-svc-card-cta" data-svc-book="' + ecEscape(s.id) + '">Réserver</button>' +
-        '</div>' +
-      '</div></div>';
+  function ecxIsQuote(s){ return s.tier === 'quote' || /^sur devis$/i.test(String(s.price || '').trim()); }
+  function ecxOfferName(s){
+    var t = s.title || '', i = t.lastIndexOf(' — ');
+    return i > 0 ? t.slice(i + 3) : t;
+  }
+  // Rubrique d'une prestation : formule (famille de packs du catalogue) ou
+  // rubrique du catalogue (services.catalog_group), sinon libellé générique.
+  function ecxOfferGroup(s, famLabel){
+    var B = window.sudBooking;
+    var HP = window.HvPacks && window.HvPacks.isLoaded() ? window.HvPacks : null;
+    var isPack = (B.isPackId && B.isPackId(s.id)) || (HP && HP.familyOf(s.id));
+    if (isPack){
+      var fam = HP && HP.familyOf(s.id);
+      if (fam && HP.family(fam)) return { key:'p:' + fam, label: HP.family(fam).name, order:-1 };
+      var parts = (s.title || '').split(' — ').slice(0, -1).filter(function(x){ return x !== famLabel; });
+      return { key:'p:' + parts.join('-'), label: parts.join(' — ') || 'Formules d\'entretien', order:-1 };
+    }
+    var d = HP ? HP.service(s.id) : null;
+    if (d && d.group){
+      var label = HP.groupLabel(d.group);
+      if (label === famLabel) label = 'Dépannage et réparations';
+      return { key:'g:' + d.group, label: label, order: HP.groupOrder().indexOf(d.group) };
+    }
+    return { key:'other', label:'Autres prestations', order:99 };
+  }
+  function ecxOfferCardHtml(s){
+    var B = window.sudBooking;
+    var HP = window.HvPacks && window.HvPacks.isLoaded() ? window.HvPacks : null;
+    var pk = HP ? HP.pack(s.id) : null;
+    var name = ecxOfferName(s);
+    var desc = (pk && pk.tagline) || s.desc || '';
+    var quote = ecxIsQuote(s);
+    var price = B.priceLine ? B.priceLine(s) : s.price;
+    return '<article class="ecx-offer" data-svc-id="' + ecEscape(s.id) + '">' +
+      '<div class="ecx-offer-top"><h4 class="ecx-offer-name">' + ecEscape(name) + '</h4>' +
+        '<span class="ecx-offer-price' + (quote ? ' is-quote' : '') + '">' + ecEscape(price) + '</span></div>' +
+      (desc ? '<p class="ecx-offer-desc">' + ecEscape(desc) + '</p>' : '') +
+      (s.duration && !quote ? '<p class="ecx-offer-meta">Durée indicative : ' + ecFmtDuration(s.duration) + '</p>' : '') +
+      '<div class="ecx-offer-actions">' +
+        '<button type="button" class="ecx-offer-btn is-ghost" data-svc-info="' + ecEscape(s.id) + '" aria-label="Détails — ' + ecEscape(name) + '">Détails</button>' +
+        '<button type="button" class="ecx-offer-btn" data-svc-book="' + ecEscape(s.id) + '" aria-label="' + (quote ? 'Demander un devis' : 'Réserver') + ' — ' + ecEscape(name) + '">' + (quote ? 'Demander un devis' : 'Réserver') + '</button>' +
+      '</div></article>';
+  }
+  function ecxSyncFamilyTabs(){
+    var tabs = document.querySelectorAll('#ecxFamTabs [data-ecx-fam]');
+    Array.prototype.forEach.call(tabs, function(t){
+      var on = !ecxSvcQuery && t.getAttribute('data-ecx-fam') === ecxSvcFamily;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on || (ecxSvcQuery && t === tabs[0]) ? 0 : -1;
+    });
+    var panel = document.getElementById('ecxSvcResults');
+    if (panel) panel.setAttribute('aria-labelledby', ecxSvcQuery ? 'ecxSvcSearchLabel' : 'ecxFamTab-' + ecxSvcFamily);
   }
   function ecxRenderServicesList(){
     var wrap = document.getElementById('ecxSvcResults');
-    if (!wrap || !window.sudBooking) return;
-    var all = window.sudBooking.allServices();
-    var HP = window.HvPacks && window.HvPacks.isLoaded() ? window.HvPacks : null;
-    var list = all.filter(function(s){
-      // Espace particulier : les Checks techniques (tarifs professionnels)
-      // restent réservés à l'Espace Pro.
-      if (window.sudBooking.serviceCategory(s.id) === 'pro') return false;
-      if (ecxSvcCategoryFilter !== 'all' && window.sudBooking.serviceCategory(s.id) !== ecxSvcCategoryFilter) return false;
-      if (ecxSvcQuery && s.title.toLowerCase().indexOf(ecxSvcQuery) === -1 && (s.desc || '').toLowerCase().indexOf(ecxSvcQuery) === -1) return false;
-      return true;
-    });
-    // Packs regroupés par formule (composant partagé), le reste en cartes.
-    var families = [], singles = [];
-    list.forEach(function(s){
-      var fam = HP ? HP.familyOf(s.id) : null;
-      if (fam){ if (families.indexOf(fam) < 0) families.push(fam); }
-      else singles.push(s);
-    });
-    wrap.innerHTML = list.length
-      ? families.map(function(f){ return '<div class="ecx-pack-family"><p class="ec-section-title ecx-pack-family-title">' + ecEscape(HP.family(f).name) + '</p><div data-ecx-family="' + ecEscape(f) + '"></div></div>'; }).join('') +
-        (singles.length ? '<div class="ecx-svc-grid">' + singles.map(ecxServiceCardHtml).join('') + '</div>' : '')
-      : '<div class="ec-empty"><strong>Aucune prestation trouvée</strong>Essayez un autre mot-clé ou une autre catégorie.</div>';
-    families.forEach(function(f){
-      HP.render(wrap.querySelector('[data-ecx-family="' + f + '"]'), f, {
-        chooseLabel: 'Réserver cette formule',
-        onChoose: function(slug){ ecxGoToBookingTunnel(slug); }
+    var B = window.sudBooking;
+    if (!wrap || !B) return;
+    var famLabel = '';
+    ECX_FAMILIES.forEach(function(f){ if (f[0] === ecxSvcFamily) famLabel = f[1]; });
+    var html = '';
+    if (ecxSvcQuery){
+      var q = ecxSvcQuery;
+      var found = B.allServices().filter(function(s){
+        if (!ecxIsFamily(B.serviceCategory(s.id)) && s.id !== 'multi' && s.id !== 'devis') return false;
+        return ((s.title || '') + ' ' + (s.desc || '') + ' ' + (s.keywords || '')).toLowerCase().indexOf(q) !== -1;
       });
-    });
-    Array.prototype.forEach.call(wrap.querySelectorAll('[data-svc-book]'), function(btn){
-      btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
-    });
+      html = found.length
+        ? '<p class="ecx-offer-count" role="status">' + found.length + ' prestation' + (found.length > 1 ? 's' : '') + ' trouvée' + (found.length > 1 ? 's' : '') + '</p><div class="ecx-offer-list">' + found.map(ecxOfferCardHtml).join('') + '</div>'
+        : '<div class="ec-empty" role="status"><strong>Aucune prestation trouvée</strong>Essayez un autre mot, ou demandez un devis gratuit : nous étudions toutes les demandes.</div>';
+    } else {
+      var groups = [], byKey = {};
+      B.allServices().forEach(function(s){
+        if (B.serviceCategory(s.id) !== ecxSvcFamily) return;
+        var g = ecxOfferGroup(s, famLabel);
+        if (!byKey[g.key]){ byKey[g.key] = { label:g.label, order:g.order, idx:groups.length, items:[] }; groups.push(byKey[g.key]); }
+        byKey[g.key].items.push(s);
+      });
+      groups.sort(function(a, b){ return (a.order - b.order) || (a.idx - b.idx); });
+      html = groups.length
+        ? groups.map(function(g){
+            return '<section class="ecx-offer-group"><h3 class="ecx-offer-group-title">' + ecEscape(g.label) + '</h3>' +
+              '<div class="ecx-offer-list">' + g.items.map(ecxOfferCardHtml).join('') + '</div></section>';
+          }).join('')
+        : '<div class="ec-empty"><strong>Prestations momentanément indisponibles</strong>Réessayez dans un instant ou appelez-nous au 06 71 26 23 02.</div>';
+    }
+    // Autres besoins : devis gratuit et entretien multi-services, s'ils
+    // existent au catalogue.
+    var extra = ['devis', 'multi'].map(function(id){ return B.getService ? B.getService(id) : null; }).filter(Boolean);
+    if (!ecxSvcQuery && extra.length){
+      html += '<section class="ecx-offer-group ecx-offer-other"><h3 class="ecx-offer-group-title">Un autre besoin ?</h3>' +
+        '<div class="ecx-offer-list">' + extra.map(ecxOfferCardHtml).join('') + '</div></section>';
+    }
+    wrap.innerHTML = html;
+    if (window.HvFx) window.HvFx.reveal(wrap.querySelectorAll('.ecx-offer-group-title, .ecx-offer'), { y:8, max:10, stagger:0.035 });
   }
-  // Boutons « Détails » des cartes de prestations : un seul écouteur
-  // délégué pour TOUTES les cartes de l'Espace Client (page Prestations ET
-  // carrousel « les plus demandées » de l'accueil, dont les boutons
-  // n'étaient pas câblés). La fiche ouverte est toujours celle de l'id porté
-  // par le bouton cliqué.
+  // Boutons « Détails » : un seul écouteur délégué pour tout l'Espace
+  // Client. La fiche ouverte est toujours celle de l'id porté par le bouton.
   document.addEventListener('click', function(e){
     var btn = e.target.closest ? e.target.closest('#espaceClient [data-svc-info]') : null;
     if (!btn) return;
@@ -25065,52 +25123,112 @@ window.HV_APP_VERSION = 'hayeva-v39';
   function ecLoadServices(){
     var panel = document.getElementById('ecPanelServices');
     if (!window.sudBooking){ panel.innerHTML = ecErrorBlock(); return; }
-    var cats = window.sudBooking.categoriesList();
-    var html = '<p class="ec-section-title">Nos prestations</p><p class="ec-section-sub">Plomberie, chauffage, climatisation — trouvez la bonne intervention en quelques secondes.</p>' +
-      '<div class="ecx-search">' + ecxIcon('search', 'ecx-search-icon') + '<input type="text" id="ecxSvcSearchInput" placeholder="Rechercher une prestation" aria-label="Rechercher une prestation"></div>' +
-      '<div class="ecx-filter-row" id="ecxSvcFilters">' +
-        '<button type="button" class="ecx-filter-pill is-active" data-cat="all">Tout</button>' +
-        cats.filter(function(c){ return c.id !== 'pro'; }).map(function(c){ return '<button type="button" class="ecx-filter-pill" data-cat="' + ecEscape(c.id) + '">' + ecEscape(c.label) + '</button>'; }).join('') +
+    panel.innerHTML = '<p class="ec-section-title">Prestations</p>' +
+      '<p class="ec-section-sub">Choisissez une famille, consultez le détail puis réservez.</p>' +
+      '<div class="ecx-fam-tabs" id="ecxFamTabs" role="tablist" aria-label="Familles de prestations">' +
+        ECX_FAMILIES.map(function(f){
+          return '<button type="button" class="ecx-fam-tab" role="tab" id="ecxFamTab-' + f[0] + '" aria-controls="ecxSvcResults" data-ecx-fam="' + f[0] + '">' + ecxIcon(f[2], 'ecx-fam-icon') + '<span>' + f[1] + '</span></button>';
+        }).join('') +
       '</div>' +
-      '<div id="ecxSvcResults"></div>';
-    panel.innerHTML = html;
-    // Catégorie choisie depuis l'accueil (pastilles) : conservée et
-    // affichée active, au lieu d'être remise à « Tout ».
-    var wanted = ecxSvcPendingCat; ecxSvcPendingCat = null;
-    ecxSvcCategoryFilter = (wanted && cats.some(function(c){ return c.id === wanted && c.id !== 'pro'; })) ? wanted : 'all';
-    Array.prototype.forEach.call(panel.querySelectorAll('#ecxSvcFilters .ecx-filter-pill'), function(p){ p.classList.toggle('is-active', p.getAttribute('data-cat') === ecxSvcCategoryFilter); });
+      '<div class="ecx-search ecx-search-sm">' + ecxIcon('search', 'ecx-search-icon') + '<input type="search" id="ecxSvcSearchInput" placeholder="Rechercher (fuite, chaudière…)" aria-label="Rechercher une prestation"><span id="ecxSvcSearchLabel" class="sr-only">Résultats de recherche</span></div>' +
+      '<div id="ecxSvcResults" role="tabpanel"></div>';
     ecxSvcQuery = '';
+    ecxSyncFamilyTabs();
     ecxRenderServicesList();
+    var tabs = document.getElementById('ecxFamTabs');
+    tabs.addEventListener('click', function(e){
+      var t = e.target.closest ? e.target.closest('[data-ecx-fam]') : null;
+      if (t) ecxSetServicesCategory(t.getAttribute('data-ecx-fam'));
+    });
+    tabs.addEventListener('keydown', function(e){
+      var dir = { ArrowRight:1, ArrowLeft:-1 }[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      var i = ECX_FAMILIES.map(function(f){ return f[0]; }).indexOf(ecxSvcFamily);
+      var next = ECX_FAMILIES[(i + dir + ECX_FAMILIES.length) % ECX_FAMILIES.length][0];
+      ecxSetServicesCategory(next);
+      var el = document.getElementById('ecxFamTab-' + next);
+      if (el) el.focus();
+    });
     var searchInput = document.getElementById('ecxSvcSearchInput');
-    if (searchInput){
-      searchInput.addEventListener('input', function(){
-        ecxSvcQuery = searchInput.value.trim().toLowerCase();
-        ecxRenderServicesList();
-      });
-    }
-    var filters = document.getElementById('ecxSvcFilters');
-    if (filters){
-      filters.addEventListener('click', function(e){
-        var btn = e.target.closest ? e.target.closest('[data-cat]') : null;
-        if (!btn) return;
-        ecxSvcCategoryFilter = btn.getAttribute('data-cat');
-        Array.prototype.forEach.call(filters.querySelectorAll('.ecx-filter-pill'), function(p){ p.classList.toggle('is-active', p === btn); });
-        ecxRenderServicesList();
-      });
-    }
+    searchInput.addEventListener('input', function(){
+      ecxSvcQuery = searchInput.value.trim().toLowerCase();
+      ecxSyncFamilyTabs();
+      ecxRenderServicesList();
+    });
+    panel.addEventListener('click', function(e){
+      var bk = e.target.closest ? e.target.closest('[data-svc-book]') : null;
+      if (bk) ecxGoToBookingTunnel(bk.getAttribute('data-svc-book'));
+    });
   }
 
-  // Accueil — refonte "application" : recherche + catégories (relaient vers
-  // l'onglet Prestations, jamais un second moteur de recherche), prochain
-  // rendez-vous avec les VRAIES actions Voir/Modifier/Annuler (réutilise
-  // ecOpenMoveModal/ecOpenCancelModal telles quelles — voir mise en cache
-  // ci-dessous), prestations populaires (catalogue existant), carte
-  // "entretien" (jamais de marketing agressif), rien d'inventé : chaque
-  // section ne s'affiche que si la donnée réelle existe.
+  // ---------- Suivi d'un rendez-vous : statut réel uniquement ----------
+  // Étapes affichées d'après bookings.status (PENDING → CONFIRMED →
+  // IN_PROGRESS → COMPLETED) ; un rendez-vous annulé n'a pas de frise.
+  var ECX_STATUS_LEVEL = { PENDING:1, CONFIRMED:2, IN_PROGRESS:3, COMPLETED:4 };
+  function ecxStatusTrack(b){
+    var lvl = ECX_STATUS_LEVEL[b.status];
+    if (!lvl) return '';
+    var steps = [
+      ['Demande envoyée', lvl >= 1 ? 'done' : ''],
+      [lvl === 1 ? 'Confirmation en attente' : 'Confirmé par HAYEVA', lvl >= 2 ? 'done' : 'current'],
+      [lvl === 3 ? 'Intervention en cours' : 'Intervention réalisée', lvl >= 4 ? 'done' : (lvl === 3 ? 'current' : '')]
+    ];
+    return '<ol class="ecx-track" aria-label="Suivi du rendez-vous">' + steps.map(function(s){
+      return '<li class="ecx-track-step' + (s[1] ? ' is-' + s[1] : '') + '"' + (s[1] === 'current' ? ' aria-current="step"' : '') + '><span class="ecx-track-dot" aria-hidden="true"></span><span>' + s[0] + '</span></li>';
+    }).join('') + '</ol>';
+  }
+  // Libellé du statut, précisé pour une annulation d'après
+  // bookings.cancellation_type (jamais déduit).
+  var ECX_CANCEL_LABEL = { cancelled_client:'Annulé par vous', cancelled_admin:'Annulé par HAYEVA', refused:'Demande refusée' };
+  function ecxBookingBadge(b){
+    if (b.status === 'CANCELLED' && ECX_CANCEL_LABEL[b.cancellation_type]){
+      return '<span class="ec-badge ec-badge-cancelled">' + ECX_CANCEL_LABEL[b.cancellation_type] + '</span>';
+    }
+    return ecBadge(b.status);
+  }
+
+  // ---------- Accueil (V4) ----------
+  // Priorité au prochain rendez-vous (statut réel, actions possibles), un
+  // bouton « Prendre rendez-vous » toujours visible, puis uniquement les
+  // actions réellement nécessaires. Le catalogue complet est dans l'onglet
+  // Prestations. Rien d'inventé : chaque bloc dépend d'une donnée réelle.
+  function ecxResumeDraftHtml(){
+    var d = window.hvBookingDraftPeek ? window.hvBookingDraftPeek() : null;
+    var s = d && window.sudBooking && window.sudBooking.getService ? window.sudBooking.getService(d.serviceId) : null;
+    if (!s) return '';
+    return '<div class="ecx-resume" role="region" aria-label="Réservation non terminée">' +
+      '<div class="ecx-resume-body"><p class="ecx-resume-eyebrow">Réservation non terminée</p>' +
+        '<p class="ecx-resume-title">' + ecEscape(s.title) + '</p></div>' +
+      '<div class="ecx-resume-actions">' +
+        '<button type="button" class="ecx-offer-btn" data-ecx-resume>Reprendre</button>' +
+        '<button type="button" class="ecx-offer-btn is-ghost" data-ecx-resume-drop>Effacer</button>' +
+      '</div></div>';
+  }
+  // Carte « Réservation non terminée » remise à jour à chaque retour sur
+  // l'accueil ou ouverture de l'espace (l'accueil reste sinon en cache).
+  function ecxRefreshResume(){
+    var p = document.getElementById('ecPanelHome');
+    if (!p || !ecUser) return;
+    var head = p.querySelector('.ec-home-head');
+    if (!head) return;
+    var old = p.querySelector('.ecx-resume');
+    if (old) old.parentNode.removeChild(old);
+    var html = ecxResumeDraftHtml();
+    if (html) head.insertAdjacentHTML('afterend', html);
+  }
+  (function(){
+    var sec = document.getElementById('espaceClient');
+    if (!sec || typeof MutationObserver !== 'function') return;
+    new MutationObserver(function(){ if (sec.classList.contains('is-open')) ecxRefreshResume(); })
+      .observe(sec, { attributes:true, attributeFilter:['class'] });
+  })();
   function ecLoadHome(){
     var panel = document.getElementById('ecPanelHome');
     panel.innerHTML = '<div class="ecx-skeleton"><div class="ecx-skel-line" style="width:40%;height:28px;"></div><div class="ecx-skel-card"></div><div class="ecx-skel-card" style="height:56px;"></div></div>';
     var today = new Date().toISOString().slice(0,10);
+    var quotesToAnswer = sb.client.from('quotes').select('id').eq('customer_user_id', ecUser.id).eq('status', 'SENT')
+      .then(function(r){ return r && !r.error ? (r.data || []).length : 0; }, function(){ return 0; });
     Promise.all([
       ecFetchProfile(),
       sb.client.from('bookings')
@@ -25121,78 +25239,64 @@ window.HV_APP_VERSION = 'hayeva-v39';
         .order('date', { ascending:true })
         .order('start_time', { ascending:true })
         .limit(1),
-      ecFetchLoyalty()
+      quotesToAnswer
     ])
       .then(function(results){
         var profile = results[0];
         var res = results[1];
-        var loyalty = results[2];
+        var nQuotes = results[2] || 0;
         if (res.error){ panel.innerHTML = ecErrorBlock(); return; }
         var firstName = profile && profile.first_name ? profile.first_name.trim() : '';
         var html = '<div class="ec-home-head">' +
           '<p class="ec-section-title">' + (firstName ? 'Bonjour ' + ecEscape(firstName) : 'Bonjour') + '</p>' +
           '<button type="button" class="hv-site-link" id="ecHomeGoToSiteBtn">Voir le site<span class="hv-site-link-arrow" aria-hidden="true">↗</span></button>' +
-        '</div>' +
-        '<p class="ec-section-sub" style="margin-top:-10px;">Que pouvons-nous faire pour votre logement ?</p>' +
-        '<div class="ecx-search" id="ecxHomeSearch">' + ecxIcon('search', 'ecx-search-icon') + '<input type="text" id="ecxHomeSearchInput" placeholder="De quoi avez-vous besoin ?" aria-label="Rechercher une prestation" readonly></div>' +
-        '<div class="ecx-cats" id="ecxHomeCats">' +
-          '<button type="button" class="ecx-cat-chip" data-cat="plomberie">' + ecxIcon('droplet', 'ecx-cat-emoji') + 'Plomberie</button>' +
-          '<button type="button" class="ecx-cat-chip" data-cat="chauffage">' + ecxIcon('flame', 'ecx-cat-emoji') + 'Chauffage</button>' +
-          '<button type="button" class="ecx-cat-chip" data-cat="clim">' + ecxIcon('snowflake', 'ecx-cat-emoji') + 'Climatisation</button>' +
-          '<button type="button" class="ecx-cat-chip" data-cat="multi">' + ecxIcon('grid', 'ecx-cat-emoji') + 'Multi-services</button>' +
         '</div>';
+        html += ecxResumeDraftHtml();
         var b = res.data && res.data[0];
         if (b){
           var svcName = (b.services && b.services.name) || 'Service';
           var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
-          html += '<div class="ec-next-appt"><p class="ec-eyebrow">Votre prochaine intervention</p>' +
+          var note = b.status === 'PENDING' ? 'Votre demande est bien enregistrée. HAYEVA doit encore confirmer ce créneau.'
+            : b.status === 'IN_PROGRESS' ? 'Intervention en cours.' : 'Rendez-vous confirmé par HAYEVA.';
+          html += '<div class="ec-next-appt"><p class="ec-eyebrow">Votre prochain rendez-vous</p>' +
             '<h3>' + ecEscape(svcName) + '</h3>' +
             '<div class="ec-next-appt-meta">' +
               '<span>' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) + '</span>' +
               '<span>' + ecBadge(b.status) + '</span>' +
               (addr ? '<span>' + ecEscape(addr) + '</span>' : '') +
             '</div>' +
-            (ecIsUpcomingModifiable(b) ?
-              '<div class="ec-appt-actions" style="margin-top:14px;">' +
-                '<button type="button" class="ec-appt-move-btn" data-ec-home-view="1">Voir le rendez-vous</button>' +
-                '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Modifier</button>' +
-                '<button type="button" class="ec-appt-cancel-btn" data-booking-id="' + b.id + '">Annuler</button>' +
-              '</div>'
-              : '') +
+            '<p class="ecx-next-note">' + note + '</p>' +
+            ecxStatusTrack(b) +
+            '<div class="ec-appt-actions">' +
+              '<button type="button" class="ec-appt-move-btn" data-ec-home-view="1">Voir le détail</button>' +
+              (ecIsUpcomingModifiable(b) ?
+                '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Déplacer</button>' +
+                '<button type="button" class="ec-appt-cancel-btn" data-booking-id="' + b.id + '">Annuler</button>' : '') +
+            '</div>' +
           '</div>';
           // Alimente le même cache que "Mes rendez-vous" : ecOpenMoveModal/
           // ecOpenCancelModal le lisent par id, sans nouvelle requête.
           if (!ecAppointmentsCache.some(function(x){ return x.id === b.id; })) ecAppointmentsCache.push(b);
         } else {
-          html += '<div class="ec-empty"><strong>Vous n\'avez aucune intervention prévue</strong><br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
+          html += '<div class="ecx-noappt"><p class="ecx-noappt-title">Aucun rendez-vous prévu</p><p class="ecx-noappt-sub">Choisissez une prestation, puis le créneau qui vous convient.</p></div>';
         }
-        // Carte fidélité : toujours construite depuis get_my_loyalty() (voir
-        // ecLoadLoyalty plus bas), jamais un solde recalculé ou deviné ici.
-        if (loyalty && loyalty.program_enabled){
-          html += '<div class="ec-loy-teaser" data-ec-goto="loyalty" role="button" tabindex="0" aria-label="Voir mon parrainage">' +
-            ecxIcon('gift', 'ec-loy-teaser-icon') +
-            '<div class="ec-loy-teaser-body">' +
-              '<p class="ec-loy-teaser-title">Programme de parrainage HAYEVA</p>' +
-              '<p class="ec-loy-teaser-sub">' + 'Recommandez HAYEVA à vos proches : ' + ecFmtEuros(loyalty.referrer_reward_cents).replace(',00', '') + ' par nouveau client éligible' + '</p>' +
-            '</div><span class="ecx-opt-arrow" aria-hidden="true">›</span>' +
-          '</div>';
+        html += '<button type="button" class="ecx-book-cta" data-ec-goto="services">' + ecxIcon('calendar', 'ecx-book-cta-icon') + 'Prendre rendez-vous</button>';
+        // Actions réellement attendues du client (données réelles).
+        var todo = [];
+        if (nQuotes) todo.push(['quotes', 'fileCheck', nQuotes + ' devis à consulter', 'Acceptez ou refusez en ligne']);
+        if (profile && !profile.phone) todo.push(['profile', 'user', 'Ajoutez votre téléphone', 'Indispensable pour confirmer un rendez-vous']);
+        if (todo.length){
+          html += '<div class="ecx-todo"><p class="ecx-home-h">À faire</p>' + todo.map(function(t){
+            return '<button type="button" class="ecx-option-row" data-ec-goto="' + t[0] + '">' + ecxIcon(t[1], 'ecx-opt-icon') +
+              '<span class="ecx-opt-label">' + ecEscape(t[2]) + '<small>' + ecEscape(t[3]) + '</small></span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>';
+          }).join('') + '</div>';
         }
-        if (window.sudBooking){
-          var popular = window.sudBooking.popularServices();
-          if (popular.length){
-            html += '<div class="ecx-section-head"><h3>Les prestations les plus demandées</h3><button type="button" class="ecx-section-link" data-ec-goto="services">Tout voir</button></div>' +
-              '<div class="ecx-svc-scroll">' + popular.map(ecxServiceCardHtml).join('') + '</div>';
-          }
-        }
-        html += '<div class="ecx-promo-card"><h3>Votre logement mérite un petit check ?</h3>' +
-          '<p>Découvrez les entretiens recommandés pour conserver vos équipements plus longtemps.</p>' +
-          '<button type="button" class="ecx-promo-cta" data-ec-goto="services">Voir les entretiens</button></div>';
+        html += '<p class="ecx-home-h">Nos prestations</p><div class="ecx-fam-tiles">' + ECX_FAMILIES.map(function(f){
+          return '<button type="button" class="ecx-fam-tile ecx-fam-' + f[0] + '" data-ecx-home-fam="' + f[0] + '">' + ecxIcon(f[2], 'ecx-fam-tile-icon') + '<span>' + f[1] + '</span></button>';
+        }).join('') + '</div>';
         panel.innerHTML = html;
-        // Seul bouton "retour au site" de l'Espace Client (l'ancien, dans la
-        // bannière sombre, jugé pas assez visible, a été retiré) : referme
-        // l'écran plein écran, jamais de déconnexion. Réinjecté à chaque
-        // appel de ecLoadHome() — d'où le ré-attachement du listener ici,
-        // plutôt qu'une seule fois au chargement de la page.
+        // Seul bouton "retour au site" de l'Espace Client : referme l'écran
+        // plein écran, jamais de déconnexion.
         var homeSiteBtn = document.getElementById('ecHomeGoToSiteBtn');
         if (homeSiteBtn){
           homeSiteBtn.addEventListener('click', function(){
@@ -25200,48 +25304,28 @@ window.HV_APP_VERSION = 'hayeva-v39';
             window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
           });
         }
-        // Recherche/catégories : relaient vers le vrai moteur (page
-        // Prestations), jamais un second moteur de recherche dupliqué.
-        var searchBox = document.getElementById('ecxHomeSearch');
-        if (searchBox) searchBox.addEventListener('click', function(){ ecShowTab('services'); });
-        var catsWrap = document.getElementById('ecxHomeCats');
-        if (catsWrap){
-          catsWrap.addEventListener('click', function(e){
-            var chip = e.target.closest ? e.target.closest('[data-cat]') : null;
-            if (!chip) return;
-            ecxSetServicesCategory(chip.getAttribute('data-cat'));
-            ecShowTab('services');
-          });
-        }
-        Array.prototype.forEach.call(panel.querySelectorAll('[data-ec-goto]'), function(card){
-          card.addEventListener('click', function(){
-            if (card.getAttribute('data-ec-goto') === 'services') ecxSetServicesCategory('all'); // « Tout voir »
-            ecShowTab(card.getAttribute('data-ec-goto'));
-          });
-          card.addEventListener('keydown', function(e){
-            if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); ecShowTab(card.getAttribute('data-ec-goto')); }
-          });
-        });
-        Array.prototype.forEach.call(panel.querySelectorAll('[data-svc-book]'), function(btn){
-          btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
-        });
-        // Prochain rendez-vous : "Voir" ouvre l'onglet complet, Modifier/
-        // Annuler réutilisent EXACTEMENT les mêmes modales que "Mes
-        // rendez-vous" (même fonctions, même cache, mêmes règles métier
-        // serveur) — jamais une seconde implémentation.
-        var homeApptActions = panel.querySelector('.ec-appt-actions');
-        if (homeApptActions){
-          homeApptActions.addEventListener('click', function(e){
-            var viewBtn = e.target.closest('[data-ec-home-view]');
-            if (viewBtn){ ecShowTab('appointments'); return; }
-            var moveBtn = e.target.closest('.ec-appt-move-btn[data-booking-id]');
-            if (moveBtn){ ecOpenMoveModal(moveBtn.getAttribute('data-booking-id')); return; }
-            var cancelBtn = e.target.closest('.ec-appt-cancel-btn[data-booking-id]');
-            if (cancelBtn) ecOpenCancelModal(cancelBtn.getAttribute('data-booking-id'));
-          });
-        }
+        panel.addEventListener('click', ecxHomeClick);
       })
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
+  }
+  // Un seul écouteur (le panneau est réutilisé d'un chargement à l'autre).
+  function ecxHomeClick(e){
+    var t = e.target.closest ? e.target : null;
+    if (!t) return;
+    var el;
+    if ((el = t.closest('[data-ecx-home-fam]'))){ ecxSetServicesCategory(el.getAttribute('data-ecx-home-fam')); ecShowTab('services'); return; }
+    if ((el = t.closest('[data-ec-goto]'))){ ecShowTab(el.getAttribute('data-ec-goto')); return; }
+    if (t.closest('[data-ecx-resume]')){ if (window.hvResumeBookingDraft) window.hvResumeBookingDraft(); return; }
+    if (t.closest('[data-ecx-resume-drop]')){
+      if (window.hvClearBookingDraft) window.hvClearBookingDraft();
+      var box = t.closest('.ecx-resume'); if (box && box.parentNode) box.parentNode.removeChild(box);
+      return;
+    }
+    // Prochain rendez-vous : "Voir" ouvre l'onglet complet, Déplacer/
+    // Annuler réutilisent EXACTEMENT les modales de "Mes rendez-vous".
+    if (t.closest('[data-ec-home-view]')){ ecShowTab('appointments'); return; }
+    if ((el = t.closest('.ec-appt-move-btn[data-booking-id]'))){ ecOpenMoveModal(el.getAttribute('data-booking-id')); return; }
+    if ((el = t.closest('.ec-appt-cancel-btn[data-booking-id]'))) ecOpenCancelModal(el.getAttribute('data-booking-id'));
   }
 
   // Cache en mémoire de la dernière liste chargée — permet aux boutons
@@ -25276,7 +25360,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
     Promise.all([
       sb.client.from('bookings')
-        .select('id, reference, date, start_time, status, service_duration_minutes, service_price_cents, travel_fee_cents, discount_cents, total_cents, services(name, prep_instruction_key), customer_addresses(label,address,city)')
+        .select('id, reference, date, start_time, status, service_duration_minutes, service_price_cents, travel_fee_cents, discount_cents, total_cents, cancellation_type, services(name, prep_instruction_key), customer_addresses(label,address,city)')
         .eq('customer_user_id', ecUser.id)
         .order('date', { ascending:false })
         .order('start_time', { ascending:false }),
@@ -25289,7 +25373,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
         var rows = res.data || [];
         ecAppointmentsCache = rows;
         if (!rows.length){
-          panel.innerHTML = ecxCompositeSubNavHtml('appointments') + '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
+          panel.innerHTML = ecxCompositeSubNavHtml('appointments') + '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><button type="button" class="btn-primary" data-ecx-empty-book>Prendre rendez-vous</button></div>';
+          var eb = panel.querySelector('[data-ecx-empty-book]'); if (eb) eb.addEventListener('click', function(){ ecShowTab('services'); });
           return;
         }
         // Statut de participation uniquement (jamais la note admin) : lecture
@@ -25304,45 +25389,93 @@ window.HV_APP_VERSION = 'hayeva-v39';
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
 
+  // Rendez-vous classés d'après leur statut réel (bookings.status) :
+  // « À venir » (demandes en attente de confirmation, puis rendez-vous
+  // confirmés / en cours), « Terminés », « Annulés ». Aucun statut déduit.
+  var ECX_APPT_VIEWS = [['upcoming', 'À venir'], ['done', 'Terminés'], ['cancelled', 'Annulés']];
+  var ecxApptView = null;
+  function ecxApptBucket(b){
+    if (b.status === 'COMPLETED') return 'done';
+    if (b.status === 'CANCELLED' || b.status === 'NO_SHOW') return 'cancelled';
+    return 'upcoming';
+  }
   function ecRenderAppointmentsList(panel, rows, prepCategories, lcMap){
-        var html = ecxCompositeSubNavHtml('appointments') + '<p class="ec-section-title">Mes rendez-vous</p><p class="ec-section-sub">Retrouvez et gérez vos interventions.</p><div class="ec-list">';
-        rows.forEach(function(b){
-          var svcName = (b.services && b.services.name) || 'Service';
-          var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
-          // Snapshots commerciaux (bookings.service_price_cents, travel_fee_cents,
-          // discount_cents, total_cents) : valeurs figées en base au moment de la
-          // réservation, jamais recalculées ici — voir contrainte de protection
-          // (trigger protect_booking_financial_fields) côté SQL.
-          var priceLine = [];
-          if (b.service_price_cents != null) priceLine.push('Prestation ' + ecFmtEuros(b.service_price_cents));
-          if (b.travel_fee_cents) priceLine.push('Déplacement ' + ecFmtEuros(b.travel_fee_cents));
-          if (b.discount_cents) priceLine.push('Réduction −' + ecFmtEuros(b.discount_cents));
-          if (b.total_cents != null) priceLine.push('Total TTC ' + ecFmtEuros(b.total_cents));
-          // Consigne de préparation : jamais pour un rendez-vous annulé (voir
-          // 0025_prep_instructions.sql — repli générique via is_default).
-          var prepKey = b.services ? b.services.prep_instruction_key : null;
-          var prepText = (b.status !== 'CANCELLED' && window.sudResolvePrepInstruction)
-            ? window.sudResolvePrepInstruction(prepCategories, prepKey)
-            : null;
-          html += '<div class="ec-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
-            '<span class="ec-row-title">' + ecEscape(svcName) + '</span>' +
-            '<span class="ec-row-meta">' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) +
-              (b.service_duration_minutes != null ? ' · ' + ecFmtDuration(b.service_duration_minutes) : '') +
-              (addr ? ' · ' + ecEscape(addr) : '') + '</span>' +
-            '<span class="ec-row-meta">Réf. ' + ecEscape(b.reference) + '</span>' +
-            (priceLine.length ? '<span class="ec-row-meta">' + priceLine.join(' · ') + '</span>' : '') +
-            (prepText ? '<span class="ec-row-meta ec-row-prep">Préparez votre intervention : ' + ecEscape(prepText) + '</span>' : '') +
-            '</div>' + ecBadge(b.status) + ecLaunchBadgeHtml(lcMap[b.id]) +
-            (ecIsUpcomingModifiable(b) ?
-              '<div class="ec-appt-actions">' +
-                '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Déplacer mon rendez-vous</button>' +
-                '<button type="button" class="ec-appt-cancel-btn" data-booking-id="' + b.id + '">Annuler mon rendez-vous</button>' +
-              '</div>'
-              : '') +
-            '</div>';
-        });
-        html += '</div>';
-        panel.innerHTML = html;
+    var buckets = { upcoming:[], done:[], cancelled:[] };
+    rows.forEach(function(b){ buckets[ecxApptBucket(b)].push(b); });
+    // À venir : du plus proche au plus lointain.
+    buckets.upcoming.sort(function(x, y){ return (x.date + x.start_time) < (y.date + y.start_time) ? -1 : 1; });
+    if (!ecxApptView || !buckets[ecxApptView].length){
+      ecxApptView = buckets.upcoming.length ? 'upcoming' : (buckets.done.length ? 'done' : 'cancelled');
+    }
+    function rowHtml(b){
+      var svcName = (b.services && b.services.name) || 'Service';
+      var addr = b.customer_addresses ? (b.customer_addresses.label || b.customer_addresses.address) : '';
+      // Snapshots commerciaux figés en base au moment de la réservation,
+      // jamais recalculés ici (trigger protect_booking_financial_fields).
+      var priceLine = [];
+      if (b.service_price_cents != null) priceLine.push('Prestation ' + ecFmtEuros(b.service_price_cents));
+      if (b.travel_fee_cents) priceLine.push('Déplacement ' + ecFmtEuros(b.travel_fee_cents));
+      if (b.discount_cents) priceLine.push('Réduction −' + ecFmtEuros(b.discount_cents));
+      if (b.total_cents != null) priceLine.push('Total TTC ' + ecFmtEuros(b.total_cents));
+      // Consigne de préparation : jamais pour un rendez-vous annulé/terminé.
+      var prepKey = b.services ? b.services.prep_instruction_key : null;
+      var prepText = (ecxApptBucket(b) === 'upcoming' && window.sudResolvePrepInstruction)
+        ? window.sudResolvePrepInstruction(prepCategories, prepKey)
+        : null;
+      return '<div class="ec-row ecx-appt-row" data-booking-id="' + b.id + '"><div class="ec-row-info">' +
+          '<span class="ec-row-title">' + ecEscape(svcName) + '</span>' +
+          '<span class="ec-row-meta">' + ecFmtDate(b.date) + ' à ' + ecFmtTime(b.start_time) +
+            (b.service_duration_minutes != null ? ' · ' + ecFmtDuration(b.service_duration_minutes) : '') +
+            (addr ? ' · ' + ecEscape(addr) : '') + '</span>' +
+          '<span class="ec-row-meta">Réf. ' + ecEscape(b.reference) + '</span>' +
+          (priceLine.length ? '<span class="ec-row-meta">' + priceLine.join(' · ') + '</span>' : '') +
+          (prepText ? '<span class="ec-row-meta ec-row-prep">Préparez votre intervention : ' + ecEscape(prepText) + '</span>' : '') +
+        '</div>' + ecxBookingBadge(b) + ecLaunchBadgeHtml(lcMap[b.id]) +
+        (ecxApptBucket(b) === 'upcoming' ? ecxStatusTrack(b) : '') +
+        (ecIsUpcomingModifiable(b) ?
+          '<div class="ec-appt-actions">' +
+            '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Déplacer mon rendez-vous</button>' +
+            '<button type="button" class="ec-appt-cancel-btn" data-booking-id="' + b.id + '">Annuler mon rendez-vous</button>' +
+          '</div>'
+          : '') +
+        '</div>';
+    }
+    function section(title, list){
+      return list.length ? '<section class="ecx-appt-section"><h3 class="ecx-offer-group-title">' + title + ' <span class="ecx-count">' + list.length + '</span></h3><div class="ec-list">' + list.map(rowHtml).join('') + '</div></section>' : '';
+    }
+    var html = ecxCompositeSubNavHtml('appointments') +
+      '<div class="ec-home-head"><p class="ec-section-title">Mes rendez-vous</p>' +
+        '<button type="button" class="ecx-offer-btn" data-ecx-new-booking>Nouveau rendez-vous</button></div>' +
+      '<div class="ecx-seg" role="tablist" aria-label="Filtrer les rendez-vous">' + ECX_APPT_VIEWS.map(function(v){
+        var on = v[0] === ecxApptView;
+        return '<button type="button" role="tab" class="ecx-seg-btn' + (on ? ' is-active' : '') + '" aria-selected="' + on + '" data-ecx-appt-view="' + v[0] + '">' + v[1] + ' <span class="ecx-count">' + buckets[v[0]].length + '</span></button>';
+      }).join('') + '</div><div class="ecx-appt-view" role="tabpanel">';
+    if (ecxApptView === 'upcoming'){
+      html += section('En attente de confirmation', buckets.upcoming.filter(function(b){ return b.status === 'PENDING'; })) +
+        section('Confirmés', buckets.upcoming.filter(function(b){ return b.status !== 'PENDING'; }));
+      if (!buckets.upcoming.length) html += '<div class="ec-empty"><strong>Aucun rendez-vous à venir</strong><button type="button" class="btn-primary" data-ecx-new-booking>Prendre rendez-vous</button></div>';
+    } else if (ecxApptView === 'done'){
+      html += buckets.done.length ? section('Interventions terminées', buckets.done) : '<div class="ec-empty"><strong>Aucune intervention terminée</strong></div>';
+    } else {
+      html += buckets.cancelled.length ? section('Rendez-vous annulés', buckets.cancelled) : '<div class="ec-empty"><strong>Aucun rendez-vous annulé</strong></div>';
+    }
+    html += '</div>';
+    panel.innerHTML = html;
+    panel.__ecxApptArgs = [prepCategories, lcMap];
+    if (!panel.__ecxApptBound){
+      panel.__ecxApptBound = true;
+      panel.addEventListener('click', function(e){
+        var v = e.target.closest ? e.target.closest('[data-ecx-appt-view]') : null;
+        if (v){
+          ecxApptView = v.getAttribute('data-ecx-appt-view');
+          ecRenderAppointmentsList(panel, ecAppointmentsCache, panel.__ecxApptArgs[0], panel.__ecxApptArgs[1]);
+          if (window.HvFx) window.HvFx.reveal(panel.querySelectorAll('.ecx-appt-section, .ecx-appt-view > .ec-empty'), { y:8 });
+          var again = panel.querySelector('[data-ecx-appt-view="' + ecxApptView + '"]'); if (again) again.focus();
+          return;
+        }
+        if (e.target.closest && e.target.closest('[data-ecx-new-booking]')) ecShowTab('services');
+      });
+    }
   }
 
   // ---------- "Déplacer mon rendez-vous" ----------
@@ -26712,14 +26845,25 @@ window.HV_APP_VERSION = 'hayeva-v39';
         '<p class="ecx-profile-name">' + ecEscape(fullName) + '</p>' +
         '<p class="ecx-profile-tag">Client HAYEVA</p>' +
       '</div>' +
-      '<div class="ecx-profile-tiles">' +
-        '<div class="ecx-profile-tile" data-ec-goto="addresses" role="button" tabindex="0" aria-label="Mes logements">' + ecxIcon('house', 'ecx-tile-icon') + '<span class="ecx-tile-label">Mes logements</span></div>' +
-        '<div class="ecx-profile-tile" data-ec-goto="equipment" role="button" tabindex="0" aria-label="Mes équipements">' + ecxIcon('wrench', 'ecx-tile-icon') + '<span class="ecx-tile-label">Mes équipements</span></div>' +
+      '<p class="ecx-home-h">Mon logement</p>' +
+      '<div class="ecx-option-list ecx-card ecx-card-flat">' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="equipment">' + ecxIcon('wrench', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mes équipements</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="addresses">' + ecxIcon('house', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mes logements et adresses</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="contracts">' + ecxIcon('checkCircle', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mes contrats d\'entretien</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
       '</div>' +
-      '<div class="ecx-option-list ecx-card ecx-card-flat" style="padding:6px 14px;">' +
-        '<button type="button" class="ecx-option-row" data-ec-goto="loyalty">' + ecxIcon('gift', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mon parrainage</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+      '<p class="ecx-home-h">Mes documents</p>' +
+      '<div class="ecx-option-list ecx-card ecx-card-flat">' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="quotes">' + ecxIcon('fileCheck', 'ecx-opt-icon') + '<span class="ecx-opt-label">Devis</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="invoices">' + ecxIcon('fileText', 'ecx-opt-icon') + '<span class="ecx-opt-label">Factures</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="documents">' + ecxIcon('fileText', 'ecx-opt-icon') + '<span class="ecx-opt-label">Rapports d\'intervention</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+      '</div>' +
+      '<p class="ecx-home-h">Fidélité</p>' +
+      '<div class="ecx-option-list ecx-card ecx-card-flat">' +
+        '<button type="button" class="ecx-option-row" data-ec-goto="loyalty">' + ecxIcon('gift', 'ecx-opt-icon') + '<span class="ecx-opt-label">Parrainage et avantages</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
+      '</div>' +
+      '<p class="ecx-home-h">Mon compte</p>' +
+      '<div class="ecx-option-list ecx-card ecx-card-flat">' +
         '<button type="button" class="ecx-option-row" data-scroll-to="ecProfileForm">' + ecxIcon('user', 'ecx-opt-icon') + '<span class="ecx-opt-label">Informations personnelles</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
-        '<button type="button" class="ecx-option-row" data-ec-goto="addresses">' + ecxIcon('mapPin', 'ecx-opt-icon') + '<span class="ecx-opt-label">Mes adresses</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
         '<a class="ecx-option-row" href="tel:+33671262302">' + ecxIcon('messageCircle', 'ecx-opt-icon') + '<span class="ecx-opt-label">Aide — 06 71 26 23 02</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></a>' +
         '<button type="button" class="ecx-option-row" id="ecProfileInstallBtn" hidden>' + ecxIcon('house', 'ecx-opt-icon') + '<span class="ecx-opt-label">Installer l\'application</span><span class="ecx-opt-arrow" aria-hidden="true">›</span></button>' +
         '<button type="button" class="ecx-option-row is-danger" id="ecProfileLogoutBtn">' + ecxIcon('logOut', 'ecx-opt-icon') + '<span class="ecx-opt-label">Déconnexion</span></button>' +
@@ -32337,5 +32481,139 @@ window.HV_APP_VERSION = 'hayeva-v39';
     .btn-primary:active, .btn-secondary:active, .ecx-cat-chip:active, .ecx-promo-cta:active, .ecx-section-link:active,
     .ecx-option-row:active, .hvp-quick-btn:active, .adm-quicklink-btn:active, .hv-bottomnav-item:active{ transform:scale(.97); }
     .ecx-svc-card:active{ transform:scale(.985); }
+  }
+</style>
+
+<style id="hv-espace-client-v4">
+  /* =====================================================================
+     HAYEVA V4 — Espace particulier (lot 2) : accueil, prestations par
+     famille, suivi des rendez-vous, Mon compte. Couleurs fixes (jamais
+     --terracotta, recoloré par les univers du site public).
+     ===================================================================== */
+  /* Lisibilité : la photo reste visible en haut de l'espace mais voilée,
+     pour que les titres posés dessus (texte foncé) restent lisibles. */
+  #espaceClient.is-open:not(.gate-bg-active) .auth-bg-overlay{
+    background:linear-gradient(180deg,
+      color-mix(in srgb, var(--sand) 55%, transparent) 0%,
+      color-mix(in srgb, var(--sand) 78%, transparent) 22%,
+      color-mix(in srgb, var(--sand) 92%, transparent) 40%,
+      var(--sand) 60%, var(--sand) 100%);
+  }
+  #espaceClient .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .ecx-home-h{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.78rem; letter-spacing:.06em; text-transform:uppercase; color:var(--hv-text-3); margin:22px 2px 10px; }
+
+  /* Retour vers Mon compte (mobile) */
+  .ecx-backbar{ margin:0 0 10px; }
+  .ecx-backbar[hidden]{ display:none; }
+  .ecx-back-btn{ font:700 0.9rem/1 "Poppins",sans-serif; color:var(--hv-blue); background:none; border:none; padding:12px 4px; min-height:44px; cursor:pointer; }
+  @media (min-width:900px){ .ecx-backbar{ display:none !important; } }
+
+  /* Prochain rendez-vous */
+  .ec-next-appt{ margin-bottom:14px; }
+  .ecx-next-note{ margin:12px 0 0; font-size:0.9rem; line-height:1.45; color:#FFFFFF; }
+  .ec-next-appt .ec-appt-actions{ margin-top:14px; border-top-color:rgba(255,255,255,0.28); }
+  .ec-next-appt .ec-appt-move-btn, .ec-next-appt .ec-appt-cancel-btn{ min-height:44px; }
+  .ecx-noappt{ background:var(--hv-card); border:1px solid var(--hv-border); border-radius:var(--hv-radius-lg); padding:18px; margin-bottom:14px; }
+  .ecx-noappt-title{ font-weight:700; color:var(--hv-text); font-size:1rem; margin:0 0 4px; }
+  .ecx-noappt-sub{ color:var(--hv-text-2); font-size:0.9rem; margin:0; }
+
+  /* Suivi (frise de statut réel) */
+  .ecx-track{ list-style:none; display:flex; gap:6px; margin:14px 0 0; padding:0; width:100%; }
+  .ecx-track-step{ flex:1 1 0; display:flex; flex-direction:column; gap:6px; font-size:0.74rem; line-height:1.3; color:var(--hv-text-3); }
+  .ecx-track-dot{ display:block; height:4px; border-radius:999px; background:var(--hv-border); }
+  .ecx-track-step.is-done{ color:var(--hv-success); font-weight:600; }
+  .ecx-track-step.is-done .ecx-track-dot{ background:var(--hv-success); }
+  .ecx-track-step.is-current{ color:#6B4F0E; font-weight:700; }
+  .ecx-track-step.is-current .ecx-track-dot{ background:#C98A12; }
+  .ec-next-appt .ecx-track-step{ color:rgba(255,255,255,0.82); }
+  .ec-next-appt .ecx-track-dot{ background:rgba(255,255,255,0.28); }
+  .ec-next-appt .ecx-track-step.is-done{ color:#FFFFFF; }
+  .ec-next-appt .ecx-track-step.is-done .ecx-track-dot{ background:#86E0AE; }
+  .ec-next-appt .ecx-track-step.is-current{ color:#FFE3A3; }
+  .ec-next-appt .ecx-track-step.is-current .ecx-track-dot{ background:#F5C977; }
+
+  /* Bouton principal « Prendre rendez-vous » */
+  .ecx-book-cta{
+    display:flex; align-items:center; justify-content:center; gap:10px; width:100%; min-height:52px;
+    background:#C2410C; color:#FFFFFF; border:none; border-radius:var(--hv-radius-pill);
+    font:700 1rem/1 "Poppins",sans-serif; cursor:pointer; box-shadow:0 10px 22px -12px rgba(194,65,12,0.7);
+  }
+  .ecx-book-cta:hover{ background:#9A3412; }
+  .ecx-book-cta .ecx-book-cta-icon{ width:20px; height:20px; }
+  .ecx-book-cta .ecx-book-cta-icon svg{ stroke:#FFFFFF; }
+
+  /* Réservation non terminée */
+  .ecx-resume{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:#FFF6EE; border:1px solid #F3C7A6; border-radius:var(--hv-radius-lg); padding:14px 16px; margin-bottom:14px; }
+  .ecx-resume-eyebrow{ font-size:0.75rem; font-weight:700; color:#9A3412; text-transform:uppercase; letter-spacing:.05em; margin:0 0 2px; }
+  .ecx-resume-title{ font-weight:700; color:var(--hv-text); margin:0; }
+  .ecx-resume-actions{ display:flex; gap:8px; }
+
+  /* À faire */
+  .ecx-todo .ecx-option-row{ background:var(--hv-card); border:1px solid var(--hv-border); border-radius:var(--hv-radius-md); padding:12px 14px; margin-bottom:8px; }
+  .ecx-opt-label small{ display:block; font-size:0.8rem; color:var(--hv-text-2); font-weight:400; margin-top:2px; }
+
+  /* Tuiles familles (accueil) */
+  .ecx-fam-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+  .ecx-fam-tile{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:92px; padding:12px 6px;
+    background:var(--hv-card); border:1px solid var(--hv-border); border-radius:var(--hv-radius-lg); cursor:pointer;
+    font:700 0.82rem/1.2 "Poppins",sans-serif; color:var(--hv-text); text-align:center;
+  }
+  .ecx-fam-tile .ecx-fam-tile-icon{ width:26px; height:26px; }
+  .ecx-fam-clim .ecx-fam-tile-icon{ color:#1F5A8F; }
+  .ecx-fam-plomberie .ecx-fam-tile-icon{ color:#0F6E7A; }
+  .ecx-fam-chauffage .ecx-fam-tile-icon{ color:#C2410C; }
+  .ecx-fam-tile:hover{ border-color:var(--hv-blue); }
+
+  /* Prestations : onglets de famille */
+  .ecx-fam-tabs{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; background:#EEF2F7; padding:5px; border-radius:var(--hv-radius-pill); margin-bottom:12px; }
+  .ecx-fam-tab{
+    display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:6px 4px; border:none; border-radius:var(--hv-radius-pill);
+    background:transparent; color:var(--hv-text-2); font:700 0.82rem/1.1 "Poppins",sans-serif; cursor:pointer; min-width:0;
+  }
+  .ecx-fam-tab span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ecx-fam-tab .ecx-fam-icon{ width:17px; height:17px; flex:0 0 auto; }
+  .ecx-fam-tab.is-active{ background:#102039; color:#FFFFFF; box-shadow:var(--hv-shadow-1); }
+  @media (max-width:360px){ .ecx-fam-tab .ecx-fam-icon{ display:none; } }
+  .ecx-search-sm{ padding:10px 16px; margin-bottom:6px; }
+
+  /* Cartes de prestation */
+  .ecx-offer-group{ margin-top:18px; }
+  .ecx-offer-group-title{ font-family:"Poppins",sans-serif; font-size:0.95rem; font-weight:700; color:var(--hv-text); margin:0 2px 10px; }
+  .ecx-offer-list{ display:grid; gap:10px; }
+  @media (min-width:700px){ .ecx-offer-list{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  .ecx-offer{ background:var(--hv-card); border:1px solid var(--hv-border); border-radius:var(--hv-radius-lg); padding:14px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .ecx-offer-top{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .ecx-offer-name{ font-size:0.98rem; font-weight:700; color:var(--hv-text); margin:0; line-height:1.3; min-width:0; }
+  .ecx-offer-price{ flex:0 0 auto; font-weight:700; color:#9A3412; font-size:0.92rem; white-space:nowrap; }
+  .ecx-offer-price.is-quote{ color:var(--hv-text-2); }
+  .ecx-offer-desc{ margin:0; font-size:0.88rem; line-height:1.45; color:var(--hv-text-2); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .ecx-offer-meta{ margin:0; font-size:0.8rem; color:var(--hv-text-3); }
+  .ecx-offer-actions{ display:flex; gap:8px; margin-top:6px; }
+  .ecx-offer-btn{
+    flex:1 1 0; min-height:44px; padding:8px 14px; border-radius:var(--hv-radius-pill); border:1.5px solid #C2410C;
+    background:#C2410C; color:#FFFFFF; font:700 0.86rem/1.1 "Poppins",sans-serif; cursor:pointer; white-space:nowrap;
+  }
+  .ecx-offer-btn:hover{ background:#9A3412; border-color:#9A3412; }
+  .ecx-offer-btn.is-ghost{ background:#FFFFFF; color:#102039; border-color:#7A8699; }
+  .ecx-offer-btn.is-ghost:hover{ border-color:#102039; background:#F7F9FC; }
+  .ecx-resume-actions .ecx-offer-btn, .ec-home-head .ecx-offer-btn{ flex:0 0 auto; }
+  .ecx-offer-count{ font-size:0.85rem; color:var(--hv-text-2); margin:12px 2px 10px; }
+  .ecx-offer-other .ecx-offer{ background:#F7F9FC; }
+
+  /* Rendez-vous : filtre segmenté + sections */
+  .ecx-seg{ display:flex; gap:6px; background:#EEF2F7; padding:5px; border-radius:var(--hv-radius-pill); margin:4px 0 6px; }
+  .ecx-seg-btn{ flex:1 1 0; min-height:44px; border:none; border-radius:var(--hv-radius-pill); background:transparent; color:var(--hv-text-2); font:700 0.84rem/1.1 "Poppins",sans-serif; cursor:pointer; }
+  .ecx-seg-btn.is-active{ background:#102039; color:#FFFFFF; }
+  .ecx-count{ display:inline-block; min-width:1.5em; padding:1px 6px; border-radius:999px; background:rgba(16,32,57,0.08); font-size:0.75rem; text-align:center; }
+  .ecx-seg-btn.is-active .ecx-count{ background:rgba(255,255,255,0.2); }
+  .ecx-appt-section{ margin-top:16px; }
+  .ecx-appt-row .ecx-track{ order:5; }
+
+  @media (prefers-reduced-motion: no-preference){
+    .ecx-offer-btn, .ecx-fam-tab, .ecx-fam-tile, .ecx-seg-btn, .ecx-book-cta, .ecx-back-btn{
+      transition:transform var(--hv-dur-micro) var(--hv-ease-out), background-color var(--hv-dur-micro), color var(--hv-dur-micro), border-color var(--hv-dur-micro);
+    }
+    .ecx-offer-btn:active, .ecx-fam-tab:active, .ecx-fam-tile:active, .ecx-seg-btn:active, .ecx-book-cta:active{ transform:scale(.97); }
   }
 </style>
