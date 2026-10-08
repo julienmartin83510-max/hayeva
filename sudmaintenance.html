@@ -1046,6 +1046,16 @@ if ('serviceWorker' in navigator){
   @media (max-width:900px){
     input, select, textarea{ font-size:16px !important; }
   }
+  /* Cibles tactiles : 44 px minimum de hauteur sur écran tactile
+     (recommandation Apple / WCAG 2.5.5) pour tous les boutons, menus
+     déroulants et sections repliables — l'audit en avait relevé 134 sous
+     40 px (filtres, « Modifier », « Annuler », « Choisir… », pills admin).
+     Hauteur seulement : largeur et apparence inchangées. Les liens dans le
+     texte (pied de page, mentions) gardent leur taille de ligne. */
+  @media (pointer:coarse){
+    button, select, summary, [role="button"], .btn-primary, .btn-secondary{ min-height:44px; }
+    button, [role="button"], .btn-primary, .btn-secondary{ touch-action:manipulation; }
+  }
   a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
     outline:2px solid var(--sky-deep);
     outline-offset:2px;
@@ -5090,6 +5100,11 @@ if ('serviceWorker' in navigator){
     border:none; border-radius:999px; padding:9px 18px; cursor:pointer; margin-top:8px; min-height:40px;
   }
   .ecx-svc-card-cta:hover{ filter:brightness(1.08); }
+  .ecx-svc-card-actions{ display:flex; gap:8px; align-items:center; margin-top:8px; }
+  .ecx-svc-card-actions .ecx-svc-card-cta{ margin-top:0; flex:1; min-height:44px; }
+  .ecx-svc-card-actions .hvk-info-btn{ min-height:44px; color:var(--navy-fixed); }
+  .ecx-pack-family{ margin-bottom:24px; }
+  .ecx-pack-family .hvk{ margin-top:8px; }
 
   /* ---------- Recherche/filtres page Prestations ---------- */
   .ecx-filter-row{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:6px; scrollbar-width:none; }
@@ -7383,7 +7398,7 @@ if ('serviceWorker' in navigator){
           <h3>Climatisation — Entretien</h3>
           <p class="price-note-small" style="margin-bottom:18px;">Un entretien régulier pour une clim fiable toute l'année.</p>
 
-          <div class="pack-grid">
+          <div class="pack-grid" data-hvk-family="clim-entretien">
             <div class="pack-card">
               <h4>Pack Essentiel</h4>
               <p class="pack-tagline">L'entretien indispensable</p>
@@ -7479,7 +7494,7 @@ if ('serviceWorker' in navigator){
             <button type="button" class="fuel-toggle-btn" data-fuel="fioul">Chaudière Fioul</button>
           </div>
 
-          <div class="pack-grid fuel-panel" id="fuelGaz" data-fuel-panel="gaz">
+          <div class="pack-grid fuel-panel" id="fuelGaz" data-fuel-panel="gaz" data-hvk-family="chauffage-chaudiere-gaz">
             <div class="pack-card">
               <h4>Pack Essentiel</h4>
               <p class="pack-tagline">L'entretien indispensable</p>
@@ -7536,7 +7551,7 @@ if ('serviceWorker' in navigator){
             </div>
           </div>
 
-          <div class="pack-grid fuel-panel" id="fuelFioul" data-fuel-panel="fioul" hidden>
+          <div class="pack-grid fuel-panel" id="fuelFioul" data-fuel-panel="fioul" data-hvk-family="chauffage-chaudiere-fioul" hidden>
             <div class="pack-card">
               <h4>Pack Essentiel</h4>
               <p class="pack-tagline">L'entretien indispensable</p>
@@ -7937,9 +7952,12 @@ if ('serviceWorker' in navigator){
             <input type="search" id="bkSearch" class="bk-search" aria-label="Rechercher une prestation" placeholder="Tapez ce que vous cherchez : robinet, chaudière, climatisation…">
             <p class="bk-search-hint" id="bkSearchHint">Prestations les plus demandées :</p>
             <div class="service-options" id="serviceOptions"></div>
+            <div class="bk-svc-detail" id="bkSvcDetail" hidden aria-live="polite"></div>
           </div>
 
           <div id="step1Info" hidden>
+            <div id="bkPackPicker"></div>
+            <div id="bkClimUnits">
             <p class="bk-field-label">Type d'installation</p>
             <div class="bk-radio-group" id="installTypeGroup">
               <label class="bk-radio"><input type="radio" name="installType" value="mono" checked> Mono-split</label>
@@ -7954,6 +7972,7 @@ if ('serviceWorker' in navigator){
               </div>
             </div>
             <p class="pack-price-live" id="packPriceLive"></p>
+            </div>
           </div>
         </div>
 
@@ -8316,7 +8335,7 @@ if ('serviceWorker' in navigator){
         </button>
       </div>
 
-      <div class="pack-grid">
+      <div class="pack-grid" data-hvk-family="pro-check">
         <div class="pack-card">
           <h4>Check Express</h4>
           <p class="pack-tagline">Contrôle technique rapide</p>
@@ -8602,6 +8621,11 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="pro-quicklink-btn" data-pro-goto="rendezvous">Voir mes rendez-vous</button>
                 <button type="button" class="pro-quicklink-btn" data-pro-goto="logements">Ajouter un logement</button>
               </div>
+              <div class="pro-check-book" id="proCheckBook">
+                <h3 class="pro-check-book-title">Réserver un Check technique</h3>
+                <p class="pro-page-sub">Touchez une formule pour voir le détail : contrôles inclus, non compris, durée et prix.</p>
+                <div id="proCheckPicker"><p class="ec-loading">Chargement des formules…</p></div>
+              </div>
             </section>
 
             <section class="pro-page" id="proPageLogements" data-pro-page="logements" hidden>
@@ -8805,6 +8829,9 @@ if ('serviceWorker' in navigator){
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="contracts" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Contrats chaudière</span>
+                </button>
+                <button type="button" class="adm-nav-btn" data-adm-page="offers" role="tab" aria-selected="false">
+                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Packs &amp; prestations</span>
                 </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="sms" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">SMS clients</span>
@@ -9174,6 +9201,19 @@ if ('serviceWorker' in navigator){
 
                 <h3 class="adm-subhead">QR codes et liens de campagne</h3>
                 <div id="admStatsCampaigns" class="ec-list"><p class="ec-loading">Chargement…</p></div>
+              </section>
+
+              <section class="adm-page" id="admPageOffers" data-adm-page="offers" hidden>
+                <div class="adm-page-head">
+                  <p class="adm-eyebrow">Administration</p>
+                  <h2 class="adm-page-title">Packs &amp; prestations</h2>
+                  <p class="adm-page-sub">Contenu affiché sur le site, dans la réservation, l'Espace Client et l'Espace Pro : nom, prix, durée, ce qui est inclus et non compris. Un changement de prix s'applique aux nouvelles réservations ; les rendez-vous existants gardent leur prix.</p>
+                </div>
+                <div id="offersMsg" class="adm-offers-msg" role="status" hidden></div>
+                <h3 class="adm-subhead">Formules (packs)</h3>
+                <div id="offersPacks" class="ec-list"><p class="ec-loading">Chargement…</p></div>
+                <h3 class="adm-subhead">Prestations à l'unité</h3>
+                <div id="offersServices" class="ec-list"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <section class="adm-page" id="admPageSms" data-adm-page="sms" hidden>
@@ -9653,6 +9693,7 @@ if ('serviceWorker' in navigator){
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
                 <button type="button" class="hv-more-item" data-hv-nav="launch-campaign">Jeu de lancement</button>
                 <button type="button" class="hv-more-item" data-hv-nav="referrals">Parrainages</button>
+                <button type="button" class="hv-more-item" data-hv-nav="offers">Packs &amp; prestations</button>
                 <button type="button" class="hv-more-item" data-hv-nav="sms">SMS clients</button>
                 <button type="button" class="hv-more-item" data-hv-nav="stats">Statistiques</button>
                 <button type="button" class="hv-more-item" data-hv-nav="pricing">Chiffrage</button>
@@ -11644,7 +11685,7 @@ if ('serviceWorker' in navigator){
         state.serviceId = s.id;
         state.time = null;
         renderTimeOptions();
-        if (isPackId(s.id)){
+        if (isStep1PackView(s.id)){
           renderStep1View();
         } else {
           updateNav();
@@ -11652,17 +11693,74 @@ if ('serviceWorker' in navigator){
             el.classList.remove('selected');
           });
           btn.classList.add('selected');
+          renderBkSvcDetail();
         }
       });
       serviceOptionsEl.appendChild(btn);
     });
   }
 
+  // Packs à formules (clim, chaudière gaz/fioul, Check pro) : l'étape 1
+  // affiche le sélecteur partagé HvPacks (détail, inclus, non compris,
+  // comparatif). Le choix reste dans state.serviceId : un retour arrière
+  // depuis l'étape 2 retrouve la même formule sélectionnée.
+  function packFamilyOf(id){
+    return (id && window.HvPacks && window.HvPacks.isLoaded()) ? window.HvPacks.familyOf(id) : null;
+  }
+  function isStep1PackView(id){ return isPackId(id) || !!packFamilyOf(id); }
+  function bkEsc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function renderBkPackPicker(){
+    var host = document.getElementById('bkPackPicker');
+    if (!host) return;
+    var fam = packFamilyOf(state.serviceId);
+    if (!fam){ host.innerHTML = ''; return; }
+    window.HvPacks.render(host, fam, {
+      selected: state.serviceId,
+      openDetail: true,
+      chooseLabel: 'Continuer avec cette formule',
+      onSelect: function(slug){
+        state.serviceId = slug;
+        state.time = null;
+        renderTimeOptions();
+        var units = document.getElementById('bkClimUnits');
+        if (units) units.hidden = !isPackId(slug);
+        updatePackPriceLive();
+        updateNav();
+      },
+      onChoose: function(slug){
+        if (state.serviceId !== slug) state.serviceId = slug;
+        showStep(2);
+      }
+    });
+  }
+
+  // Détail de la prestation choisie (hors packs) : description, prix,
+  // durée, conditions et exclusions issues du catalogue.
+  function renderBkSvcDetail(){
+    var box = document.getElementById('bkSvcDetail');
+    if (!box) return;
+    var svc = currentService();
+    if (!svc || isStep1PackView(svc.id)){ box.hidden = true; box.innerHTML = ''; return; }
+    var d = window.HvPacks ? window.HvPacks.service(svc.id) : null;
+    var excl = (d && d.excludes) || [];
+    var cond = d && d.conditions ? d.conditions : (svc.supply ? 'Fourniture : selon modèle choisi.' : '');
+    box.innerHTML = '<p class="bk-svc-detail-title">' + bkEsc(svc.title) + '</p>' +
+      '<p class="bk-svc-detail-desc">' + bkEsc(svc.desc || '') + '</p>' +
+      '<p class="bk-svc-detail-meta"><span><strong>Prix :</strong> ' + bkEsc(svcPriceLine(svc)) + '</span><span><strong>Durée indicative :</strong> ' + bkEsc(fmtDuration(svc.duration)) + '</span></p>' +
+      (excl.length ? '<p class="bk-svc-detail-meta"><strong>Non compris :</strong> ' + bkEsc(excl.join(' ; ')) + '</p>' : '') +
+      (cond ? '<p class="bk-svc-detail-meta">' + bkEsc(cond) + '</p>' : '');
+    box.hidden = false;
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches){ box.classList.remove('hvk-anim-in'); void box.offsetWidth; box.classList.add('hvk-anim-in'); }
+  }
+
   function renderStep1View(){
-    if (isPackId(state.serviceId)){
-      bkStep1Title.textContent = '1 · Quelques informations';
+    if (isStep1PackView(state.serviceId)){
+      bkStep1Title.textContent = packFamilyOf(state.serviceId) ? '1 · Choisissez votre formule' : '1 · Quelques informations';
       step1Search.hidden = true;
       step1Info.hidden = false;
+      var unitsWrap = document.getElementById('bkClimUnits');
+      if (unitsWrap) unitsWrap.hidden = !isPackId(state.serviceId);
+      renderBkPackPicker();
       updatePackPriceLive();
       bkBack.hidden = false;
     } else {
@@ -11670,6 +11768,7 @@ if ('serviceWorker' in navigator){
       step1Search.hidden = false;
       step1Info.hidden = true;
       renderServiceOptions();
+      renderBkSvcDetail();
       bkBack.hidden = true;
     }
     updateNav();
@@ -11775,6 +11874,25 @@ if ('serviceWorker' in navigator){
     return [(bkNewAddrAddress && bkNewAddrAddress.value), (bkNewAddrCity && bkNewAddrCity.value)].filter(Boolean).join(' ');
   }
 
+  // Récapitulatif : ce qui est inclus / non compris dans la formule choisie
+  // (catalogue partagé HvPacks), repliable pour garder le récap lisible.
+  function bkIncludedRows(svc){
+    if (!window.HvPacks || !window.HvPacks.isLoaded()) return '';
+    var inc = window.HvPacks.includesOf(svc.id);
+    var p = window.HvPacks.pack(svc.id);
+    var d = window.HvPacks.service(svc.id);
+    var exc = p ? p.excludes.concat(p.family.excludes) : ((d && d.excludes) || []);
+    var html = '';
+    if (inc.length){
+      html += '<details class="s-row s-row-details"><summary><span class="s-label">Inclus</span><span class="s-value">' + inc.length + ' point' + (inc.length > 1 ? 's' : '') + ' — voir</span></summary>' +
+        '<ul class="s-included">' + inc.map(function(x){ return '<li>' + bkEsc(x) + '</li>'; }).join('') + '</ul></details>';
+    }
+    if (exc.length){
+      html += '<div class="s-row"><span class="s-label">Non compris</span><span class="s-value">' + bkEsc(exc.join(' ; ')) + '</span></div>';
+    }
+    return html;
+  }
+
   function buildSummary(){
     var svc = currentService();
     var endTime = fmtTime(state.time + svc.duration);
@@ -11857,9 +11975,12 @@ if ('serviceWorker' in navigator){
       (isPro && bkCompany && bkCompany.value.trim() ? '<div class="s-row"><span class="s-label">Entreprise / Conciergerie</span><span class="s-value">'+bkCompany.value+'</span></div>' : '') +
       '<div class="s-row"><span class="s-label">Prestation</span><span class="s-value">'+svcLabel(svc)+'</span></div>'+
       (packLine ? '<div class="s-row"><span class="s-label">Options</span><span class="s-value">'+packLine+'</span></div>' : '') +
+      bkIncludedRows(svc) +
       prestationRow +
       '<div class="s-row"><span class="s-label">Date</span><span class="s-value">'+fmtDateLong(state.date)+'</span></div>'+
       '<div class="s-row"><span class="s-label">Horaire</span><span class="s-value">'+fmtTime(state.time)+' – '+endTime+'</span></div>'+
+      '<div class="s-row"><span class="s-label">Durée indicative</span><span class="s-value">'+bkEsc(fmtDuration(svc.duration))+'</span></div>'+
+      (currentInterventionAddressText() ? '<div class="s-row"><span class="s-label">Adresse</span><span class="s-value">'+bkEsc(currentInterventionAddressText())+'</span></div>' : '') +
       travelRows +
       multiRows +
       totalRow +
@@ -12599,7 +12720,7 @@ if ('serviceWorker' in navigator){
     }
   });
   bkBack.addEventListener('click', function(){
-    if (step === 1 && isPackId(state.serviceId)){
+    if (step === 1 && isStep1PackView(state.serviceId)){
       state.serviceId = null;
       renderStep1View();
       return;
@@ -12750,6 +12871,12 @@ if ('serviceWorker' in navigator){
   renderDateOptions();
   renderTimeOptions();
   showStep(1, true);
+  // Catalogue partagé chargé (prix/durées à jour, sélecteur de formules) :
+  // réaffiche l'étape en cours sans perdre la sélection.
+  document.addEventListener('hvpacks:ready', function(){
+    if (step === 1) renderStep1View();
+    else if (step === 3 && state.serviceId && state.date && state.time !== null) buildSummary();
+  });
 
   window.sudBooking = {
     // Ajouts pour la refonte Espace Client (page "Prestations" + carrousel
@@ -12765,6 +12892,12 @@ if ('serviceWorker' in navigator){
       return Object.keys(CATEGORY_META).map(function(key){ return { id:key, label:CATEGORY_META[key].label }; });
     },
     serviceCategory: function(id){ return serviceCategory(id); },
+    // Composant partagé des packs (HvPacks) : savoir si un pack passe par
+    // l'étape « nombre d'unités » (clim) et aligner le prix de base de ce
+    // calcul sur le catalogue Supabase (source de vérité de create_booking).
+    isPackId: function(id){ return isPackId(id); },
+    setPackBase: function(id, euros){ if (PACK_META[id] && euros > 0) PACK_META[id].base = euros; },
+    currentServiceId: function(){ return state.serviceId; },
     selectService: function(id){
       state.serviceId = id;
       state.time = null;
@@ -12835,6 +12968,637 @@ if ('serviceWorker' in navigator){
       return isClimRepairQuery(query);
     }
   };
+})();
+</script>
+
+<style>
+  /* ---------- Composant partagé des packs (HvPacks) ----------
+     Un seul rendu pour le site public, la réservation, l'Espace Client et
+     l'Espace Pro. Données : Supabase (services / service_packs), modifiables
+     depuis l'administration. Animations 200–350 ms, coupées si l'utilisateur
+     a demandé à réduire les animations. */
+  .hvk{ --hvk-accent:var(--accent-cat, var(--terracotta)); margin:18px 0 6px; }
+  .pro-check-book{ margin-top:26px; }
+  .pro-check-book-title{ font-family:"Poppins",sans-serif; font-size:1.05rem; margin:0 0 4px; }
+  #bkPackPicker .hvk{ margin-top:4px; }
+  #bkPackPicker .hvk-peek{ display:none; }
+  #bkPackPicker + #bkClimUnits{ margin-top:18px; }
+  .s-row-details{ display:block; }
+  .s-row-details > summary{ display:flex; justify-content:space-between; gap:12px; cursor:pointer; list-style:none; min-height:32px; align-items:center; }
+  .s-row-details > summary::-webkit-details-marker{ display:none; }
+  .s-row-details > summary .s-value{ text-decoration:underline; text-underline-offset:3px; }
+  .s-included{ margin:6px 0 2px; padding-left:18px; font-size:0.86rem; line-height:1.45; }
+  .bk-svc-detail{ margin-top:14px; padding:14px 16px; border-radius:12px; background:var(--cream); border:1.5px solid color-mix(in srgb, var(--terracotta) 40%, var(--line)); }
+  .bk-svc-detail[hidden]{ display:none; }
+  .bk-svc-detail-title{ margin:0 0 4px; font-family:"Poppins",sans-serif; font-weight:800; }
+  .bk-svc-detail-desc{ margin:0 0 8px; font-size:0.9rem; line-height:1.45; }
+  .bk-svc-detail-meta{ margin:0 0 4px; font-size:0.85rem; color:var(--ink-soft); display:flex; flex-wrap:wrap; gap:4px 14px; }
+  /* Transitions d'étapes, d'onglets et de pages (une seule fois à
+     l'affichage, jamais en boucle) : réservation, Espace Client, Espace
+     Pro, administration. */
+  @media (prefers-reduced-motion: no-preference){
+    .booking-step:not([hidden]), .ec-panel:not([hidden]), .pro-page:not([hidden]), .adm-page:not([hidden]){ animation:hvkStepIn .25s ease both; }
+  }
+  @keyframes hvkStepIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .hvk .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .hvk-grid{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; }
+  @media (max-width:760px){ .hvk-grid{ grid-template-columns:1fr; gap:10px; } }
+  .hvk-card{
+    position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:left;
+    width:100%; min-height:44px; padding:18px 16px 14px; border-radius:14px; cursor:pointer;
+    background:var(--sand); color:var(--ink); border:1.5px solid var(--line); font:inherit;
+    transition:transform .22s ease, box-shadow .25s ease, border-color .25s ease, background-color .25s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .hvk-card:hover{ border-color:color-mix(in srgb, var(--hvk-accent) 55%, transparent); transform:translateY(-2px); box-shadow:0 12px 24px -18px rgba(22,34,44,0.55); }
+  .hvk-card:focus-visible{ outline:3px solid color-mix(in srgb, var(--hvk-accent) 45%, transparent); outline-offset:2px; }
+  .hvk-card:active{ transform:scale(0.985); }
+  .hvk-card.is-featured{ border-color:color-mix(in srgb, var(--hvk-accent) 40%, var(--line)); }
+  .hvk-card.is-selected{
+    border-color:var(--hvk-accent); background:var(--cream);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--hvk-accent) 28%, transparent), 0 16px 30px -20px var(--hvk-accent);
+  }
+  .hvk-check{
+    position:absolute; top:12px; right:12px; width:24px; height:24px; border-radius:50%;
+    border:2px solid var(--line); display:flex; align-items:center; justify-content:center; color:#fff;
+    transition:background-color .2s ease, border-color .2s ease, transform .25s ease;
+  }
+  .hvk-check svg{ width:13px; height:13px; opacity:0; transform:scale(.4); transition:opacity .2s ease, transform .25s ease; }
+  .hvk-card.is-selected .hvk-check{ background:var(--hvk-accent); border-color:var(--hvk-accent); }
+  .hvk-card.is-selected .hvk-check svg{ opacity:1; transform:scale(1); }
+  .hvk-badges{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:4px; padding-right:30px; }
+  .hvk-badge{ font-size:0.66rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding:3px 9px; border-radius:999px; background:var(--hvk-accent); color:#fff; }
+  .hvk-badge-gold{ background:linear-gradient(135deg, #D9B25C, #B5842E); }
+  .hvk-name{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1rem; text-transform:uppercase; letter-spacing:.02em; padding-right:30px; }
+  .hvk-tagline{ font-size:0.84rem; font-style:italic; color:var(--ink-soft); }
+  .hvk-pricing{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:6px; }
+  .hvk-price{ font-family:"Poppins",sans-serif; font-weight:800; font-size:1.22rem; color:var(--hvk-accent); }
+  .hvk-price small{ font-size:.62em; font-weight:700; }
+  .hvk-dur{ font-size:0.8rem; color:var(--ink-soft); }
+  .hvk-peek{ list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; }
+  .hvk-peek li{ font-size:0.83rem; color:var(--ink-soft); display:flex; gap:6px; line-height:1.35; }
+  .hvk-peek li::before{ content:"✓"; color:var(--hvk-accent); font-weight:800; }
+  @media (max-width:760px){ .hvk-peek{ display:none; } }
+  .hvk-more{ margin-top:8px; font-size:0.82rem; font-weight:700; color:var(--hvk-accent); display:inline-flex; align-items:center; gap:4px; }
+  .hvk-more svg{ width:14px; height:14px; transition:transform .25s ease; }
+  .hvk-card.is-selected .hvk-more svg{ transform:rotate(180deg); }
+
+  .hvk-detail{ overflow:hidden; }
+  .hvk-detail[hidden]{ display:none; }
+  .hvk-detail-inner{
+    margin-top:14px; padding:20px 18px; border-radius:14px; background:var(--cream);
+    border:1.5px solid color-mix(in srgb, var(--hvk-accent) 45%, var(--line));
+  }
+  .hvk-grid .hvk-detail{ grid-column:1 / -1; }
+  .hvk-grid .hvk-detail .hvk-detail-inner{ margin-top:0; }
+  .hvk-anim-in{ animation:hvkIn .3s ease both; }
+  @keyframes hvkIn{ from{ opacity:0; transform:translateY(-8px); } to{ opacity:1; transform:none; } }
+  .hvk-detail-head{ display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:flex-start; margin-bottom:12px; }
+  .hvk-detail-eyebrow{ margin:0; font-size:0.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--hvk-accent); }
+  .hvk-detail-head h4{ margin:2px 0 0; font-family:"Poppins",sans-serif; font-size:1.1rem; }
+  .hvk-detail-head .hvk-tagline{ display:block; margin-top:2px; }
+  .hvk-detail-price{ text-align:right; }
+  .hvk-detail-price strong{ display:block; font-family:"Poppins",sans-serif; font-size:1.35rem; color:var(--hvk-accent); }
+  .hvk-detail-price span{ font-size:0.82rem; color:var(--ink-soft); }
+  @media (max-width:520px){ .hvk-detail-price{ text-align:left; } }
+  .hvk-cols{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; }
+  @media (max-width:760px){ .hvk-cols{ grid-template-columns:1fr; gap:12px; } }
+  .hvk-h{ margin:0 0 6px; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--ink); }
+  .hvk-list{ list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:5px; }
+  .hvk-list li{ display:flex; gap:7px; font-size:0.88rem; line-height:1.4; color:var(--ink); }
+  .hvk-inc li::before{ content:"✓"; color:var(--hvk-accent); font-weight:800; flex:none; }
+  .hvk-perks li{ font-weight:800; color:#B5842E; }
+  .hvk-perks li::before{ content:"★"; flex:none; }
+  .hvk-exc li{ color:var(--ink-soft); }
+  .hvk-exc li::before{ content:"✕"; color:var(--ink-soft); font-weight:800; flex:none; }
+  .hvk-new{ margin-left:4px; font-size:0.62rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding:2px 6px; border-radius:999px; background:color-mix(in srgb, var(--hvk-accent) 14%, transparent); color:var(--hvk-accent); white-space:nowrap; align-self:center; }
+  .hvk-cond{ margin:0 0 10px; font-size:0.84rem; color:var(--ink-soft); line-height:1.45; }
+  .hvk-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+  .hvk-choose{
+    min-height:48px; padding:12px 22px; border:none; border-radius:12px; cursor:pointer;
+    background:var(--hvk-accent); color:#fff; font-family:"Poppins",sans-serif; font-weight:700; font-size:0.95rem;
+    transition:transform .2s ease, filter .2s ease;
+  }
+  .hvk-choose:hover{ filter:brightness(1.07); transform:translateY(-1px); }
+  .hvk-choose:active{ transform:scale(.98); }
+  .hvk-choose[disabled]{ opacity:.7; cursor:progress; }
+  @media (max-width:520px){ .hvk-choose{ flex:1; } }
+  .hvk-compare-btn{
+    margin-top:14px; min-height:44px; padding:10px 16px; border-radius:10px; cursor:pointer; font:inherit; font-weight:700; font-size:0.88rem;
+    background:transparent; color:var(--ink); border:1.5px solid var(--line); display:inline-flex; align-items:center; gap:8px;
+  }
+  .hvk-compare-btn svg{ width:14px; height:14px; transition:transform .25s ease; }
+  .hvk-compare-btn[aria-expanded="true"] svg{ transform:rotate(180deg); }
+  .hvk-compare{ margin-top:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:12px; border:1px solid var(--line); background:var(--sand); }
+  .hvk-compare[hidden]{ display:none; }
+  .hvk-table{ width:100%; border-collapse:collapse; font-size:0.85rem; min-width:460px; }
+  .hvk-table th, .hvk-table td{ padding:9px 10px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle; }
+  .hvk-table th:first-child, .hvk-table td:first-child{ text-align:left; position:sticky; left:0; background:var(--sand); min-width:170px; }
+  .hvk-table thead th{ font-family:"Poppins",sans-serif; font-weight:800; font-size:0.8rem; text-transform:uppercase; }
+  .hvk-table .hvk-yes{ color:var(--hvk-accent); font-weight:800; }
+  .hvk-table .hvk-no{ color:var(--ink-soft); }
+  .hvk-table tr.is-perk td:first-child{ color:#B5842E; font-weight:700; }
+  @media (max-width:520px){
+    .hvk-table{ min-width:0; font-size:0.78rem; table-layout:fixed; }
+    .hvk-table th, .hvk-table td{ padding:8px 4px; }
+    .hvk-table th:first-child, .hvk-table td:first-child{ min-width:0; width:40%; padding-left:10px; }
+    .hvk-table thead th{ font-size:0.7rem; letter-spacing:0; text-transform:none; }
+  }
+  .hvk-table th.is-selected, .hvk-table td.is-selected{ background:color-mix(in srgb, var(--hvk-accent) 9%, transparent); }
+
+  /* Fiche détaillée d'une prestation (modale) */
+  .hvk-modal{ position:fixed; inset:0; z-index:2147483400; background:rgba(16,27,36,0.55); display:flex; align-items:flex-end; justify-content:center; }
+  .hvk-modal[hidden]{ display:none; }
+  @media (min-width:760px){ .hvk-modal{ align-items:center; padding:24px; } }
+  .hvk-sheet{
+    position:relative; width:100%; max-width:620px; max-height:88vh; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+    background:var(--cream); color:var(--ink); border-radius:18px 18px 0 0; padding:22px 18px calc(18px + env(safe-area-inset-bottom));
+  }
+  @media (min-width:760px){ .hvk-sheet{ border-radius:18px; padding:26px 26px 22px; } }
+  .hvk-modal.hvk-anim-in .hvk-sheet{ animation:hvkSheet .3s ease both; }
+  @keyframes hvkSheet{ from{ opacity:0; transform:translateY(24px); } to{ opacity:1; transform:none; } }
+  .hvk-close{ position:absolute; top:10px; right:10px; width:44px; height:44px; border-radius:50%; border:none; background:transparent; color:var(--ink); font-size:1.5rem; line-height:1; cursor:pointer; }
+  .hvk-close:hover{ background:var(--line); }
+  .hvk-sheet h3{ margin:0 44px 4px 0; font-family:"Poppins",sans-serif; font-size:1.15rem; }
+  .hvk-desc{ font-size:0.92rem; line-height:1.5; margin:8px 0 12px; }
+  .hvk-facts{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; margin:10px 0 14px; }
+  .hvk-fact{ background:var(--sand); border:1px solid var(--line); border-radius:10px; padding:8px 10px; }
+  .hvk-fact span{ display:block; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
+  .hvk-fact strong{ font-size:0.95rem; }
+  .hvk-info-btn{
+    min-height:40px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--ink);
+    font:inherit; font-size:0.84rem; font-weight:700; cursor:pointer;
+  }
+  .hvk-info-btn:hover{ border-color:var(--terracotta); }
+
+  @media (prefers-reduced-motion: reduce){
+    .hvk-card, .hvk-check, .hvk-check svg, .hvk-more svg, .hvk-choose, .hvk-compare-btn svg{ transition:none !important; }
+    .hvk-anim-in, .hvk-modal.hvk-anim-in .hvk-sheet{ animation:none !important; }
+    .hvk-card:hover{ transform:none; }
+  }
+</style>
+<script>
+(function(){
+  'use strict';
+  // ---------- HvPacks : catalogue partagé + sélecteur de formules ----------
+  // Source unique : tables services / service_packs (Supabase, lecture
+  // publique des lignes actives, écriture réservée à l'admin). Les textes
+  // affichés (accroche, inclus, non compris, conditions) sont ceux saisis au
+  // catalogue — jamais générés. Si le catalogue est inaccessible, les blocs
+  // statiques déjà présents dans la page restent affichés et fonctionnels.
+  var sbw = window.sudSupabase;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  function reduced(){ return !!(mq && mq.matches); }
+  var cat = { loaded:false, families:{}, familyList:[], packs:{}, services:{} };
+  var loadPromise = null;
+  var readyCbs = [];
+  var SEL_KEY = 'hv_pack_selection';
+
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function euros(c){ if (c == null) return ''; var e = c / 100; return (c % 100 === 0 ? String(e) : e.toFixed(2).replace('.', ',')) + ' €'; }
+  function dur(m){ m = Number(m) || 0; if (!m) return ''; var h = Math.floor(m / 60), r = m % 60; return h ? h + ' h' + (r ? ' ' + (r < 10 ? '0' : '') + r : '') : r + ' min'; }
+  var CHECK_SVG = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHEVRON_SVG = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function readSel(){ try { return JSON.parse(sessionStorage.getItem(SEL_KEY) || '{}') || {}; } catch (e){ return {}; } }
+  function writeSel(family, slug){ try { var s = readSel(); s[family] = slug; sessionStorage.setItem(SEL_KEY, JSON.stringify(s)); } catch (e){} }
+
+  function build(services, packs){
+    var byId = {};
+    cat.families = {}; cat.familyList = []; cat.packs = {}; cat.services = {};
+    services.forEach(function(s){
+      if (!s.is_active) return;
+      byId[s.id] = s;
+      cat.services[s.slug] = {
+        slug:s.slug, name:s.name, category:s.category, customerType:s.customer_type, description:s.description,
+        bookingType:s.booking_type, priceCents:s.base_price_cents, duration:s.duration_minutes, mode:s.price_display_mode,
+        excludes:s.excludes || [], conditions:s.conditions || ''
+      };
+    });
+    packs.forEach(function(p){
+      var s = byId[p.service_id];
+      if (!s || !p.is_active) return;
+      var fam = cat.families[s.slug];
+      if (!fam){
+        fam = cat.families[s.slug] = { slug:s.slug, name:s.name, category:s.category, customerType:s.customer_type, conditions:s.conditions || '', excludes:s.excludes || [], packs:[] };
+        cat.familyList.push(fam);
+      }
+      var pk = {
+        slug:p.slug, name:p.name, priceCents:p.price_cents, duration:p.duration_minutes, featured:!!p.is_featured,
+        tagline:p.tagline || '', includes:p.includes || [], perks:p.perks || [], excludes:p.excludes || [], note:p.note || '', family:fam
+      };
+      fam.packs.push(pk);
+      cat.packs[p.slug] = pk;
+    });
+  }
+
+  // Aligne les prix/durées affichés par le tunnel (SERVICES) sur le catalogue :
+  // une modification faite dans l'administration se retrouve partout.
+  function syncBooking(){
+    var B = window.sudBooking;
+    if (!B || !B.getService) return;
+    Object.keys(cat.packs).forEach(function(slug){
+      var p = cat.packs[slug], s = B.getService(slug);
+      if (!s) return;
+      if (p.priceCents != null){ s.price = euros(p.priceCents) + ' TTC'; if (B.setPackBase) B.setPackBase(slug, p.priceCents / 100); }
+      if (p.duration) s.duration = p.duration;
+    });
+    Object.keys(cat.services).forEach(function(slug){
+      var d = cat.services[slug], s = B.getService(slug);
+      if (!s || s.price === 'Gratuit' || d.mode === 'QUOTE') return;
+      if (d.priceCents != null && d.priceCents > 0) s.price = euros(d.priceCents) + ' TTC';
+      if (d.duration) s.duration = d.duration;
+    });
+    var sel = document.getElementById('proPackSelect');
+    if (sel){
+      Array.prototype.forEach.call(sel.options, function(o){
+        var p = cat.packs[o.value];
+        if (p) o.textContent = p.name + ' — ' + euros(p.priceCents) + ' TTC';
+      });
+      try { sel.dispatchEvent(new Event('change')); } catch (e){}
+    }
+  }
+
+  function load(force){
+    if (loadPromise && !force) return loadPromise;
+    if (!sbw || !sbw.configured) return Promise.resolve(null);
+    loadPromise = Promise.all([
+      sbw.client.from('services').select('id,slug,name,category,customer_type,description,booking_type,base_price_cents,duration_minutes,price_display_mode,excludes,conditions,is_active,sort_order').order('sort_order', { ascending:true }),
+      sbw.client.from('service_packs').select('id,service_id,slug,name,price_cents,duration_minutes,is_featured,is_active,sort_order,tagline,includes,perks,excludes,note').order('sort_order', { ascending:true })
+    ]).then(function(r){
+      if (r[0].error || r[1].error) throw (r[0].error || r[1].error);
+      build(r[0].data || [], r[1].data || []);
+      if (!cat.familyList.length) return null;
+      cat.loaded = true;
+      syncBooking();
+      try { document.dispatchEvent(new CustomEvent('hvpacks:ready')); } catch (e){}
+      var cbs = readyCbs.slice(); readyCbs = [];
+      cbs.forEach(function(fn){ try { fn(cat); } catch (e){ console.error('HvPacks ready', e); } });
+      return cat;
+    }).catch(function(err){
+      console.warn('HvPacks : catalogue indisponible, affichage statique conservé.', err && err.message);
+      loadPromise = null;
+      return null;
+    });
+    return loadPromise;
+  }
+  function onReady(fn){ if (cat.loaded) fn(cat); else readyCbs.push(fn); }
+
+  // « Tout le Pack Essentiel » / « Tout le Check Express » → développé à
+  // partir du pack visé, pour le détail et le comparatif (aucun élément
+  // ajouté : uniquement ceux saisis au catalogue).
+  function parentOf(pack, item){
+    var m = /^Tout le (?:Pack |Check )?(.+)$/i.exec(item);
+    if (!m) return null;
+    var key = m[1].trim().toLowerCase();
+    return pack.family.packs.filter(function(p){ return p !== pack && p.name.toLowerCase().slice(-key.length) === key; })[0] || null;
+  }
+  function expand(pack, seen){
+    seen = seen || {};
+    if (seen[pack.slug]) return [];
+    seen[pack.slug] = true;
+    var out = [], tail = [];
+    pack.includes.forEach(function(it){
+      var parent = parentOf(pack, it);
+      if (parent){ expand(parent, seen).forEach(function(x){ if (out.indexOf(x) < 0 && tail.indexOf(x) < 0) (/^Déplacement/i.test(x) ? tail : out).push(x); }); return; }
+      if (out.indexOf(it) >= 0 || tail.indexOf(it) >= 0) return;
+      (/^Déplacement/i.test(it) ? tail : out).push(it);
+    });
+    return out.concat(tail);
+  }
+  function ownItems(pack){
+    var hasParent = pack.includes.some(function(it){ return !!parentOf(pack, it); });
+    if (!hasParent) return null;
+    return pack.includes.filter(function(it){ return !parentOf(pack, it) && !/^Déplacement/i.test(it); });
+  }
+
+  function cardHTML(p, selected){
+    var badges = '';
+    if (p.featured) badges += '<span class="hvk-badge">Le plus choisi</span>';
+    if (p.perks.some(function(x){ return /même en dehors/i.test(x); })) badges += '<span class="hvk-badge hvk-badge-gold">Déplacement offert même hors zone</span>';
+    var peek = expand(p).filter(function(x){ return !/^Déplacement/i.test(x); });
+    var own = ownItems(p);
+    var shown = (own && own.length ? own : peek).slice(0, 3);
+    var rest = peek.length - shown.length;
+    return '<button type="button" class="hvk-card' + (p.featured ? ' is-featured' : '') + (selected ? ' is-selected' : '') + '" role="radio" aria-checked="' + (selected ? 'true' : 'false') + '" data-hvk-pack="' + esc(p.slug) + '">' +
+      '<span class="hvk-check" aria-hidden="true">' + CHECK_SVG + '</span>' +
+      (badges ? '<span class="hvk-badges">' + badges + '</span>' : '') +
+      '<span class="hvk-name">' + esc(p.name) + '</span>' +
+      (p.tagline ? '<span class="hvk-tagline">' + esc(p.tagline) + '</span>' : '') +
+      '<span class="hvk-pricing"><span class="hvk-price">' + esc(euros(p.priceCents)) + ' <small>TTC</small></span>' +
+        (p.duration ? '<span class="hvk-dur">Durée indicative : ' + esc(dur(p.duration)) + '</span>' : '') + '</span>' +
+      (shown.length ? '<ul class="hvk-peek">' + (own && own.length && own.length < peek.length ? '<li>Tout le ' + esc(parentName(p)) + '</li>' : '') + shown.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + (rest > 0 ? '<li>et ' + rest + ' autre' + (rest > 1 ? 's' : '') + ' point' + (rest > 1 ? 's' : '') + '</li>' : '') + '</ul>' : '') +
+      '<span class="hvk-more">' + (selected ? 'Détail affiché' : 'Voir le détail') + CHEVRON_SVG + '</span>' +
+    '</button>';
+  }
+  function parentName(p){
+    for (var i = 0; i < p.includes.length; i++){ var par = parentOf(p, p.includes[i]); if (par) return par.name; }
+    return '';
+  }
+
+  function travelLine(p){
+    if (p.perks.some(function(x){ return /même en dehors/i.test(x); })) return null;
+    return 'Déplacement offert jusqu\'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s\'appliquer selon la distance et sont toujours affichés avant validation de votre demande.';
+  }
+
+  function detailHTML(p, opts){
+    var fam = p.family;
+    var all = expand(p);
+    var own = ownItems(p) || [];
+    var excludes = p.excludes.concat(fam.excludes.filter(function(x){ return p.excludes.indexOf(x) < 0; }));
+    var cond = [fam.conditions, travelLine(p)].filter(Boolean);
+    return '<div class="hvk-detail-inner">' +
+      '<div class="hvk-detail-head"><div>' +
+        '<p class="hvk-detail-eyebrow">' + esc(fam.name) + '</p>' +
+        '<h4>' + esc(p.name) + '</h4>' + (p.tagline ? '<span class="hvk-tagline">' + esc(p.tagline) + '</span>' : '') +
+      '</div><div class="hvk-detail-price"><strong>' + esc(euros(p.priceCents)) + ' TTC</strong>' +
+        (p.duration ? '<span>Durée indicative : ' + esc(dur(p.duration)) + '</span>' : '') + '</div></div>' +
+      '<div class="hvk-cols"><div>' +
+        '<p class="hvk-h">Ce qui est inclus</p>' +
+        '<ul class="hvk-list hvk-inc">' + all.map(function(x){ return '<li><span>' + esc(x) + '</span>' + (own.indexOf(x) >= 0 ? '<span class="hvk-new">En plus</span>' : '') + '</li>'; }).join('') + '</ul>' +
+        (p.perks.length ? '<p class="hvk-h">Avantages</p><ul class="hvk-list hvk-perks">' + p.perks.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+      '</div><div>' +
+        (excludes.length ? '<p class="hvk-h">Non compris</p><ul class="hvk-list hvk-exc">' + excludes.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+        (cond.length ? '<p class="hvk-h">Conditions</p>' + cond.map(function(x){ return '<p class="hvk-cond">' + esc(x) + '</p>'; }).join('') : '') +
+        (p.note ? '<p class="hvk-cond">' + esc(p.note) + '</p>' : '') +
+      '</div></div>' +
+      (opts.onChoose ? '<div class="hvk-actions"><button type="button" class="hvk-choose" data-hvk-choose="' + esc(p.slug) + '">' + esc(opts.chooseLabel || 'Choisir cette formule') + '</button></div>' : '') +
+    '</div>';
+  }
+
+  function compareHTML(fam, selected){
+    var packs = fam.packs;
+    var rows = [], seen = {};
+    var exp = packs.map(function(p){ return expand(p); });
+    exp.forEach(function(list){ list.forEach(function(x){ if (!seen[x]){ seen[x] = 1; rows.push({ label:x, perk:false }); } }); });
+    packs.forEach(function(p){ p.perks.forEach(function(x){ if (!seen[x]){ seen[x] = 1; rows.push({ label:x, perk:true }); } }); });
+    function cls(p){ return p.slug === selected ? ' class="is-selected"' : ''; }
+    return '<table class="hvk-table"><caption class="sr-only">Comparatif des formules ' + esc(fam.name) + '</caption><thead><tr><th scope="col">Formule</th>' +
+      packs.map(function(p){ return '<th scope="col"' + cls(p) + ' title="' + esc(p.name) + '">' + esc(p.name.replace(/^(Pack|Check)\s+/i, '')) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      '<tr><td>Prix TTC</td>' + packs.map(function(p){ return '<td' + cls(p) + '><strong>' + esc(euros(p.priceCents)) + '</strong></td>'; }).join('') + '</tr>' +
+      '<tr><td>Durée indicative</td>' + packs.map(function(p){ return '<td' + cls(p) + '>' + esc(dur(p.duration) || '—') + '</td>'; }).join('') + '</tr>' +
+      rows.map(function(r){
+        return '<tr' + (r.perk ? ' class="is-perk"' : '') + '><td>' + esc(r.label) + '</td>' + packs.map(function(p, i){
+          var has = r.perk ? p.perks.indexOf(r.label) >= 0 : exp[i].indexOf(r.label) >= 0;
+          return '<td' + cls(p) + '>' + (has ? '<span class="hvk-yes" aria-label="Inclus">✓</span>' : '<span class="hvk-no" aria-label="Non inclus">—</span>') + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  // render(container, familySlug, opts)
+  //   opts.selected      : slug présélectionné (sinon dernier choix de la session)
+  //   opts.onSelect(slug): à chaque sélection d'une carte
+  //   opts.onChoose(slug, btn): bouton « Choisir cette formule »
+  //   opts.chooseLabel   : libellé du bouton
+  //   opts.compare       : false pour masquer le comparatif
+  //   opts.openDetail    : true pour ouvrir le détail du pack sélectionné
+  function render(container, familySlug, opts){
+    opts = opts || {};
+    var fam = cat.families[familySlug];
+    if (!container || !fam) return false;
+    var selected = opts.selected || readSel()[familySlug] || null;
+    if (selected && !cat.packs[selected]) selected = null;
+    var showDetail = !!(opts.openDetail && selected);
+    container.innerHTML = '<div class="hvk" data-hvk-family="' + esc(familySlug) + '">' +
+      '<div class="hvk-grid" role="radiogroup" aria-label="Formules ' + esc(fam.name) + '">' +
+        fam.packs.map(function(p){ return cardHTML(p, showDetail && p.slug === selected); }).join('') +
+      '</div>' +
+      (opts.compare === false || fam.packs.length < 2 ? '' :
+        '<button type="button" class="hvk-compare-btn" aria-expanded="false" data-hvk-compare>Comparer les formules' + CHEVRON_SVG + '</button>' +
+        '<div class="hvk-compare" hidden></div>') +
+    '</div>';
+    var root = container.firstChild;
+    var grid = root.querySelector('.hvk-grid');
+    var detail = document.createElement('div');
+    detail.className = 'hvk-detail';
+    detail.hidden = true;
+    detail.setAttribute('aria-live', 'polite');
+    var current = null;
+
+    function placeDetail(card){
+      // Mobile : le détail s'ouvre juste sous la carte touchée ; sur grand
+      // écran, sous la rangée de cartes (toute la largeur).
+      if (window.matchMedia('(max-width:760px)').matches) card.insertAdjacentElement('afterend', detail);
+      else grid.appendChild(detail);
+    }
+    function select(slug, fromUser){
+      var p = cat.packs[slug];
+      if (!p) return;
+      var cards = grid.querySelectorAll('.hvk-card');
+      var card = null;
+      Array.prototype.forEach.call(cards, function(c){
+        var on = c.getAttribute('data-hvk-pack') === slug;
+        c.classList.toggle('is-selected', on);
+        c.setAttribute('aria-checked', on ? 'true' : 'false');
+        var more = c.querySelector('.hvk-more');
+        if (more) more.firstChild.nodeValue = on ? 'Détail affiché' : 'Voir le détail';
+        if (on) card = c;
+      });
+      current = slug;
+      writeSel(familySlug, slug);
+      detail.innerHTML = detailHTML(p, opts);
+      placeDetail(card);
+      detail.hidden = false;
+      if (!reduced()){ detail.classList.remove('hvk-anim-in'); void detail.offsetWidth; detail.classList.add('hvk-anim-in'); }
+      var cmp = root.querySelector('.hvk-compare');
+      if (cmp && !cmp.hidden) cmp.innerHTML = compareHTML(fam, slug);
+      if (fromUser && window.matchMedia('(max-width:760px)').matches){
+        var r = detail.getBoundingClientRect();
+        if (r.top > window.innerHeight * 0.75) detail.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block:'nearest' });
+      }
+      if (fromUser && opts.onSelect) opts.onSelect(slug);
+      var choose = detail.querySelector('[data-hvk-choose]');
+      if (choose) choose.addEventListener('click', function(){
+        if (opts.onChoose) opts.onChoose(slug, choose);
+      });
+    }
+    grid.addEventListener('click', function(e){
+      var c = e.target.closest ? e.target.closest('.hvk-card') : null;
+      if (!c || !grid.contains(c)) return;
+      var slug = c.getAttribute('data-hvk-pack');
+      if (slug === current && !detail.hidden){
+        // Second appui : replie le détail (la sélection est conservée).
+        detail.hidden = true;
+        c.querySelector('.hvk-more').firstChild.nodeValue = 'Voir le détail';
+        return;
+      }
+      select(slug, true);
+    });
+    // Navigation clavier entre les cartes (groupe de boutons radio).
+    grid.addEventListener('keydown', function(e){
+      var keys = { ArrowRight:1, ArrowDown:1, ArrowLeft:-1, ArrowUp:-1 };
+      if (!keys[e.key]) return;
+      var cards = Array.prototype.slice.call(grid.querySelectorAll('.hvk-card'));
+      var i = cards.indexOf(document.activeElement);
+      if (i < 0) return;
+      e.preventDefault();
+      var n = cards[(i + keys[e.key] + cards.length) % cards.length];
+      n.focus();
+    });
+    var cmpBtn = root.querySelector('[data-hvk-compare]');
+    if (cmpBtn){
+      cmpBtn.addEventListener('click', function(){
+        var box = root.querySelector('.hvk-compare');
+        var open = box.hidden;
+        if (open) box.innerHTML = compareHTML(fam, current);
+        box.hidden = !open;
+        cmpBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        cmpBtn.firstChild.nodeValue = open ? 'Masquer le comparatif' : 'Comparer les formules';
+        if (open && !reduced()){ box.classList.remove('hvk-anim-in'); void box.offsetWidth; box.classList.add('hvk-anim-in'); }
+      });
+    }
+    if (showDetail) select(selected, false);
+    else if (selected){
+      var pre = grid.querySelector('[data-hvk-pack="' + selected + '"]');
+      if (pre){ pre.classList.add('is-selected'); pre.setAttribute('aria-checked', 'true'); current = selected; }
+    }
+    return { select:function(slug){ select(slug, false); }, current:function(){ return current; } };
+  }
+
+  // ---------- Fiche détaillée d'une prestation (modale accessible) ----------
+  var modal = null, lastFocus = null;
+  function closeModal(){
+    if (!modal || modal.hidden) return;
+    modal.hidden = true;
+    document.documentElement.style.overflow = '';
+    if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (e){}
+  }
+  function ensureModal(){
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.className = 'hvk-modal';
+    modal.hidden = true;
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'hvkSheetTitle');
+    modal.innerHTML = '<div class="hvk-sheet" tabindex="-1"></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e){ if (e.target === modal || (e.target.closest && e.target.closest('[data-hvk-close]'))) closeModal(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal(); });
+    return modal;
+  }
+  // openService(id, { onChoose(id, btn), chooseLabel }) — id = identifiant
+  // du tunnel (SERVICES) : prestation à l'unité ou pack.
+  function openService(id, opts){
+    opts = opts || {};
+    var B = window.sudBooking;
+    var s = B && B.getService ? B.getService(id) : null;
+    var pack = cat.packs[id];
+    if (!s && !pack) return;
+    ensureModal();
+    var sheet = modal.querySelector('.hvk-sheet');
+    var html;
+    if (pack){
+      var famPacks = pack.family;
+      html = '<h3 id="hvkSheetTitle">' + esc(famPacks.name + ' — ' + pack.name) + '</h3>' +
+        '<div class="hvk" style="--hvk-accent:var(--terracotta);">' + detailHTML(pack, opts) + '</div>';
+    } else {
+      var d = cat.services[id] || {};
+      var priceLine = B.priceLine ? B.priceLine(s) : s.price;
+      var excludes = d.excludes || [];
+      html = '<h3 id="hvkSheetTitle">' + esc(s.title) + '</h3>' +
+        (s.desc ? '<p class="hvk-desc">' + esc(s.desc) + '</p>' : '') +
+        '<div class="hvk-facts">' +
+          '<div class="hvk-fact"><span>Prix</span><strong>' + esc(priceLine) + '</strong></div>' +
+          '<div class="hvk-fact"><span>Durée indicative</span><strong>' + esc(dur(s.duration) || '—') + '</strong></div>' +
+        '</div>' +
+        (s.tier === 'from' ? '<p class="hvk-cond">Tarif « à partir de » : le montant définitif dépend de l\'installation, de l\'accessibilité et du matériel constatés sur place. Un devis précis vous est toujours confirmé avant intervention.</p>' : '') +
+        (s.tier === 'quote' ? '<p class="hvk-cond">Sur devis : aucun montant n\'est fixé avant l\'étude de votre installation.</p>' : '') +
+        (excludes.length ? '<p class="hvk-h">Non compris</p><ul class="hvk-list hvk-exc">' + excludes.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+        (d.conditions ? '<p class="hvk-h">Conditions</p><p class="hvk-cond">' + esc(d.conditions) + '</p>' : (s.supply ? '<p class="hvk-h">Conditions</p><p class="hvk-cond">Fourniture : selon modèle choisi.</p>' : '')) +
+        '<p class="hvk-cond">Déplacement offert jusqu\'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s\'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>' +
+        (opts.onChoose ? '<div class="hvk-actions"><button type="button" class="hvk-choose" style="background:var(--terracotta);" data-hvk-choose="' + esc(id) + '">' + esc(opts.chooseLabel || 'Réserver cette prestation') + '</button></div>' : '');
+    }
+    sheet.innerHTML = '<button type="button" class="hvk-close" data-hvk-close aria-label="Fermer">×</button>' + html;
+    var choose = sheet.querySelector('[data-hvk-choose]');
+    if (choose) choose.addEventListener('click', function(){ closeModal(); opts.onChoose(id, choose); });
+    lastFocus = document.activeElement;
+    modal.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    if (!reduced()){ modal.classList.remove('hvk-anim-in'); void modal.offsetWidth; modal.classList.add('hvk-anim-in'); }
+    sheet.scrollTop = 0;
+    var closeBtn = sheet.querySelector('.hvk-close');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  // Envoi vers le VRAI tunnel de réservation (aucun second système) : les
+  // packs clim passent par l'étape « nombre d'unités », le reste directement
+  // au choix du créneau. Connexion toujours exigée à l'étape coordonnées.
+  function book(slug){
+    var B = window.sudBooking;
+    if (!B) return;
+    if (B.isPackId && B.isPackId(slug)) B.selectPack(slug); else B.selectService(slug);
+    var el = document.getElementById('rdv');
+    if (el) el.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block:'start' });
+  }
+
+  function familyOf(slug){ var p = cat.packs[slug]; return p ? p.family.slug : null; }
+
+  window.HvPacks = {
+    load: load, onReady: onReady, render: render, openService: openService, book: book,
+    familyOf: familyOf, family: function(slug){ return cat.families[slug] || null; },
+    families: function(){ return cat.familyList.slice(); },
+    pack: function(slug){ return cat.packs[slug] || null; },
+    service: function(slug){ return cat.services[slug] || null; },
+    includesOf: function(slug){ var p = cat.packs[slug]; return p ? expand(p) : []; },
+    isLoaded: function(){ return cat.loaded; },
+    euros: euros, duration: dur
+  };
+  load();
+})();
+</script>
+<script>
+(function(){
+  // Site public : les grilles statiques de #tarifs et de la section
+  // Professionnels (conservées comme repli si le catalogue est inaccessible)
+  // sont remplacées par le composant partagé, alimenté par le catalogue.
+  if (!window.HvPacks) return;
+  window.HvPacks.onReady(function(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-hvk-family]'), function(host){
+      var fam = host.getAttribute('data-hvk-family');
+      if (!window.HvPacks.family(fam)) return;
+      var wrap = document.createElement('div');
+      var ok = window.HvPacks.render(wrap, fam, {
+        chooseLabel: 'Choisir cette formule',
+        onChoose: function(slug, btn){
+          btn.disabled = true;
+          btn.textContent = 'Formule choisie ✓';
+          var go = function(){ window.HvPacks.book(slug); btn.disabled = false; btn.textContent = 'Choisir cette formule'; };
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) go(); else setTimeout(go, 280);
+        }
+      });
+      if (!ok) return;
+      host.classList.remove('pack-grid');
+      host.classList.add('hvk-host');
+      host.innerHTML = '';
+      host.appendChild(wrap.firstChild);
+    });
+  });
+})();
+</script>
+<script>
+(function(){
+  // Espace Pro : mêmes formules Check (catalogue partagé, tarifs pro
+  // affichés aux comptes professionnels connectés), réservation par le
+  // tunnel existant en mode Professionnel.
+  var host = document.getElementById('proCheckPicker');
+  if (!host || !window.HvPacks) return;
+  function bookPro(slug){
+    if (window.sudSetMode) window.sudSetMode('professionnel');
+    if (window.sudCloseEspace) window.sudCloseEspace('espacePro');
+    window.HvPacks.book(slug);
+  }
+  window.HvPacks.onReady(function(){
+    if (!window.HvPacks.family('pro-check')){ host.innerHTML = '<p class="ec-empty">Formules momentanément indisponibles.</p>'; return; }
+    window.HvPacks.render(host, 'pro-check', { chooseLabel:'Réserver ce Check', onChoose: function(slug){ bookPro(slug); } });
+  });
+  window.HvPacks.load().then(function(c){
+    if (!c && host.querySelector('.ec-loading')){
+      host.innerHTML = '<p class="pro-page-sub">Les formules n\'ont pas pu être chargées. <button type="button" class="pro-quicklink-btn" id="proCheckRetry">Réessayer</button></p>';
+      var r = document.getElementById('proCheckRetry');
+      if (r) r.addEventListener('click', function(){ r.disabled = true; r.textContent = 'Chargement…'; window.HvPacks.load(true).then(function(ok){ if (!ok){ r.disabled = false; r.textContent = 'Réessayer'; } }); });
+    }
+  });
 })();
 </script>
 
@@ -23710,7 +24474,12 @@ if ('serviceWorker' in navigator){
   var ecxSvcCategoryFilter = 'all';
   var ecxSvcQuery = '';
   function ecxGoToBookingTunnel(serviceId){
-    if (window.sudBooking) window.sudBooking.selectService(serviceId);
+    // Packs clim : passent par l'étape « nombre d'unités » (selectPack),
+    // comme depuis le site public — jamais directement au créneau.
+    if (window.sudBooking){
+      if (window.sudBooking.isPackId && window.sudBooking.isPackId(serviceId)) window.sudBooking.selectPack(serviceId);
+      else window.sudBooking.selectService(serviceId);
+    }
     if (window.sudCloseEspace) window.sudCloseEspace('espaceClient');
     var el = document.getElementById('rdv');
     if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -23728,25 +24497,52 @@ if ('serviceWorker' in navigator){
           '<span class="ecx-svc-card-price">' + ecEscape(priceLine) + '</span>' +
           (s.duration ? '<span class="ecx-svc-card-duration">' + ecFmtDuration(s.duration) + '</span>' : '') +
         '</div>' +
-        '<button type="button" class="ecx-svc-card-cta" data-svc-book="' + ecEscape(s.id) + '">Réserver</button>' +
+        '<div class="ecx-svc-card-actions">' +
+          '<button type="button" class="hvk-info-btn" data-svc-info="' + ecEscape(s.id) + '">Détails</button>' +
+          '<button type="button" class="ecx-svc-card-cta" data-svc-book="' + ecEscape(s.id) + '">Réserver</button>' +
+        '</div>' +
       '</div></div>';
   }
   function ecxRenderServicesList(){
     var wrap = document.getElementById('ecxSvcResults');
     if (!wrap || !window.sudBooking) return;
     var all = window.sudBooking.allServices();
+    var HP = window.HvPacks && window.HvPacks.isLoaded() ? window.HvPacks : null;
     var list = all.filter(function(s){
+      // Espace particulier : les Checks techniques (tarifs professionnels)
+      // restent réservés à l'Espace Pro.
+      if (window.sudBooking.serviceCategory(s.id) === 'pro') return false;
       if (ecxSvcCategoryFilter !== 'all' && window.sudBooking.serviceCategory(s.id) !== ecxSvcCategoryFilter) return false;
       if (ecxSvcQuery && s.title.toLowerCase().indexOf(ecxSvcQuery) === -1 && (s.desc || '').toLowerCase().indexOf(ecxSvcQuery) === -1) return false;
       return true;
     });
+    // Packs regroupés par formule (composant partagé), le reste en cartes.
+    var families = [], singles = [];
+    list.forEach(function(s){
+      var fam = HP ? HP.familyOf(s.id) : null;
+      if (fam){ if (families.indexOf(fam) < 0) families.push(fam); }
+      else singles.push(s);
+    });
     wrap.innerHTML = list.length
-      ? '<div class="ecx-svc-grid">' + list.map(ecxServiceCardHtml).join('') + '</div>'
+      ? families.map(function(f){ return '<div class="ecx-pack-family"><p class="ec-section-title ecx-pack-family-title">' + ecEscape(HP.family(f).name) + '</p><div data-ecx-family="' + ecEscape(f) + '"></div></div>'; }).join('') +
+        (singles.length ? '<div class="ecx-svc-grid">' + singles.map(ecxServiceCardHtml).join('') + '</div>' : '')
       : '<div class="ec-empty"><strong>Aucune prestation trouvée</strong>Essayez un autre mot-clé ou une autre catégorie.</div>';
+    families.forEach(function(f){
+      HP.render(wrap.querySelector('[data-ecx-family="' + f + '"]'), f, {
+        chooseLabel: 'Réserver cette formule',
+        onChoose: function(slug){ ecxGoToBookingTunnel(slug); }
+      });
+    });
     Array.prototype.forEach.call(wrap.querySelectorAll('[data-svc-book]'), function(btn){
       btn.addEventListener('click', function(){ ecxGoToBookingTunnel(btn.getAttribute('data-svc-book')); });
     });
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-svc-info]'), function(btn){
+      btn.addEventListener('click', function(){
+        if (window.HvPacks) window.HvPacks.openService(btn.getAttribute('data-svc-info'), { chooseLabel:'Réserver cette prestation', onChoose: ecxGoToBookingTunnel });
+      });
+    });
   }
+  document.addEventListener('hvpacks:ready', function(){ if (document.getElementById('ecxSvcResults')) ecxRenderServicesList(); });
   function ecLoadServices(){
     var panel = document.getElementById('ecPanelServices');
     if (!window.sudBooking){ panel.innerHTML = ecErrorBlock(); return; }
@@ -23755,7 +24551,7 @@ if ('serviceWorker' in navigator){
       '<div class="ecx-search">' + ecxIcon('search', 'ecx-search-icon') + '<input type="text" id="ecxSvcSearchInput" placeholder="Rechercher une prestation" aria-label="Rechercher une prestation"></div>' +
       '<div class="ecx-filter-row" id="ecxSvcFilters">' +
         '<button type="button" class="ecx-filter-pill is-active" data-cat="all">Tout</button>' +
-        cats.map(function(c){ return '<button type="button" class="ecx-filter-pill" data-cat="' + ecEscape(c.id) + '">' + ecEscape(c.label) + '</button>'; }).join('') +
+        cats.filter(function(c){ return c.id !== 'pro'; }).map(function(c){ return '<button type="button" class="ecx-filter-pill" data-cat="' + ecEscape(c.id) + '">' + ecEscape(c.label) + '</button>'; }).join('') +
       '</div>' +
       '<div id="ecxSvcResults"></div>';
     panel.innerHTML = html;
@@ -30512,5 +31308,173 @@ if ('serviceWorker' in navigator){
     if (!box || !wrap || wrap.hidden) return;
     sb.client.rpc('set_my_sms_preference', { p_receive: box.checked }).then(function(){ window.hvSmsPrefInit(); }, function(){});
   };
+})();
+</script>
+<style>
+  .adm-offers-msg{ margin:0 0 14px; padding:10px 14px; border-radius:10px; font-size:0.88rem; font-weight:600; background:#E7F5EE; color:#1D6B47; }
+  .adm-offers-msg.is-error{ background:#FCE9E6; color:#A3311F; }
+  .offer-item{ border:1px solid var(--adm-line, var(--line)); border-radius:12px; margin-bottom:10px; background:var(--adm-card-bg, #fff); }
+  .offer-item > summary{ list-style:none; cursor:pointer; padding:12px 14px; display:flex; justify-content:space-between; gap:10px; align-items:center; min-height:48px; }
+  .offer-item > summary::-webkit-details-marker{ display:none; }
+  .offer-item > summary .ec-row-title{ display:block; }
+  .offer-item > summary .offer-edit{ font-size:0.8rem; font-weight:700; color:var(--adm-ocean, #205A8F); white-space:nowrap; }
+  .offer-item[open] > summary .offer-edit{ visibility:hidden; }
+  .offer-form{ padding:4px 14px 14px; }
+  .offer-form textarea{ min-height:96px; resize:vertical; }
+  .offer-form .offer-check{ flex-direction:row; align-items:center; gap:8px; }
+  .offer-form .offer-check input{ width:auto; min-width:20px; min-height:20px; }
+  .offer-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .offer-actions button{ min-height:46px; padding:10px 18px; border-radius:10px; border:none; font-weight:700; cursor:pointer; font-family:inherit; }
+  .offer-save{ background:var(--adm-ocean, #205A8F); color:#fff; }
+  .offer-save[disabled]{ opacity:.65; cursor:progress; }
+  .offer-cancel{ background:transparent; color:inherit; border:1.5px solid var(--adm-line, var(--line)) !important; }
+  .offer-fam{ margin:14px 0 6px; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; opacity:.75; }
+</style>
+<script>
+(function(){
+  // ---------- Administration : Packs & prestations ----------
+  // Écriture directe sur services / service_packs : protégée par la RLS
+  // existante (UPDATE réservé à is_admin()). Aucune suppression possible
+  // ici ; le prix enregistré est celui utilisé par create_booking() pour les
+  // nouvelles réservations (les rendez-vous existants gardent leur prix).
+  var sb = window.sudSupabase;
+  if (!sb || !sb.configured || !document.getElementById('admPageOffers')) return;
+  function $(id){ return document.getElementById(id); }
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function eurosIn(c){ return c == null ? '' : (c / 100).toFixed(2).replace('.', ','); }
+  function parseCents(v){
+    var t = String(v || '').trim().replace(/\s|€/g, '').replace(',', '.');
+    if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
+    return Math.round(parseFloat(t) * 100);
+  }
+  function lines(v){ return String(v || '').split('\n').map(function(x){ return x.trim().slice(0, 240); }).filter(Boolean).slice(0, 40); }
+  var data = null;
+
+  function msg(text, isErr){
+    var el = $('offersMsg'); if (!el) return;
+    el.textContent = text; el.hidden = !text;
+    el.classList.toggle('is-error', !!isErr);
+  }
+
+  function load(){
+    $('offersPacks').innerHTML = '<p class="ec-loading">Chargement…</p>';
+    return Promise.all([
+      sb.client.from('services').select('id,slug,name,category,customer_type,booking_type,base_price_cents,duration_minutes,price_display_mode,excludes,conditions,is_active,sort_order').order('sort_order', { ascending:true }),
+      sb.client.from('service_packs').select('id,service_id,slug,name,price_cents,duration_minutes,is_featured,is_active,sort_order,tagline,includes,perks,excludes,note').order('sort_order', { ascending:true })
+    ]).then(function(r){
+      if (r[0].error || r[1].error) throw (r[0].error || r[1].error);
+      data = { services: r[0].data || [], packs: r[1].data || [] };
+      render();
+    }).catch(function(err){
+      console.error('offers', err);
+      $('offersPacks').innerHTML = '<p class="hvp-error">Impossible de charger le catalogue. <button type="button" class="offer-cancel" data-offers-retry>Réessayer</button></p>';
+      $('offersServices').innerHTML = '';
+    });
+  }
+
+  function packForm(p){
+    return '<form class="ec-form offer-form" data-offer-pack="' + esc(p.id) + '">' +
+      '<label>Nom<input name="name" value="' + esc(p.name) + '" required maxlength="80"></label>' +
+      '<label>Accroche<input name="tagline" value="' + esc(p.tagline || '') + '" maxlength="120"></label>' +
+      '<label>Prix TTC (€)<input name="price" inputmode="decimal" value="' + esc(eurosIn(p.price_cents)) + '" required></label>' +
+      '<label>Durée indicative (minutes)<input name="duration" type="number" min="15" max="600" step="5" value="' + esc(p.duration_minutes || '') + '" required></label>' +
+      '<label class="ec-form-full">Ce qui est inclus (une ligne par point ; « Tout le Pack … » reprend le pack précédent)<textarea name="includes">' + esc((p.includes || []).join('\n')) + '</textarea></label>' +
+      '<label class="ec-form-full">Avantages mis en avant (une ligne par avantage)<textarea name="perks">' + esc((p.perks || []).join('\n')) + '</textarea></label>' +
+      '<label class="ec-form-full">Non compris (une ligne par point)<textarea name="excludes">' + esc((p.excludes || []).join('\n')) + '</textarea></label>' +
+      '<label class="ec-form-full">Note (facultatif)<input name="note" value="' + esc(p.note || '') + '" maxlength="300"></label>' +
+      '<label class="offer-check"><input type="checkbox" name="featured"' + (p.is_featured ? ' checked' : '') + '> Badge « Le plus choisi »</label>' +
+      '<label class="offer-check"><input type="checkbox" name="active"' + (p.is_active ? ' checked' : '') + '> Formule proposée</label>' +
+      '<div class="ec-form-full offer-actions"><button type="submit" class="offer-save">Enregistrer</button><button type="button" class="offer-cancel" data-offer-close>Fermer</button></div>' +
+    '</form>';
+  }
+  function serviceForm(s){
+    var priced = s.price_display_mode !== 'QUOTE';
+    return '<form class="ec-form offer-form" data-offer-service="' + esc(s.id) + '">' +
+      (priced ? '<label>Prix TTC (€)' + (s.price_display_mode === 'FROM' ? ' — affiché « à partir de »' : '') + '<input name="price" inputmode="decimal" value="' + esc(eurosIn(s.base_price_cents)) + '" required></label>' : '<p class="ec-form-full">Prestation sur devis : aucun prix affiché.</p>') +
+      '<label>Durée indicative (minutes)<input name="duration" type="number" min="15" max="600" step="5" value="' + esc(s.duration_minutes || '') + '"></label>' +
+      '<label class="ec-form-full">Non compris (une ligne par point)<textarea name="excludes">' + esc((s.excludes || []).join('\n')) + '</textarea></label>' +
+      '<label class="ec-form-full">Conditions<textarea name="conditions">' + esc(s.conditions || '') + '</textarea></label>' +
+      '<div class="ec-form-full offer-actions"><button type="submit" class="offer-save">Enregistrer</button><button type="button" class="offer-cancel" data-offer-close>Fermer</button></div>' +
+    '</form>';
+  }
+  function fmtPrice(c){ return c == null ? '—' : (c % 100 === 0 ? (c / 100) : (c / 100).toFixed(2).replace('.', ',')) + ' €'; }
+
+  function render(){
+    var byId = {};
+    data.services.forEach(function(s){ byId[s.id] = s; });
+    var html = '', lastFam = null;
+    data.packs.forEach(function(p){
+      var s = byId[p.service_id];
+      if (s && s.slug !== lastFam){ html += '<p class="offer-fam">' + esc(s.name) + (s.customer_type === 'professionnel' ? ' — professionnels' : '') + '</p>'; lastFam = s.slug; }
+      html += '<details class="offer-item"><summary><span><span class="ec-row-title">' + esc(p.name) + (p.is_active ? '' : ' (non proposée)') + '</span>' +
+        '<span class="ec-row-meta">' + esc(fmtPrice(p.price_cents)) + ' TTC · ' + esc(p.duration_minutes || '—') + ' min · ' + (p.includes || []).length + ' point(s) inclus</span></span><span class="offer-edit">Modifier</span></summary>' + packForm(p) + '</details>';
+    });
+    $('offersPacks').innerHTML = html || '<p class="ec-empty">Aucune formule.</p>';
+    var withPacks = {};
+    data.packs.forEach(function(p){ withPacks[p.service_id] = true; });
+    var sh = data.services.filter(function(s){ return !withPacks[s.id] && s.is_active; }).map(function(s){
+      return '<details class="offer-item"><summary><span><span class="ec-row-title">' + esc(s.name) + '</span>' +
+        '<span class="ec-row-meta">' + (s.price_display_mode === 'QUOTE' ? 'Sur devis' : (s.price_display_mode === 'FROM' ? 'à partir de ' : '') + esc(fmtPrice(s.base_price_cents)) + ' TTC') + ' · ' + esc(s.duration_minutes || '—') + ' min</span></span><span class="offer-edit">Modifier</span></summary>' + serviceForm(s) + '</details>';
+    }).join('');
+    $('offersServices').innerHTML = sh || '<p class="ec-empty">Aucune prestation.</p>';
+  }
+
+  function afterSave(btn, res, label){
+    btn.disabled = false; btn.textContent = 'Enregistrer';
+    if (res.error){ msg('Enregistrement impossible : ' + (res.error.message || 'erreur inconnue'), true); return; }
+    if (!res.data || !res.data.length){ msg('Aucune ligne modifiée : droits administrateur requis.', true); return; }
+    msg('✓ ' + label + ' enregistré — visible sur le site, la réservation et les espaces clients.');
+    if (window.HvPacks) window.HvPacks.load(true);
+    load();
+  }
+
+  document.getElementById('admPageOffers').addEventListener('click', function(e){
+    var t = e.target;
+    if (t.closest('[data-offers-retry]')){ load(); return; }
+    var close = t.closest('[data-offer-close]');
+    if (close){ var d = close.closest('details'); if (d) d.open = false; }
+  });
+  document.getElementById('admPageOffers').addEventListener('submit', function(e){
+    var f = e.target;
+    e.preventDefault();
+    var btn = f.querySelector('.offer-save');
+    var fd = new FormData(f);
+    var duration = parseInt(fd.get('duration'), 10);
+    if (f.hasAttribute('data-offer-pack')){
+      var cents = parseCents(fd.get('price'));
+      if (cents == null || cents <= 0){ msg('Prix invalide (ex. 79 ou 79,90).', true); return; }
+      if (!(duration >= 15 && duration <= 600)){ msg('Durée invalide (entre 15 et 600 minutes).', true); return; }
+      var name = String(fd.get('name') || '').trim();
+      if (!name){ msg('Le nom est obligatoire.', true); return; }
+      var old = data.packs.filter(function(p){ return p.id === f.getAttribute('data-offer-pack'); })[0];
+      if (old && old.price_cents !== cents && !window.confirm('Changer le prix de « ' + old.name + ' » de ' + fmtPrice(old.price_cents) + ' à ' + fmtPrice(cents) + ' ?\n\nIl s’appliquera aux nouvelles réservations, sur le site et dans les espaces clients.')) return;
+      btn.disabled = true; btn.textContent = 'Enregistrement…';
+      sb.client.from('service_packs').update({
+        name: name, tagline: String(fd.get('tagline') || '').trim() || null, price_cents: cents, duration_minutes: duration,
+        includes: lines(fd.get('includes')), perks: lines(fd.get('perks')), excludes: lines(fd.get('excludes')),
+        note: String(fd.get('note') || '').trim() || null, is_featured: !!fd.get('featured'), is_active: !!fd.get('active')
+      }).eq('id', f.getAttribute('data-offer-pack')).select('id').then(function(res){ afterSave(btn, res, 'Formule'); },
+        function(){ btn.disabled = false; btn.textContent = 'Enregistrer'; msg('Erreur réseau. Réessayez.', true); });
+    } else if (f.hasAttribute('data-offer-service')){
+      var row = { excludes: lines(fd.get('excludes')), conditions: String(fd.get('conditions') || '').trim() || null };
+      if (fd.has('price')){
+        var c = parseCents(fd.get('price'));
+        if (c == null || c <= 0){ msg('Prix invalide (ex. 75 ou 75,50).', true); return; }
+        var olds = data.services.filter(function(s){ return s.id === f.getAttribute('data-offer-service'); })[0];
+        if (olds && olds.base_price_cents !== c && !window.confirm('Changer le prix de « ' + olds.name + ' » de ' + fmtPrice(olds.base_price_cents) + ' à ' + fmtPrice(c) + ' ?')) return;
+        row.base_price_cents = c;
+      }
+      if (fd.get('duration')){
+        if (!(duration >= 15 && duration <= 600)){ msg('Durée invalide (entre 15 et 600 minutes).', true); return; }
+        row.duration_minutes = duration;
+      }
+      btn.disabled = true; btn.textContent = 'Enregistrement…';
+      sb.client.from('services').update(row).eq('id', f.getAttribute('data-offer-service')).select('id').then(function(res){ afterSave(btn, res, 'Prestation'); },
+        function(){ btn.disabled = false; btn.textContent = 'Enregistrer'; msg('Erreur réseau. Réessayez.', true); });
+    }
+  });
+
+  var prevShow = window.hvProBeforeShowPage;
+  window.hvProBeforeShowPage = function(k){ if (prevShow) prevShow(k); if (k === 'offers'){ msg(''); setTimeout(load, 0); } };
 })();
 </script>
