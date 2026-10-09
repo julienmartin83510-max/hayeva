@@ -14,6 +14,19 @@
     }
   } catch(e){}
 })();
+// HAYEVA BLACK SIGNATURE : interfaces sur lesquelles la nouvelle identité
+// visuelle est active (public, particulier, pro, admin). Purement visuel :
+// aucune logique ne lit cet attribut. Aperçu ou retour à l'ancien rendu sur
+// un appareil : ?bs=all, ?bs=off ou ?bs=public,admin (mémorisé localement).
+(function(){
+  var all = 'public particulier pro admin', v = null;
+  try {
+    var m = /[?&]bs=([a-z,]*)/.exec(location.search);
+    if (m){ v = m[1] === 'off' ? '' : (m[1] === 'all' ? all : m[1].replace(/,/g, ' ')); localStorage.setItem('hv_bs', v); }
+    else v = localStorage.getItem('hv_bs');
+  } catch(e){}
+  document.documentElement.setAttribute('data-bs', v == null ? all : v);
+})();
 </script>
 <title>HAYEVA — Plomberie, chauffage, entretien climatisation à Fréjus & Saint-Raphaël</title>
 <meta name="description" content="Dépannage plomberie, entretien et dépannage chauffage, entretien climatisation à Fréjus, Saint-Raphaël, Le Muy, dans le Var et les Alpes-Maritimes. Réservation en ligne, devis gratuit.">
@@ -9238,7 +9251,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
                      rendez-vous, actions rapides), puis indicateurs, santé et inscriptions. -->
                 <p class="adm-subhead">Interventions du jour</p>
                 <div id="hvpTodayList"><p class="ec-loading">Chargement…</p></div>
-                <p class="adm-subhead">À traiter</p>
+                <p class="adm-subhead adm-todo-head">À traiter maintenant</p>
                 <div class="hvp-todo" id="hvpTodo"><p class="ec-loading">Chargement…</p></div>
                 <p class="adm-subhead" id="admNextApptHeading" hidden>Prochain rendez-vous</p>
                 <div id="admNextApptCard"></div>
@@ -33528,4 +33541,680 @@ window.HV_APP_VERSION = 'hayeva-v39';
     .hero-center::before{ animation:none !important; }
     .ai-widget-toggle.hv-tucked, .ecx-assist-btn.hv-tucked{ transform:none !important; opacity:1; pointer-events:auto; }
   }
+</style>
+<style id="hv-black-signature">
+  /* =====================================================================
+     HAYEVA BLACK SIGNATURE — identité visuelle (validée oct. 2026)
+     Bleu nuit + ivoire + cuivre. Dernier bloc de styles : il s'appuie sur
+     les jetons existants (--hv-*, --adm-*, --pro-*) sans rien renommer.
+     Chaque interface est activée par html[data-bs~="…"] (script en tête de
+     page) : public, particulier, pro, admin. Aucun sélecteur JS, aucune
+     donnée, aucune règle métier ne dépend de ce bloc.
+     Logo officiel jamais modifié : sur ivoire tel quel, sur bleu nuit avec
+     le halo lumineux validé sur le portail (aucune plaque, aucun fond).
+     Contrastes mesurés (WCAG 2.2 AA) : voir docs/design-system/black-signature.md
+     ===================================================================== */
+  :root{
+    --bs-bg:#101A2B;          /* fond principal sombre */
+    --bs-bg-2:#0C1422;        /* barres, pied de page */
+    --bs-surface:#1B2B41;     /* carte */
+    --bs-surface-2:#243247;   /* surface secondaire, champ */
+    --bs-elevated:#2A3B54;    /* survol, fiche, menu */
+    --bs-border:#34465E;      /* séparateur décoratif uniquement */
+    --bs-hair:rgba(255,255,255,0.07);
+    --bs-field-border:#7D90A8;/* contour de champ 4,4:1 sur carte */
+    --bs-text:#FFFFFF;        /* 17,4:1 */
+    --bs-text-2:#B7C4D4;      /* 9,9:1 */
+    --bs-text-3:#8FA1B8;      /* 5,4:1 sur carte */
+    --bs-accent:#D7A16B;      /* cuivre : 7,6:1 sur fond, 6,3:1 sur carte */
+    --bs-accent-hover:#E3B47F;
+    --bs-on-accent:#101A2B;   /* texte sur cuivre 7,6:1 */
+    --bs-accent-ink:#8A5A2B;  /* cuivre lisible sur ivoire 5,4:1 / blanc 5,9:1 */
+    --bs-accent-ink-deep:#6F4620;
+    --bs-flame:#E85A12;       /* orange officiel du logo : couleur secondaire */
+    --bs-ivory:#F7F5F1;
+    --bs-ivory-2:#EFEBE4;
+    --bs-ink:#172234;         /* texte sur ivoire 14,7:1 */
+    --bs-ink-2:#4A5568;       /* 6,9:1 sur ivoire */
+    --bs-success:#5FC795; --bs-success-ink:#17643F;
+    --bs-warning:#F2B84B; --bs-warning-ink:#7A4E0C;
+    --bs-danger:#F28B7B;  --bs-danger-ink:#9B2C1C;
+    --bs-info:#9CC8F2;
+    --bs-focus:#D7A16B; --bs-focus-light:#8A5A2B;
+    --bs-disabled-op:.45;
+    --bs-r:16px; --bs-r-lg:22px;
+    --bs-elev-1:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px -16px rgba(0,0,0,.6);
+    --bs-elev-2:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 44px -22px rgba(0,0,0,.75);
+    --bs-elev-light:0 1px 2px rgba(23,34,52,.06), 0 18px 36px -26px rgba(23,34,52,.38);
+  }
+
+  /* ---------- Socle commun (dès qu'une interface est active) ---------- */
+  html[data-bs]:not([data-bs=""]){
+    /* L'orange d'action devient cuivre : foncé (#8A5A2B) pour le texte et
+       les fonds à texte blanc sur surfaces claires ; les CTA principaux
+       sont redessinés plus bas en cuivre clair à texte bleu nuit. */
+    --hv-orange:#8A5A2B; --hv-orange-deep:#6F4620; --hv-gold-text:#8A5A2B;
+    --hv-text:#172234; --hv-title:#172234; --hv-text-2:#4A5568; --hv-text-3:#5A6779;
+    --hv-bg:#F7F5F1;
+    --sig-focus:#8A5A2B; --sig-orange:#8A5A2B; --sig-orange-deep:#6F4620;
+    --ink:var(--hv-text); --ink-soft:var(--hv-text-2); --ink-soft-fixed:var(--hv-text-2); --navy-fixed:var(--hv-text);
+    --terracotta:var(--hv-orange); --terracotta-deep:var(--hv-orange-deep);
+    --terracotta-fixed:var(--hv-orange); --terracotta-deep-fixed:var(--hv-orange-deep);
+    /* Pastels (bleu ciel, turquoise, ambre) : remplacés par l'ivoire profond. */
+    --hv-action:#8A5A2B; --hv-action-hover:#6F4620; --hv-ink-strong:#172234;
+    --sky-accent:#8A5A2B; --sky-accent-soft:#EFEBE4; --turquoise-soft:#EFEBE4; --amber-soft:#EFEBE4; --hv-blue:#1F4E7A;
+  }
+
+  /* =====================================================================
+     1. SITE PUBLIC — alternance ivoire / bleu nuit
+     ===================================================================== */
+  html[data-bs~="public"]{ --sand-deep:#F7F5F1; --cream:#FFFFFF; }
+  html[data-bs~="public"] body{ background:#F7F5F1; }
+
+  /* Sections sombres : jetons redéfinis localement (le texte, les lignes et
+     les cartes suivent sans toucher aux composants). */
+  html[data-bs~="public"] :is(.opening-banner, #accueil, #campagneLancement, #universChauffage, #realisations, #tarifs, #pourquoi, #contact, body > footer, main ~ footer){
+    --hv-text:#FFFFFF; --hv-title:#FFFFFF; --hv-text-2:#B7C4D4; --hv-text-3:#8FA1B8;
+    --ink:#FFFFFF; --ink-soft:#B7C4D4; --ink-soft-fixed:#B7C4D4;
+    --line:rgba(255,255,255,0.08); --hv-border:#34465E;
+    --sand:#1B2B41; --sand-deep:#101A2B; --cream:#1B2B41;
+    --hv-orange:#D7A16B; --hv-orange-deep:#E3B47F; --hv-gold-text:#E3B47F; --hv-blue:#9CC8F2;
+    --terracotta:#D7A16B; --terracotta-deep:#E3B47F; --terracotta-fixed:#D7A16B; --terracotta-deep-fixed:#E3B47F;
+    --sig-focus:#D7A16B; --sig-orange:#D7A16B; --sky-accent:#D7A16B; --sky-accent-soft:#243247; --turquoise-soft:#243247; --amber-soft:#243247;
+    color:#FFFFFF;
+  }
+  html[data-bs~="public"] :is(#universChauffage, #realisations, #tarifs, #pourquoi){ background:#101A2B !important; border-color:transparent !important; }
+  html[data-bs~="public"] :is(#contact){ background:#0C1422 !important; }
+  html[data-bs~="public"] :is(body > footer, main ~ footer){ background:#0C1422 !important; border-top:1px solid rgba(255,255,255,0.06); }
+  /* Sections claires : ivoire et ivoire profond en alternance. */
+  html[data-bs~="public"] :is(#besoin, #universEau, #commentCaMarche, #rdv, #faq){ background:#F7F5F1 !important; }
+  html[data-bs~="public"] :is(#universClim, #services, #zone){ background:#EFEBE4 !important; }
+  html[data-bs~="public"] :is(#besoin, #universClim, #universEau, #commentCaMarche, #services, #rdv, #zone, #faq){ border-color:transparent !important; }
+  /* Taches de couleur et halos décoratifs des sections : supprimés. */
+  html[data-bs~="public"] main .deco-blob, html[data-bs~="public"] .edge-glow{ display:none !important; }
+
+  /* Titres de section */
+  html[data-bs~="public"] .eyebrow{ color:var(--bs-accent-ink); letter-spacing:.18em; }
+  html[data-bs~="public"] :is(#accueil, #campagneLancement, #universChauffage, #realisations, #tarifs, #pourquoi, #contact) .eyebrow{ color:var(--bs-accent); }
+  html[data-bs~="public"] .rule{ background:var(--terracotta); width:40px; height:2px; }
+  html[data-bs~="public"] .section-head h2, html[data-bs~="public"] main h2{ letter-spacing:-0.015em; }
+
+  /* ---------- Bandeau pré-ouverture + en-tête ivoire ---------- */
+  html[data-bs~="public"] .opening-banner{ background:#0C1422; }
+  html[data-bs~="public"] .opening-banner p{ color:#B7C4D4; }
+  html[data-bs~="public"] .opening-banner strong{ color:#E3B47F; }
+  html[data-bs~="public"] header{
+    --hdr-bg:#F7F5F1; --hdr-navy:#172234; --hdr-navy-soft:#4A5568; --hdr-blue:#8A5A2B; --hdr-blue-deep:#6F4620;
+    --hdr-line:rgba(23,34,52,0.08);
+    background:rgba(247,245,241,0.94);
+  }
+  html[data-bs~="public"] header .header-logo{ filter:none; }
+  html[data-bs~="public"] .call-btn{ background:#101A2B; color:#FFFFFF; box-shadow:none; }
+  html[data-bs~="public"] .call-btn:hover{ background:#1B2B41; }
+  html[data-bs~="public"] .mode-switch{ background:#EFEBE4; border-color:transparent; }
+  html[data-bs~="public"] .mode-btn.is-active{ background:#101A2B; color:#FFFFFF; box-shadow:none; }
+  html[data-bs~="public"] .header-login-link{ color:#172234; border-color:rgba(23,34,52,0.22); background:transparent; }
+  html[data-bs~="public"] .header-login-link:hover{ background:#101A2B; color:#FFFFFF; border-color:#101A2B; }
+  html[data-bs~="public"] nav.links a:hover, html[data-bs~="public"] nav.links a.is-active{ color:#8A5A2B; }
+  html[data-bs~="public"] header.hv-scrolled{ box-shadow:0 10px 30px -22px rgba(16,26,43,0.5); }
+  html[data-bs~="public"] .hv-progress{ background:var(--bs-accent); }
+
+  /* ---------- Accueil : bleu nuit sur la photo du portail ---------- */
+  html[data-bs~="public"] .hero{
+    --hl-bg:#101A2B; --hl-bg-deep:#0C1422; --hl-navy:#FFFFFF; --hl-navy-soft:#B7C4D4;
+    --hl-blue:#D7A16B; --hl-blue-soft:#34465E; --hl-orange:#D7A16B; --hl-orange-deep:#C48A52; --hl-line:rgba(255,255,255,0.28);
+    background:#101A2B;
+  }
+  html[data-bs~="public"] .hero::before, html[data-bs~="public"] .hero::after{ display:none; }
+  html[data-bs~="public"] .hero-photo-bg-img{ opacity:0.42; }
+  html[data-bs~="public"] .hero-photo-bg-overlay{
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 38%, rgba(16,26,43,0.15) 0%, rgba(16,26,43,0.62) 100%),
+      linear-gradient(180deg, rgba(16,26,43,0.55) 0%, rgba(16,26,43,0.35) 40%, rgba(16,26,43,0.85) 86%, #101A2B 100%);
+  }
+  html[data-bs~="public"] .hero-wave-decor{ opacity:.55; }
+  html[data-bs~="public"] .hero-logo{
+    filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) drop-shadow(0 0 14px rgba(255,255,255,.30)) drop-shadow(0 10px 24px rgba(0,0,0,.35));
+  }
+  html[data-bs~="public"] .hero h1, html[data-bs~="public"] .hero h2{ color:#FFFFFF; }
+  html[data-bs~="public"] .hero-eyebrow-light{ color:var(--bs-accent); }
+  html[data-bs~="public"] .hero-subtitle-light, html[data-bs~="public"] .trustline{ color:#B7C4D4; }
+  html[data-bs~="public"] .trustline .dot{ background:var(--bs-accent); }
+  html[data-bs~="public"] .hero-founder-link{ color:var(--bs-accent); }
+  html[data-bs~="public"] .hero-pro-login-link a{ color:var(--bs-accent); }
+  html[data-bs~="public"] .hero-center::before{ background:radial-gradient(closest-side, rgba(215,161,107,0.16), transparent 70%); }
+
+  /* ---------- Boutons : action principale cuivre, texte bleu nuit ---------- */
+  html[data-bs]:not([data-bs=""]) :is(.btn-hero-primary, .btn-primary, .pack-cta, #bkNext, #tabCta, .hvk-choose, .ecx-book-cta, .hv-cta-primary, .hvc-btn:not(.hvc-btn-ghost)){
+    background:var(--bs-accent) !important; color:var(--bs-on-accent) !important; border-color:var(--bs-accent) !important;
+    box-shadow:0 12px 28px -14px rgba(215,161,107,0.75);
+  }
+  html[data-bs]:not([data-bs=""]) :is(.btn-hero-primary, .btn-primary, .pack-cta, #bkNext, #tabCta, .hvk-choose, .ecx-book-cta, .hv-cta-primary, .hvc-btn:not(.hvc-btn-ghost)):hover{
+    background:var(--bs-accent-hover) !important; box-shadow:0 16px 34px -14px rgba(215,161,107,0.85);
+  }
+  html[data-bs]:not([data-bs=""]) :is(.btn-hero-primary, .btn-primary, .pack-cta, #bkNext, #tabCta, .hvk-choose, .ecx-book-cta, .hv-cta-primary, .hvc-btn:not(.hvc-btn-ghost)) svg{ color:currentColor; }
+  html[data-bs]:not([data-bs=""]) :is(.btn-primary, .pack-cta, #bkNext):disabled,
+  html[data-bs]:not([data-bs=""]) :is(.btn-primary, .pack-cta, #bkNext)[aria-disabled="true"]{ opacity:var(--bs-disabled-op); box-shadow:none; }
+  html[data-bs~="public"] .btn-hero-primary, html[data-bs~="public"] .btn-hero-secondary{ border-radius:999px; }
+  html[data-bs~="public"] .btn-hero-secondary{ background:transparent; color:#FFFFFF; border:1.5px solid rgba(255,255,255,0.32); }
+  html[data-bs~="public"] .btn-hero-secondary:hover{ background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.6); }
+  html[data-bs]:not([data-bs=""]) :focus-visible{ outline-color:var(--sig-focus, #8A5A2B); }
+
+  /* ---------- Logo de l'accueil : plus grand, halo du portail ---------- */
+  html[data-bs~="public"] .hero-logo{ height:clamp(84px, 11vw, 124px); margin-bottom:22px; }
+
+  /* ---------- Grand jeu de lancement ---------- */
+  html[data-bs~="public"] .launch-campaign{
+    background:radial-gradient(ellipse 60% 50% at 50% 0%, rgba(215,161,107,0.12), transparent 70%), #0C1422;
+  }
+  html[data-bs~="public"] .lc-title{ background:linear-gradient(90deg, #FFFFFF 0%, #E3B47F 100%); -webkit-background-clip:text; background-clip:text; }
+  html[data-bs~="public"] .lc-card{ background:#1B2B41; border-color:transparent; box-shadow:var(--bs-elev-1); }
+  html[data-bs~="public"] .lc-card--hero{ background:linear-gradient(135deg, #2A3B54 0%, #1B2B41 70%); border:1px solid rgba(215,161,107,0.40); }
+  html[data-bs~="public"] .lc-card-tag--grand{ background:var(--bs-accent); color:var(--bs-on-accent); }
+  html[data-bs~="public"] .lc-card-tag--hayeva{ background:#243247; border-color:transparent; }
+  html[data-bs~="public"] .lc-card-visual{ border-color:transparent; background:#243247; }
+  html[data-bs~="public"] .lc-draw{ background:#1B2B41; border-color:rgba(215,161,107,0.45); color:#E3B47F; }
+  html[data-bs~="public"] .lc-timeline-sep{ background:rgba(255,255,255,0.12); }
+
+  /* ---------- Besoin : cartes nettes, sans dégradé pastel ---------- */
+  html[data-bs~="public"] .besoin-cat-btn{ background:#FFFFFF !important; border:0 !important; box-shadow:var(--bs-elev-light) !important; }
+  html[data-bs~="public"] .besoin-cat-btn:hover{ box-shadow:0 1px 2px rgba(23,34,52,.08), 0 24px 40px -24px rgba(23,34,52,.45) !important; }
+
+  /* ---------- Comment ça marche : pastilles cuivre au lieu des ronds pastel ---------- */
+  html[data-bs~="public"] .step-icon{ background:#101A2B !important; color:var(--bs-accent) !important; border:0 !important; width:50px; height:50px; }
+  html[data-bs~="public"] .step-num{ background:var(--bs-accent) !important; color:var(--bs-on-accent) !important; box-shadow:0 0 0 3px #F7F5F1; }
+  html[data-bs~="public"] .steps-grid::before{ background:rgba(23,34,52,0.14); }
+
+  /* ---------- Trois métiers (onglets) ---------- */
+  html[data-bs~="public"] #services .tab-btn{ background:#FFFFFF; border-color:transparent; color:#172234; box-shadow:var(--bs-elev-light); }
+  html[data-bs~="public"] #services .tab-btn.is-active, html[data-bs~="public"] #services .tab-btn[aria-selected="true"]{ background:#101A2B; color:#FFFFFF; }
+  html[data-bs~="public"] #services .tab-visual-card{ background:#101A2B; border-color:transparent; color:#D7A16B; box-shadow:var(--bs-elev-light); }
+  html[data-bs~="public"] #services .tab-visual-card svg{ color:#D7A16B; stroke:currentColor; }
+  html[data-bs~="public"] #tabTitle{ background:none !important; -webkit-text-fill-color:currentColor; color:#8A5A2B !important; }
+
+  /* ---------- Tarifs (bleu nuit) ---------- */
+  html[data-bs~="public"] #tarifs .multi-card{ background:linear-gradient(160deg, #2A3B54 0%, #1B2B41 60%); border-color:rgba(215,161,107,0.5); box-shadow:var(--bs-elev-2); }
+  html[data-bs~="public"] #tarifs .multi-badge{ background:var(--bs-accent); color:var(--bs-on-accent); }
+  html[data-bs~="public"] #tarifs .price-logo-btn{ background:#1B2B41 !important; color:#FFFFFF !important; border-color:transparent !important; box-shadow:var(--bs-elev-1); }
+  html[data-bs~="public"] #tarifs .price-logo-btn svg{ color:var(--bs-accent); }
+  html[data-bs~="public"] #tarifs .price-logo-btn.is-active, html[data-bs~="public"] #tarifs .price-logo-btn[aria-pressed="true"], html[data-bs~="public"] #tarifs .price-logo-btn[aria-expanded="true"]{ background:#2A3B54 !important; box-shadow:inset 0 0 0 1.5px var(--bs-accent); }
+  html[data-bs~="public"] #tarifs .photo-tip{ background:#1B2B41; color:#B7C4D4; border-left:3px solid var(--bs-accent); }
+  html[data-bs~="public"] #tarifs .photo-tip strong, html[data-bs~="public"] #tarifs .photo-tip b{ color:#FFFFFF; }
+
+  /* ---------- Réservation (ivoire) ---------- */
+  html[data-bs~="public"] .rdv-launch-badge{ background:#FFFFFF; border:0; box-shadow:var(--bs-elev-light); }
+  html[data-bs~="public"] .rdv-launch-badge-icon{ background:#101A2B; color:var(--bs-accent); }
+  html[data-bs~="public"] .booking-card{ border:0; box-shadow:var(--bs-elev-light); border-radius:var(--bs-r-lg); }
+  html[data-bs]:not([data-bs=""]) .booking-progress span::after{ background:var(--bs-accent); }
+  html[data-bs]:not([data-bs=""]) .hvk-card.is-selected{ background:#FFFFFF; box-shadow:0 0 0 2px var(--bs-accent), 0 22px 40px -24px rgba(138,90,43,.55); border-color:var(--bs-accent); }
+  html[data-bs]:not([data-bs=""]) .hvk-card.is-selected .hvk-check{ background:var(--bs-accent); border-color:var(--bs-accent); color:var(--bs-on-accent); }
+  html[data-bs~="public"] .opt-duration{ background:#EFEBE4; color:#4A5568; }
+  html[data-bs~="public"] .option-card{ border-color:rgba(23,34,52,0.14); }
+  html[data-bs~="public"] .option-card:hover{ border-color:#8A5A2B; }
+
+  /* ---------- Zone ---------- */
+  html[data-bs~="public"] #zone .chip{ background:#FFFFFF; border-color:transparent; box-shadow:0 1px 2px rgba(23,34,52,.08); }
+  html[data-bs~="public"] #zone .chip.chip-strong{ background:#101A2B; color:#FFFFFF; border-color:#101A2B; }
+  html[data-bs~="public"] .map-card{ background:#101A2B !important; box-shadow:var(--bs-elev-light); border:0; }
+  html[data-bs~="public"] .map-card-caption{ color:#B7C4D4; }
+
+  /* ---------- FAQ ---------- */
+  html[data-bs~="public"] .faq-popular-item, html[data-bs~="public"] .faq-cat-pill{ border-color:transparent; box-shadow:0 1px 2px rgba(23,34,52,.08); }
+  html[data-bs~="public"] .faq-cat-pill.is-active{ background:#101A2B; border-color:#101A2B; color:#FFFFFF; }
+  html[data-bs~="public"] .faq-cta{ background:#101A2B; border:0; color:#FFFFFF; }
+  html[data-bs~="public"] .faq-cta p{ color:#FFFFFF; }
+  html[data-bs~="public"] .faq-cta .btn-secondary{ background:transparent; color:#FFFFFF; border-color:rgba(255,255,255,0.4); }
+
+  /* ---------- Pourquoi HAYEVA (bleu nuit) ---------- */
+  html[data-bs~="public"] .why-grid{ background:transparent !important; border:0 !important; gap:12px; }
+  html[data-bs~="public"] .why-card{ background:#1B2B41; border:0 !important; border-radius:var(--bs-r); }
+  html[data-bs~="public"] .why-card .mark{ background:#243247 !important; color:var(--bs-accent) !important; }
+
+  /* ---------- Contact + pied de page ---------- */
+  html[data-bs~="public"] #contact a[href^="tel"], html[data-bs~="public"] #contact svg{ color:var(--bs-accent); }
+
+  /* ---------- Packs dans la section Tarifs (bleu nuit) ---------- */
+  html[data-bs~="public"] #tarifs .price-group{ background:transparent; border:0; box-shadow:none; padding-inline:0; }
+  html[data-bs~="public"] #priceReveal .price-group h3{ color:var(--bs-accent) !important; }
+  html[data-bs~="public"] #priceReveal .price-group h3::before{ background:var(--bs-accent); }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk{ --hvk-accent:#D7A16B; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-card{ background:#1B2B41 !important; color:#FFFFFF !important; border:1px solid transparent !important; box-shadow:var(--bs-elev-1) !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-card:hover{ background:#2A3B54 !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-card.is-featured{ background:linear-gradient(170deg, #2A3B54 0%, #1B2B41 70%) !important; border-color:rgba(215,161,107,0.45) !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-card.is-selected{ box-shadow:0 0 0 2px #D7A16B, var(--bs-elev-2) !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) :is(.hvk-name, .hvk-price, .hvk-detail-head h4, .hvk-h, .hvk-list li, .hvk-table td, .hvk-table th){ color:#FFFFFF !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-price{ color:#FFFFFF !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) :is(.hvk-tagline, .hvk-dur, .hvk-peek li, .hvk-cond, .hvk-detail-price span, .hvk-exc li, .hvk-exc li::before, .hvk-table .hvk-no){ color:#B7C4D4 !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) :is(.hvk-peek li::before, .hvk-inc li::before, .hvk-more, .hvk-detail-eyebrow, .hvk-detail-price strong, .hvk-table .hvk-yes){ color:#D7A16B !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) :is(.hvk-perks li, .hvk-table tr.is-perk td:first-child){ color:#E3B47F !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-badge{ background:#D7A16B; color:#101A2B; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-badge-gold{ background:#243247; color:#E3B47F; border:1px solid rgba(215,161,107,0.5); }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-new{ background:#243247; color:#E3B47F; border:0; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-check{ border-color:rgba(255,255,255,0.35); }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-detail-inner{ background:#243247 !important; color:#FFFFFF !important; border:0 !important; box-shadow:var(--bs-elev-1); }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-compare-btn{ background:transparent !important; color:#FFFFFF !important; border-color:rgba(255,255,255,0.35) !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-compare{ background:#1B2B41 !important; border-color:transparent; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-table th:first-child, :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-table td:first-child{ background:#1B2B41 !important; }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-table th, :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-table td{ border-color:rgba(255,255,255,0.08); }
+  :is(html[data-bs~="public"] #tarifs, html[data-bs~="pro"] .pro-shell, html[data-bs~="particulier"] #espaceClient, html[data-bs~="admin"] #espaceProAdminPanel) .hvk-info-btn{ color:#FFFFFF !important; border-color:rgba(255,255,255,0.35) !important; background:transparent; }
+  html[data-bs~="public"] #tarifs .price-note-small, html[data-bs~="public"] #tarifs .pack-extra{ color:#B7C4D4; }
+
+  /* ---------- Univers métier : la page garde l'identité Black Signature ----------
+     Les univers (clim, chauffage, plomberie) recoloraient toute la page via
+     :root[data-universe]. Ici les jetons de base sont réaffirmés (spécificité
+     supérieure) : seules les sections restent bleu nuit / ivoire. */
+  html[data-bs~="public"][data-universe]{
+    --sand:#FFFFFF; --sand-deep:#F7F5F1; --cream:#FFFFFF; --white:#FFFFFF;
+    --ink:#172234; --ink-soft:#4A5568; --line:#CBD5E1;
+    --sky:#5A87AD; --sky-deep:#2C4A66;
+    --terracotta:#8A5A2B; --terracotta-deep:#6F4620;
+  }
+
+  /* =====================================================================
+     2. ESPACES CONNECTÉS — socle bleu nuit commun (admin, pro, particulier)
+     ===================================================================== */
+  html[data-bs~="admin"] #espacePro.is-open:not(.gate-bg-active),
+  html[data-bs~="pro"] #espacePro.is-open:not(.gate-bg-active),
+  html[data-bs~="particulier"] #espaceClient.is-open:not(.gate-bg-active){ background:#101A2B; color-scheme:dark; }
+  /* Logo officiel sur bleu nuit : halo du portail, jamais d'inversion de couleurs. */
+  html[data-bs~="admin"] .adm-sidebar-logo, html[data-bs~="pro"] .pro-sidebar-logo{
+    filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) drop-shadow(0 0 12px rgba(255,255,255,.28)) !important; opacity:1 !important; height:64px !important;
+  }
+  /* Bouton « Voir le site » */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .hv-site-link{
+    background:transparent; color:#FFFFFF; border:1px solid rgba(255,255,255,0.28); box-shadow:none;
+  }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .hv-site-link:hover{ background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.5); }
+  /* Barre de navigation basse (iPhone) */
+  html[data-bs~="admin"] #admBottomNav, html[data-bs~="pro"] #proBottomNav, html[data-bs~="particulier"] #espaceClient .hv-bottomnav{
+    background:rgba(12,20,34,0.94) !important; border-top:1px solid rgba(255,255,255,0.06) !important; box-shadow:0 -10px 30px -18px rgba(0,0,0,0.8) !important;
+  }
+  html[data-bs~="admin"] #admBottomNav .hv-bottomnav-item, html[data-bs~="pro"] #proBottomNav .hv-bottomnav-item, html[data-bs~="particulier"] #espaceClient .hv-bottomnav-item{ color:#8FA1B8; }
+  html[data-bs~="admin"] #admBottomNav .hv-bottomnav-item.is-active, html[data-bs~="pro"] #proBottomNav .hv-bottomnav-item.is-active, html[data-bs~="particulier"] #espaceClient .hv-bottomnav-item.is-active{ color:#FFFFFF; }
+  html[data-bs~="admin"] #admBottomNav .hv-bottomnav-item.is-active .hv-bn-icon, html[data-bs~="pro"] #proBottomNav .hv-bottomnav-item.is-active .hv-bn-icon, html[data-bs~="particulier"] #espaceClient .hv-bottomnav-item.is-active .hv-bn-icon{ color:#D7A16B; }
+  /* Indicateurs glissants (HvFx) sur fond sombre */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .hv-ind-bar{ background:linear-gradient(180deg, rgba(215,161,107,.16), rgba(215,161,107,.04)); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .hv-ind-bar::before{ background:#D7A16B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .hv-ind-pill{ background:#2A3B54; box-shadow:inset 0 0 0 1px rgba(215,161,107,.55), 0 8px 18px -10px rgba(0,0,0,.7); }
+  html[data-bs~="admin"] :is(#hvpPlanViewSeg, #adminBkViewToggle).hv-ind-on > .hv-ind{ background:#2A3B54; box-shadow:inset 0 0 0 1px rgba(215,161,107,.55); }
+  /* Menu « Plus » */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .hv-more-sheet{ background:rgba(6,10,18,0.6); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .hv-more-card{ background:#1B2B41; color:#FFFFFF; }
+
+  /* =====================================================================
+     3. ADMINISTRATION
+     ===================================================================== */
+  html[data-bs~="admin"] :is(#espaceProAdminPanel, .admin-bk-modal-overlay, .hvp-modal, #refAdmModal, #adminClientFicheOverlay){
+    --adm-navy:#0C1422; --adm-navy-soft:#1B2B41; --adm-petrol:#0C1422;
+    --adm-offwhite:#101A2B; --adm-card-bg:#1B2B41; --adm-sand:#243247; --adm-sand-deep:#2A3B54;
+    --adm-ink:#FFFFFF; --adm-ink-soft:#B7C4D4; --adm-line:rgba(255,255,255,0.08);
+    --adm-shadow:var(--bs-elev-2); --adm-shadow-sm:var(--bs-elev-1);
+    --adm-ocean:#D7A16B; --adm-ocean-deep:#E3B47F; --adm-ocean-soft:rgba(215,161,107,0.14);
+    --adm-coral:#D7A16B; --adm-coral-deep:#E3B47F; --adm-coral-soft:rgba(215,161,107,0.14);
+    --adm-turquoise:#7FDCD0; --adm-turquoise-soft:rgba(127,220,208,0.12);
+    --adm-green:#5FC795; --adm-green-soft:rgba(95,199,149,0.14);
+    --adm-amber:#F2B84B; --adm-amber-soft:rgba(242,184,75,0.14);
+    --adm-grey:#8FA1B8; --adm-grey-soft:rgba(143,161,184,0.14);
+    --adm-red:#F28B7B; --adm-red-soft:rgba(242,139,123,0.14);
+    --adm-blue:#9CC8F2; --adm-blue-soft:rgba(156,200,242,0.14);
+    --ink:#FFFFFF; --ink-soft:#B7C4D4; --ink-soft-fixed:#B7C4D4; --navy-fixed:#FFFFFF;
+    --hv-text:#FFFFFF; --hv-title:#FFFFFF; --hv-text-2:#B7C4D4; --hv-text-3:#8FA1B8;
+    --hv-blue:#9CC8F2; --hv-success:#5FC795; --hv-warning:#F2B84B; --hv-danger:#F28B7B; --hv-info:#9CC8F2;
+    --line:rgba(255,255,255,0.08); --hv-border:#34465E; --hv-field-border:#7D90A8; --hv-placeholder:#8FA1B8;
+    --sand:#1B2B41; --sand-deep:#101A2B; --cream:#1B2B41; --white:#1B2B41;
+    --terracotta:#D7A16B; --terracotta-deep:#E3B47F; --terracotta-fixed:#D7A16B; --terracotta-deep-fixed:#E3B47F;
+    --hv-orange:#D7A16B; --hv-orange-deep:#E3B47F; --hv-gold-text:#E3B47F; --hv-action:#D7A16B; --hv-action-hover:#E3B47F;
+    --sig-focus:#D7A16B;
+    color-scheme:dark; color:#FFFFFF;
+  }
+  /* Coquille plein écran : plus de « boîte » posée sur une page blanche. */
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-shell{ background:#101A2B; border:0; box-shadow:none; border-radius:0; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-main{ background:#101A2B; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-sidebar{ background:#0C1422; border-right:1px solid rgba(255,255,255,0.05); }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-nav-btn{ color:#B7C4D4; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-nav-btn:hover{ background:rgba(255,255,255,0.05); color:#FFFFFF; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-nav-btn.is-active{ background:#1B2B41; color:#FFFFFF; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-nav-btn.is-active::before{ background:#D7A16B; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-nav-badge{ background:#D7A16B; color:#101A2B; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-eyebrow{ color:#D7A16B !important; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-page-title{ letter-spacing:-0.01em; }
+
+  /* Tableau de bord : « À traiter maintenant » d'abord, chiffres ensuite. */
+  html[data-bs~="admin"] #admPageDashboard:not([hidden]){ display:flex; flex-direction:column; }
+  html[data-bs~="admin"] #admPageDashboard > *{ order:20; }
+  html[data-bs~="admin"] #admPageDashboard > .adm-page-head{ order:0; margin-bottom:18px; }
+  html[data-bs~="admin"] #admPageDashboard > .adm-todo-head{ order:1; }
+  html[data-bs~="admin"] #admPageDashboard > #hvpTodo{ order:2; }
+  html[data-bs~="admin"] #admPageDashboard > .adm-subhead:has(+ #hvpTodayList){ order:3; }
+  html[data-bs~="admin"] #admPageDashboard > #hvpTodayList{ order:4; }
+  html[data-bs~="admin"] #admPageDashboard > #admNextApptHeading{ order:5; }
+  html[data-bs~="admin"] #admPageDashboard > #admNextApptCard{ order:6; }
+  html[data-bs~="admin"] #admPageDashboard > .adm-subhead:has(+ .hvp-quick){ order:7; }
+  html[data-bs~="admin"] #admPageDashboard > .hvp-quick{ order:8; }
+  html[data-bs~="admin"] #admPageDashboard > .adm-stats-grid{ order:9; margin-top:26px; }
+  /* Carte prioritaire */
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-todo-head{
+    margin:0; padding:18px 20px 4px; border-radius:22px 22px 0 0; font-size:1.05rem; color:#FFFFFF;
+    background:linear-gradient(135deg, #2A3B54 0%, #1B2B41 70%); box-shadow:inset 0 1px 0 rgba(215,161,107,0.35);
+    display:flex; align-items:center; gap:10px;
+  }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-todo-head::before{
+    content:''; width:8px; height:8px; border-radius:50%; background:#D7A16B; box-shadow:0 0 0 0 rgba(215,161,107,0.6); flex:none;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    html[data-bs~="admin"] #espaceProAdminPanel .adm-todo-head::before{ animation:bsPulse 2.4s var(--sig-ease-standard, ease) infinite; }
+  }
+  @keyframes bsPulse{ 70%{ box-shadow:0 0 0 9px rgba(215,161,107,0); } 100%{ box-shadow:0 0 0 0 rgba(215,161,107,0); } }
+  html[data-bs~="admin"] #espaceProAdminPanel #hvpTodo{
+    margin:0 0 8px; padding:12px 16px 18px; border-radius:0 0 22px 22px;
+    background:linear-gradient(135deg, #243247 0%, #1B2B41 70%); box-shadow:var(--bs-elev-2);
+  }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item{
+    background:rgba(12,20,34,0.5); border:0; border-radius:14px; box-shadow:none; color:#FFFFFF;
+  }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item:hover{ background:rgba(12,20,34,0.75); }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item.is-alert{ box-shadow:inset 3px 0 0 #D7A16B; border:0; }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item.is-alert strong{ color:#D7A16B; }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item span{ color:#B7C4D4; }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item.is-zero{ background:rgba(12,20,34,0.28); }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item.is-zero strong{ color:#8FA1B8; font-weight:600; }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-todo-item.is-zero span{ color:#8FA1B8; }
+  /* Statistiques : sans cercles pastel, zéros atténués */
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-stat-card{ background:#1B2B41; border:0; box-shadow:var(--bs-elev-1); }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-stat-card::after{ display:none; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-stat-card.is-zero{ background:rgba(27,43,65,0.55); box-shadow:none; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-stat-card.is-zero .adm-stat-value{ color:#8FA1B8; font-weight:600; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-stat-card.is-zero .adm-stat-label{ color:#8FA1B8; }
+  /* Cartes, listes, états vides */
+  html[data-bs~="admin"] #espaceProAdminPanel :is(.hvp-card, .ec-card, .ec-row, .ec-empty, .admin-stats-chart, .adm-health, .ec-list > *){ border-color:transparent; }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-empty{ background:#1B2B41; color:#B7C4D4; border-radius:16px; padding:18px 20px; }
+  html[data-bs~="admin"] #espaceProAdminPanel .ec-empty{ background:#1B2B41; color:#B7C4D4; }
+  html[data-bs~="admin"] #espaceProAdminPanel .ec-next-appt{ background:linear-gradient(140deg, #2A3B54 0%, #1B2B41 70%) !important; box-shadow:var(--bs-elev-2), inset 0 0 0 1px rgba(215,161,107,0.25); }
+  /* Actions rapides */
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-quick-btn{ background:#243247; color:#FFFFFF; border:0; box-shadow:none; }
+  html[data-bs~="admin"] #espaceProAdminPanel .hvp-quick-btn:hover{ background:#2A3B54; }
+  html[data-bs~="admin"] #espaceProAdminPanel .adm-quicklink-btn{ background:#243247; color:#FFFFFF; border-color:transparent; }
+  /* Fonds pleins (cuivre, vert, rouge) : texte bleu nuit pour rester lisible. */
+  html[data-bs~="admin"] :is(.adm-quicklink-btn:hover, #espaceProAdminPanel .gallery-filter-btn.is-active, .admin-bk-ics-btn:hover, .admin-bk-propose-btn:hover,
+    .admin-bk-propose-send, .admin-bk-move-send, #adminTravelSettingsSave, .adm-cal-btn-primary, .adm-retry-btn:hover, .admin-bk-planning-daycol-head.is-today,
+    .admin-bk-modal-propose-toggle:hover, .qc-ai-prefill-btn, .hvp-primary-btn, .hvp-btn-ok, .hvt-btn-nav,
+    .admin-bk-accept-btn:hover, .admin-bk-start-btn:hover, .admin-bk-resume-btn:hover, .admin-bk-decision-accept, .hvp-act.is-main, .hvt-btn-go,
+    .admin-bk-refuse-btn:hover, .admin-bk-decision-refuse, .admin-bk-cancel-confirmed-toggle:hover, .admin-bk-refuse-confirm, .admin-bk-delete-btn:hover,
+    .admin-bk-history-btn.is-active, .admin-req-badge, .admin-push-toggle-btn){ color:#101A2B !important; }
+  /* Ombres de carte adaptées au fond sombre (plus de liseré blanc en haut). */
+  html[data-bs~="admin"] #espacePro, html[data-bs~="pro"] #espacePro, html[data-bs~="particulier"] #espaceClient{
+    --hv-shadow-card:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px -16px rgba(0,0,0,.6);
+    --hv-shadow-lift:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 44px -22px rgba(0,0,0,.75);
+    --hv-card:#1B2B41;
+  }
+  /* États vides : pictogramme cuivre sur pastille bleu nuit. */
+  html[data-bs~="admin"] :is(#espacePro, .hvp-modal, .admin-bk-modal-overlay, #adminClientFicheOverlay, #refAdmModal) :is(.ec-empty, .hvp-empty), html[data-bs~="pro"] #espacePro :is(.ec-empty, .hvp-empty), html[data-bs~="particulier"] #espaceClient :is(.ec-empty, .hvp-empty){
+    background:#1B2B41; color:#B7C4D4; box-shadow:var(--bs-elev-1);
+  }
+  html[data-bs~="admin"] :is(#espacePro, .hvp-modal, .admin-bk-modal-overlay, #adminClientFicheOverlay, #refAdmModal) :is(.ec-empty, .hvp-empty)::before, html[data-bs~="pro"] #espacePro :is(.ec-empty, .hvp-empty)::before, html[data-bs~="particulier"] #espaceClient :is(.ec-empty, .hvp-empty)::before{
+    background-color:#243247; box-shadow:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D7A16B' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10.5 12 3l9 7.5'/%3E%3Cpath d='M5 9.5V20h14V9.5'/%3E%3Cpath d='M10 20v-5h4v5'/%3E%3C/svg%3E");
+  }
+  html[data-bs~="admin"] :is(#espacePro, .hvp-modal, .admin-bk-modal-overlay) .ec-empty-error::before, html[data-bs~="pro"] #espacePro .ec-empty-error::before, html[data-bs~="particulier"] #espaceClient .ec-empty-error::before{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F28B7B' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.01'/%3E%3C/svg%3E");
+  }
+  html[data-bs~="admin"] #espacePro .ec-empty strong, html[data-bs~="pro"] #espacePro .ec-empty strong, html[data-bs~="particulier"] #espaceClient .ec-empty strong{ color:#FFFFFF; }
+  /* iPhone / tablette : la marque reste visible en tête (logo officiel, halo). */
+  @media (max-width:880px){
+    html[data-bs~="admin"] #espacePro.is-open, html[data-bs~="pro"] #espacePro.is-open{ padding-top:max(12px, env(safe-area-inset-top)); }
+    html[data-bs~="admin"] #espaceProAdminPanel .adm-sidebar,
+    html[data-bs~="pro"] .pro-shell .pro-sidebar{ display:flex !important; flex:0 0 auto; flex-direction:row; justify-content:flex-start; padding:10px 16px 0; background:transparent !important; border:0 !important; gap:0; }
+    html[data-bs~="admin"] #espaceProAdminPanel .adm-sidebar-nav, html[data-bs~="pro"] .pro-shell .pro-sidebar-nav{ display:none !important; }
+    html[data-bs~="admin"] #espaceProAdminPanel .adm-sidebar > :not(.adm-sidebar-brand), html[data-bs~="pro"] .pro-shell .pro-sidebar > :not(.pro-sidebar-brand){ display:none !important; }
+    html[data-bs~="admin"] .adm-sidebar-logo, html[data-bs~="pro"] .pro-sidebar-logo{ height:52px !important; }
+    html[data-bs~="admin"] #espaceProAdminPanel .adm-shell, html[data-bs~="pro"] .pro-shell{ border-radius:0; }
+  }
+  /* Points isolés relevés par l'audit (admin) */
+  html[data-bs~="admin"] #espaceProAdminPanel :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea){ background-color:#243247 !important; color:#FFFFFF !important; }
+  html[data-bs~="admin"] .admin-bk-modal-overlay :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea),
+  html[data-bs~="admin"] .hvp-modal :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea){ background-color:#243247 !important; color:#FFFFFF !important; }
+  html[data-bs~="admin"] .admin-bk-main-tab.is-active{ background:#D7A16B; color:#101A2B; border-color:#D7A16B; }
+  html[data-bs~="admin"] :is(.admin-bk-archive-year-btn, .admin-bk-archive-month-btn){ background:#1B2B41; color:#FFFFFF; border-color:transparent; }
+  html[data-bs~="admin"] :is(.admin-bk-archive-year-btn, .admin-bk-archive-month-btn).is-active{ background:#2A3B54; box-shadow:inset 0 0 0 1.5px #D7A16B; }
+  html[data-bs~="admin"] .offer-save{ background:#D7A16B; color:#101A2B; }
+  html[data-bs~="admin"] .sms-banner.is-off{ background:rgba(242,184,75,0.12); color:#F2B84B; }
+  html[data-bs~="admin"] .sms-banner.is-test{ background:rgba(156,200,242,0.12); color:#9CC8F2; }
+  html[data-bs~="admin"] .sms-banner.is-on{ background:rgba(95,199,149,0.12); color:#5FC795; }
+  html[data-bs~="admin"] .admin-bk-dash-card{ background:#1B2B41; border:0; box-shadow:var(--bs-elev-1); }
+  html[data-bs~="admin"] .admin-bk-dash-card.is-zero{ background:rgba(27,43,65,.55); box-shadow:none; }
+  html[data-bs~="admin"] .admin-bk-dash-card.is-zero .admin-bk-dash-value, html[data-bs~="admin"] .admin-bk-dash-card.is-zero .admin-bk-dash-label{ color:#8FA1B8; }
+  html[data-bs~="admin"] .admin-bk-dash-card-ca{ background:rgba(95,199,149,0.10); box-shadow:inset 3px 0 0 #5FC795; }
+  html[data-bs~="admin"] .admin-bk-dash-card-ca .admin-bk-dash-value{ color:#5FC795; }
+  html[data-bs~="admin"] #adminBkOpenStatsBtn{ background:transparent; border:1px solid rgba(255,255,255,0.18); color:#FFFFFF; }
+
+  /* =====================================================================
+     4. ESPACE PROFESSIONNEL (B2B, dense)
+     ===================================================================== */
+  html[data-bs~="pro"] .pro-shell, html[data-bs~="pro"] #espacePro .espace-pro-pro-scope{
+    --pro-navy:#0C1422; --pro-petrol:#0C1422;
+    --pro-ocean:#D7A16B; --pro-ocean-soft:rgba(215,161,107,0.14);
+    --pro-turquoise:#7FDCD0; --pro-turquoise-soft:rgba(127,220,208,0.12);
+    --pro-coral:#D7A16B; --pro-coral-soft:rgba(215,161,107,0.14);
+    --pro-sand:#243247; --pro-offwhite:#101A2B; --pro-card-bg:#1B2B41;
+    --pro-ink:#FFFFFF; --pro-ink-soft:#B7C4D4; --pro-line:rgba(255,255,255,0.08);
+    --pro-shadow:var(--bs-elev-2); --pro-shadow-sm:var(--bs-elev-1);
+    --ink:#FFFFFF; --ink-soft:#B7C4D4; --ink-soft-fixed:#B7C4D4; --navy-fixed:#FFFFFF;
+    --hv-text:#FFFFFF; --hv-title:#FFFFFF; --hv-text-2:#B7C4D4; --hv-text-3:#8FA1B8;
+    --hv-blue:#9CC8F2; --hv-success:#5FC795; --hv-warning:#F2B84B; --hv-danger:#F28B7B; --hv-info:#9CC8F2;
+    --line:rgba(255,255,255,0.08); --hv-border:#34465E; --hv-field-border:#7D90A8; --hv-placeholder:#8FA1B8;
+    --sand:#1B2B41; --sand-deep:#101A2B; --cream:#1B2B41; --white:#1B2B41;
+    --terracotta:#D7A16B; --terracotta-deep:#E3B47F; --terracotta-fixed:#D7A16B; --terracotta-deep-fixed:#E3B47F;
+    --hv-orange:#D7A16B; --hv-orange-deep:#E3B47F; --hv-gold-text:#E3B47F; --hv-action:#D7A16B; --hv-action-hover:#E3B47F;
+    --sig-focus:#D7A16B;
+    color-scheme:dark; color:#FFFFFF;
+    background:#101A2B; border:0; box-shadow:none; border-radius:0;
+  }
+  html[data-bs~="pro"] .pro-shell .pro-sidebar{ background:#0C1422; border-right:1px solid rgba(255,255,255,0.05); }
+  html[data-bs~="pro"] .pro-shell .pro-main{ background:#101A2B; }
+  html[data-bs~="pro"] .pro-shell .pro-nav-btn{ color:#B7C4D4; }
+  html[data-bs~="pro"] .pro-shell .pro-nav-btn:hover{ background:rgba(255,255,255,0.05); color:#FFFFFF; }
+  html[data-bs~="pro"] .pro-shell .pro-nav-btn.is-active{ background:#1B2B41; color:#FFFFFF; }
+  html[data-bs~="pro"] .pro-shell .pro-nav-btn.is-active::before{ background:#D7A16B; }
+  html[data-bs~="pro"] .pro-shell .pro-eyebrow{ color:#D7A16B !important; }
+  html[data-bs~="pro"] .pro-shell .deco-blob{ display:none !important; }
+  html[data-bs~="pro"] .pro-shell .pro-stat-card{ background:#1B2B41; border:0; box-shadow:var(--bs-elev-1); }
+  html[data-bs~="pro"] .pro-shell .pro-stat-card::after{ display:none; }
+  html[data-bs~="pro"] .pro-shell .pro-stat-card.is-zero{ background:rgba(27,43,65,0.55); box-shadow:none; }
+  html[data-bs~="pro"] .pro-shell .pro-stat-card.is-zero :is(.pro-stat-value, .pro-stat-label){ color:#8FA1B8; }
+  html[data-bs~="pro"] .pro-shell .pro-stat-card.is-zero .pro-stat-value{ font-weight:600; }
+  html[data-bs~="pro"] .pro-shell .pro-quicklink-btn{ background:#243247; color:#FFFFFF; }
+  html[data-bs~="pro"] .pro-shell .pro-quicklink-btn:first-child{ background:#D7A16B; color:#101A2B; }
+  html[data-bs~="pro"] .pro-shell :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea){ background-color:#243247 !important; color:#FFFFFF !important; }
+  html[data-bs~="pro"] .pro-shell .espace-pro-appt-item{ background:#1B2B41; border-color:transparent; }
+  html[data-bs~="pro"] .pro-shell .espace-pro-appt-meta .is-confirmed{ color:#5FC795; }
+  html[data-bs~="pro"] .pro-shell .espace-pro-appt-meta .is-pending{ color:#F2B84B; }
+
+  /* ---------- Composants des espaces posés sur --navy-fixed (devenu texte clair) ---------- */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-next-appt{
+    background:linear-gradient(140deg, #2A3B54 0%, #1B2B41 70%) !important; box-shadow:var(--bs-elev-2), inset 0 0 0 1px rgba(215,161,107,0.25) !important;
+  }
+  html[data-bs~="particulier"] #espaceClient .espace-pro-dash-banner,
+  html:is([data-bs~="pro"], [data-bs~="admin"]) #espacePro .espace-pro-dash-banner{ background:#1B2B41; color:#FFFFFF; box-shadow:inset 3px 0 0 #D7A16B; }
+  html[data-bs~="particulier"] #espaceClient .ec-tab.is-active{ background:#1B2B41 !important; color:#FFFFFF; box-shadow:inset 3px 0 0 #D7A16B; }
+  html[data-bs~="particulier"] #espaceClient :is(.ecx-cat-chip.is-active, .ecx-filter-pill.is-active){ background:#D7A16B; border-color:#D7A16B; color:#101A2B; }
+  html[data-bs~="particulier"] #espaceClient :is(.ec-loy-wallet, .ec-amb-hero){ background:linear-gradient(140deg, #2A3B54 0%, #1B2B41 70%) !important; box-shadow:var(--bs-elev-2), inset 0 0 0 1px rgba(215,161,107,0.25); }
+
+  /* =====================================================================
+     5. ESPACE PARTICULIER (chaleureux, réservation rapide)
+     ===================================================================== */
+  html[data-bs~="particulier"] #espaceClient.is-open:not(.gate-bg-active){
+    --ink:#FFFFFF; --ink-soft:#B7C4D4; --ink-soft-fixed:#B7C4D4; --navy-fixed:#FFFFFF;
+    --hv-text:#FFFFFF; --hv-title:#FFFFFF; --hv-text-2:#B7C4D4; --hv-text-3:#8FA1B8; --hv-ink-strong:#FFFFFF;
+    --hv-blue:#9CC8F2; --hv-success:#5FC795; --hv-warning:#F2B84B; --hv-danger:#F28B7B; --hv-info:#9CC8F2;
+    --line:rgba(255,255,255,0.08); --hv-border:#34465E; --hv-field-border:#7D90A8; --hv-placeholder:#8FA1B8;
+    --sand:#1B2B41; --sand-deep:#101A2B; --cream:#1B2B41; --white:#1B2B41; --hv-card:#1B2B41; --hv-bg:#101A2B;
+    --terracotta:#D7A16B; --terracotta-deep:#E3B47F; --terracotta-fixed:#D7A16B; --terracotta-deep-fixed:#E3B47F;
+    --hv-orange:#D7A16B; --hv-orange-deep:#E3B47F; --hv-gold-text:#E3B47F; --hv-action:#D7A16B; --hv-action-hover:#E3B47F;
+    --sky-accent:#D7A16B; --sky-accent-soft:#243247; --turquoise-soft:#243247; --amber-soft:#243247;
+    --sky-deep-fixed:#2A3B54;
+    --sig-focus:#D7A16B;
+    color-scheme:dark; color:#FFFFFF;
+  }
+  /* Photo de fond du tableau de bord connecté : remplacée par le bleu nuit uni. */
+  html[data-bs~="particulier"] #espaceClient.is-open:not(.gate-bg-active) :is(.auth-bg, .auth-bg-overlay){ display:none !important; }
+  html[data-bs~="particulier"] #espaceClient :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]), textarea){ background-color:#243247 !important; color:#FFFFFF !important; }
+  html[data-bs~="particulier"] #espaceClient :is(label, .ec-section-sub, .ec-form label){ color:#B7C4D4; }
+  html[data-bs~="particulier"] #espaceClient :is(.ec-section-title, .ecx-home-h, .ecx-offer-group-title, .ecx-offer-name){ color:#FFFFFF; }
+  html[data-bs~="particulier"] #espaceClient .ecx-home-h, html[data-bs~="particulier"] #espaceClient .ecx-section-head h3{ color:#D7A16B; letter-spacing:.12em; text-transform:uppercase; font-size:.78rem; }
+  /* Onglets et sélecteurs */
+  html[data-bs~="particulier"] #espaceClient .ec-tab{ background:transparent; color:#B7C4D4; border-color:transparent; box-shadow:none; }
+  html[data-bs~="particulier"] #espaceClient .ec-tab:hover{ color:#FFFFFF; background:rgba(255,255,255,0.05); }
+  html[data-bs~="particulier"] #espaceClient :is(.ecx-fam-tabs, .ecx-seg){ background:#1B2B41; border-color:transparent; }
+  html[data-bs~="particulier"] #espaceClient :is(.ecx-fam-tab, .ecx-seg-btn){ color:#B7C4D4; }
+  html[data-bs~="particulier"] #espaceClient :is(.ecx-fam-tab, .ecx-seg-btn).is-active{ color:#FFFFFF; }
+  html[data-bs~="particulier"] #espaceClient .ecx-count{ background:#D7A16B; color:#101A2B; }
+  html[data-bs~="particulier"] #espaceClient .ecx-search{ background:#243247; border-color:transparent; color:#FFFFFF; }
+  /* Cartes */
+  html[data-bs~="particulier"] #espaceClient :is(.ecx-offer, .ec-row, .ecx-appt-row, .ec-card, .ecx-card, .ecx-svc-card){ background:#1B2B41; border-color:transparent; color:#FFFFFF; box-shadow:var(--bs-elev-1); }
+  html[data-bs~="particulier"] #espaceClient :is(.ecx-offer-desc, .ecx-offer-meta, .ec-row-meta, .ecx-svc-card-desc, .ecx-svc-card-duration){ color:#B7C4D4; }
+  html[data-bs~="particulier"] #espaceClient .ecx-offer-price{ color:#D7A16B; }
+  html[data-bs~="particulier"] #espaceClient .ecx-offer-btn.is-ghost, html[data-bs~="particulier"] #espaceClient .btn-secondary{ background:transparent; color:#FFFFFF; border:1px solid rgba(255,255,255,0.3); }
+  html[data-bs~="particulier"] #espaceClient .ecx-offer-btn:not(.is-ghost){ background:#D7A16B; color:#101A2B; border-color:#D7A16B; }
+
+  /* ---------- Statuts dans les espaces (fond sombre) ---------- */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient, .admin-bk-modal-overlay, .hvp-modal) :is(.ec-badge, .adm-badge, .hvp-pill){ background:rgba(255,255,255,0.07); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient, .admin-bk-modal-overlay, .hvp-modal) :is(.ec-badge-pending, .ec-badge-professionnel, .adm-badge-pending, .hvp-st-PENDING){ background:rgba(242,184,75,0.14); color:#F2B84B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient, .admin-bk-modal-overlay, .hvp-modal) :is(.ec-badge-confirmed, .ec-badge-progress, .adm-badge-progress, .hvp-st-CONFIRMED){ background:rgba(156,200,242,0.14); color:#9CC8F2; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient, .admin-bk-modal-overlay, .hvp-modal) :is(.ec-badge-completed, .adm-badge-confirmed, .hvp-st-COMPLETED){ background:rgba(95,199,149,0.14); color:#5FC795; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient, .admin-bk-modal-overlay, .hvp-modal) :is(.ec-badge-cancelled, .adm-badge-cancelled, .hvp-st-CANCELLED, .hvp-st-REFUSED, .hvp-st-NO_SHOW){ background:rgba(242,139,123,0.14); color:#F28B7B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ecx-track-step.is-current{ color:#F2B84B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ecx-track-step.is-current .ecx-track-dot{ background:#F2B84B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ecx-track-dot{ background:#34465E; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-appt-cancel-btn{ color:#F28B7B; border-color:rgba(242,139,123,0.6); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-appt-move-btn{ color:#FFFFFF; border-color:rgba(255,255,255,0.4); }
+  html[data-bs~="particulier"] #espaceClient .ecx-fam-tile{ background:linear-gradient(170deg, #243247 0%, #1B2B41 70%) !important; border-color:transparent !important; color:#FFFFFF; box-shadow:var(--bs-elev-1) !important; }
+  html[data-bs~="particulier"] #espaceClient .ecx-fam-tile:hover{ background:linear-gradient(170deg, #2A3B54 0%, #1B2B41 70%) !important; box-shadow:var(--bs-elev-2), inset 0 0 0 1px rgba(215,161,107,0.35) !important; }
+  html[data-bs~="particulier"] #espaceClient .ecx-bottomnav{ background:rgba(12,20,34,0.94) !important; border-top:1px solid rgba(255,255,255,0.06) !important; box-shadow:0 -10px 30px -18px rgba(0,0,0,0.8) !important; }
+  html[data-bs~="particulier"] #espaceClient .ecx-bottomnav-item{ color:#8FA1B8; }
+  html[data-bs~="particulier"] #espaceClient .ecx-bottomnav-item.is-active{ color:#FFFFFF; }
+  html[data-bs~="particulier"] #espaceClient .ecx-bottomnav-item.is-active .ecx-bn-icon{ color:#D7A16B; }
+  /* Halos pastel des illustrations : réduits à une lueur discrète sur bleu nuit. */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .hv-illus ellipse[fill^="url(#hvg"]{ opacity:.14; }
+  html[data-bs~="particulier"] #espaceClient .ec-home-head .ec-section-title{ color:#FFFFFF; text-shadow:none; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-next-appt .ec-badge-pending{ background:rgba(242,184,75,0.16) !important; color:#F2B84B !important; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-next-appt :is(.ec-badge-confirmed, .ec-badge-progress){ background:rgba(156,200,242,0.16) !important; color:#9CC8F2 !important; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-next-appt .ec-eyebrow{ color:#D7A16B !important; }
+
+  /* =====================================================================
+     6. RÉSERVATION — sceau de validation (logo officiel au centre)
+     N'apparaît qu'à l'étape 4, affichée par le script après la réponse
+     réelle du serveur. Le statut est porté par le titre, jamais par le sceau.
+     ===================================================================== */
+  @property --bs-seal-a{ syntax:'<percentage>'; inherits:false; initial-value:100%; }
+  html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"] .confirm-check{
+    position:relative; display:block; width:136px; height:136px; margin:6px auto 22px; padding:0; border:0; border-radius:50%;
+    color:transparent; font-size:0; line-height:0; overflow:visible;
+    background:
+      radial-gradient(circle closest-side, #FFFFFF 0 calc(100% - 4px), transparent calc(100% - 3.5px)),
+      conic-gradient(from -90deg, #D7A16B var(--bs-seal-a), rgba(215,161,107,0.18) 0);
+    box-shadow:0 0 0 7px #F7F5F1, 0 0 0 8px rgba(138,90,43,0.30), 0 22px 44px -20px rgba(138,90,43,0.55);
+    animation:none;
+  }
+  /* Logo officiel (fichier d'origine, non modifié) au centre du sceau. */
+  html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"] .confirm-check::before{
+    content:''; position:absolute; inset:17%; margin:0; width:auto; height:auto; border:0; border-radius:0; transform:none; clip-path:none;
+    background:url("images/brand/hayeva-logo-sm.png") center / contain no-repeat;
+    animation:none;
+  }
+  /* Pastille de validation (enregistrement confirmé par le serveur). */
+  html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"] .confirm-check::after{
+    content:''; position:absolute; right:-2px; bottom:4px; left:auto; top:auto; width:38px; height:38px; border-radius:50%; border:0; opacity:1;
+    background:#17643F url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 20px no-repeat;
+    box-shadow:0 0 0 4px #FFFFFF, 0 8px 18px -8px rgba(23,100,63,0.7);
+    transform:none; animation:none;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check{
+      animation:bsSealIn .56s var(--sig-ease-spring, cubic-bezier(.34,1.56,.64,1)) backwards, bsSealRing .9s .18s var(--sig-ease-emph, cubic-bezier(.16,1,.3,1)) backwards;
+    }
+    html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check::before{
+      animation:bsSealLogo .5s .42s var(--sig-ease-emph, cubic-bezier(.16,1,.3,1)) backwards;
+    }
+    html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check::after{
+      animation:bsSealBadge .46s .98s var(--sig-ease-spring, cubic-bezier(.34,1.56,.64,1)) backwards;
+    }
+  }
+  @keyframes bsSealIn{ from{ opacity:0; transform:scale(.72) rotate(-8deg); } to{ opacity:1; transform:none; } }
+  @keyframes bsSealRing{ from{ --bs-seal-a:0%; } to{ --bs-seal-a:100%; } }
+  @keyframes bsSealLogo{ from{ opacity:0; transform:scale(.86); } to{ opacity:1; transform:none; } }
+  @keyframes bsSealBadge{ from{ opacity:0; transform:scale(.3); } to{ opacity:1; transform:none; } }
+  html[data-bs]:not([data-bs=""]) .confirm-screen h3{ letter-spacing:-0.01em; }
+  html[data-bs]:not([data-bs=""]) :is(.date-pill.selected, .time-pill.selected){ background:#FFFFFF; box-shadow:0 0 0 2px var(--sig-orange, #8A5A2B), 0 10px 22px -14px rgba(138,90,43,.6); }
+
+  /* ---------- Orange codé en dur : passé au cuivre (le logo et la flamme
+     des illustrations chauffage gardent l'orange officiel) ---------- */
+  html[data-bs]:not([data-bs=""]) .hvk, html[data-bs]:not([data-bs=""]) :root[data-universe] .hvk{ --hvk-accent:#8A5A2B; }
+  html[data-bs]:not([data-bs=""]) .bk-chosen-meta{ color:#8A5A2B; }
+  html[data-bs]:not([data-bs=""]) .hvk-id-art, html[data-bs]:not([data-bs=""]) :is(.hvk-id-chauffage, .hvk-id-plomberie) .hvk-id-art{ background:#EFEBE4; }
+  html[data-bs]:not([data-bs=""]) :is(.hvk-id-label, .hvk-id-chauffage .hvk-id-label, .hvk-id-plomberie .hvk-id-label){ color:#8A5A2B; }
+  html[data-bs]:not([data-bs=""]) :is(.hv-update-banner button, .hv-install-now){ background:#D7A16B; color:#101A2B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .hv-more-item{ color:#FFFFFF; background:#243247; border-color:transparent; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .hv-more-item.is-current{ border-color:#D7A16B; color:#E3B47F; }
+  html[data-bs~="particulier"] #espaceClient .ecx-resume-eyebrow{ color:#D7A16B; }
+  /* Fiche prestation (fenêtre claire) */
+  html[data-bs]:not([data-bs=""]) .hvc-fact, html[data-bs]:not([data-bs=""]) .hvk-fact{ background:#F7F5F1; border-color:transparent; }
+
+  /* =====================================================================
+     7. ASSISTANT
+     ===================================================================== */
+  /* Site public : fenêtre ivoire, en-tête bleu nuit, envoi cuivre. */
+  html[data-bs~="public"] .ai-widget-panel{ background:#FFFFFF; box-shadow:0 30px 60px -24px rgba(16,26,43,0.55); border:0; }
+  html[data-bs~="public"] .ai-widget-header{ background:#101A2B; }
+  html[data-bs~="public"] .ai-widget-messages{ background:#F7F5F1; }
+  html[data-bs~="public"] .ai-widget-msg-assistant{ background:#FFFFFF; color:#172234; border-color:transparent; box-shadow:0 1px 2px rgba(23,34,52,.08); }
+  html[data-bs~="public"] .ai-widget-msg-user{ background:#101A2B; color:#FFFFFF; }
+  html[data-bs~="public"] :is(.ai-widget-send, .ai-widget-cta-btn){ background:#D7A16B; color:#101A2B; }
+  html[data-bs~="public"] .ai-widget-cta-btn-secondary{ background:transparent; color:#172234; border-color:#172234; }
+  html[data-bs~="public"] .ai-widget-cta-btn-secondary:hover{ background:#101A2B; color:#FFFFFF; }
+  html[data-bs~="public"] .ai-widget-form input{ background:#F7F5F1; color:#172234; }
+  html[data-bs~="public"] .ai-widget-toggle-fallback-label{ background:#101A2B; }
+  /* Espaces : bouton, invitation et fenêtre en bleu nuit. */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-btn{ background:#D7A16B; color:#101A2B; box-shadow:0 12px 28px -10px rgba(0,0,0,0.7); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-callout{ background:#243247; color:#FFFFFF; border-color:transparent; box-shadow:0 14px 30px -14px rgba(0,0,0,0.8); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-callout-close{ color:#B7C4D4; background:transparent; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-sheet{ background:rgba(6,10,18,0.55); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-card{ background:#1B2B41; color:#FFFFFF; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-head{ border-color:rgba(255,255,255,0.08); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-head-title{ color:#FFFFFF; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-head-sub{ color:#B7C4D4; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-close{ background:#243247; color:#FFFFFF; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-chip{ background:#243247; border-color:transparent; color:#FFFFFF; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-chip:hover{ box-shadow:inset 0 0 0 1px rgba(215,161,107,0.6); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-msg-assistant{ background:#243247; color:#FFFFFF; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-msg-user{ background:#D7A16B; color:#101A2B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-typing{ color:#B7C4D4; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-form{ border-color:rgba(255,255,255,0.08); }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-form input{ background:#243247 !important; color:#FFFFFF !important; border-color:#7D90A8 !important; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .ecx-assist-send{ background:#D7A16B; color:#101A2B; }
+  /* Liens « retour » des espaces */
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) :is(.ecx-back-btn, .ec-link-btn){ color:#D7A16B; }
+
+  /* =====================================================================
+     8. PORTAIL D'ENTRÉE ET ÉCRANS DE CONNEXION (sur photo)
+     Le logo du portail garde le traitement validé (halo, sans plaque).
+     ===================================================================== */
+  html[data-bs~="public"] #sitePortal .portal-card{ --portal-card-accent:#D7A16B; --portal-card-accent-soft:rgba(215,161,107,0.14); background:rgba(16,26,43,0.62); border-color:rgba(255,255,255,0.10); }
+  html[data-bs~="public"] #sitePortal .portal-card:hover{ background:rgba(27,43,65,0.78); border-color:rgba(215,161,107,0.45); }
+  html[data-bs~="public"] #sitePortal .portal-card-icon{ background:rgba(215,161,107,0.14) !important; color:#D7A16B !important; border-color:rgba(215,161,107,0.35) !important; }
+  html[data-bs~="public"] #sitePortal .portal-card-arrow{ color:#D7A16B !important; }
+  /* Connexion / inscription : surtitres et filets en cuivre clair (lisibles sur la photo). */
+  html:is([data-bs~="particulier"], [data-bs~="pro"], [data-bs~="admin"]) :is(#espaceClient, #espacePro).is-open.gate-bg-active{
+    --terracotta:#D7A16B; --terracotta-deep:#E3B47F; --terracotta-fixed:#D7A16B; --terracotta-deep-fixed:#E3B47F;
+    --hv-orange:#D7A16B; --hv-orange-deep:#E3B47F; --hv-action:#D7A16B; --sky-deep:#E3B47F; --sig-focus:#D7A16B; --sig-orange:#D7A16B;
+  }
+  html:is([data-bs~="particulier"], [data-bs~="pro"], [data-bs~="admin"]) :is(#espaceClient, #espacePro).is-open.gate-bg-active .eyebrow{ color:#D7A16B; }
+  html:is([data-bs~="particulier"], [data-bs~="pro"], [data-bs~="admin"]) :is(#espaceClient, #espacePro).is-open.gate-bg-active .rule{ background:#D7A16B; }
+  /* Pied de page : liens à 24 px de hauteur minimum (WCAG 2.5.8), tablette comprise. */
+  html[data-bs~="public"] footer nav a{ display:inline-flex; align-items:center; min-height:24px; }
+  /* Filets des surtitres « univers » et halos pastel des illustrations du site. */
+  html[data-bs~="public"] .univers-eyebrow::before{ background:#8A5A2B; }
+  html[data-bs~="public"] #universChauffage .univers-eyebrow::before{ background:#D7A16B; }
+  html[data-bs~="public"] .univers-eyebrow{ color:#4A5568; }
+  html[data-bs~="public"] #universChauffage .univers-eyebrow{ color:#B7C4D4; }
+  html[data-bs~="public"] main .hv-illus ellipse[fill^="url(#hvg"]{ opacity:.45; }
 </style>

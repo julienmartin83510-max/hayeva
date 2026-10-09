@@ -323,7 +323,7 @@
      l'identique, valeur finale exacte). Une valeur qui change ensuite est
      simplement signalée, sans recompter. Rien n'est inventé : seuls les
      textes déjà numériques sont animés. */
-  var COUNT_SEL = '.adm-stat-value, .pro-stat-value, .ec-amb-stat-value, .hvp-todo-item strong, [data-hv-count]';
+  var COUNT_SEL = '.adm-stat-value, .pro-stat-value, .ec-amb-stat-value, .hvp-todo-item strong, .admin-bk-dash-value, [data-hv-count]';
   var counted = {};
   function keyOf(el) {
     var host = el.closest('[id]');
@@ -352,9 +352,17 @@
     }
     requestAnimationFrame(step);
   }
+  // Indicateur à zéro : sa carte est atténuée (Black Signature), d'après la
+  // valeur réellement écrite par l'application, jamais pendant le comptage.
+  var ZERO_HOST = '.adm-stat-card, .pro-stat-card, .hvp-todo-item, .ec-amb-stat, .admin-bk-dash-card, [data-hv-count]';
+  function markZero(el) {
+    var host = el.closest(ZERO_HOST) || el, p = parseNum(el.textContent);
+    host.classList.toggle('is-zero', !!p && p.v === 0);
+  }
   function watchCount(el) {
     if (el.__hvCountBound) return;
     el.__hvCountBound = true;
+    markZero(el);
     var check = function () {
       if (el.__hvCounting) return;
       var txt = el.textContent, p = parseNum(txt);
@@ -371,7 +379,7 @@
       // Valeur écrite par l'application pendant le comptage : elle gagne
       // immédiatement (le comptage s'arrête, rien n'est écrasé).
       if (el.__hvCounting && el.textContent !== el.__hvWritten) el.__hvCounting = false;
-      if (!el.__hvCounting) check();
+      if (!el.__hvCounting) { check(); markZero(el); }
     }).observe(el, { childList: true, characterData: true, subtree: true });
     if (countIO) countIO.observe(el); else { el.__hvVis = true; check(); }
     el.__hvCheck = check;
