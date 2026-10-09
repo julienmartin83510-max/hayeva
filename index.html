@@ -7143,7 +7143,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
         <div class="hero-story-actions">
           <a href="#" class="hero-founder-link" id="founderBioOpenBtn1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
-            Mon histoire ✍🏽
+            Mon histoire
           </a>
         </div>
       </div>
@@ -7169,7 +7169,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
         <div class="hero-story-actions">
           <a href="#" class="hero-founder-link" id="founderBioOpenBtn2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 H16 L20 7 V21 H8 Z"/><path d="M16 3 V7 H20"/><line x1="11" y1="12" x2="17" y2="12"/><line x1="11" y1="16" x2="17" y2="16"/></svg>
-            Mon histoire ✍🏽
+            Mon histoire
           </a>
         </div>
       </div>
@@ -8275,9 +8275,11 @@ window.HV_APP_VERSION = 'hayeva-v39';
       </div>
 
       <div class="booking-card">
-        <div class="booking-progress" id="bkProgress">
+        <div class="booking-progress" id="bkProgress" role="progressbar" aria-label="Progression de la réservation" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-valuetext="Étape 1 sur 4">
           <span class="done"></span><span></span><span></span><span></span>
         </div>
+        <!-- V4 : prestation choisie, rappelée pendant tout le parcours. -->
+        <div class="bk-chosen" id="bkChosen" hidden></div>
 
         <div class="booking-step" data-step="1">
           <h3 id="bkStep1Title">1 · Choisissez une prestation</h3>
@@ -9301,17 +9303,17 @@ window.HV_APP_VERSION = 'hayeva-v39';
                 </div>
                 <div class="admin-bk-main-tabs" id="adminBkMainTabs" role="group" aria-label="Rendez-vous">
                   <button type="button" class="admin-bk-main-tab is-active" data-admin-filter="today">Aujourd'hui</button>
-                  <button type="button" class="admin-bk-main-tab" data-admin-filter="pending">🟠 En attente</button>
-                  <button type="button" class="admin-bk-main-tab" data-admin-filter="confirmed">🟢 Confirmés</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="pending"><span class="hv-dot hv-dot-pending" aria-hidden="true"></span>En attente</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="confirmed"><span class="hv-dot hv-dot-confirmed" aria-hidden="true"></span>Confirmés</button>
                   <button type="button" class="admin-bk-main-tab" data-admin-filter="upcoming">À venir</button>
                   <button type="button" class="admin-bk-main-tab" data-admin-filter="completed">Terminées</button>
-                  <button type="button" class="admin-bk-main-tab" data-admin-filter="cancelled">🔴 Refusés / annulés</button>
+                  <button type="button" class="admin-bk-main-tab" data-admin-filter="cancelled"><span class="hv-dot hv-dot-cancelled" aria-hidden="true"></span>Refusés / annulés</button>
                   <button type="button" class="admin-bk-main-tab" data-admin-filter="archives">Archives</button>
                 </div>
                 <div class="admin-bk-toolbar" id="adminBkOperationalToolbar">
                   <div class="admin-bk-view-toggle" id="adminBkViewToggle" role="group" aria-label="Mode d'affichage">
                     <button type="button" class="admin-bk-view-tab is-active" data-admin-bk-view="planning">Planning</button>
-                    <button type="button" class="admin-bk-view-tab" data-admin-bk-view="liste">☰ Liste</button>
+                    <button type="button" class="admin-bk-view-tab" data-admin-bk-view="liste">Liste</button>
                   </div>
                   <div class="hvp-seg" id="hvpPlanViewSeg" role="group" aria-label="Période du planning">
                     <button type="button" data-hvp-planview="day">Jour</button>
@@ -12609,8 +12611,42 @@ window.HV_APP_VERSION = 'hayeva-v39';
     return sb.client.from('customer_profiles').update({ phone: phone }).eq('user_id', uid).then(function(){}, function(){});
   }
 
+  // Rappel de la prestation choisie (étapes 2 et 3) : identité visuelle de
+  // la famille, nom et tarif tels qu'affichés au catalogue, créneau dès
+  // qu'il est choisi. « Modifier » ramène au choix de la prestation.
+  function renderBkChosen(n){
+    var el = document.getElementById('bkChosen');
+    if (!el) return;
+    var svc = currentService();
+    if (!svc || n < 2 || n > 3){ el.hidden = true; return; }
+    var cat = serviceCategory(svc.id);
+    var price = window.sudBooking && window.sudBooking.priceLine ? window.sudBooking.priceLine(svc) : (svc.price || '');
+    var when = (n === 3 && state.date && state.time !== null && state.time !== undefined) ? fmtDateLong(state.date) + ' à ' + fmtTime(state.time) : '';
+    var esc = function(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); };
+    var key = svc.id + '|' + when;
+    if (el.getAttribute('data-key') === key && !el.hidden) return;
+    el.setAttribute('data-key', key);
+    el.className = 'bk-chosen bk-chosen-' + (cat || 'autre');
+    el.innerHTML = (/^(clim|plomberie|chauffage)$/.test(cat) ? '<span class="bk-chosen-art" data-hv-illus="' + cat + '"></span>' : '') +
+      '<span class="bk-chosen-body"><span class="bk-chosen-eyebrow">Votre prestation</span>' +
+        '<span class="bk-chosen-title">' + esc(svc.title || svc.name || '') + '</span>' +
+        '<span class="bk-chosen-meta">' + esc(price) + '</span>' +
+        (when ? '<span class="bk-chosen-when">' + esc(when) + '</span>' : '') + '</span>' +
+      '<button type="button" class="bk-chosen-edit" data-bk-chosen-edit>Modifier</button>';
+    el.hidden = false;
+  }
+  document.addEventListener('click', function(e){
+    if (e.target.closest && e.target.closest('[data-bk-chosen-edit]')) showStep(1);
+  });
+
   function showStep(n, skipScroll){
+    var prevStep = step;
     step = n;
+    // Sens de la transition entre étapes (avance : depuis la droite).
+    var bkCardEl = document.querySelector('.booking-card');
+    if (bkCardEl && prevStep !== n) bkCardEl.style.setProperty('--hv-view-dx', n > prevStep ? '28px' : '-28px');
+    var progEl = document.getElementById('bkProgress');
+    if (progEl){ progEl.setAttribute('aria-valuenow', String(n)); progEl.setAttribute('aria-valuetext', 'Étape ' + n + ' sur 4'); }
     if (n === 3 && window.hvRefRefreshAdvantage) window.hvRefRefreshAdvantage();
     // Prestation choisie : conservée localement (48 h) pour pouvoir la
     // reprendre depuis l'Espace Client après une connexion — sans jamais
@@ -12644,6 +12680,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
       });
     }
     bkNext.textContent = n === 3 ? 'Confirmer ma demande' : 'Continuer';
+    renderBkChosen(n);
     updateNav();
     if (!skipScroll){
       var bookingCard = document.querySelector('.booking-card');
@@ -13708,7 +13745,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var rest = peek.length - shown.length;
     return '<button type="button" class="hvk-card' + (p.featured ? ' is-featured' : '') + (selected ? ' is-selected' : '') + '" role="radio" aria-checked="' + (selected ? 'true' : 'false') + '" data-hvk-pack="' + esc(p.slug) + '">' +
       '<span class="hvk-check" aria-hidden="true">' + CHECK_SVG + '</span>' +
-      (badges ? '<span class="hvk-badges">' + badges + '</span>' : '') +
+      '<span class="hvk-badges' + (badges ? '' : ' is-empty') + '">' + badges + '</span>' +
       '<span class="hvk-name">' + esc(p.name) + '</span>' +
       (p.tagline ? '<span class="hvk-tagline">' + esc(p.tagline) + '</span>' : '') +
       '<span class="hvk-pricing"><span class="hvk-price">' + esc(euros(p.priceCents)) + ' <small>TTC</small></span>' +
@@ -13890,7 +13927,56 @@ window.HV_APP_VERSION = 'hayeva-v39';
   var modal = null, lastFocus = null, originEl = null, savedScroll = null, closing = false;
   function isPhone(){ return window.matchMedia('(max-width:759px)').matches; }
   function scrollHost(){ return document.querySelector('#espaceClient.is-open, #espacePro.is-open'); }
+  // Continuité carte ↔ fiche : le titre et le prix « volent » de la carte
+  // vers l'en-tête de la fiche (et inversement à la fermeture), pendant que
+  // la fiche s'ouvre. Copies temporaires en position fixe, supprimées à la
+  // fin ; toute nouvelle interaction les interrompt proprement.
+  var flights = [];
+  var SRC_TITLE = '.ecx-offer-name, .hvc-name, .hvk-name, .ecx-svc-card-title, h4';
+  var SRC_PRICE = '.ecx-offer-price, .hvc-price, .hvk-price, .ecx-svc-card-price, .pack-price';
+  var DST_TITLE = '#hvkSheetTitle';
+  var DST_PRICE = '.hvk-detail-price strong, .hvk-fact strong';
+  function killFlights(){
+    flights.forEach(function(f){ try { f.anim.cancel(); } catch (e){} if (f.g.parentNode) f.g.parentNode.removeChild(f.g); if (f.hideEl) f.hideEl.style.visibility = ''; });
+    flights = [];
+  }
+  function inView(r){ return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight; }
+  function fly(fromEl, toEl, toRect, duration, easing, hideEl){
+    if (!fromEl || !toEl) return;
+    var a = fromEl.getBoundingClientRect(), b = toRect || toEl.getBoundingClientRect();
+    if (!inView(a) || !b.width) return;
+    var cs = getComputedStyle(toEl), fs = getComputedStyle(fromEl);
+    var g = document.createElement('div');
+    g.className = 'hvk-flight';
+    g.setAttribute('aria-hidden', 'true');
+    g.textContent = toEl.textContent;
+    g.style.cssText = 'position:fixed;left:' + b.left + 'px;top:' + b.top + 'px;width:' + Math.ceil(b.width + 2) + 'px;margin:0;padding:0;' +
+      'font:' + cs.font + ';color:' + cs.color + ';letter-spacing:' + cs.letterSpacing + ';text-transform:' + cs.textTransform + ';' +
+      'z-index:2147483601;pointer-events:none;transform-origin:0 0;white-space:normal;';
+    document.body.appendChild(g);
+    var k = (parseFloat(fs.fontSize) || 16) / (parseFloat(cs.fontSize) || 16);
+    if (hideEl) hideEl.style.visibility = 'hidden';
+    var anim = g.animate([
+      { transform:'translate(' + (a.left - b.left) + 'px,' + (a.top - b.top) + 'px) scale(' + k + ')', color: fs.color },
+      { transform:'none', color: cs.color }
+    ], { duration: duration, easing: easing, fill:'both' });
+    var f = { g:g, anim:anim, hideEl:hideEl };
+    flights.push(f);
+    anim.onfinish = function(){
+      if (g.parentNode) g.parentNode.removeChild(g);
+      if (hideEl) hideEl.style.visibility = '';
+      flights = flights.filter(function(x){ return x !== f; });
+    };
+  }
+  function cardOf(el){ return el && el.closest ? el.closest('.ecx-offer, .hvc-row, .hvk-card, .pack-card, .ecx-svc-card') : null; }
+  function returnPulse(){
+    var card = cardOf(originEl) || originEl;
+    if (!card || !document.contains(card) || reduced()) return;
+    card.classList.remove('hv-return'); void card.offsetWidth; card.classList.add('hv-return');
+    setTimeout(function(){ card.classList.remove('hv-return'); }, 900);
+  }
   function finishClose(){
+    killFlights();
     modal.hidden = true;
     modal.classList.remove('is-open', 'is-closing');
     var sheet = modal.querySelector('.hvk-sheet');
@@ -13903,18 +13989,31 @@ window.HV_APP_VERSION = 'hayeva-v39';
     }
     closing = false;
     if (lastFocus && lastFocus.focus) try { lastFocus.focus({ preventScroll:true }); } catch (e){}
+    returnPulse();
   }
   function closeModal(){
     if (!modal || modal.hidden || closing) return;
     closing = true;
     var sheet = modal.querySelector('.hvk-sheet');
     if (reduced() || !sheet || !sheet.animate){ finishClose(); return; }
-    modal.classList.add('is-closing');
+    killFlights();
     var from = getComputedStyle(sheet).transform;
+    sheet.getAnimations().forEach(function(a){ a.cancel(); });
+    modal.classList.add('is-closing');
+    var T = window.HvFx && window.HvFx.t ? window.HvFx.t : function(k, d){ return d; };
+    var dur = isPhone() ? T('close', 260) : T('close', 220);
+    // Retour à la carte : titre et prix redescendent vers leur place.
+    var card = cardOf(originEl);
+    if (card && !isPhone()){
+      var srcT = card.querySelector(SRC_TITLE), srcP = card.querySelector(SRC_PRICE);
+      var dT = sheet.querySelector(DST_TITLE), dP = sheet.querySelector(DST_PRICE);
+      if (srcT && dT) fly(dT, srcT, null, dur + 60, 'cubic-bezier(.2,0,0,1)', srcT);
+      if (srcP && dP) fly(dP, srcP, null, dur + 60, 'cubic-bezier(.2,0,0,1)', srcP);
+    }
     var anim = isPhone()
-      ? sheet.animate([{ transform: from === 'none' ? 'translateY(0)' : from }, { transform:'translateY(105%)' }], { duration:260, easing:'cubic-bezier(.4,0,1,1)', fill:'forwards' })
-      : sheet.animate([{ opacity:1, transform:'scale(1)' }, { opacity:0, transform:'scale(.96)' }], { duration:180, easing:'cubic-bezier(.4,0,1,1)', fill:'forwards' });
-    anim.onfinish = function(){ anim.cancel(); finishClose(); };
+      ? sheet.animate([{ transform: from === 'none' ? 'translateY(0)' : from }, { transform:'translateY(105%)' }], { duration:dur, easing:'cubic-bezier(.4,0,1,1)', fill:'forwards' })
+      : sheet.animate([{ opacity:1, transform:'scale(1)' }, { opacity:0, transform:'scale(.95)' }], { duration:dur, easing:'cubic-bezier(.4,0,1,1)', fill:'forwards' });
+    anim.onfinish = function(){ anim.cancel(); setTimeout(finishClose, 70); };
   }
   function ensureModal(){
     if (modal) return modal;
@@ -13966,20 +14065,27 @@ window.HV_APP_VERSION = 'hayeva-v39';
   }
   function openAnim(sheet){
     if (reduced() || !sheet.animate) return;
+    var T = window.HvFx && window.HvFx.t ? window.HvFx.t : function(k, d){ return d; };
+    var dur = T('open', 440), ease = 'cubic-bezier(.16,1,.3,1)';
+    // Positions finales mesurées AVANT de lancer l'animation de la fiche :
+    // le titre et le prix de la carte y arrivent en même temps qu'elle.
+    var card = cardOf(originEl);
+    var dT = sheet.querySelector(DST_TITLE), dP = sheet.querySelector(DST_PRICE);
+    var rT = dT && dT.getBoundingClientRect(), rP = dP && dP.getBoundingClientRect();
     if (isPhone()){
-      sheet.animate([{ transform:'translateY(100%)' }, { transform:'translateY(0)' }], { duration:420, easing:'cubic-bezier(.16,1,.3,1)' });
-    } else if (originEl && originEl.getBoundingClientRect){
-      // Ouverture depuis la carte : la fiche part de la position et de la
-      // taille de la carte touchée (FLIP), puis se déploie.
-      var o = originEl.getBoundingClientRect(), f = sheet.getBoundingClientRect();
-      if (o.width && f.width){
-        var sx = Math.max(0.2, o.width / f.width), sy = Math.max(0.1, o.height / f.height);
-        var dx = (o.left + o.width / 2) - (f.left + f.width / 2), dy = (o.top + o.height / 2) - (f.top + f.height / 2);
-        sheet.animate([
-          { transform:'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')', opacity:.35, borderRadius:'22px' },
-          { transform:'none', opacity:1 }
-        ], { duration:380, easing:'cubic-bezier(.16,1,.3,1)' });
-      }
+      sheet.animate([{ transform:'translateY(100%)' }, { transform:'translateY(0)' }], { duration:dur, easing:ease });
+    } else {
+      // Ordinateur : la fiche naît du côté de la carte (origine de
+      // l'agrandissement placée vers elle), sans déformer le texte.
+      var o = (card || originEl) && (card || originEl).getBoundingClientRect ? (card || originEl).getBoundingClientRect() : null, f = sheet.getBoundingClientRect();
+      var ox = o && o.width ? Math.max(0, Math.min(f.width, o.left + o.width / 2 - f.left)) : f.width / 2;
+      var oy = o && o.width ? Math.max(0, Math.min(f.height, o.top + o.height / 2 - f.top)) : f.height / 2;
+      sheet.style.transformOrigin = ox + 'px ' + oy + 'px';
+      sheet.animate([{ transform:'scale(.9)', opacity:0 }, { transform:'none', opacity:1 }], { duration:dur - 60, easing:ease });
+    }
+    if (card){
+      fly(card.querySelector(SRC_TITLE), dT, rT, dur, ease, dT);
+      fly(card.querySelector(SRC_PRICE), dP, rP, dur, ease, dP);
     }
     if (window.HvFx) window.HvFx.reveal(sheet.querySelectorAll('.hvk-desc, .hvk-facts, .hvk-detail-head, .hvk-h, .hvk-list, .hvk-cond, .hvk-supply'), { y:10, max:12, stagger:0.03, startDelay:0.12 });
   }
@@ -14018,7 +14124,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
         (/25 km/.test(d.conditions || '') ? '' : '<p class="hvk-cond">Déplacement offert jusqu\'à 25 km autour de HAYEVA. Au-delà, des frais de déplacement peuvent s\'appliquer selon la distance et sont toujours affichés avant validation de votre demande.</p>') +
         (opts.onChoose ? '<div class="hvk-actions"><button type="button" class="hvk-choose" style="background:#C2410C;color:#FFFFFF;" data-hvk-choose="' + esc(id) + '">' + esc(opts.chooseLabel || (s.tier === 'quote' ? 'Demander un devis' : 'Réserver cette prestation')) + '</button></div>' : '');
     }
-    sheet.innerHTML = '<div class="hvk-grab" aria-hidden="true"><span></span></div>' +
+    var catId = B && B.serviceCategory ? B.serviceCategory(id) : '';
+    var CAT_LABEL = { clim:'Climatisation', plomberie:'Plomberie', chauffage:'Chauffage', multi:'Multi-services', devis:'Devis', pro:'Check technique' };
+    var ident = CAT_LABEL[catId] ? '<div class="hvk-id hvk-id-' + catId + '">' + (/^(clim|plomberie|chauffage)$/.test(catId) ? '<span class="hvk-id-art" data-hv-illus="' + catId + '"></span>' : '') + '<span class="hvk-id-label">' + CAT_LABEL[catId] + '</span></div>' : '';
+    sheet.innerHTML = '<div class="hvk-grab" aria-hidden="true"><span></span></div>' + ident +
       '<button type="button" class="hvk-close" data-hvk-close aria-label="Fermer la fiche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + html;
     // Pied collant : « Retour » + bouton de réservation toujours accessibles.
     var foot = document.createElement('div');
@@ -14038,6 +14147,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
       });
     }
     sheet.appendChild(foot);
+    // Ouverture répétée ou pendant une fermeture : on repart proprement.
+    killFlights();
+    sheet.getAnimations().forEach(function(a){ a.cancel(); });
     lastFocus = document.activeElement;
     originEl = lastFocus && lastFocus.closest ? (lastFocus.closest('.ecx-offer, .hvc-row, .hvk-card, .pack-card, .ecx-svc-card') || lastFocus) : null;
     var host = scrollHost();
@@ -18252,10 +18364,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
   // Un seul point de mise à jour du statut, réutilisé par le menu déroulant
   // ET les boutons rapides Accepter/Refuser — même comportement partout
   // (cache local resynchronisé, re-rendu, message d'erreur identique).
+  var ADM_STATUS_TOAST = { CONFIRMED:'Rendez-vous confirmé', IN_PROGRESS:'Intervention démarrée', COMPLETED:'Rendez-vous marqué terminé', CANCELLED:'Rendez-vous annulé', NO_SHOW:'Absence enregistrée', PENDING:'Rendez-vous remis en attente' };
   function admUpdateBookingStatus(id, newStatus, onDone){
     sb.client.from('bookings').update({ status: newStatus }).eq('id', id).then(function(res){
       if (onDone) onDone(res.error);
       if (res.error){ window.alert('Impossible de mettre à jour ce rendez-vous.'); return; }
+      // Retour visuel uniquement après la réponse réelle du serveur.
+      if (window.hvToast) window.hvToast(ADM_STATUS_TOAST[newStatus] || 'Statut mis à jour', 'success');
       var row = adminBookingsCache.rows.filter(function(b){ return b.id === id; })[0];
       if (row) row.status = newStatus;
       admRenderBkArea();
@@ -18285,6 +18400,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
       cancellation_reason_detail: reason || null
     }).eq('id', id).then(function(res){
       if (res.error){ if (onDone) onDone(res.error); return; }
+      if (window.hvToast) window.hvToast(cancellationType === 'refused' ? 'Demande refusée' : 'Rendez-vous annulé', 'success');
       if (row){
         row.status = 'CANCELLED'; row.cancelled_by = 'admin'; row.cancelled_at = new Date().toISOString();
         row.cancellation_type = cancellationType;
@@ -24866,8 +24982,18 @@ window.HV_APP_VERSION = 'hayeva-v39';
       ecEscape(EC_STATUS_LABEL[status] || status) + '</span>';
   }
   function ecErrorBlock(){
-    return '<div class="ec-empty"><strong>Chargement impossible</strong>Une erreur est survenue. Réessayez dans un instant.</div>';
+    return '<div class="ec-empty ec-empty-error" role="alert"><strong>Chargement impossible</strong>Une erreur est survenue. Vérifiez votre connexion puis réessayez.<br><button type="button" class="btn-secondary" data-ec-retry>Réessayer</button></div>';
   }
+  // « Réessayer » : relance le chargement réel de l'onglet concerné.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('#espaceClient [data-ec-retry]') : null;
+    if (!b) return;
+    var panel = b.closest('.ec-panel');
+    var tab = panel && panel.getAttribute('data-ec-panel');
+    if (!tab) return;
+    ecLoaded[tab] = false;
+    ecLoadTab(tab);
+  });
   // Fidélité/parrainage : libellés humains pour referrals.status (contrainte
   // SQL réelle : PENDING/VALIDATED/INELIGIBLE, voir 0079+ referrals_status_check)
   // et wallet_transactions.type (REFERRAL_REFERRER/REFERRAL_REFEREE/
@@ -29320,20 +29446,24 @@ window.HV_APP_VERSION = 'hayeva-v39';
   function refreshAfterChange(){ if (window.admLoadBookings) window.admLoadBookings(); }
   function confirmBooking(id, btn){
     if (!window.confirm('Confirmer ce rendez-vous ? Le client recevra l\'e-mail « Rendez-vous confirmé » et le RDV sera ajouté à Apple Calendar.')) return;
-    if (btn) btn.disabled = true;
+    if (btn){ btn.disabled = true; btn.classList.add('is-busy'); }
     sb.client.from('bookings').update({ status: 'CONFIRMED' }).eq('id', id).eq('status', 'PENDING').select('id').then(function(r){
+      if (btn) btn.classList.remove('is-busy');
       if (r.error || !r.data || !r.data.length) window.alert(r.error ? 'Confirmation impossible : ' + r.error.message : 'Cette demande a déjà été traitée.');
+      else if (window.hvToast) window.hvToast('Rendez-vous confirmé', 'success');
       refreshAfterChange();
     });
   }
   function refuseBooking(id, btn){
     if (!window.confirm('Refuser cette demande ? Le client sera prévenu et le créneau libéré.')) return;
-    if (btn) btn.disabled = true;
+    if (btn){ btn.disabled = true; btn.classList.add('is-busy'); }
     sb.client.from('bookings').update({
       status: 'CANCELLED', cancelled_by: 'admin', cancelled_at: new Date().toISOString(),
       cancellation_type: 'refused', cancellation_reason_code: 'creneau_indisponible'
     }).eq('id', id).eq('status', 'PENDING').select('id').then(function(r){
+      if (btn) btn.classList.remove('is-busy');
       if (r.error || !r.data || !r.data.length) window.alert(r.error ? 'Refus impossible : ' + r.error.message : 'Cette demande a déjà été traitée.');
+      else if (window.hvToast) window.hvToast('Demande refusée — client prévenu', 'success');
       refreshAfterChange();
     });
   }
@@ -32995,5 +33125,216 @@ window.HV_APP_VERSION = 'hayeva-v39';
     .hv-ind{ transition:none !important; }
     .besoin-cat-btn.has-illus, .ecx-fam-tile, .ecx-offer, .hvk-card, .pack-card, .hvc-row, .hvk-modal, .hvp-mcell, .hvp-card{ transition:none !important; }
     .besoin-cat-btn.has-illus:hover, .ecx-fam-tile:hover, .ecx-offer:hover{ transform:none !important; }
+  }
+</style>
+<style id="hv-finish-v4">
+  /* =====================================================================
+     HAYEVA V4 — PASSE DE FINITION (direction artistique unifiée)
+     1. Rythme commun (CSS + JS via HvFx.t) :
+        appui 140 ms · changement d'état 260 ms · ouverture 440 ms ·
+        fermeture 240 ms. Courbes : standard (accélération naturelle,
+        arrivée douce), décélération pour les entrées, expressive réservée
+        aux ouvertures et à l'arrivée sur le site.
+     2. Hiérarchie de couleurs : orange HAYEVA = action principale ;
+        bleu nuit = titres, navigation, actions secondaires ; bleu = liens
+        et informations. Les « univers » du site ne recolorent plus les
+        boutons d'action.
+     ===================================================================== */
+  :root{
+    --hv-t-press:140ms; --hv-t-state:260ms; --hv-t-open:440ms; --hv-t-close:240ms;
+    --hv-ease-standard:cubic-bezier(.2,0,0,1);
+    --hv-ease-decel:cubic-bezier(0,0,.2,1);
+    --hv-ease-accel:cubic-bezier(.3,0,1,1);
+    --hv-ease-emph:cubic-bezier(.16,1,.3,1);
+    --hv-dur-micro:var(--hv-t-press); --hv-dur-view:var(--hv-t-state);
+    --hv-r-card:18px; --hv-r-field:12px;
+    --hv-shadow-card:0 1px 0 rgba(255,255,255,.9) inset, 0 0 0 1px rgba(16,32,57,.07), 0 12px 28px -20px rgba(16,32,57,.45);
+    --hv-shadow-lift:0 0 0 1px rgba(16,32,57,.06), 0 22px 40px -24px rgba(16,32,57,.55);
+    --hv-action:#C2410C; --hv-action-hover:#9A3412; --hv-ink-strong:#102039;
+  }
+  @media (prefers-reduced-motion: reduce){
+    :root{ --hv-t-press:0ms; --hv-t-state:0ms; --hv-t-open:0ms; --hv-t-close:0ms; }
+  }
+
+  /* ---------- 1. Logo : un environnement qui le rend lisible ---------- */
+  /* Portail Riviera : le logo (inchangé) repose sur une plaque claire au
+     lieu de se perdre sur la photo sombre. */
+  #sitePortal .portal-title{ width:max-content; max-width:92%; margin:0 auto 18px; padding:14px 26px 12px; border-radius:26px;
+    background:radial-gradient(120% 150% at 50% 0%, rgba(255,255,255,.98), rgba(236,243,250,.92));
+    box-shadow:0 26px 60px -28px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.55), inset 0 1px 0 #FFFFFF; }
+  #sitePortal .portal-logo-img{ filter:none; width:clamp(180px, 22vw, 260px); }
+  /* Accueil : halo clair derrière le logo, posé sur la photo. */
+  .hero-logo{ filter:drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 8px 26px rgba(255,255,255,.95)); }
+
+  /* ---------- Panneau des cookies : texte lisible ---------- */
+  .cookie-banner .cookie-banner-box{ border-radius:24px; box-shadow:0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.08); }
+  .cookie-banner .cookie-banner-icon:empty{ display:none; }
+  .cookie-banner p.cookie-banner-text{ color:#E7EEF6; opacity:1; }
+  .cookie-banner .cookie-banner-text a, .cookie-banner .cookie-banner-continue{ color:#FFFFFF; opacity:1; }
+  .cookie-banner .cookie-banner-btn{ border-radius:999px; min-height:48px; font-family:"Poppins",sans-serif; transition:transform var(--hv-t-press) var(--hv-ease-standard), background-color var(--hv-t-press); }
+  .cookie-banner .cookie-banner-accept{ background:#FFFFFF; color:#102039; border-color:#FFFFFF; }
+  .cookie-banner .cookie-banner-refuse{ border-color:rgba(255,255,255,.8); }
+  .cookie-banner .cookie-banner-btn:active{ transform:scale(.97); }
+
+  /* ---------- Titres : jamais pâles sur fond clair ---------- */
+  .ec-section-title{ color:var(--hv-ink-strong); font-family:"Poppins",sans-serif; font-size:1.14rem; letter-spacing:-.01em; }
+  #priceReveal .price-group h3{ color:var(--hv-ink-strong); display:flex; align-items:center; gap:10px; letter-spacing:.06em; }
+  #priceReveal .price-group h3::before{ content:''; flex:0 0 auto; width:22px; height:3px; border-radius:2px; background:var(--hv-action); }
+
+  /* ---------- 2. Un seul système de composants ---------- */
+  .btn-primary, .hvk-choose, .pack-cta, .hvc-btn:not(.hvc-btn-ghost){
+    background:var(--hv-action); color:#FFFFFF; border:0; border-radius:999px; font-family:"Poppins",sans-serif; font-weight:700;
+    box-shadow:0 10px 22px -12px rgba(194,65,12,.75);
+    transition:transform var(--hv-t-press) var(--hv-ease-standard), background-color var(--hv-t-press), box-shadow var(--hv-t-state);
+  }
+  .btn-primary{ display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:13px 26px; }
+  .btn-primary:hover, .hvk-choose:hover, .pack-cta:hover, .hvc-btn:not(.hvc-btn-ghost):hover{ background:var(--hv-action-hover); filter:none; transform:translateY(-1px); }
+  .btn-secondary, .hvc-btn-ghost, .hvk-back, .hvk-info-btn{
+    background:#FFFFFF; color:var(--hv-ink-strong); border:1.5px solid #7A8699; border-radius:999px; font-family:"Poppins",sans-serif; font-weight:700;
+    transition:transform var(--hv-t-press) var(--hv-ease-standard), border-color var(--hv-t-press), background-color var(--hv-t-press);
+  }
+  .btn-secondary:hover, .hvc-btn-ghost:hover, .hvk-back:hover, .hvk-info-btn:hover{ border-color:var(--hv-ink-strong); background:#F7F9FC; }
+  .pack-cta{ padding:12px 20px; min-height:44px; }
+  .pro-quicklink-btn, .adm-quicklink-btn{ background:#FFFFFF; color:var(--hv-ink-strong); border:1.5px solid #CBD5E1; border-radius:999px; min-height:44px; box-shadow:none; }
+  .pro-quicklink-btn:hover, .adm-quicklink-btn:hover{ border-color:var(--hv-ink-strong); filter:none; }
+  .ec-form input, .ec-form select, .ec-form textarea, .bk-search, .hvp-field input, .hvp-field select, .hvp-field textarea{ border-radius:var(--hv-r-field); }
+  .ecx-card, .ec-row, .ecx-offer, .hvp-card, .ec-next-appt, .ecx-noappt, .booking-card{ border-radius:var(--hv-r-card); }
+  .ec-row{ box-shadow:var(--hv-shadow-card); border-color:transparent; }
+  /* Pastilles de statut (remplacent les émojis de couleur). */
+  .hv-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:1px; box-shadow:0 0 0 2px rgba(255,255,255,.7); }
+  .hv-dot-pending{ background:#D9911C; } .hv-dot-confirmed{ background:#2F9E62; } .hv-dot-cancelled{ background:#C1503B; }
+  /* Formules : une seule couleur d'accent (orange HAYEVA) quel que soit l'univers. */
+  .hvk, :root[data-universe] .hvk, :root[data-universe] .price-group .hvk{ --hvk-accent:#C2410C; }
+
+  /* ---------- 3. Composition des prestations ---------- */
+  .hvk-grid{ align-items:stretch; }
+  .hvk-card{ display:flex; flex-direction:column; border-radius:var(--hv-r-card); background:#FFFFFF; box-shadow:var(--hv-shadow-card);
+    transition:transform var(--hv-t-state) var(--hv-ease-emph), box-shadow var(--hv-t-state) var(--hv-ease-standard), border-color var(--hv-t-state), background-color var(--hv-t-state); }
+  .hvk-badges{ display:flex; flex-wrap:wrap; gap:6px; }
+  .hvk-badges.is-empty{ display:none; }
+  @media (min-width:700px){ .hvk-badges, .hvk-badges.is-empty{ display:flex; min-height:24px; } }
+  .hvk-badge{ font-size:.7rem; font-weight:700; letter-spacing:.01em; text-transform:none; line-height:1.3; padding:4px 10px; white-space:normal; background:#102039; color:#FFFFFF; }
+  .hvk-badge-gold, :root .hvk-badge-gold{ background:#FBF1DC; color:#6B4F0E; box-shadow:inset 0 0 0 1px #E7CF97; }
+  .hvk-pricing{ align-items:baseline; padding-top:8px; }
+  .hvk-price{ color:var(--hv-ink-strong); font-size:1.5rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  .hvk-card.is-selected{ background:#FFF8F3; border-color:var(--hv-action); transform:translateY(-3px);
+    box-shadow:0 0 0 2px var(--hv-action), 0 22px 40px -24px rgba(194,65,12,.55); animation:none; }
+  .hvk-card.is-selected .hvk-check{ background:var(--hv-action); border-color:var(--hv-action); color:#FFFFFF; }
+  .hvc-price, .ecx-offer-price{ font-variant-numeric:tabular-nums; }
+  @media (min-width:760px){ .hvc-price{ min-width:9.5em; text-align:right; } }
+
+  /* Fiche : identité de la prestation + continuité avec la carte. */
+  .hvk-id{ display:flex; align-items:center; gap:10px; margin:0 56px 8px 0; }
+  .hvk-id-art{ width:62px; height:46px; flex:0 0 auto; border-radius:12px; background:#F1F6FB; }
+  .hvk-id-label{ font:700 .72rem/1.2 "Poppins",sans-serif; letter-spacing:.08em; text-transform:uppercase; color:#1F5A8F; }
+  .hvk-id-chauffage .hvk-id-label{ color:#C2410C; } .hvk-id-chauffage .hvk-id-art{ background:#FFF1E7; }
+  .hvk-id-plomberie .hvk-id-label{ color:#0F6E7A; } .hvk-id-plomberie .hvk-id-art{ background:#E6F6F8; }
+  .hvk-flight{ will-change:transform; }
+  .hv-return{ animation:hvReturn .9s var(--hv-ease-emph); }
+  @keyframes hvReturn{ 0%{ box-shadow:0 0 0 0 rgba(232,90,18,.55); transform:scale(1.015); } 100%{ box-shadow:0 0 0 14px rgba(232,90,18,0); transform:none; } }
+  .hvk-sheet h3{ font-size:1.25rem; letter-spacing:-.01em; color:var(--hv-ink-strong); }
+  .hvk-sheet .hvk-detail-price strong, .hvk-sheet .hvk-fact strong{ font-variant-numeric:tabular-nums; }
+
+  /* ---------- 4. Réservation : prestation conservée, progression ---------- */
+  .booking-progress{ gap:6px; }
+  .booking-progress span, .booking-progress span.done{ position:relative; overflow:hidden; height:6px; background:color-mix(in srgb, currentColor 16%, transparent); }
+  .booking-progress span::after{ content:''; position:absolute; inset:0; border-radius:inherit; background:var(--hv-action);
+    transform:scaleX(0); transform-origin:left center; transition:transform var(--hv-t-open) var(--hv-ease-emph); }
+  .booking-progress span.done::after{ transform:scaleX(1); }
+  .booking-progress span:nth-child(2)::after{ transition-delay:40ms; } .booking-progress span:nth-child(3)::after{ transition-delay:80ms; } .booking-progress span:nth-child(4)::after{ transition-delay:120ms; }
+  .booking-card .booking-step:not([hidden]){ animation:hvViewIn var(--hv-t-state) var(--hv-ease-decel) both; }
+  .bk-chosen{ display:flex; align-items:center; gap:12px; margin:-10px 0 22px; padding:10px 10px 10px 12px; border-radius:16px;
+    background:#FFFFFF; color:var(--hv-ink-strong); box-shadow:var(--hv-shadow-card); animation:hvChosenIn var(--hv-t-state) var(--hv-ease-emph) both; }
+  .bk-chosen[hidden]{ display:none; }
+  .bk-chosen-art{ width:60px; height:46px; flex:0 0 auto; border-radius:12px; background:#F1F6FB; }
+  .bk-chosen-chauffage .bk-chosen-art{ background:#FFF1E7; } .bk-chosen-plomberie .bk-chosen-art{ background:#E6F6F8; }
+  .bk-chosen-body{ display:flex; flex-direction:column; gap:1px; min-width:0; flex:1 1 auto; }
+  .bk-chosen-eyebrow{ font:700 .68rem/1.2 "Poppins",sans-serif; letter-spacing:.08em; text-transform:uppercase; color:#4A5A70; }
+  .bk-chosen-title{ font:700 .95rem/1.3 "Poppins",sans-serif; color:var(--hv-ink-strong); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .bk-chosen-meta{ font-size:.84rem; font-weight:700; color:#9A3412; }
+  .bk-chosen-when{ font-size:.82rem; color:#34445A; }
+  .bk-chosen-when::first-letter{ text-transform:uppercase; }
+  .bk-chosen-edit{ flex:0 0 auto; min-height:44px; padding:8px 14px; border-radius:999px; background:#FFFFFF; color:var(--hv-ink-strong);
+    border:1.5px solid #CBD5E1; font:700 .82rem "Poppins",sans-serif; cursor:pointer; transition:transform var(--hv-t-press) var(--hv-ease-standard), border-color var(--hv-t-press); }
+  .bk-chosen-edit:hover{ border-color:var(--hv-ink-strong); }
+  .bk-chosen-edit:active{ transform:scale(.95); }
+  @keyframes hvChosenIn{ from{ opacity:0; transform:translateY(-6px) scale(.98); } to{ opacity:1; transform:none; } }
+
+  /* ---------- Arrivée : paysage → titre → « Prendre rendez-vous » ---------- */
+  @keyframes hvLandscape{ from{ opacity:0; transform:scale(1.12); } to{ opacity:.26; transform:none; } }
+  @keyframes hvSheen{ from{ transform:translateX(-130%); } to{ transform:translateX(130%); } }
+  html.hv-intro .hero-photo-bg-img{ animation:hvLandscape 1.9s var(--hv-ease-decel) both; transform-origin:50% 35%; }
+  html.hv-intro .hero .btn-hero-secondary{ animation:hvIntroUp .6s .74s var(--hv-ease-emph) both; }
+  .btn-hero-primary{ position:relative; overflow:hidden; isolation:isolate; }
+  .btn-hero-primary::after{ content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; transform:translateX(-130%);
+    background:linear-gradient(105deg, transparent 30%, rgba(255,255,255,.42) 50%, transparent 70%); }
+  html.hv-intro .hero .btn-hero-primary::after{ animation:hvSheen 1.1s 1.05s var(--hv-ease-standard) 1 both; }
+  html.hv-intro .hero-photo-bg-img, html.hv-intro .hero .btn-hero-secondary, html.hv-intro .hero .btn-hero-primary::after{ animation-play-state:paused; }
+  html.hv-intro.hv-intro-go .hero-photo-bg-img, html.hv-intro.hv-intro-go .hero .btn-hero-secondary, html.hv-intro.hv-intro-go .hero .btn-hero-primary::after{ animation-play-state:running; }
+
+  /* ---------- 5. Chargement, listes vides, erreurs ---------- */
+  .ec-loading{ position:relative; display:block; min-height:112px; margin:8px 0; padding:0; overflow:hidden; border-radius:16px;
+    color:transparent !important; text-align:left; user-select:none;
+    background:
+      linear-gradient(rgba(127,140,160,.20), rgba(127,140,160,.20)) 0 0 / 58% 16px no-repeat,
+      linear-gradient(rgba(127,140,160,.13), rgba(127,140,160,.13)) 0 30px / 100% 58px no-repeat,
+      linear-gradient(rgba(127,140,160,.13), rgba(127,140,160,.13)) 0 100px / 76% 12px no-repeat; }
+  .ec-loading::after{ content:''; position:absolute; inset:0; transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation:hvShimmer 1.3s var(--hv-ease-standard) infinite; }
+  @keyframes hvShimmer{ to{ transform:translateX(100%); } }
+  .ec-empty, .hvp-empty{ position:relative; background:#FFFFFF; border:0; border-radius:var(--hv-r-card); padding:28px 20px 24px; text-align:center; box-shadow:var(--hv-shadow-card); color:var(--hv-text-2); }
+  .ec-empty::before, .hvp-empty::before{ content:''; display:block; width:58px; height:58px; margin:0 auto 12px; border-radius:50%;
+    background:#EEF4FA url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231F5A8F' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10.5 12 3l9 7.5'/%3E%3Cpath d='M5 9.5V20h14V9.5'/%3E%3Cpath d='M10 20v-5h4v5'/%3E%3C/svg%3E") center / 28px no-repeat;
+    box-shadow:inset 0 0 0 1px rgba(31,90,143,.12); }
+  .ec-empty strong{ color:var(--hv-ink-strong); font-family:"Poppins",sans-serif; }
+  .ec-empty-error::before{ background-color:#FFF1E7;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C2410C' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.01'/%3E%3C/svg%3E"); }
+  .ec-empty .btn-primary, .ec-empty .btn-secondary{ margin-top:14px; }
+  .hvp-empty{ font-size:.9rem; }
+
+  /* ---------- Retours d'action (administration et partout) ---------- */
+  button.is-busy{ position:relative; color:transparent !important; pointer-events:none; }
+  button.is-busy::after{ content:''; position:absolute; left:50%; top:50%; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
+    border:2.5px solid rgba(127,140,160,.35); border-top-color:var(--hv-action); animation:hvSpin .7s linear infinite; }
+  @keyframes hvSpin{ to{ transform:rotate(360deg); } }
+  .hv-toast{ position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:2147483646; pointer-events:none;
+    display:flex; align-items:center; gap:10px; max-width:calc(100vw - 32px); padding:12px 18px 12px 14px; border-radius:999px;
+    background:#102039; color:#FFFFFF; font:600 .92rem/1.3 "Poppins",sans-serif; box-shadow:0 18px 40px -16px rgba(10,20,34,.65);
+    opacity:0; transform:translate(-50%, 18px) scale(.98);
+    transition:transform var(--hv-t-state) var(--hv-ease-emph), opacity var(--hv-t-state) var(--hv-ease-standard); }
+  .hv-toast.is-shown{ opacity:1; transform:translate(-50%, 0) scale(1); }
+  @media (min-width:900px){ .hv-toast{ bottom:32px; } }
+  .hv-toast-icon{ position:relative; width:22px; height:22px; flex:0 0 auto; border-radius:50%; background:#2F9E62; }
+  .hv-toast-icon::after{ content:''; position:absolute; left:7px; top:4px; width:6px; height:11px; border:solid #FFFFFF; border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+  .hv-toast.is-error .hv-toast-icon{ background:#C1503B; }
+  /* Fiches de l'administration (modifier, intervention) : ouverture nette. */
+  .hvp-modal:not([hidden]){ animation:hvFade var(--hv-t-state) var(--hv-ease-standard) both; }
+  .hvp-modal:not([hidden]) .hvp-sheet{ animation:hvSheetUp var(--hv-t-open) var(--hv-ease-emph) both; }
+  @media (min-width:760px){ .hvp-modal:not([hidden]) .hvp-sheet{ animation-name:hvSheetPop; } }
+  .adm-iv-sheet{ animation:hvSheetPop var(--hv-t-state) var(--hv-ease-emph) both; }
+  @keyframes hvSheetUp{ from{ transform:translateY(100%); } to{ transform:none; } }
+  @keyframes hvSheetPop{ from{ opacity:0; transform:translateY(10px) scale(.98); } to{ opacity:1; transform:none; } }
+  /* Planning : jour choisi bien visible, réaction immédiate. */
+  .hvp-mcell:focus-visible{ outline:3px solid #F5B27A; outline-offset:2px; }
+  .admin-bk-main-tab.is-active{ animation:none; }
+
+  /* ---------- Économie : aucune animation décorative invisible ---------- */
+  /* Uniquement les boucles décoratives : une entrée de contenu (fondu d'une
+     étape, d'une carte) n'est jamais figée en cours de route. */
+  .hv-offscreen .hv-illus *, .hv-offscreen .hero-flux *, .hv-offscreen .hero-wave-1, .hv-offscreen .hero-wave-2,
+  .hv-offscreen .lc-particle, .hv-offscreen .snow-spin, .hv-offscreen .heatline1, .hv-offscreen .heatline2,
+  .hv-offscreen .idrop, .hv-offscreen .tab-visual-sway, .hv-offscreen .deco-blob{ animation-play-state:paused !important; }
+  /* Espace connecté ouvert en plein écran : le site public dessous ne bouge plus. */
+  body.espace-overlay-lock .hero *, body.espace-overlay-lock #besoin .hv-illus *, body.espace-overlay-lock .edge-glow,
+  body.espace-overlay-lock .lc-particle, body.espace-overlay-lock .snow-spin, body.espace-overlay-lock .heatline1,
+  body.espace-overlay-lock .heatline2, body.espace-overlay-lock .idrop, body.espace-overlay-lock .tab-visual-sway{ animation-play-state:paused !important; }
+  /* Lueurs de bord : décor fixe permanent — statique (plus de pulsation continue). */
+  .edge-glow{ animation:none !important; }
+
+  @media (prefers-reduced-motion: reduce){
+    .ec-loading::after, .hv-return, .bk-chosen, .booking-card .booking-step, .hvp-modal, .hvp-modal .hvp-sheet, .adm-iv-sheet,
+    button.is-busy::after{ animation:none !important; }
+    .booking-progress span::after, .hvk-card, .hv-toast{ transition:none !important; }
+    .hvk-card.is-selected{ transform:none; }
   }
 </style>

@@ -138,7 +138,36 @@
     });
   }
 
+  /* Cartes de formules côte à côte : les rangées badges / nom / accroche
+     prennent la même hauteur dans une même ligne, pour que les prix soient
+     alignés quelle que soit la longueur d'un badge. */
+  var ROWS = ['.hvk-badges', '.hvk-name', '.hvk-tagline'];
+  function alignPackGrids() {
+    Array.prototype.forEach.call(document.querySelectorAll('.hvk-grid'), function (grid) {
+      var cards = Array.prototype.filter.call(grid.children, function (c) { return c.classList && c.classList.contains('hvk-card'); });
+      ROWS.forEach(function (sel) { cards.forEach(function (c) { var el = c.querySelector(sel); if (el) el.style.minHeight = ''; }); });
+      if (cards.length < 2 || !cards[0].offsetWidth) return;
+      var rows = {};
+      cards.forEach(function (c) { var k = Math.round(c.offsetTop); (rows[k] = rows[k] || []).push(c); });
+      Object.keys(rows).forEach(function (k) {
+        var row = rows[k];
+        if (row.length < 2) return;
+        ROWS.forEach(function (sel) {
+          var els = row.map(function (c) { return c.querySelector(sel); }).filter(Boolean);
+          var h = Math.max.apply(null, els.map(function (e) { return e.offsetHeight; }));
+          els.forEach(function (e) { e.style.minHeight = h + 'px'; });
+        });
+      });
+    });
+  }
+  var alignT = 0;
+  function alignSoon() { clearTimeout(alignT); alignT = setTimeout(alignPackGrids, 50); }
+  window.addEventListener('resize', alignSoon);
+  // Un groupe de tarifs devient visible après un choix de catégorie.
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.price-logo-btn, .besoin-cat-btn, .ecx-fam-tab')) setTimeout(alignSoon, 30); });
+
   function scan() {
+    alignSoon();
     enhanceCards(document);
     Array.prototype.forEach.call(document.querySelectorAll('[data-hv-illus]:not([data-hv-m])'), mount);
   }
@@ -202,7 +231,22 @@
     }
   }
 
+  /* Effets décoratifs anciens et nouveaux : suspendus quand leur section
+     est hors écran (hors espaces connectés, qui gèrent leurs propres vues). */
+  function pauseOffscreenSections() {
+    if (typeof IntersectionObserver !== 'function') return;
+    var so = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { e.target.classList.toggle('hv-offscreen', !e.isIntersecting); });
+    }, { rootMargin: '120px 0px' });
+    Array.prototype.forEach.call(document.querySelectorAll('body section, body footer'), function (sec) {
+      if (sec.closest('#espaceClient, #espacePro, #sitePortal, .hvk-modal, .hvp-modal')) return;
+      if (sec.parentNode && sec.parentNode.closest && sec.parentNode.closest('section')) return;
+      so.observe(sec);
+    });
+  }
+
   function boot() {
+    pauseOffscreenSections();
     scan();
     armIntro();
     parallax();

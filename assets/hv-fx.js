@@ -77,7 +77,40 @@
     try { M.animate(el, { transform: ['translateX(0px)', 'translateX(-6px)', 'translateX(5px)', 'translateX(-3px)', 'translateX(0px)'] }, { duration: 0.3 }).finished.then(function () { clean([el]); }, function () { clean([el]); }); } catch (e) { clean([el]); }
   }
 
-  window.HvFx = { reduced: reduced, reveal: reveal, count: count, success: success, error: error };
+  /* Réglages de rythme communs (lus dans les jetons CSS --hv-t-*) :
+     t('press') ≈ 140 ms, t('state') ≈ 260 ms, t('open') ≈ 440 ms,
+     t('close') ≈ 240 ms. Une seule source de vérité pour CSS et JS. */
+  var tCache = {};
+  function t(name, fallback) {
+    if (reduced()) return 0;
+    if (tCache[name] == null) {
+      var v = getComputedStyle(document.documentElement).getPropertyValue('--hv-t-' + name).trim();
+      tCache[name] = v ? (parseFloat(v) * (/ms$/.test(v) ? 1 : 1000)) : null;
+    }
+    return tCache[name] == null ? fallback : tCache[name];
+  }
+
+  /* Message bref (« toast ») : n'est appelé qu'APRÈS la réponse réelle du
+     serveur. Un nouveau message remplace le précédent sans empilement. */
+  var toastEl = null, toastTimer = 0;
+  function toast(msg, kind) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'hv-toast';
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toastEl);
+    }
+    clearTimeout(toastTimer);
+    toastEl.className = 'hv-toast is-' + (kind || 'success');
+    toastEl.innerHTML = '<span class="hv-toast-icon" aria-hidden="true"></span><span class="hv-toast-text"></span>';
+    toastEl.querySelector('.hv-toast-text').textContent = msg;
+    toastEl.classList.remove('is-shown'); void toastEl.offsetWidth; toastEl.classList.add('is-shown');
+    toastTimer = setTimeout(function () { toastEl.classList.remove('is-shown'); }, 3200);
+  }
+  window.hvToast = toast;
+
+  window.HvFx = { reduced: reduced, reveal: reveal, count: count, success: success, error: error, t: t, toast: toast };
   if (!M || !M.animate) return;
   document.documentElement.classList.add('hv-fx');
 
