@@ -26898,7 +26898,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
           '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Déjà versé</span><span class="ec-amb-stat-value">' + ecAmbEuros(paid) + '</span></div>' +
         '</div>';
 
-      html += '<div class="ecx-card ec-amb-progress">' +
+      html += '<div class="ecx-card ec-amb-progress' + (avail >= minPayoutCents && minPayoutCents > 0 ? ' is-unlocked' : '') + '">' +
           '<div class="ec-amb-progress-head"><span>' + ecAmbEuros(avail) + ' / ' + ecAmbEuros(minPayoutCents) + '</span><span>' + pct + ' %</span></div>' +
           '<div class="ec-amb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span class="ec-amb-fill" style="width:' + pct + '%"></span></div>' +
           (avail >= minPayoutCents
@@ -33367,5 +33367,165 @@ window.HV_APP_VERSION = 'hayeva-v39';
     button.is-busy::after{ animation:none !important; }
     .booking-progress span::after, .hvk-card, .hv-toast{ transition:none !important; }
     .hvk-card.is-selected{ transform:none; }
+  }
+</style>
+<style id="hv-signature-v5">
+  /* =====================================================================
+     HAYEVA SIGNATURE V5 — DESIGN SYSTEM « MOTION SIGNATURE »
+     Source unique des réglages de mouvement, d'élévation et de focus pour
+     toutes les interfaces (site, réservation, espaces, administration,
+     assistant, PWA). Les jetons V4 (--hv-t-*, --hv-dur-*, --hv-ease-*)
+     pointent désormais ici. Documentation : docs/design-system/
+     motion-signature.md. Règles : transform/opacity, rien d'indispensable
+     à la compréhension, tout s'arrête en « réduire les animations ».
+     ===================================================================== */
+  :root{
+    /* Durées */
+    --sig-dur-instant:100ms;   /* réponse à l'appui (enfoncement) */
+    --sig-dur-press:140ms;     /* retour d'un bouton, puce, case */
+    --sig-dur-state:240ms;     /* changement d'état, onglet, filtre */
+    --sig-dur-card:300ms;      /* ouverture/déploiement de carte */
+    --sig-dur-page:360ms;      /* changement de vue */
+    --sig-dur-open:420ms;      /* modale, panneau, fiche */
+    --sig-dur-close:240ms;     /* fermeture (toujours plus courte) */
+    --sig-dur-section:520ms;   /* apparition de section au défilement */
+    /* Courbes */
+    --sig-ease-standard:cubic-bezier(.2,0,0,1);  /* accélération naturelle, arrivée douce */
+    --sig-ease-enter:cubic-bezier(0,0,.2,1);     /* entrées */
+    --sig-ease-exit:cubic-bezier(.3,0,1,1);      /* sorties */
+    --sig-ease-emph:cubic-bezier(.16,1,.3,1);    /* moments importants */
+    --sig-ease-spring:cubic-bezier(.34,1.56,.64,1); /* relâché d'un appui */
+    /* Distances, échelles, opacités */
+    --sig-move-xs:4px; --sig-move-sm:8px; --sig-move-md:16px; --sig-move-lg:24px;
+    --sig-scale-press:.97; --sig-scale-hover:1.01;
+    --sig-op-muted:.64; --sig-op-disabled:.45;
+    /* Élévation (profondeur) */
+    --sig-elev-0:none;
+    --sig-elev-1:0 1px 0 rgba(255,255,255,.9) inset, 0 0 0 1px rgba(16,32,57,.07), 0 6px 16px -12px rgba(16,32,57,.35);
+    --sig-elev-2:0 1px 0 rgba(255,255,255,.9) inset, 0 0 0 1px rgba(16,32,57,.07), 0 12px 28px -20px rgba(16,32,57,.45);
+    --sig-elev-3:0 0 0 1px rgba(16,32,57,.06), 0 22px 40px -24px rgba(16,32,57,.55);
+    --sig-elev-4:0 30px 80px -30px rgba(10,20,34,.6);
+    /* Couleurs Signature (marque inchangée) */
+    --sig-navy-950:#0B1526; --sig-navy-900:#102039; --sig-navy-700:#1F3A5F;
+    --sig-orange:#C2410C; --sig-orange-brand:#E85A12; --sig-orange-deep:#9A3412;
+    --sig-ivory:#FBF7EF; --sig-line:rgba(16,32,57,.10);
+    --sig-focus:#C2410C;
+    /* Alias des jetons V4 → une seule source */
+    --hv-t-press:var(--sig-dur-press); --hv-t-state:var(--sig-dur-state); --hv-t-open:var(--sig-dur-open); --hv-t-close:var(--sig-dur-close);
+    --hv-dur-micro:var(--sig-dur-press); --hv-dur-view:var(--sig-dur-state); --hv-dur-card:var(--sig-dur-card); --hv-dur-page:var(--sig-dur-page); --hv-dur-panel:var(--sig-dur-open);
+    --hv-ease-out:var(--sig-ease-emph); --hv-ease-emph:var(--sig-ease-emph); --hv-ease-expo:var(--sig-ease-emph);
+    --hv-ease-standard:var(--sig-ease-standard); --hv-ease-decel:var(--sig-ease-enter); --hv-ease-accel:var(--sig-ease-exit); --hv-ease-spring:var(--sig-ease-spring);
+    --hv-shadow-card:var(--sig-elev-2); --hv-shadow-lift:var(--sig-elev-3);
+  }
+  /* Espaces de travail : même langage, plus rapide (productivité d'abord). */
+  #espacePro{ --sig-dur-state:180ms; --sig-dur-card:220ms; --sig-dur-page:240ms; --sig-dur-section:320ms; --hv-dur-view:180ms; }
+  @media (prefers-reduced-motion: reduce){
+    :root, #espacePro{ --sig-dur-instant:0ms; --sig-dur-press:0ms; --sig-dur-state:0ms; --sig-dur-card:0ms; --sig-dur-page:0ms; --sig-dur-open:0ms; --sig-dur-close:0ms; --sig-dur-section:0ms; --hv-dur-view:0ms; }
+  }
+
+  /* ---------- Focus visible commun (WCAG 2.4.7 / 2.4.11) ---------- */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{ outline:3px solid var(--sig-focus); outline-offset:2px; }
+
+  /* ---------- En-tête : se pose au défilement (sans changer de hauteur) ---------- */
+  header{ transition:box-shadow var(--sig-dur-state) var(--sig-ease-standard), background-color var(--sig-dur-state) var(--sig-ease-standard); }
+  header.hv-scrolled{ background:rgba(255,255,255,.985); box-shadow:0 12px 30px -20px rgba(16,32,57,.45); }
+
+  /* ---------- Indicateur de progression de lecture (site public) ---------- */
+  .hv-progress{ position:fixed; left:0; right:0; top:env(safe-area-inset-top, 0px); height:3px; z-index:60; pointer-events:none;
+    transform-origin:0 50%; transform:scaleX(0); background:linear-gradient(90deg, var(--sig-orange), var(--sig-orange-brand)); will-change:transform; }
+  body.espace-overlay-lock .hv-progress, html.hv-more-open .hv-progress{ opacity:0; }
+
+  /* ---------- Révélation des sections et des images ---------- */
+  @media (prefers-reduced-motion: no-preference){
+    .reveal-on-scroll.is-revealed{ animation:revealUp var(--sig-dur-section) var(--sig-ease-emph) forwards; }
+    .reveal-on-scroll.is-revealed:is(.besoin-cats, .price-logos) > *{ animation:hvSigRise var(--sig-dur-section) var(--sig-ease-emph) backwards; }
+    .reveal-on-scroll.is-revealed:is(.besoin-cats, .price-logos) > :nth-child(2){ animation-delay:70ms; }
+    .reveal-on-scroll.is-revealed:is(.besoin-cats, .price-logos) > :nth-child(3){ animation-delay:140ms; }
+    .photo-frame img{ transform:translate3d(0, var(--sig-par, 0px), 0) scale(1.06); will-change:transform; }
+    .photo-frame.reveal-on-scroll.is-revealed img{ animation:hvSigImg .9s var(--sig-ease-emph) backwards; }
+  }
+  @keyframes hvSigRise{ from{ opacity:0; transform:translateY(var(--sig-move-md)); } to{ opacity:1; transform:none; } }
+  @keyframes hvSigImg{ from{ opacity:0; transform:translate3d(0, var(--sig-par, 0px), 0) scale(1.14); } to{ opacity:1; transform:translate3d(0, var(--sig-par, 0px), 0) scale(1.06); } }
+
+  /* ---------- Accueil : lumière maîtrisée derrière le titre ---------- */
+  .hero-center::before{ content:''; position:absolute; left:50%; top:46%; width:min(760px, 92vw); height:420px; z-index:-1; pointer-events:none;
+    transform:translate(-50%, -50%); border-radius:50%;
+    background:radial-gradient(closest-side, rgba(255,255,255,.75), rgba(255,255,255,.35) 55%, rgba(255,255,255,0)); }
+  @media (prefers-reduced-motion: no-preference){
+    html.hv-intro .hero-center::before{ animation:hvSigGlow 1.6s .2s var(--sig-ease-enter) both; animation-play-state:paused; }
+    html.hv-intro.hv-intro-go .hero-center::before{ animation-play-state:running; }
+  }
+  @keyframes hvSigGlow{ from{ opacity:0; transform:translate(-50%, -50%) scale(.85); } to{ opacity:1; transform:translate(-50%, -50%); } }
+
+  /* ---------- Signature lumineuse des actions principales ----------
+     Un reflet unique traverse le bouton au survol ou au focus clavier ;
+     réservé aux CTA importants (prendre rendez-vous, réserver, confirmer). */
+  .btn-hero-primary, .ecx-book-cta, .hvk-sheet-foot .hvk-choose, #bkNext, .ec-amb-payout-btn{ position:relative; overflow:hidden; isolation:isolate; }
+  .btn-hero-primary::before, .ecx-book-cta::before, .hvk-sheet-foot .hvk-choose::before, #bkNext::before{
+    content:''; position:absolute; top:0; bottom:0; left:-60%; width:50%; z-index:-1; pointer-events:none; opacity:0;
+    background:linear-gradient(105deg, transparent, rgba(255,255,255,.38), transparent); transform:skewX(-12deg);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    @media (hover:hover){
+      .btn-hero-primary:hover::before, .ecx-book-cta:hover::before, .hvk-sheet-foot .hvk-choose:hover::before, #bkNext:not(:disabled):hover::before{ animation:hvSigSweep .9s var(--sig-ease-standard) 1; }
+    }
+    .btn-hero-primary:focus-visible::before, .ecx-book-cta:focus-visible::before, .hvk-sheet-foot .hvk-choose:focus-visible::before, #bkNext:focus-visible::before{ animation:hvSigSweep .9s var(--sig-ease-standard) 1; }
+  }
+  @keyframes hvSigSweep{ 0%{ opacity:0; transform:translateX(0) skewX(-12deg); } 20%{ opacity:1; } 100%{ opacity:0; transform:translateX(330%) skewX(-12deg); } }
+
+  /* ---------- Réservation : calendrier et validation ---------- */
+  .date-pill, .time-pill{ transition:transform var(--sig-dur-press) var(--sig-ease-spring), border-color var(--sig-dur-press), background-color var(--sig-dur-press), box-shadow var(--sig-dur-state); }
+  @media (hover:hover){ .date-pill:hover, .time-pill:hover{ transform:translateY(-2px); box-shadow:var(--sig-elev-1); } }
+  .date-pill.selected, .time-pill.selected{ border-color:var(--sig-orange); box-shadow:0 0 0 2px var(--sig-orange), 0 10px 22px -14px rgba(194,65,12,.6); }
+  /* Validation d'un rendez-vous : n'existe qu'à l'étape 4, affichée par le
+     code uniquement après l'enregistrement réel. Coche dessinée + onde. */
+  .booking-step[data-step="4"] .confirm-check{ position:relative; width:72px; height:72px; background:#1E6B43; color:transparent; font-size:0; line-height:0;
+    box-shadow:0 18px 36px -18px rgba(30,107,67,.7); }
+  .booking-step[data-step="4"] .confirm-check::before{ content:''; position:absolute; left:50%; top:50%; width:28px; height:14px; margin:-10px 0 0 -14px;
+    border:solid #FFFFFF; border-width:0 0 4px 4px; border-radius:1px; transform:rotate(-45deg); }
+  @media (prefers-reduced-motion: no-preference){
+    .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check::before{ animation:hvSigCheck .5s .35s var(--sig-ease-emph) backwards; }
+  }
+  @keyframes hvSigCheck{ from{ clip-path:inset(0 100% 0 0); } to{ clip-path:inset(0 0 0 0); } }
+
+  /* ---------- Fidélité et parrainage (données réelles uniquement) ---------- */
+  .ec-amb-fill{ transform-origin:0 50%; }
+  @media (prefers-reduced-motion: no-preference){
+    .ec-amb-progress .ec-amb-fill{ animation:hvSigFill 1.1s .2s var(--sig-ease-emph) backwards; }
+    .ec-amb-progress.is-unlocked{ animation:hvSigUnlock 1.4s .9s var(--sig-ease-standard) 1 backwards; }
+    .ec-amb-flash:not([hidden]){ animation:hvConfirm .45s var(--sig-ease-spring) both; }
+  }
+  .ec-amb-progress.is-unlocked{ box-shadow:0 0 0 2px #2F9E62, var(--sig-elev-2); }
+  @keyframes hvSigFill{ from{ transform:scaleX(0); } to{ transform:none; } }
+  @keyframes hvSigUnlock{ 0%{ box-shadow:0 0 0 0 rgba(47,158,98,.55), var(--sig-elev-2); } 60%{ box-shadow:0 0 0 12px rgba(47,158,98,0), var(--sig-elev-2); } 100%{ box-shadow:0 0 0 2px #2F9E62, var(--sig-elev-2); } }
+  /* Statistiques réelles : comptage bref à la première apparition (HvFx),
+     puis un léger signal quand une valeur change ensuite. */
+  .hv-count-updated{ animation:hvSigUpdated .9s var(--sig-ease-standard) 1; }
+  @keyframes hvSigUpdated{ 0%{ color:var(--sig-orange); } 100%{ color:inherit; } }
+
+  /* ---------- Assistant : discret, jamais devant une action ---------- */
+  .ai-widget-toggle, .ecx-assist-btn{ transition:transform var(--sig-dur-card) var(--sig-ease-emph), opacity var(--sig-dur-state) var(--sig-ease-standard), box-shadow var(--sig-dur-state); }
+  .ai-widget-toggle.hv-tucked, .ecx-assist-btn.hv-tucked{ transform:translateY(calc(100% + 40px)) scale(.9) !important; opacity:0; pointer-events:none; }
+  .ecx-assist-anchor .ecx-assist-callout.hv-tucked{ opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity var(--sig-dur-state), transform var(--sig-dur-state); }
+  @media (prefers-reduced-motion: no-preference){
+    .ai-widget-panel{ transform-origin:100% 100%; animation:hvSigAssistIn var(--sig-dur-open) var(--sig-ease-emph) both; }
+    .ecx-assist-card{ animation:hvSigSheetUp var(--sig-dur-open) var(--sig-ease-emph) both; }
+    @media (min-width:900px){ .ecx-assist-card{ transform-origin:50% 100%; animation-name:hvSigAssistIn; } }
+    .ai-widget-msg, .ecx-assist-msg{ animation:hvSigMsg var(--sig-dur-state) var(--sig-ease-enter) both; }
+    .ecx-assist-chip{ animation:hvSigRise var(--sig-dur-state) var(--sig-ease-emph) backwards; }
+    .ecx-assist-chip:nth-child(2){ animation-delay:40ms; } .ecx-assist-chip:nth-child(3){ animation-delay:80ms; }
+    .ecx-assist-chip:nth-child(4){ animation-delay:120ms; } .ecx-assist-chip:nth-child(n+5){ animation-delay:160ms; }
+  }
+  @keyframes hvSigAssistIn{ from{ opacity:0; transform:translateY(12px) scale(.9); } to{ opacity:1; transform:none; } }
+  @keyframes hvSigSheetUp{ from{ transform:translateY(100%); } to{ transform:none; } }
+  @keyframes hvSigMsg{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .ecx-assist-chip{ transition:transform var(--sig-dur-press) var(--sig-ease-spring), background-color var(--sig-dur-press), border-color var(--sig-dur-press); }
+  .ecx-assist-chip:active{ transform:scale(var(--sig-scale-press)); }
+
+  @media (prefers-reduced-motion: reduce){
+    .hv-progress{ display:none; }
+    .photo-frame img{ transform:none !important; }
+    .hero-center::before{ animation:none !important; }
+    .ai-widget-toggle.hv-tucked, .ecx-assist-btn.hv-tucked{ transform:none !important; opacity:1; pointer-events:auto; }
   }
 </style>

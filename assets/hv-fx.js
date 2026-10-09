@@ -255,8 +255,139 @@
     }).observe(pl, { childList: true });
   }
 
+  /* =================== HAYEVA SIGNATURE V5 =================== */
+
+  /* Un seul écouteur de défilement (passif) pour tout le site public :
+     en-tête posé, progression de lecture, parallaxe légère des vraies
+     photos visibles, assistant qui s'efface pendant le défilement. */
+  var header = null, progress = null, frames = [], tucks = [], tuckT = 0, lastY = 0, ticking = false;
+  function espaceOpen() { return document.body.classList.contains('espace-overlay-lock'); }
+  function onScrollFrame() {
+    ticking = false;
+    var y = window.scrollY || 0, vh = window.innerHeight;
+    if (header) header.classList.toggle('hv-scrolled', y > 8);
+    if (progress && !espaceOpen()) {
+      var max = Math.max(1, document.documentElement.scrollHeight - vh);
+      progress.style.transform = 'scaleX(' + Math.min(1, y / max).toFixed(4) + ')';
+    }
+    if (!reduced()) {
+      for (var i = 0; i < frames.length; i++) {
+        var f = frames[i];
+        if (!f.__vis) continue;
+        var r = f.getBoundingClientRect();
+        var off = ((r.top + r.height / 2) - vh / 2) * -0.06;
+        f.style.setProperty('--sig-par', Math.max(-16, Math.min(16, off)).toFixed(1) + 'px');
+      }
+    }
+    // Assistant : s'efface quand on descend, revient dès l'arrêt.
+    var down = y > lastY + 4;
+    lastY = y;
+    if (down && !reduced()) {
+      tucks.forEach(function (b) { b.classList.add('hv-tucked'); });
+      clearTimeout(tuckT);
+      tuckT = setTimeout(function () { tucks.forEach(function (b) { b.classList.remove('hv-tucked'); }); }, 700);
+    }
+  }
+  function requestFrame() { if (!ticking) { ticking = true; requestAnimationFrame(onScrollFrame); } }
+  function bootScroll() {
+    header = document.querySelector('body > header, header');
+    progress = document.createElement('div');
+    progress.className = 'hv-progress';
+    progress.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(progress);
+    frames = Array.prototype.slice.call(document.querySelectorAll('.photo-frame'));
+    if (typeof IntersectionObserver === 'function') {
+      var fo = new IntersectionObserver(function (es) { es.forEach(function (e) { e.target.__vis = e.isIntersecting; }); requestFrame(); });
+      frames.forEach(function (f) { fo.observe(f); });
+    }
+    tucks = Array.prototype.slice.call(document.querySelectorAll('.ai-widget-toggle'));
+    window.addEventListener('scroll', requestFrame, { passive: true });
+    // Les espaces (plein écran) ont leur propre zone de défilement.
+    Array.prototype.forEach.call(document.querySelectorAll('#espaceClient, #espacePro'), function (sec) {
+      var ly = 0, t = 0;
+      sec.addEventListener('scroll', function () {
+        var y = sec.scrollTop, btns = sec.querySelectorAll('.ecx-assist-btn, .ecx-assist-callout');
+        if (y > ly + 4 && !reduced()) {
+          Array.prototype.forEach.call(btns, function (b) { b.classList.add('hv-tucked'); });
+          clearTimeout(t);
+          t = setTimeout(function () { Array.prototype.forEach.call(btns, function (b) { b.classList.remove('hv-tucked'); }); }, 700);
+        }
+        ly = y;
+      }, { passive: true });
+    });
+    requestFrame();
+  }
+
+  /* Statistiques réelles : à leur première apparition, le chiffre compte
+     brièvement jusqu'à la valeur reçue du serveur (format conservé à
+     l'identique, valeur finale exacte). Une valeur qui change ensuite est
+     simplement signalée, sans recompter. Rien n'est inventé : seuls les
+     textes déjà numériques sont animés. */
+  var COUNT_SEL = '.adm-stat-value, .pro-stat-value, .ec-amb-stat-value, .hvp-todo-item strong, [data-hv-count]';
+  var counted = {};
+  function keyOf(el) {
+    var host = el.closest('[id]');
+    var list = host ? host.querySelectorAll(COUNT_SEL) : [];
+    return (el.id || (host ? host.id : '')) + ':' + Array.prototype.indexOf.call(list, el);
+  }
+  function parseNum(txt) {
+    var m = /^(\D*?)(\d(?:[\d\s  ]*\d)?(?:,\d+)?)(\D*)$/.exec(String(txt).trim());
+    if (!m) return null;
+    var dec = (m[2].split(',')[1] || '').length;
+    var v = parseFloat(m[2].replace(/[\s  ]/g, '').replace(',', '.'));
+    return isNaN(v) ? null : { v: v, dec: dec, pre: m[1], post: m[3] };
+  }
+  function runCount(el, final) {
+    var p = parseNum(final);
+    if (!p || p.v <= 0 || reduced()) return;
+    var t0 = null, dur = 650;
+    el.__hvCounting = true;
+    var fmt = function (n) { return p.pre + n.toLocaleString('fr-FR', { minimumFractionDigits: p.dec, maximumFractionDigits: p.dec }) + p.post; };
+    function step(t) {
+      if (!el.__hvCounting) return;
+      if (t0 === null) t0 = t;
+      var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      if (k < 1) { el.__hvWritten = fmt(p.v * e); el.textContent = el.__hvWritten; requestAnimationFrame(step); }
+      else { el.__hvWritten = final; el.textContent = final; el.__hvCounting = false; }
+    }
+    requestAnimationFrame(step);
+  }
+  function watchCount(el) {
+    if (el.__hvCountBound) return;
+    el.__hvCountBound = true;
+    var check = function () {
+      if (el.__hvCounting) return;
+      var txt = el.textContent, p = parseNum(txt);
+      if (!p) return;
+      var k = keyOf(el);
+      // Le comptage attend que le chiffre soit réellement à l'écran.
+      if (!(k in counted)) { if (!el.__hvVis) return; counted[k] = txt; runCount(el, txt); }
+      else if (counted[k] !== txt) {
+        counted[k] = txt;
+        if (!reduced()) { el.classList.remove('hv-count-updated'); void el.offsetWidth; el.classList.add('hv-count-updated'); }
+      }
+    };
+    new MutationObserver(function () {
+      // Valeur écrite par l'application pendant le comptage : elle gagne
+      // immédiatement (le comptage s'arrête, rien n'est écrasé).
+      if (el.__hvCounting && el.textContent !== el.__hvWritten) el.__hvCounting = false;
+      if (!el.__hvCounting) check();
+    }).observe(el, { childList: true, characterData: true, subtree: true });
+    if (countIO) countIO.observe(el); else { el.__hvVis = true; check(); }
+    el.__hvCheck = check;
+  }
+  var countIO = typeof IntersectionObserver === 'function' ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) { e.target.__hvVis = e.isIntersecting; if (e.isIntersecting && e.target.__hvCheck) e.target.__hvCheck(); });
+  }, { threshold: 0.6 }) : null;
+  function scanCounts() { Array.prototype.forEach.call(document.querySelectorAll(COUNT_SEL), watchCount); }
+
   function boot() {
-    bootPanels(); bootPublic(); scanInd(); bootPlanning();
+    bootPanels(); bootPublic(); scanInd(); bootPlanning(); bootScroll(); scanCounts();
+    if (typeof MutationObserver === 'function') {
+      var tc = 0;
+      new MutationObserver(function () { clearTimeout(tc); tc = setTimeout(scanCounts, 80); })
+        .observe(document.body, { childList: true, subtree: true });
+    }
     if (typeof MutationObserver === 'function') {
       var t = 0;
       new MutationObserver(function () { clearTimeout(t); t = setTimeout(scanInd, 60); })
