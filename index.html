@@ -5558,6 +5558,38 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .ec-amb-none{ color:var(--ink-soft-fixed); }
   .ec-amb-notif{ border-color:var(--turquoise); }
   .ec-amb-legal{ font-size:0.74rem; color:var(--ink-soft-fixed); line-height:1.45; margin:6px 0 20px; }
+  .ec-amb-qr{ margin:6px auto 0; max-width:240px; }
+  .ec-amb-qr-box{ width:180px; height:180px; margin:0 auto; padding:10px; border-radius:16px; background:#FFFFFF; }
+  .ec-amb-qr-box svg{ display:block; width:100%; height:100%; }
+  #ecPanelLoyalty .ec-amb-hero .ec-amb-qr-note{ font-size:0.78rem; color:rgba(255,255,255,0.86); margin:10px 0 0; line-height:1.4; }
+  .ec-trk-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+  .ec-trk-card{ background:var(--white); border:1px solid var(--line); border-radius:16px; padding:14px 16px; min-width:0; }
+  .ec-trk-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .ec-trk-id{ min-width:0; }
+  .ec-trk-head .ec-badge{ flex:0 1 auto; max-width:55%; white-space:normal; text-align:center; line-height:1.3; }
+  .ec-trk-amt{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.84rem; color:var(--ink-soft-fixed); margin:10px 0 0; }
+  .ec-trk-amt.is-ok{ color:#2F7A4F; }
+  .ec-trk-toggle{ background:none; border:0; padding:10px 0 0; min-height:44px; color:var(--navy-fixed); font-family:"Poppins",sans-serif; font-weight:700; font-size:0.82rem; text-decoration:underline; cursor:pointer; }
+  .ec-trk-steps{ list-style:none; margin:6px 0 0; padding:0; position:relative; }
+  .ec-trk-steps li{ position:relative; display:flex; gap:12px; padding:0 0 12px; }
+  .ec-trk-steps li:not(:last-child)::before{ content:''; position:absolute; left:6px; top:16px; bottom:0; width:2px; background:var(--line); }
+  .ec-trk-dot{ flex:0 0 auto; width:14px; height:14px; margin-top:3px; border-radius:50%; background:#2F7A4F; box-shadow:0 0 0 3px rgba(47,122,79,0.15); }
+  .ec-trk-steps li.is-stop .ec-trk-dot{ background:#B23A3A; box-shadow:0 0 0 3px rgba(178,58,58,0.15); }
+  .ec-trk-steps li.is-next .ec-trk-dot{ background:transparent; box-shadow:inset 0 0 0 2px var(--ink-soft-fixed); }
+  .ec-trk-step{ font-family:"Poppins",sans-serif; font-weight:600; font-size:0.84rem; color:var(--navy-fixed); margin:0; }
+  .ec-trk-steps li.is-next .ec-trk-step{ font-weight:500; color:var(--ink-soft-fixed); }
+  .ec-trk-when{ font-size:0.76rem; color:var(--ink-soft-fixed); margin:2px 0 0; }
+  .ec-trk-docs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .ec-trk-doc{ display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--navy-fixed); font-family:"Poppins",sans-serif; font-weight:600; font-size:0.78rem; cursor:pointer; }
+  .ec-trk-doc .ecx-svg-icon{ width:15px; height:15px; }
+  .ec-trk-doc[disabled]{ opacity:0.6; cursor:progress; }
+  .ec-trk-pay > div{ min-width:0; }
+  .ec-trk-note{ margin:0 0 20px; }
+  html[data-bs~="particulier"] #espaceClient .ec-trk-doc{ border-color:rgba(215,161,107,0.55); color:#E3B47F; }
+  html[data-bs~="particulier"] #espaceClient .ec-trk-amt.is-ok{ color:#5FC795; }
+  html[data-bs~="particulier"] #espaceClient .ec-trk-dot{ background:#5FC795; box-shadow:0 0 0 3px rgba(95,199,149,0.16); }
+  html[data-bs~="particulier"] #espaceClient .ec-trk-steps li.is-stop .ec-trk-dot{ background:#F28B7B; box-shadow:0 0 0 3px rgba(242,139,123,0.16); }
+  html[data-bs~="particulier"] #espaceClient .ec-trk-steps li.is-next .ec-trk-dot{ background:transparent; box-shadow:inset 0 0 0 2px #8FA1B8; }
   @media (max-width:440px){ .ec-amb-btns{ grid-template-columns:1fr 1fr; } .ec-amb-btns .ec-amb-btn:last-child{ grid-column:1/-1; } }
   @media (max-width:520px){
     .ec-loy-wallet-amount{ font-size:1.8rem; }
@@ -24929,6 +24961,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
     gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
     share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>'
   };
   function ecxIcon(name, extraClass){
@@ -25113,9 +25146,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
     // Lien d'e-mail #espaceClient/devis|factures|comptes-rendus : lu ici
     // directement (la session peut être restaurée avant le script du
     // portail), avec repli sur la valeur mémorisée par ce dernier.
-    var openTab = { '#espaceclient/devis':'quotes', '#espaceclient/factures':'invoices', '#espaceclient/comptes-rendus':'interventions' }[(window.location.hash || '').toLowerCase()] || null;
+    var openTab = { '#espaceclient/devis':'quotes', '#espaceclient/factures':'invoices', '#espaceclient/comptes-rendus':'interventions', '#espaceclient/parrainage':'loyalty' }[(window.location.hash || '').toLowerCase()] || null;
     try { openTab = openTab || window.sessionStorage.getItem('hayeva_open_tab'); window.sessionStorage.removeItem('hayeva_open_tab'); } catch(e){}
-    ecShowTab(openReferral ? 'loyalty' : (/^(quotes|invoices|interventions)$/.test(openTab || '') ? openTab : 'home'));
+    ecShowTab(openReferral ? 'loyalty' : (/^(quotes|invoices|interventions|loyalty)$/.test(openTab || '') ? openTab : 'home'));
     ecAutoAttachReferral();
   }
   // Parrainage arrivé par un lien ?ref=CODE (code déjà vérifié côté serveur
@@ -26837,10 +26870,146 @@ window.HV_APP_VERSION = 'hayeva-v39';
       else legacy();
     });
   }
+  // ---------- Suivi détaillé et justificatifs (get_my_referral_tracking) ----------
+  // Chaque recommandation : référence HAY-PAR, étapes réellement confirmées
+  // (datées par le serveur), prochaine étape attendue présentée comme une
+  // simple information. Aucune donnée personnelle de la personne recommandée.
+  // Les PDF sont préparés et archivés côté serveur (Edge Function
+  // referral-document, session de l'utilisateur) : jamais dans le navigateur.
+  var EC_TRK_BADGE = { EN_COURS:'ec-badge-pending', VERIFICATION:'ec-badge-pending', VALIDEE:'ec-badge-confirmed', REGLEE:'ec-badge-completed', ANNULEE:'ec-badge-cancelled', NON_RETENUE:'ec-badge-cancelled' };
+  var EC_DOC_LABEL = { ATTESTATION:'Attestation', RELEVE:'Relevé de récompense', JUSTIFICATIF:'Justificatif de règlement' };
+  function ecTrkDate(v, dateOnly){
+    if (!v) return '';
+    if (dateOnly) return ecFmtDate(v);
+    try { return new Date(v).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'Europe/Paris' }); } catch(e){ return ecFmtDate(v); }
+  }
+  function ecTrkDocBtn(kind, subject){
+    return '<button type="button" class="ec-trk-doc" data-ref-doc="' + kind + '" data-subject="' + ecEscape(subject) + '">' + ecxIcon('download') + '<span>' + EC_DOC_LABEL[kind] + '</span></button>';
+  }
+  function ecTrkHtml(t){
+    var c = t.counts || {}, a = t.amounts || {}, refs = t.referrals || [], pays = t.payouts || [];
+    var payById = {}; pays.forEach(function(p){ payById[p.id] = p; });
+    var html = '<div class="ecx-section-head"><h3>Mes parrainages et justificatifs</h3></div>' +
+      '<div class="ec-amb-stats ec-trk-kpis">' +
+        '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Recommandations</span><span class="ec-amb-stat-value">' + (Number(c.registered) || 0) + '</span></div>' +
+        '<div class="ec-amb-stat"><span class="ec-amb-stat-label">En cours</span><span class="ec-amb-stat-value">' + (Number(c.pending) || 0) + '</span></div>' +
+        '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Récompenses validées</span><span class="ec-amb-stat-value">' + ecAmbEuros(a.acquired_cents) + '</span></div>' +
+        '<div class="ec-amb-stat"><span class="ec-amb-stat-label">Réglé</span><span class="ec-amb-stat-value">' + ecAmbEuros(a.paid_cents) + '</span></div>' +
+      '</div>';
+    if (!refs.length){
+      html += '<div class="ec-empty"><strong>Aucune recommandation pour le moment</strong>Partagez votre code ou votre lien pour commencer.</div>';
+    } else {
+      html += '<div class="ec-trk-list">' + refs.map(function(r){
+        var st = r.status || {}, tr = r.tracking || {}, steps = tr.steps || [], pid = 'ecTrk' + String(r.id).replace(/[^a-z0-9]/gi, '');
+        var amt = r.reward_cents != null ? '<p class="ec-trk-amt is-ok">Récompense validée : ' + ecAmbEuros(r.reward_cents) + '</p>'
+          : (r.possible_cents != null ? '<p class="ec-trk-amt">Récompense possible : ' + ecAmbEuros(r.possible_cents) + ' (non acquise à ce stade)</p>' : '');
+        var payout = r.payout_id ? payById[r.payout_id] : null;
+        return '<div class="ec-trk-card">' +
+          '<div class="ec-trk-head"><div class="ec-trk-id"><p class="ec-loy-list-name">' + ecEscape(r.reference || '') + '</p>' +
+            '<p class="ec-loy-list-sub">Enregistrée le ' + ecTrkDate(r.registered_at) + (r.code_used ? ' · code ' + ecEscape(r.code_used) : '') + '</p></div>' +
+            '<span class="ec-badge ' + (EC_TRK_BADGE[st.key] || 'ec-badge-pending') + '">' + ecEscape(st.label || '') + '</span></div>' +
+          amt +
+          '<button type="button" class="ec-trk-toggle" aria-expanded="false" aria-controls="' + pid + '">Voir le suivi</button>' +
+          '<ol class="ec-trk-steps" id="' + pid + '" hidden>' + steps.map(function(s){
+            return '<li class="' + (s.stop ? 'is-stop' : 'is-done') + '"><span class="ec-trk-dot" aria-hidden="true"></span><div><p class="ec-trk-step">' + ecEscape(s.label) + '</p>' +
+              (s.at ? '<p class="ec-trk-when">' + ecTrkDate(s.at, s.date_only) + '</p>' : '') +
+              (s.detail ? '<p class="ec-trk-when">' + ecEscape(s.detail) + '</p>' : '') + '</div></li>';
+          }).join('') +
+          (tr.next ? '<li class="is-next"><span class="ec-trk-dot" aria-hidden="true"></span><div><p class="ec-trk-step">Prochaine étape : ' + ecEscape(tr.next) + '</p><p class="ec-trk-when">Non encore réalisée</p></div></li>' : '') +
+          '</ol>' +
+          '<div class="ec-trk-docs">' + (r.can_attestation ? ecTrkDocBtn('ATTESTATION', r.id) : '') + (r.can_releve ? ecTrkDocBtn('RELEVE', r.id) : '') +
+            (payout && payout.can_justificatif ? ecTrkDocBtn('JUSTIFICATIF', payout.id) : '') + '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+    if (pays.length){
+      html += '<div class="ecx-section-head"><h3>Mes règlements</h3></div><div class="ec-loy-list">' + pays.map(function(p){
+        return '<div class="ec-loy-list-row ec-trk-pay"><div><p class="ec-loy-list-name">' + ecEscape(p.reference || '') + ' — ' + ecAmbEuros(p.amount_cents) + '</p>' +
+          '<p class="ec-loy-list-sub">Demandé le ' + ecTrkDate(p.requested_at) + (p.status === 'PAID' && p.payment_date ? ' · réglé le ' + ecTrkDate(p.payment_date, true) + (p.method ? ' (' + ecEscape(p.method) + ')' : '') : '') + '</p>' +
+          (p.rewards && p.rewards.length ? '<p class="ec-loy-list-sub">' + ecEscape(p.rewards.join(', ')) + '</p>' : '') +
+          (p.can_justificatif ? '<div class="ec-trk-docs">' + ecTrkDocBtn('JUSTIFICATIF', p.id) + '</div>' : '') + '</div>' +
+          '<span class="ec-badge ' + (EC_PAYOUT_STATUS_CLASS[p.status] || 'ec-badge-pending') + '">' + ecEscape(EC_PAYOUT_STATUS_LABEL[p.status] || p.status) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    html += '<p class="ec-amb-flash" id="ecTrkMsg" hidden aria-live="polite"></p>' +
+      '<p class="ec-amb-note ec-trk-note">Chaque justificatif porte un code vérifiable sur hayeva.fr/verification. Une attestation de recommandation ne constitue pas une garantie de récompense.</p>';
+    return html;
+  }
+  function ecTrkBind(panel){
+    panel.querySelectorAll('.ec-trk-toggle').forEach(function(b){
+      b.addEventListener('click', function(){
+        var list = document.getElementById(b.getAttribute('aria-controls')), open = list.hidden;
+        list.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
+        b.textContent = open ? 'Masquer le suivi' : 'Voir le suivi';
+      });
+    });
+    panel.querySelectorAll('[data-ref-doc]').forEach(function(b){ b.addEventListener('click', function(){ ecRefDownload(b); }); });
+  }
+  var EC_REF_DOC_FN = 'https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/referral-document';
+  // Partagé avec l'administration (même fonction, même contrôle serveur :
+  // propriétaire du document ou administrateur).
+  window.hvRefDocDownload = function(kind, subject){
+    return sb.client.auth.getSession().then(function(r){
+      var s = r && r.data && r.data.session;
+      if (!s) throw { hvMsg: EC_PAYOUT_ERROR_LABEL.AUTH_REQUIRED };
+      return fetch(EC_REF_DOC_FN, { method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + s.access_token, 'apikey': sb.client.supabaseKey || '' },
+        body: JSON.stringify({ kind: kind, subject_id: subject }) });
+    }).then(function(resp){
+      var ct = resp.headers.get('content-type') || '';
+      if (!resp.ok || ct.indexOf('application/pdf') !== 0){
+        return resp.json().catch(function(){ return {}; }).then(function(j){ throw { hvMsg: (j && j.message) || 'Le document n\'a pas pu être préparé. Réessayez dans un instant.' }; });
+      }
+      var num = (resp.headers.get('x-document-number') || '').replace(/[^A-Z0-9-]/gi, '') || 'document';
+      return resp.blob().then(function(blob){
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = 'HAYEVA-' + num + '.pdf'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+        return num;
+      });
+    });
+  };
+  function ecRefDownload(btn){
+    if (btn.disabled) return;
+    var msg = document.getElementById('ecTrkMsg'), label = btn.innerHTML;
+    function say(t, isError){ if (!msg) return; msg.textContent = t || ''; msg.hidden = !t; msg.classList.toggle('is-error', !!isError); }
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); say('Préparation du document…');
+    window.hvRefDocDownload(btn.getAttribute('data-ref-doc'), btn.getAttribute('data-subject')).then(function(num){
+      say('Document ' + num + ' téléchargé.');
+    }).catch(function(e){
+      say((e && e.hvMsg) || 'Connexion impossible. Vérifiez votre réseau et réessayez.', true);
+    }).then(function(){ btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = label; });
+  }
+  // QR code du lien personnel : bibliothèque qrcode-generator (MIT),
+  // hébergée sur le site (/vendor), chargée seulement à la demande.
+  var ecQrLib = null;
+  function ecRefQr(box, link){
+    if (box.getAttribute('data-for') === link) return;
+    if (!ecQrLib) ecQrLib = new Promise(function(resolve, reject){
+      if (window.qrcode) return resolve(window.qrcode);
+      var s = document.createElement('script'); s.src = (location.protocol === 'file:' ? '' : '/') + 'vendor/qrcode-generator.js';
+      s.onload = function(){ window.qrcode ? resolve(window.qrcode) : reject(); };
+      s.onerror = function(){ ecQrLib = null; reject(); };
+      document.head.appendChild(s);
+    });
+    ecQrLib.then(function(qr){
+      var q = qr(0, 'M'); q.addData(link); q.make();
+      box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+      box.setAttribute('data-for', link);
+    }, function(){ box.textContent = link; });
+  }
   function ecLoadLoyalty(){
     var panel = document.getElementById('ecPanelLoyalty');
     panel.innerHTML = '<div class="ecx-skeleton"><div class="ecx-skel-card" style="height:140px;border-radius:22px;"></div><div class="ecx-skel-card"></div><div class="ecx-skel-card" style="height:90px;"></div></div>';
-    sb.client.rpc('get_my_ambassador').then(function(res){
+    // Suivi détaillé et justificatifs (get_my_referral_tracking, migration
+    // 0134) : facultatif. Si la fonction n'est pas encore en place, l'espace
+    // reste exactement celui d'avant (liste simple des parrainages).
+    var trackP = sb.client.rpc('get_my_referral_tracking').then(function(r){
+      return (r && !r.error && r.data && r.data.ok) ? r.data : null;
+    }, function(){ return null; });
+    Promise.all([sb.client.rpc('get_my_ambassador'), trackP]).then(function(all){
+      var res = all[0], trk = all[1];
       var d = (res && !res.error) ? res.data : null;
       if (!d){ panel.innerHTML = ecErrorBlock(); return; }
       var cfg = d.config || {}, bal = d.balances || {};
@@ -26874,6 +27043,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
             '<button type="button" class="ec-amb-btn" id="ecAmbCopyLink">' + ecxIcon('copy') + 'Copier mon lien</button>' +
           '</div>' +
           '<p class="ec-amb-flash" id="ecAmbFlash" hidden aria-live="polite"></p>' +
+          '<button type="button" class="ec-amb-link" id="ecAmbQrToggle" aria-expanded="false" aria-controls="ecAmbQr">Afficher mon QR code</button>' +
+          '<div class="ec-amb-qr" id="ecAmbQr" hidden><div class="ec-amb-qr-box" id="ecAmbQrBox" role="img" aria-label="QR code de votre lien de parrainage"></div>' +
+            '<p class="ec-amb-qr-note">À scanner par la personne que vous recommandez : il ouvre la prise de rendez-vous avec votre code.</p></div>' +
           (d.code_customizable ? '<button type="button" class="ec-amb-link" id="ecAmbCustomToggle">Personnaliser mon code</button>' +
             '<form class="ec-amb-custom" id="ecAmbCustomForm" hidden>' +
               '<input type="text" id="ecAmbCustomInput" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. JULIEN24" aria-label="Nouveau code">' +
@@ -26890,7 +27062,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
 
       html += '<div class="ecx-card ec-amb-progress' + (avail >= minPayoutCents && minPayoutCents > 0 ? ' is-unlocked' : '') + '">' +
           '<div class="ec-amb-progress-head"><span>' + ecAmbEuros(avail) + ' / ' + ecAmbEuros(minPayoutCents) + '</span><span>' + pct + ' %</span></div>' +
-          '<div class="ec-amb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span class="ec-amb-fill" style="width:' + pct + '%"></span></div>' +
+          '<div class="ec-amb-bar" role="progressbar" aria-label="Progression vers le seuil de versement" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span class="ec-amb-fill" style="width:' + pct + '%"></span></div>' +
           (avail >= minPayoutCents
             ? '<p class="ec-amb-progress-text"><strong>' + ecAmbEuros(avail) + ' disponibles</strong> — Seuil de versement atteint</p>'
             : '<p class="ec-amb-progress-text">Encore ' + ecAmbEuros(minPayoutCents - avail) + ' avant de pouvoir demander votre versement.</p>') +
@@ -26917,6 +27089,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
         sb.client.rpc('mark_my_referral_notifications_read').then(function(){}, function(){});
       }
 
+      if (trk){
+        html += ecTrkHtml(trk);
+      } else {
       html += '<div class="ecx-section-head"><h3>Mes parrainages (' + (d.referrals ? d.referrals.length : 0) + ')</h3></div>';
       if (d.referrals && d.referrals.length){
         html += '<div class="ec-loy-list">' + d.referrals.map(function(r){
@@ -26937,6 +27112,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
             '<p class="ec-loy-list-sub">' + ecFmtDate(p.requested_at) + (p.paid_at ? ' · payé le ' + ecFmtDate(p.paid_at) : '') + '</p></div>' +
             '<span class="ec-badge ' + (EC_PAYOUT_STATUS_CLASS[p.status] || 'ec-badge-pending') + '">' + ecEscape(EC_PAYOUT_STATUS_LABEL[p.status] || p.status) + '</span></div>';
         }).join('') + '</div>';
+      }
       }
 
       // Pas encore parrain et nouvelles inscriptions fermées : aucun code créé.
@@ -26998,6 +27174,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
         } catch(e){}
         fallback();
       });
+      var qrToggle = document.getElementById('ecAmbQrToggle');
+      qrToggle.addEventListener('click', function(){
+        var box = document.getElementById('ecAmbQr'), open = box.hidden;
+        box.hidden = !open; qrToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        qrToggle.textContent = open ? 'Masquer mon QR code' : 'Afficher mon QR code';
+        if (open) ecRefQr(document.getElementById('ecAmbQrBox'), link);
+      });
       var customToggle = document.getElementById('ecAmbCustomToggle');
       if (customToggle){
         var customForm = document.getElementById('ecAmbCustomForm');
@@ -27035,6 +27218,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
       });
 
       }
+      if (trk) ecTrkBind(panel);
       var attachForm = document.getElementById('ecLoyAttachForm');
       if (attachForm){
         attachForm.addEventListener('submit', function(e){
@@ -27771,7 +27955,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
   // Liens des e-mails devis / facture / compte rendu :
   // #espaceClient/devis, /factures, /comptes-rendus → onglet correspondant
   // après connexion (l'accès reste soumis à la session du client).
-  var ecDeepTab = { '#espaceclient/devis':'quotes', '#espaceclient/factures':'invoices', '#espaceclient/comptes-rendus':'interventions' }[initialHash];
+  var ecDeepTab = { '#espaceclient/devis':'quotes', '#espaceclient/factures':'invoices', '#espaceclient/comptes-rendus':'interventions', '#espaceclient/parrainage':'loyalty' }[initialHash];
   if (ecDeepTab){
     try { window.sessionStorage.setItem('hayeva_open_tab', ecDeepTab); } catch(e){}
     initialHash = '#espaceclient';
@@ -30818,6 +31002,37 @@ window.HV_APP_VERSION = 'hayeva-v39';
     return sb.client.rpc(name, args || {}).then(function(r){ if (r.error) throw r.error; return r.data; });
   }
   function fail(err){ window.alert((err && err.message) || 'Opération impossible.'); }
+  // Règlement réel d'une récompense : moyen et date obligatoires (aucun
+  // virement n'est déclenché, il s'agit d'enregistrer un règlement effectué).
+  var PAY_METHODS = { '1':'virement', '2':'cheque', '3':'especes', '4':'autre' };
+  var PAY_METHOD_LABEL = { virement:'virement', cheque:'chèque', especes:'espèces', autre:'autre' };
+  function askPayment(){
+    var mRaw = window.prompt('Moyen de règlement utilisé : 1 = virement, 2 = chèque, 3 = espèces, 4 = autre', '');
+    if (mRaw == null) return null;
+    var method = PAY_METHODS[String(mRaw).trim()];
+    if (!method){ window.alert('Moyen de règlement invalide.'); return null; }
+    var n = new Date(), today = ('0' + n.getDate()).slice(-2) + '/' + ('0' + (n.getMonth() + 1)).slice(-2) + '/' + n.getFullYear();
+    var dRaw = window.prompt('Date réelle du règlement (JJ/MM/AAAA) :', today);
+    if (dRaw == null) return null;
+    var dm = String(dRaw).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!dm){ window.alert('Date invalide.'); return null; }
+    return { method: method, label: PAY_METHOD_LABEL[method], date: dm[3] + '-' + ('0' + dm[2]).slice(-2) + '-' + ('0' + dm[1]).slice(-2), shown: String(dRaw).trim() };
+  }
+  var DOC_KIND = { ATTESTATION:'Attestation', RELEVE:'Relevé', JUSTIFICATIF:'Justificatif de règlement' };
+  function docBtn(kind, subject){ return '<button type="button" class="hvp-act" data-ref-doc-adm="' + kind + '" data-subject="' + esc(subject) + '">' + esc(DOC_KIND[kind].toUpperCase()) + ' (PDF)</button>'; }
+  function loadDocs(clientId){
+    var el = document.getElementById('refDetDocs'); if (!el) return;
+    rpc('admin_list_referral_documents', { p_client_id: clientId }).then(function(list){
+      list = list || [];
+      el.innerHTML = list.length ? list.map(function(dc){
+        return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + esc(dc.number) + ' — ' + esc(DOC_KIND[dc.kind] || dc.kind) + '</p>' +
+          '<p class="hvp-card-sub">Émis le ' + esc(fmtDate(dc.issued_at)) + (dc.subject ? ' · ' + esc(dc.subject) : '') + ' · code ' + esc(dc.verification_code) + '</p>' +
+          (dc.revoked_at ? '<p class="hvp-card-sub">Annulé le ' + esc(fmtDate(dc.revoked_at)) + (dc.revoked_reason ? ' — ' + esc(dc.revoked_reason) : '') + '</p>' : '') + '</div>' +
+          '<span class="hvp-pill ' + (dc.revoked_at ? 'hvp-st-CANCELLED' : 'hvp-st-COMPLETED') + '">' + (dc.revoked_at ? 'Annulé' : 'En vigueur') + '</span></div>' +
+          (dc.revoked_at ? '' : '<div class="hvp-actions hvp-actions-1"><button type="button" class="hvp-act is-danger" data-ref-doc-revoke="' + esc(dc.id) + '">ANNULER CE DOCUMENT</button></div>') + '</div>';
+      }).join('') : '<p class="hvp-empty">Aucun justificatif émis pour le moment.</p>';
+    }, function(){ el.innerHTML = '<p class="hvp-empty">Registre des justificatifs indisponible.</p>'; });
+  }
 
   function load(){
     var q = (document.getElementById('refAdmSearch') || {}).value || '';
@@ -31206,11 +31421,15 @@ window.HV_APP_VERSION = 'hayeva-v39';
         var openBk = (w.referee_open_bookings || []).filter(function(bk){ return bk.status !== 'COMPLETED' || !w.invoice; });
         if (w.advantage_status === 'AVAILABLE' && openBk.length) acts.push('<button type="button" class="hvp-act" data-ref-adv="' + esc(w.referral_id) + '" data-ref-adv-bk="' + esc(JSON.stringify(openBk)) + '">APPLIQUER L\'AVANTAGE FILLEUL</button>');
         acts.push('<button type="button" class="hvp-act" data-ref-history="' + esc(w.id) + '">TRAÇABILITÉ</button>');
+        if (w.referral_id && w.reference){
+          acts.push(docBtn('ATTESTATION', w.referral_id));
+          if (w.status === 'VALIDATED' && !w.clawback) acts.push(docBtn('RELEVE', w.referral_id));
+        }
         var selectable = w.status === 'VALIDATED' && !w.payout_no && !w.clawback;
         var stage = w.stage || ds;
         return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' +
             (selectable ? '<label class="ref-adm-sel"><input type="checkbox" data-ref-sel="' + esc(w.id) + '" data-ref-sel-amount="' + esc(w.amount_cents) + '" aria-label="Sélectionner pour versement"> </label>' : '') +
-            esc(w.referee || w.ref) + ' <span class="ref-adm-muted">(' + esc(w.ref) + ')</span></p>' +
+            esc(w.referee || w.ref) + ' <span class="ref-adm-muted">(' + esc(w.ref) + (w.reference ? ' · ' + esc(w.reference) : '') + ')</span></p>' +
           '<p class="hvp-card-sub">Parrainé le ' + esc(fmtDate(w.created_at)) + ' · code ' + esc(w.code_used || '') + (w.service ? ' · ' + esc(w.service) : '') + '</p>' +
           '<p class="hvp-card-sub">' + (w.booking_ref ? 'RDV ' + esc(w.booking_ref) + ' du ' + esc(fmtDate(w.booking_date)) + ' · intervention ' + esc(BKST[w.booking_status] || w.booking_status || '') : 'Aucun rendez-vous') +
             ' · montant : ' + (w.paid_amount_cents != null ? esc(euros(w.paid_amount_cents)) + ' payés' : (w.booking_total_cents ? esc(euros(w.booking_total_cents)) + ' prévus' : 'inconnu')) + '</p>' +
@@ -31232,17 +31451,24 @@ window.HV_APP_VERSION = 'hayeva-v39';
       }).join('') : '<p class="hvp-empty">Aucun parrainage pour le moment.</p>';
       if ((x.payouts || []).length){
         html += '<p class="hvp-section-title">Règlements et demandes</p>' + x.payouts.map(function(p){
-          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">N°' + esc(p.no) + ' — ' + esc(euros(p.amount_cents)) + '</p>' +
-            '<p class="hvp-card-sub">' + esc(fmtDate(p.requested_at)) + (p.paid_at ? ' · payé le ' + esc(fmtDate(p.paid_at)) : '') + (p.payment_reference ? ' · réf. ' + esc(p.payment_reference) : '') +
-            (p.admin_note ? ' · ' + esc(p.admin_note) : '') + (p.refusal_reason ? ' · ' + esc(p.refusal_reason) : '') + '</p></div><span class="hvp-pill ' + (PCLASS[p.status] || '') + '">' + esc(PSTATUS[p.status] || p.status) + '</span></div></div>';
+          var justif = p.status === 'PAID' && p.payment_method && p.payment_date;
+          return '<div class="hvp-card"><div class="hvp-card-top"><div><p class="hvp-card-title">' + (p.reference ? esc(p.reference) + ' · ' : '') + 'N°' + esc(p.no) + ' — ' + esc(euros(p.amount_cents)) + '</p>' +
+            '<p class="hvp-card-sub">' + esc(fmtDate(p.requested_at)) + (p.payment_date ? ' · réglé le ' + esc(fmtDate(p.payment_date)) : (p.paid_at ? ' · payé le ' + esc(fmtDate(p.paid_at)) : '')) +
+            (p.payment_method ? ' · ' + esc(PAY_METHOD_LABEL[p.payment_method] || p.payment_method) : '') + (p.payment_reference ? ' · réf. ' + esc(p.payment_reference) : '') +
+            (p.admin_note ? ' · ' + esc(p.admin_note) : '') + (p.refusal_reason ? ' · ' + esc(p.refusal_reason) : '') + '</p>' +
+            (p.status === 'PAID' && !justif ? '<p class="hvp-card-sub">Règlement antérieur sans moyen ni date enregistrés : aucun justificatif ne peut être émis.</p>' : '') + '</div>' +
+            '<span class="hvp-pill ' + (PCLASS[p.status] || '') + '">' + esc(PSTATUS[p.status] || p.status) + '</span></div>' +
+            (justif ? '<div class="hvp-actions hvp-actions-1">' + docBtn('JUSTIFICATIF', p.id) + '</div>' : '') + '</div>';
         }).join('');
       }
+      html += '<p class="hvp-section-title">Justificatifs émis</p><div id="refDetDocs"><p class="ec-loading">Chargement…</p></div><p class="ref-adm-copied" id="refDetDocMsg" hidden aria-live="polite"></p>';
       if ((x.ledger || []).length){
         html += '<p class="hvp-section-title">Registre financier</p><div class="ref-adm-ledger">' + x.ledger.map(function(l){
           return '<div><span>' + esc(fmtDate(l.created_at)) + ' — ' + esc(LEDGER[l.type] || l.type) + '</span><strong>' + (l.amount_cents ? esc(euros(l.amount_cents)) : '') + '</strong></div>';
         }).join('') + '</div>';
       }
       document.getElementById('refAdmDetail').innerHTML = html;
+      loadDocs(clientId);
     }).catch(function(){ document.getElementById('refAdmDetail').innerHTML = '<p class="hvp-error">Fiche indisponible.</p>'; });
   }
 
@@ -31341,11 +31567,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
       if (!ids.length) return;
       var totalSel = t.hasAttribute('data-ref-payone') ? Number(t.getAttribute('data-ref-amount')) || 0
         : selBoxes.reduce(function(n, c){ return n + (Number(c.getAttribute('data-ref-sel-amount')) || 0); }, 0);
-      var refPay = window.prompt('Référence interne du règlement (ex. virement du 12/01, espèces…) :', '');
+      var pay = askPayment();
+      if (!pay) return;
+      var refPay = window.prompt('Référence du règlement (n° de virement, de chèque… — facultatif) :', '');
       if (refPay == null) return;
-      if (!window.confirm('Confirmer que ' + ids.length + ' récompense(s)' + (totalSel ? ' — ' + euros(totalSel) + ' —' : '') + ' ont bien été versées au parrain ? Cette action est définitive.')) return;
+      if (!window.confirm('Confirmer que ' + ids.length + ' récompense(s)' + (totalSel ? ' — ' + euros(totalSel) + ' —' : '') + ' ont réellement été réglées au parrain (' + pay.label + ', le ' + pay.shown + ') ? Cette action est définitive.')) return;
       t.disabled = true;
-      rpc('admin_mark_rewards_paid', { p_reward_ids: ids, p_reference: refPay, p_note: null }).then(after, function(err){ fail(err); after(); });
+      rpc('admin_mark_rewards_paid', { p_reward_ids: ids, p_reference: refPay.trim() || null, p_note: null, p_method: pay.method, p_payment_date: pay.date }).then(after, function(err){ fail(err); after(); });
       return;
     }
     if ((t = e.target.closest('[data-ref-unvalidate]'))){
@@ -31414,15 +31642,39 @@ window.HV_APP_VERSION = 'hayeva-v39';
     if ((t = e.target.closest('[data-ref-payout]'))){
       var status = t.getAttribute('data-ref-payout-status'), pnote = null, ref = null;
       if (status === 'PAID'){
-        ref = window.prompt('Référence du versement (ex. référence du virement) :', '');
+        var pay2 = askPayment();
+        if (!pay2) return;
+        ref = window.prompt('Référence du règlement (n° de virement, de chèque… — facultatif) :', '');
         if (ref == null) return;
-        if (!window.confirm('Confirmez-vous que ce versement a bien été effectué ?')) return;
+        if (!window.confirm('Confirmez-vous que ce règlement a réellement été effectué (' + pay2.label + ', le ' + pay2.shown + ') ?')) return;
+        t.disabled = true;
+        rpc('admin_record_referral_payout', { p_payout_id: t.getAttribute('data-ref-payout'), p_method: pay2.method, p_payment_date: pay2.date,
+          p_payment_reference: ref.trim() || null, p_note: null }).then(after, function(err){ fail(err); after(); });
+        return;
       } else if (status === 'REFUSED'){
         pnote = window.prompt('Motif du refus :', '');
         if (pnote == null) return;
       }
       t.disabled = true;
       rpc('admin_set_referral_payout_status', { p_payout_id: t.getAttribute('data-ref-payout'), p_status: status, p_note: pnote, p_payment_reference: ref }).then(after, function(err){ fail(err); after(); });
+      return;
+    }
+    if ((t = e.target.closest('[data-ref-doc-adm]'))){
+      var dmsg = document.getElementById('refDetDocMsg'), dlabel = t.textContent;
+      if (!window.hvRefDocDownload) return;
+      t.disabled = true; t.textContent = 'PRÉPARATION…';
+      window.hvRefDocDownload(t.getAttribute('data-ref-doc-adm'), t.getAttribute('data-subject')).then(function(num){
+        if (dmsg){ dmsg.textContent = 'Document ' + num + ' téléchargé.'; dmsg.hidden = false; }
+        if (currentDetail) loadDocs(currentDetail);
+      }, function(er){ window.alert((er && er.hvMsg) || 'Le document n\'a pas pu être préparé.'); }).then(function(){ t.disabled = false; t.textContent = dlabel; });
+      return;
+    }
+    if ((t = e.target.closest('[data-ref-doc-revoke]'))){
+      var rwhy = window.prompt('Motif de l\'annulation du document (affiché lors de sa vérification publique) :', '');
+      if (rwhy == null || !rwhy.trim()) return;
+      if (!window.confirm('Annuler définitivement ce document ? Il apparaîtra comme « annulé » lors de sa vérification.')) return;
+      t.disabled = true;
+      rpc('admin_revoke_referral_document', { p_id: t.getAttribute('data-ref-doc-revoke'), p_reason: rwhy.trim() }).then(function(){ if (currentDetail) loadDocs(currentDetail); }, function(err){ fail(err); if (currentDetail) loadDocs(currentDetail); });
       return;
     }
     if ((t = e.target.closest('[data-ref-detail]'))){ openDetail(t.getAttribute('data-ref-detail')); }

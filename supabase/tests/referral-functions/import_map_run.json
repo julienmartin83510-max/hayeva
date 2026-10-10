@@ -1,0 +1,5 @@
+{ "imports": {
+  "https://esm.sh/@supabase/supabase-js@2": "./supabase_stub.ts",
+  "https://esm.sh/pdf-lib@1.17.1": "npm:pdf-lib@1.17.1",
+  "https://esm.sh/qrcode-generator@1.4.4": "npm:qrcode-generator@1.4.4"
+} }

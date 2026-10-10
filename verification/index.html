@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vérification d’un document HAYEVA</title>
+<meta name="description" content="Vérifiez l’authenticité d’un document du programme de parrainage HAYEVA à l’aide de son code de vérification.">
+<link rel="icon" href="/images/pwa/icon-192.png">
+<meta name="theme-color" content="#101A2B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#101A2B;--bg-2:#0C1422;--surface:#1B2B41;--hair:rgba(255,255,255,.08);--text:#FFFFFF;--text-2:#B7C4D4;--text-3:#8FA1B8;--cu:#D7A16B;--cu-2:#E3B47F;--on-cu:#101A2B;--ok:#5FC795;--warn:#F2B84B;--no:#F28B7B;--emph:cubic-bezier(.16,1,.3,1);--r:18px}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100dvh;display:flex;flex-direction:column;background:radial-gradient(70% 320px at 50% 0,rgba(215,161,107,.12),transparent 70%),var(--bg);color:var(--text);font-family:"Poppins",system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--cu);outline-offset:3px;border-radius:10px}
+.top{border-bottom:1px solid var(--hair);background:rgba(12,20,34,.82)}
+.top .in{max-width:620px;margin:0 auto;padding:0 20px;min-height:60px;display:flex;align-items:center}
+.top img{height:40px;width:auto;filter:drop-shadow(0 0 1px rgba(255,255,255,.6)) drop-shadow(0 0 10px rgba(255,255,255,.3))}
+main{flex:1;width:100%;max-width:620px;margin:0 auto;padding:40px 20px 56px}
+.eyebrow{font-size:.74rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--cu);margin:0 0 12px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:'';width:26px;height:1px;background:var(--cu)}
+h1{font-size:clamp(1.6rem,6vw,2.2rem);line-height:1.15;letter-spacing:-.02em;margin:0 0 10px}
+.lead{color:var(--text-2);margin:0 0 24px}
+form{display:grid;gap:10px;background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);padding:18px}
+label{font-size:.84rem;color:var(--text-2);font-weight:500}
+input{height:52px;width:100%;min-width:0;border-radius:14px;border:1px solid #7D90A8;background:#243247;color:#fff;padding:0 14px;font:600 1.1rem/1 "Poppins",sans-serif;letter-spacing:.12em;text-transform:uppercase}
+input:focus{outline:none;border-color:var(--cu);box-shadow:0 0 0 4px rgba(215,161,107,.2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 24px;border-radius:999px;font:600 .96rem/1 "Poppins",sans-serif;border:0;cursor:pointer;background:var(--cu);color:var(--on-cu)}
+.btn:hover{background:var(--cu-2)}.btn[disabled]{opacity:.7;cursor:progress}
+.hint{font-size:.8rem;color:var(--text-3);margin:0}
+.res{margin-top:16px;border-radius:var(--r);padding:18px;border:1px solid var(--hair);background:var(--surface);animation:in .45s var(--emph)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.res{animation:none}}
+.st{display:flex;gap:12px;align-items:center;margin:0 0 12px;font-weight:600;font-size:1.02rem}
+.st i{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-style:normal}
+.st svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.res.ok{border-color:rgba(95,199,149,.4)}.res.ok .st i{background:rgba(95,199,149,.16);color:var(--ok)}
+.res.warn{border-color:rgba(242,184,75,.45)}.res.warn .st i{background:rgba(242,184,75,.16);color:var(--warn)}
+.res.no{border-color:rgba(242,139,123,.45)}.res.no .st i{background:rgba(242,139,123,.16);color:var(--no)}
+dl{margin:0;display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:8px 16px;font-size:.92rem}
+dt{color:var(--text-3)}dd{margin:0;color:#fff;word-break:break-word}
+.res p{margin:10px 0 0;color:var(--text-2);font-size:.88rem}
+.note{margin-top:22px;color:var(--text-3);font-size:.82rem}
+footer{border-top:1px solid var(--hair);background:var(--bg-2);color:var(--text-3);font-size:.84rem}
+footer .in{max-width:620px;margin:0 auto;padding:22px 20px 30px;display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between}
+footer a{color:var(--text-2);text-decoration:none}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><a href="/" aria-label="HAYEVA — Accueil"><img src="/images/brand/hayeva-logo-sm.png" alt="HAYEVA" width="900" height="607"></a></div></header>
+<main>
+  <p class="eyebrow">Programme de parrainage</p>
+  <h1>Vérifier un document</h1>
+  <p class="lead">Saisissez le code de vérification imprimé en bas de l’attestation, du relevé ou du justificatif HAYEVA, ou scannez son QR code.</p>
+  <form id="vf" novalidate>
+    <label for="vc">Code de vérification</label>
+    <input id="vc" name="code" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14" placeholder="XXXX-XXXX-XXXX" aria-describedby="vh">
+    <p class="hint" id="vh">12 caractères, lettres et chiffres.</p>
+    <button class="btn" id="vb" type="submit">Vérifier</button>
+  </form>
+  <div id="out" aria-live="polite"></div>
+  <p class="note">Seules les informations nécessaires à la vérification sont affichées : type de document, numéro, date d’émission, référence et statut. Aucune coordonnée et aucun montant ne sont communiqués ici.</p>
+</main>
+<footer><div class="in"><span>HAYEVA · Fréjus</span><span><a href="/#legal/mentions">Mentions légales</a> · <a href="/#legal/confidentialite">Confidentialité</a></span></div></footer>
+<script>
+(function(){
+  'use strict';
+  var SB_URL = 'https://hvlzdsuyhrhaflwutwml.supabase.co', SB_KEY = 'sb_publishable_doi6KhNWHhfZ6oT13FLTIg_lPwXbt4a';
+  var input = document.getElementById('vc'), out = document.getElementById('out'), btn = document.getElementById('vb');
+  var ICON = { ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', warn: '<path d="M12 7v6M12 17v.01"/>', no: '<path d="M7 7l10 10M17 7 7 17"/>' };
+  function clean(v){ return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); }
+  function fmt(v){ var c = clean(v); return c.replace(/(.{4})(?=.)/g, '$1-'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function date(d){ try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }); } catch(e){ return ''; } }
+  function render(cls, title, body){
+    out.innerHTML = '<div class="res ' + cls + '"><p class="st"><i aria-hidden="true"><svg viewBox="0 0 24 24">' + ICON[cls] + '</svg></i><span>' + esc(title) + '</span></p>' + (body || '') + '</div>';
+  }
+  input.addEventListener('input', function(){ var p = input.selectionStart === input.value.length; input.value = fmt(input.value); if (p) input.selectionStart = input.selectionEnd = input.value.length; });
+  function verify(){
+    var code = fmt(input.value);
+    if (clean(code).length !== 12){ render('no', 'Code incomplet', '<p>Le code comporte 12 caractères (par exemple ABCD-EFGH-JKLM).</p>'); return; }
+    btn.disabled = true;
+    fetch(SB_URL + '/rest/v1/rpc/verify_referral_document', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
+      body: JSON.stringify({ p_code: code })
+    }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      btn.disabled = false;
+      if (!d){ render('warn', 'Vérification indisponible', '<p>Le service ne répond pas pour le moment. Réessayez dans un instant.</p>'); return; }
+      if (!d.found){ render('no', 'Aucun document ne correspond à ce code', '<p>Vérifiez la saisie. Si le code est correct, ce document n’a pas été émis par HAYEVA : contactez-nous à <a href="mailto:contact@hayeva.fr">contact@hayeva.fr</a>.</p>'); return; }
+      var rows = '<dl><dt>Document</dt><dd>' + esc(d.kind_label) + '</dd><dt>Numéro</dt><dd>' + esc(d.number) + '</dd><dt>Émis le</dt><dd>' + esc(date(d.issued_at)) + '</dd>' +
+        (d.subject ? '<dt>Référence</dt><dd>' + esc(d.subject) + '</dd>' : '') +
+        (d.beneficiary_initials ? '<dt>Bénéficiaire</dt><dd>' + esc(d.beneficiary_initials) + '</dd>' : '') +
+        (d.status_label ? '<dt>Statut indiqué</dt><dd>' + esc(d.status_label) + '</dd>' : '') + '</dl>';
+      if (d.revoked) render('no', 'Document annulé', rows + '<p>Ce document a été annulé le ' + esc(date(d.revoked_at)) + (d.revoked_reason ? ' (motif : ' + esc(d.revoked_reason) + ')' : '') + '. Il ne doit plus être utilisé.</p>');
+      else if (d.superseded) render('warn', 'Document authentique, remplacé par une version plus récente', rows + '<p>Une version plus récente a été émise. Le titulaire peut la télécharger depuis son espace HAYEVA.</p>');
+      else render('ok', 'Document authentique émis par HAYEVA', rows + '<p>Les informations ci-dessus doivent correspondre à celles du document présenté.</p>');
+    }, function(){ btn.disabled = false; render('warn', 'Vérification indisponible', '<p>Connexion impossible. Vérifiez votre réseau et réessayez.</p>'); });
+  }
+  document.getElementById('vf').addEventListener('submit', function(e){ e.preventDefault(); verify(); });
+  var m = /[?&]c=([^&#]*)/.exec(location.search);
+  if (m){
+    input.value = fmt(decodeURIComponent(m[1]));
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+    verify();
+  }
+})();
+</script>
+</body>
+</html>

@@ -125,6 +125,22 @@
   status = 404
   force = true
 
+# Programme de parrainage : page de présentation accessible uniquement par
+# son lien direct (lien discret en pied de page), et page publique de
+# vérification des justificatifs. Jamais indexées, toujours revalidées.
+[[headers]]
+  for = "/parrainage/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/verification/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+
 # Mot de passe oublié / nouveau mot de passe : page dédiée (jamais indexée,
 # jamais mise en cache, aucun Referer transmis — le jeton est dans l'URL).
 [[redirects]]
