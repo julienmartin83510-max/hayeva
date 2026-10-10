@@ -81,13 +81,32 @@ Règles :
 | Administration | bleu nuit | « Bonjour THE BIG BOSS », carte « À traiter maintenant » en tête (pulsation cuivre), interventions du jour, prochain rendez-vous, actions rapides, puis chiffres ; zéros atténués ; aucun cercle pastel |
 | Réservation | ivoire | sceau de validation (voir ci-dessous), sélection date/heure cuivre |
 
-## Sceau de validation
+## Confirmation « HAYEVA Signature »
 
-Étape 4 de la réservation, affichée uniquement après la réponse réelle du
-serveur ; le statut est porté par le titre (« Demande de rendez-vous
-envoyée »), jamais par le sceau.
-- Disque blanc, anneau cuivre tracé (`@property --bs-seal-a`), anneau ivoire
-  extérieur.
-- Logo officiel au centre (fichier d'origine sur fond clair).
-- Pastille verte de validation qui apparaît en dernier.
-- « Réduire les animations » : sceau affiché directement, sans mouvement.
+Animation plein écran sur bleu nuit, déclenchée par le tunnel de réservation
+(`window.hvSeal` dans `assets/hv-fx.js`, trois appels gardés dans `index.html`).
+Purement visuelle : aucune donnée ni décision de réservation ne passe par elle.
+
+| Temps | Étape |
+|---|---|
+| 0 ms | appui sur « Confirmer » : le bouton se contracte (0,92) |
+| 0–600 ms | voile bleu nuit, médaillon, cercle cuivré tracé |
+| 300–900 ms | logo officiel en profondeur (légère inclinaison qui se redresse) |
+| dès 500 ms | couronne lumineuse qui parcourt le cercle, tant que le serveur n'a pas répondu |
+| réponse positive du serveur (au plus tôt 900 ms) | coche verte dessinée, texte selon le statut réel |
+| + 650 ms | fondu de sortie, l'étape 4 apparaît (total ≈ 1,6 à 1,9 s) |
+
+- Texte : « Rendez-vous confirmé » seulement si le serveur renvoie le statut
+  `CONFIRMED` ; sinon « Demande envoyée ». Aujourd'hui `create_booking` et
+  `create_guest_or_quote_booking` enregistrent `PENDING` et ne renvoient pas
+  de statut : le texte est donc « Demande envoyée ».
+- Échec : le voile disparaît sans coche, le message d'erreur existant
+  s'affiche, le bouton redevient actif.
+- Vérification anti-robot qui demande une action : le voile s'efface aussitôt.
+- Garde-fou : retrait automatique après 20 s sans réponse.
+- Logo : `images/brand/hayeva-logo-sm.png` / `hayeva-logo.png` (PNG
+  transparents officiels, `srcset` pour les écrans haute densité). Aucun fond
+  blanc : centre du médaillon éclairé (`#51698C` → `#101A2B`) et halo
+  lumineux qui suit le contour des lettres.
+- Réduire les animations : états finaux directs, sans mouvement.
+- Étape 4 : même médaillon en version fixe, pastille verte de validation.

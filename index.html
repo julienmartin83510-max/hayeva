@@ -13060,9 +13060,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
       var svc = currentService();
       submitted = true;
       bkNext.disabled = true;
+      // Animation « HAYEVA Signature » (assets/hv-fx.js) : purement visuelle,
+      // la coche n'apparaît qu'avec success(), après la réponse du serveur.
+      if (window.hvSeal) window.hvSeal.start(bkNext);
       attemptRealBooking(svc).then(function(outcome){
         if (outcome.kind === 'success'){
           var row = outcome.row;
+          if (window.hvSeal) window.hvSeal.success(row.status);
           bkConfirmRealDetails.textContent = 'Référence ' + (row.reference || '') +
             (row.total_cents != null ? ' — Total ' + fmtEuros(row.total_cents / 100) : '');
           bkConfirmDemo.hidden = true;
@@ -13094,6 +13098,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
         // quels), et on réactive le bouton pour permettre de réessayer.
         submitted = false;
         bkNext.disabled = false;
+        if (window.hvSeal) window.hvSeal.fail();
         var msg = 'Une erreur est survenue lors de l\'enregistrement de votre demande. Veuillez réessayer.';
         if (outcome.kind === 'address-error'){
           msg = (outcome.error && outcome.error.message) || 'Adresse invalide.';
@@ -34101,49 +34106,104 @@ window.HV_APP_VERSION = 'hayeva-v39';
   html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(#espacePro, #espaceClient) .ec-next-appt .ec-eyebrow{ color:#D7A16B !important; }
 
   /* =====================================================================
-     6. RÉSERVATION — sceau de validation (logo officiel au centre)
-     N'apparaît qu'à l'étape 4, affichée par le script après la réponse
-     réelle du serveur. Le statut est porté par le titre, jamais par le sceau.
+     6. RÉSERVATION — « HAYEVA Signature » (confirmation)
+     a) Animation plein écran (assets/hv-fx.js, window.hvSeal) : bouton qui
+        se contracte, cercle cuivré tracé, logo officiel en profondeur,
+        couronne lumineuse, puis coche UNIQUEMENT après la réponse du serveur
+        et texte selon le statut réel. Durée ≈ 1,7 s.
+     b) Médaillon fixe de l'étape 4.
+     Logo : fichier officiel PNG transparent, jamais redessiné ; sur bleu
+     nuit, halo du portail ; aucun fond blanc derrière lui.
      ===================================================================== */
-  @property --bs-seal-a{ syntax:'<percentage>'; inherits:false; initial-value:100%; }
-  html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"] .confirm-check{
+  .hv-seal-press{ animation:hvSealPress .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes hvSealPress{ 0%{ transform:scale(1); } 32%{ transform:scale(.92); } 100%{ transform:scale(1); } }
+  .hv-seal{
+    position:fixed; inset:0; z-index:2147483400; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; text-align:center; background:rgba(12,20,34,0.9); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    opacity:0; transition:opacity .28s cubic-bezier(.2,0,0,1); font-family:"Poppins",system-ui,sans-serif;
+  }
+  .hv-seal.is-in{ opacity:1; }
+  .hv-seal.is-out{ opacity:0; transition-duration:.32s; pointer-events:none; }
+  .hv-seal-medal{
+    position:relative; width:188px; height:188px; border-radius:50%;
+    background:radial-gradient(circle at 50% 47%, #51698C 0%, #34496A 30%, #1B2B41 58%, #101A2B 80%);
+    box-shadow:0 34px 70px -28px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.07);
+    opacity:0; transform:scale(.88); transition:opacity .26s ease, transform .5s cubic-bezier(.34,1.56,.64,1), box-shadow .5s ease;
+  }
+  .hv-seal.is-in .hv-seal-medal{ opacity:1; transform:none; }
+  .hv-seal.is-ok .hv-seal-medal{ box-shadow:0 34px 70px -28px rgba(0,0,0,.85), 0 0 0 12px rgba(215,161,107,.09), inset 0 1px 0 rgba(255,255,255,.07); }
+  .hv-seal-svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .hv-seal-track{ fill:none; stroke:rgba(215,161,107,.16); stroke-width:3; }
+  .hv-seal-ring{ fill:none; stroke:#D7A16B; stroke-width:3; stroke-linecap:round; stroke-dasharray:100; stroke-dashoffset:100;
+    transform:rotate(-90deg); transform-box:fill-box; transform-origin:center; }
+  .hv-seal.is-in .hv-seal-ring{ animation:hvSealDraw .6s .1s cubic-bezier(.16,1,.3,1) forwards; }
+  .hv-seal-crown-g{ transform-box:fill-box; transform-origin:center; }
+  .hv-seal-crown{ fill:none; stroke:url(#hvSealCrownGrad); stroke-width:5; stroke-linecap:round; stroke-dasharray:20 80; opacity:0;
+    filter:drop-shadow(0 0 6px rgba(246,221,186,.85)); }
+  .hv-seal.is-in .hv-seal-crown{ animation:hvSealFade .25s .5s ease forwards; }
+  .hv-seal.is-in .hv-seal-crown-g{ animation:hvSealSpin .95s .5s linear infinite; }
+  .hv-seal.is-ok .hv-seal-crown{ animation:hvSealFadeOut .5s ease forwards; }
+  .hv-seal-logo{
+    position:absolute; left:50%; top:50%; width:136px; height:auto; max-width:none;
+    transform:translate(-50%,-46%) perspective(420px) rotateX(18deg) scale(.84); opacity:0;
+    filter:drop-shadow(0 0 1.5px rgba(255,255,255,.95)) drop-shadow(0 0 3px rgba(255,255,255,.55)) drop-shadow(0 0 16px rgba(255,255,255,.35)) drop-shadow(0 10px 14px rgba(0,0,0,.45));
+    transition:opacity .38s .3s ease, transform .6s .3s cubic-bezier(.16,1,.3,1);
+  }
+  .hv-seal.is-in .hv-seal-logo{ opacity:1; transform:translate(-50%,-52%) perspective(420px) rotateX(0deg) scale(1); }
+  .hv-seal-check{
+    position:absolute; right:6px; bottom:12px; width:46px; height:46px; border-radius:50%; display:grid; place-items:center;
+    background:#17643F; box-shadow:0 0 0 4px #101A2B, 0 12px 22px -8px rgba(0,0,0,.7); opacity:0; transform:scale(.3);
+  }
+  .hv-seal-check svg{ width:24px; height:24px; }
+  .hv-seal-check path{ fill:none; stroke:#FFFFFF; stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:1; }
+  .hv-seal.is-ok .hv-seal-check{ animation:hvSealPop .44s cubic-bezier(.34,1.56,.64,1) forwards; }
+  .hv-seal.is-ok .hv-seal-check path{ animation:hvSealDraw .36s .16s cubic-bezier(.16,1,.3,1) forwards; }
+  .hv-seal-title{ margin:26px 0 4px; font-size:1.18rem; font-weight:700; color:#FFFFFF; letter-spacing:-.01em; opacity:0; transition:opacity .3s .3s; }
+  .hv-seal.is-in .hv-seal-title{ opacity:.82; }
+  .hv-seal.is-ok .hv-seal-title{ opacity:1; animation:hvSealText .42s cubic-bezier(.16,1,.3,1); }
+  .hv-seal-sub{ margin:0; min-height:1.4em; font-size:.94rem; color:#B7C4D4; max-width:320px; }
+  .hv-seal.is-ok .hv-seal-sub{ animation:hvSealText .42s .06s cubic-bezier(.16,1,.3,1) backwards; }
+  @keyframes hvSealDraw{ to{ stroke-dashoffset:0; } }
+  @keyframes hvSealSpin{ to{ transform:rotate(360deg); } }
+  @keyframes hvSealFade{ to{ opacity:1; } }
+  @keyframes hvSealFadeOut{ from{ opacity:1; } to{ opacity:0; } }
+  @keyframes hvSealPop{ to{ opacity:1; transform:none; } }
+  @keyframes hvSealText{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  /* Réduire les animations : états finaux directs, aucun mouvement. */
+  .hv-seal.is-static, .hv-seal.is-static *{ animation:none !important; transition:none !important; }
+  .hv-seal.is-static .hv-seal-medal{ opacity:1; transform:none; }
+  .hv-seal.is-static .hv-seal-ring{ stroke-dashoffset:0; }
+  .hv-seal.is-static .hv-seal-crown{ opacity:0; }
+  .hv-seal.is-static .hv-seal-logo{ opacity:1; transform:translate(-50%,-52%); }
+  .hv-seal.is-static .hv-seal-title{ opacity:1; }
+  .hv-seal.is-static.is-ok .hv-seal-check{ opacity:1; transform:none; }
+  .hv-seal.is-static.is-ok .hv-seal-check path{ stroke-dashoffset:0; }
+  @media (prefers-reduced-motion: reduce){ .hv-seal-press{ animation:none; } }
+
+  /* b) Médaillon fixe de l'étape 4 : même identité, sans fond blanc derrière le logo. */
+  #rdv .booking-step[data-step="4"] .confirm-check{
     position:relative; display:block; width:136px; height:136px; margin:6px auto 22px; padding:0; border:0; border-radius:50%;
     color:transparent; font-size:0; line-height:0; overflow:visible;
-    background:
-      radial-gradient(circle closest-side, #FFFFFF 0 calc(100% - 4px), transparent calc(100% - 3.5px)),
-      conic-gradient(from -90deg, #D7A16B var(--bs-seal-a), rgba(215,161,107,0.18) 0);
-    box-shadow:0 0 0 7px #F7F5F1, 0 0 0 8px rgba(138,90,43,0.30), 0 22px 44px -20px rgba(138,90,43,0.55);
+    background:radial-gradient(circle at 50% 47%, #51698C 0%, #34496A 30%, #1B2B41 58%, #101A2B 80%);
+    box-shadow:inset 0 0 0 3px #D7A16B, 0 0 0 7px rgba(215,161,107,0.14), 0 22px 44px -20px rgba(16,26,43,0.7);
     animation:none;
   }
-  /* Logo officiel (fichier d'origine, non modifié) au centre du sceau. */
-  html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"] .confirm-check::before{
-    content:''; position:absolute; inset:17%; margin:0; width:auto; height:auto; border:0; border-radius:0; transform:none; clip-path:none;
+  #rdv .booking-step[data-step="4"] .confirm-check::before{
+    content:''; position:absolute; inset:19%; margin:0; width:auto; height:auto; border:0; border-radius:0; transform:none; clip-path:none;
     background:url("images/brand/hayeva-logo-sm.png") center / contain no-repeat;
+    filter:drop-shadow(0 0 1.5px rgba(255,255,255,.95)) drop-shadow(0 0 3px rgba(255,255,255,.55)) drop-shadow(0 0 16px rgba(255,255,255,.35)) drop-shadow(0 10px 14px rgba(0,0,0,.45));
     animation:none;
   }
-  /* Pastille de validation (enregistrement confirmé par le serveur). */
-  html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"] .confirm-check::after{
+  #rdv .booking-step[data-step="4"] .confirm-check::after{
     content:''; position:absolute; right:-2px; bottom:4px; left:auto; top:auto; width:38px; height:38px; border-radius:50%; border:0; opacity:1;
     background:#17643F url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 20px no-repeat;
     box-shadow:0 0 0 4px #FFFFFF, 0 8px 18px -8px rgba(23,100,63,0.7);
     transform:none; animation:none;
   }
   @media (prefers-reduced-motion: no-preference){
-    html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check{
-      animation:bsSealIn .56s var(--sig-ease-spring, cubic-bezier(.34,1.56,.64,1)) backwards, bsSealRing .9s .18s var(--sig-ease-emph, cubic-bezier(.16,1,.3,1)) backwards;
-    }
-    html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check::before{
-      animation:bsSealLogo .5s .42s var(--sig-ease-emph, cubic-bezier(.16,1,.3,1)) backwards;
-    }
-    html[data-bs]:not([data-bs=""]) #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check::after{
-      animation:bsSealBadge .46s .98s var(--sig-ease-spring, cubic-bezier(.34,1.56,.64,1)) backwards;
-    }
+    #rdv .booking-step[data-step="4"]:not([hidden]) .confirm-screen:not([hidden]) .confirm-check{ animation:hvSealText .5s cubic-bezier(.16,1,.3,1) backwards; }
   }
-  @keyframes bsSealIn{ from{ opacity:0; transform:scale(.72) rotate(-8deg); } to{ opacity:1; transform:none; } }
-  @keyframes bsSealRing{ from{ --bs-seal-a:0%; } to{ --bs-seal-a:100%; } }
-  @keyframes bsSealLogo{ from{ opacity:0; transform:scale(.86); } to{ opacity:1; transform:none; } }
-  @keyframes bsSealBadge{ from{ opacity:0; transform:scale(.3); } to{ opacity:1; transform:none; } }
-  html[data-bs]:not([data-bs=""]) .confirm-screen h3{ letter-spacing:-0.01em; }
+  #rdv .confirm-screen h3{ letter-spacing:-0.01em; }
   html[data-bs]:not([data-bs=""]) :is(.date-pill.selected, .time-pill.selected){ background:#FFFFFF; box-shadow:0 0 0 2px var(--sig-orange, #8A5A2B), 0 10px 22px -14px rgba(138,90,43,.6); }
 
   /* ---------- Orange codé en dur : passé au cuivre (le logo et la flamme
@@ -34217,4 +34277,17 @@ window.HV_APP_VERSION = 'hayeva-v39';
   html[data-bs~="public"] .univers-eyebrow{ color:#4A5568; }
   html[data-bs~="public"] #universChauffage .univers-eyebrow{ color:#B7C4D4; }
   html[data-bs~="public"] main .hv-illus ellipse[fill^="url(#hvg"]{ opacity:.45; }
+  /* Carte « Réservation non terminée » (affichée seulement si un brouillon existe). */
+  html[data-bs~="particulier"] #espaceClient .ecx-resume{ background:#1B2B41; border-color:transparent; box-shadow:inset 3px 0 0 #D7A16B, var(--bs-elev-1); }
+  html[data-bs~="particulier"] #espaceClient .ecx-resume-title{ color:#FFFFFF; }
+  /* États moins fréquents relevés par balayage des fonds clairs codés en dur. */
+  html[data-bs~="admin"] .admin-bk-search-results{ background:#1B2B41; color:#FFFFFF; border-color:transparent; box-shadow:var(--bs-elev-2); }
+  html[data-bs~="admin"] .admin-bk-load-more-btn{ background:transparent; color:#FFFFFF; border-color:rgba(255,255,255,0.28); }
+  html[data-bs~="admin"] .adm-offers-msg{ background:rgba(95,199,149,0.12); color:#5FC795; }
+  html[data-bs~="admin"] .adm-offers-msg.is-error{ background:rgba(242,139,123,0.12); color:#F28B7B; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) :is(.hv-more-close, .hv-more-item:active){ background:#2A3B54; color:#FFFFFF; }
+  html:is([data-bs~="admin"], [data-bs~="pro"], [data-bs~="particulier"]) .hv-more-item-danger{ background:rgba(242,139,123,0.12); color:#F28B7B; }
+  html[data-bs~="particulier"] #espaceClient .ec-amb-btn.is-primary{ background:#D7A16B; color:#101A2B; border-color:#D7A16B; }
+  html[data-bs~="particulier"] #espaceClient .ecx-offer-btn.is-ghost:hover{ background:rgba(255,255,255,0.08); }
+  html:is([data-bs~="particulier"], [data-bs~="admin"]) .ref-steps li.is-done{ background:rgba(95,199,149,0.12); color:#5FC795; }
 </style>

@@ -60,7 +60,7 @@ sont des alias de ces jetons. En JS : `HvFx.t('press' | 'state' | 'open' | 'clos
 | Signature lumineuse | CTA principaux (prendre RDV, réserver, confirmer) | un reflet au survol/focus |
 | Continuité carte ↔ fiche | fiches « Détails » | titre et prix qui volent, retour à la carte |
 | Rappel de prestation + progression | réservation | `#bkChosen`, `#bkProgress` |
-| Validation d'un rendez-vous | étape 4 (après enregistrement réel) | sceau : anneau cuivre tracé, logo officiel, pastille verte |
+| Confirmation « HAYEVA Signature » | réservation | bouton contracté, cercle cuivré, logo officiel, couronne lumineuse, coche après réponse réelle du serveur (`window.hvSeal`) |
 | Carte « À traiter maintenant » | administration | point cuivre en pulsation lente |
 | Compteur de statistiques réelles | admin, pro, parrainage | `HvFx` (COUNT_SEL), valeur serveur toujours prioritaire |
 | Déblocage parrainage | seuil de versement réellement atteint | `.ec-amb-progress.is-unlocked` |

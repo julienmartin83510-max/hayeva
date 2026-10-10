@@ -389,6 +389,89 @@
   }, { threshold: 0.6 }) : null;
   function scanCounts() { Array.prototype.forEach.call(document.querySelectorAll(COUNT_SEL), watchCount); }
 
+  // ---------- HAYEVA Signature : animation de confirmation de rendez-vous ----------
+  // Appelée par le tunnel de réservation (index.html) : start() au clic sur
+  // « Confirmer », success(statut) UNIQUEMENT après la réponse positive du
+  // serveur, fail() en cas d'échec. Purement visuelle : aucune donnée, aucune
+  // décision de réservation ne passe par ici. Logo : fichier officiel PNG
+  // transparent (images/brand), jamais redessiné ni recoloré.
+  var seal = null, sealT0 = 0, sealTimers = [], sealDone = false;
+  var SEAL_MIN = 900;    // le cercle, le logo et la couronne ont le temps d'apparaître
+  var SEAL_HOLD = 650;   // coche + texte visibles avant la sortie (total ≈ 1,6 à 1,9 s)
+  function sealReduced() { return !!(mq && mq.matches); }
+  function sealLater(fn, ms) { sealTimers.push(setTimeout(fn, ms)); }
+  function sealClear() { sealTimers.forEach(clearTimeout); sealTimers = []; }
+  function sealBuild() {
+    var el = document.createElement('div');
+    el.className = 'hv-seal';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.innerHTML =
+      '<div class="hv-seal-medal">' +
+        '<svg class="hv-seal-svg" viewBox="0 0 200 200" aria-hidden="true" focusable="false">' +
+          '<defs><linearGradient id="hvSealCrownGrad" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0" stop-color="#E3B47F" stop-opacity="0"/><stop offset=".55" stop-color="#F6DDBA"/><stop offset="1" stop-color="#FFFFFF"/>' +
+          '</linearGradient></defs>' +
+          '<circle class="hv-seal-track" cx="100" cy="100" r="92"/>' +
+          '<circle class="hv-seal-ring" cx="100" cy="100" r="92" pathLength="100"/>' +
+          '<g class="hv-seal-crown-g"><circle class="hv-seal-crown" cx="100" cy="100" r="92" pathLength="100"/></g>' +
+        '</svg>' +
+        '<img class="hv-seal-logo" src="images/brand/hayeva-logo-sm.png" ' +
+          'srcset="images/brand/hayeva-logo-sm.png 500w, images/brand/hayeva-logo.png 900w" sizes="150px" ' +
+          'width="900" height="607" alt="HAYEVA" decoding="async">' +
+        '<span class="hv-seal-check" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 12.5l4 4 8-9" pathLength="1"/></svg></span>' +
+      '</div>' +
+      '<p class="hv-seal-title">Envoi de votre demande…</p>' +
+      '<p class="hv-seal-sub"></p>';
+    return el;
+  }
+  function sealRemove(fast) {
+    if (!seal) return;
+    var el = seal; seal = null; sealClear();
+    el.classList.add('is-out');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, (fast || sealReduced()) ? 0 : 340);
+  }
+  function sealStart(btn) {
+    if (seal) return;
+    sealDone = false;
+    if (btn && !sealReduced()) { btn.classList.remove('hv-seal-press'); void btn.offsetWidth; btn.classList.add('hv-seal-press'); setTimeout(function () { btn.classList.remove('hv-seal-press'); }, 520); }
+    seal = sealBuild();
+    if (sealReduced()) seal.classList.add('is-static');
+    document.body.appendChild(seal);
+    sealT0 = Date.now();
+    void seal.offsetWidth;
+    seal.classList.add('is-in');
+    // Garde-fou : si le tunnel ne rappelle jamais (exception inattendue), le
+    // voile ne bloque pas l'écran ; le message d'erreur existant reste affiché.
+    sealLater(function () { if (!sealDone) sealRemove(); }, 20000);
+    // Vérification anti-robot (Turnstile) qui demande une action : le voile
+    // s'efface aussitôt pour ne jamais la masquer.
+    var watch = function () {
+      if (!seal || sealDone) return;
+      var ts = document.querySelectorAll('.hv-turnstile');
+      for (var i = 0; i < ts.length; i++) if (ts[i].offsetHeight > 20) { sealRemove(true); return; }
+      sealLater(watch, 250);
+    };
+    sealLater(watch, 250);
+  }
+  function sealSuccess(status) {
+    if (!seal) return;
+    sealDone = true;
+    var el = seal;
+    var wait = sealReduced() ? 0 : Math.max(0, SEAL_MIN - (Date.now() - sealT0));
+    sealLater(function () {
+      // Statut réel renvoyé par le serveur : « Rendez-vous confirmé » seulement
+      // s'il l'indique explicitement, sinon « Demande envoyée ».
+      var confirmed = String(status || '').toUpperCase() === 'CONFIRMED';
+      el.querySelector('.hv-seal-title').textContent = confirmed ? 'Rendez-vous confirmé' : 'Demande envoyée';
+      el.querySelector('.hv-seal-sub').textContent = confirmed ? 'Votre créneau est réservé.' : 'Nous vous confirmons rapidement votre créneau.';
+      el.classList.add('is-ok');
+      sealLater(function () { sealRemove(); }, sealReduced() ? 1100 : SEAL_HOLD);
+    }, wait);
+  }
+  function sealFail() { sealDone = true; sealRemove(true); }
+  window.hvSeal = { start: sealStart, success: sealSuccess, fail: sealFail };
+
   function boot() {
     bootPanels(); bootPublic(); scanInd(); bootPlanning(); bootScroll(); scanCounts();
     if (typeof MutationObserver === 'function') {
