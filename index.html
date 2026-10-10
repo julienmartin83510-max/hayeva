@@ -2493,20 +2493,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .bk-privacy-note{
     font-size:0.78rem; color:var(--ink-soft); line-height:1.5; margin-top:4px;
   }
-  /* ---------- PARRAINAGE HAYEVA (bloc public) ---------- */
-  .ref-promo{ background:var(--ivory); border-top:1px solid var(--line); }
-  .ref-promo-grid{ display:grid; grid-template-columns:1fr; gap:28px; align-items:start; }
-  @media (min-width:900px){ .ref-promo-grid{ grid-template-columns:1fr 1fr; gap:48px; } }
-  .ref-promo-big{ font-family:"Poppins",sans-serif; font-weight:800; font-size:clamp(1.5rem, 4.5vw, 2.2rem); color:var(--navy-fixed); line-height:1.2; margin:0 0 8px; }
-  .ref-promo-sub{ font-size:1.05rem; color:var(--ink-soft); margin:0 0 22px; }
-  .ref-promo-cta{ max-width:100%; white-space:normal; }
-  .ref-promo-legal{ font-size:0.78rem; color:var(--ink-soft); line-height:1.5; margin:16px 0 0; }
-  .ref-promo-legal a{ color:var(--sky-deep-fixed); }
-  .ref-promo-steps{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px; }
-  .ref-promo-steps li{ display:flex; gap:14px; align-items:flex-start; background:var(--white); border:1px solid var(--line); border-radius:18px; padding:16px 18px; }
-  .ref-promo-n{ flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:var(--navy-fixed); color:#fff; font-family:"Poppins",sans-serif; font-weight:800; display:flex; align-items:center; justify-content:center; }
-  .ref-promo-steps h3{ font-size:1rem; margin:2px 0 4px; color:var(--navy-fixed); }
-  .ref-promo-steps p{ font-size:0.88rem; color:var(--ink-soft); margin:0; line-height:1.5; }
+  /* ---------- PARRAINAGE HAYEVA (fenêtres d'inscription) ---------- */
   .ref-biz-band{ margin-top:32px; padding:22px 20px; border:1px solid var(--line); border-radius:18px; background:var(--white); display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
   .ref-biz-q{ font-family:"Poppins",sans-serif; font-weight:700; color:var(--navy-fixed); margin:0; }
   .ref-biz-sub{ color:var(--ink-soft); margin:0 0 8px; font-size:0.92rem; }
@@ -2523,6 +2510,13 @@ window.HV_APP_VERSION = 'hayeva-v39';
   /* Code de parrainage (facultatif) */
   .bk-ref-block{ grid-column:1/-1; display:flex; flex-direction:column; gap:6px; }
   .bk-ref-q{ font-size:0.86rem; font-weight:700; color:var(--ink-soft); margin:0; }
+  .bk-ref-toggle{ align-self:flex-start; display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 2px; background:none; border:0; font:inherit; font-size:0.9rem; font-weight:600; color:var(--sky-deep-fixed); text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+  .bk-ref-toggle svg{ transition:transform .25s ease; }
+  .bk-ref-toggle[aria-expanded="true"] svg{ transform:rotate(180deg); }
+  .bk-ref-panel{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .bk-ref-block{ min-width:0; }
+  .bk-ref-panel[hidden]{ display:none; }
+  @media (prefers-reduced-motion: reduce){ .bk-ref-toggle svg{ transition:none; } }
   .bk-ref-row{ display:flex; gap:10px; }
   .bk-ref-row input{ flex:1 1 auto; min-width:0; text-transform:uppercase; letter-spacing:0.04em; }
   .bk-ref-apply{
@@ -5916,6 +5910,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
     font-weight:800;
     color:var(--beige-fixed);
   }
+  /* Parrainage : seul point d'entrée public, volontairement discret. */
+  .footer-ref-link{
+    color:color-mix(in srgb, var(--beige-fixed) 82%, transparent);
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .footer-ref-link:hover, .footer-ref-link:focus-visible{ color:var(--beige-fixed); }
+  .footer-ref-link[hidden]{ display:none; }
+  @media (max-width:760px){ .footer-ref-link{ display:inline-flex; align-items:center; min-height:44px; } }
 
   /* ---------- Footer — rubrique "Informations légales" ---------- */
   /* Accessible depuis TOUTES les pages (le <footer> est commun à toute la
@@ -8389,6 +8391,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
               <textarea id="bkComment" rows="2" placeholder="Décrivez rapidement le problème ou l'intervention souhaitée…"></textarea>
             </label>
             <div class="full bk-ref-block" id="bkRefBlock" hidden>
+              <button type="button" class="bk-ref-toggle" id="bkRefToggle" aria-expanded="false" aria-controls="bkRefPanel"><span>J'ai un code de parrainage</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div class="bk-ref-panel" id="bkRefPanel" hidden>
               <label class="bk-ref-q" for="bkRefCode">Code de parrainage (facultatif)</label>
               <div class="bk-ref-row">
                 <input id="bkRefCode" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. CLEMENT01">
@@ -8396,6 +8400,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
               </div>
               <p class="bk-ref-msg" id="bkRefMsg" hidden aria-live="polite"></p>
               <p class="bk-ref-msg bk-ref-adv" id="bkRefAdv" hidden aria-live="polite"></p>
+              </div>
             </div>
           </div>
           <p class="bk-privacy-note">Les informations recueillies ci-dessus sont utilisées par HAYEVA pour traiter votre demande de rendez-vous et vous recontacter. En savoir plus : <a href="#legal/confidentialite" data-legal-link="confidentialite">Politique de confidentialité</a>.</p>
@@ -10323,44 +10328,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
     </div>
   </section>
 
-  <!-- ============================================================
-       PARRAINAGE HAYEVA — bloc marketing public. Masqué par défaut :
-       affiché uniquement quand l'administration active la publication du
-       programme (referral_settings.ambassador_public_enabled), montants lus
-       depuis get_referral_public_config() (jamais codés en dur).
-       ============================================================ -->
-  <section id="parrainage" class="section-relative ref-promo" hidden>
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Programme de parrainage HAYEVA<span class="rule"></span></p>
-        <h2>PARRAINEZ VOS PROCHES AVEC HAYEVA</h2>
-      </div>
-      <div class="ref-promo-grid">
-        <div class="ref-promo-main">
-          <p class="ref-promo-big">Recommandez HAYEVA autour de vous. Lorsqu'un nouveau client utilise votre code et qu'une intervention éligible est réalisée et payée, vous pouvez obtenir une récompense de <span data-ref-reward>20 €</span>.</p>
-          <p class="ref-promo-sub" data-ref-needs-payouts data-ref-uniform hidden><span data-ref-ten-count>10</span> parrainages validés = <span data-ref-payout>200 €</span>.</p>
-          <p class="ref-promo-sub">La prime est validée après réalisation et paiement d'une prestation éligible d'au moins <span data-ref-min>100 €</span> TTC.</p>
-          <button type="button" class="btn-primary ref-promo-cta" id="refPromoCta">DÉCOUVRIR LE PARRAINAGE</button>
-          <p class="ref-promo-legal"><a href="#" id="refPromoTermsLink">Conditions du programme de parrainage</a></p>
-        </div>
-        <ol class="ref-promo-steps">
-          <li><span class="ref-promo-n">1</span><div><h3>Recommandez</h3><p>Partagez votre code ou votre lien de parrainage avec un proche.</p></div></li>
-          <li><span class="ref-promo-n">2</span><div><h3>Votre filleul fait appel à HAYEVA</h3><p>Il utilise votre code et règle une prestation éligible d'au moins <span data-ref-min>100 €</span> TTC.<span data-ref-needs-advantage> Il bénéficie de <span data-ref-advantage>20 €</span> sur sa première prestation éligible.</span></p></div></li>
-          <li><span class="ref-promo-n">3</span><div><h3>Récompense</h3><p>Après réalisation de l'intervention et confirmation du paiement, la récompense de <span data-ref-reward>20 €</span> est validée par HAYEVA.</p></div></li>
-        </ol>
-      </div>
-      <div class="ref-biz-band" id="refIndivBand" hidden>
-        <p class="ref-biz-q">Vous souhaitez rejoindre le programme de parrainage HAYEVA ?</p>
-        <p class="ref-biz-sub">Envoyez votre demande : HAYEVA l'étudie et vous communique votre code personnel une fois acceptée.</p>
-        <button type="button" class="ref-biz-btn" data-ref-indiv-open>DEVENIR PARRAIN</button>
-      </div>
-      <div class="ref-biz-band" id="refBizBand" hidden>
-        <p class="ref-biz-q">Vous souhaitez recommander HAYEVA de manière régulière ou professionnelle ?</p>
-        <p class="ref-biz-sub">Découvrez le programme d'apporteurs d'affaires HAYEVA.</p>
-        <button type="button" class="ref-biz-btn" data-ref-biz-open>DEVENIR APPORTEUR D'AFFAIRES</button>
-      </div>
-    </div>
-  </section>
+  <!-- PARRAINAGE HAYEVA : aucun contenu sur l'accueil. Le programme reste
+       facultatif et discret : page dédiée /parrainage/ (noindex), lien en pied
+       de page affiché seulement quand l'administration publie le programme,
+       et rubrique secondaire de l'espace client. -->
 
   <section id="contact" class="section-relative">
     <div class="deco-blob" style="width:240px; height:240px; top:-70px; right:12%; background:var(--turquoise); opacity:0.14;"></div>
@@ -10419,6 +10390,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
     <span class="footer-brand brand-wordmark">HAYEVA</span>
     <span style="text-transform:uppercase; letter-spacing:0.04em;">Climatisation · Chauffage · Plomberie — Fréjus, Alpes-Maritimes (06) et Var (83)</span>
     <span id="year"></span>
+    <a class="footer-ref-link" id="footerRefLink" href="/parrainage/" hidden>Programme de parrainage</a>
   </div>
 </footer>
 
@@ -25163,7 +25135,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
       if (out.ok){
         window.hvRefClear();
         ecLoyaltyCache = null; ecLoaded.loyalty = false;
-        if (!out.already && window.hvRefToast) window.hvRefToast('Code de parrainage ' + pending.code + ' enregistré sur votre compte HAYEVA.');
+        // Aucune notification : l'information reste visible dans Mon compte › Fidélité.
       } else if (EC_REF_FINAL_ERRORS.indexOf(out.error) !== -1){
         window.hvRefClear();
       }
@@ -30984,7 +30956,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
   var SWITCHES = [
     ['booking_code_entry_enabled', 'Saisie du code de parrainage pendant la réservation (et liens ?ref=)'],
     ['reward_calculation_enabled', 'Calcul et validation automatique des récompenses'],
-    ['ambassador_public_enabled', 'Affichage public du programme (bloc du site et conditions)'],
+    ['ambassador_public_enabled', 'Page publique /parrainage et lien discret en pied de page'],
     ['individual_applications_public_enabled', 'Formulaire public « Devenir parrain »'],
     ['business_program_public_enabled', 'Formulaire « Devenir apporteur d\'affaires » public'],
     ['payouts_enabled', 'Demandes de versement par les parrains']
@@ -31531,26 +31503,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .ref-adm-kv strong{ font-size:1.05rem; }
   .ref-adm-ledger div{ display:flex; justify-content:space-between; gap:10px; font-size:0.82rem; padding:6px 0; border-bottom:1px solid var(--adm-line); }
 </style>
-<style>
-  /* Parrainage : confirmation discrète à l'arrivée par un lien ?ref= */
-  .hv-ref-toast{
-    position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%);
-    z-index:10050; width:min(560px, calc(100% - 32px)); box-sizing:border-box;
-    display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border-radius:16px;
-    background:#101B24; color:#fff; box-shadow:0 14px 34px -14px rgba(16,27,36,0.55);
-    font-family:"Poppins",sans-serif; font-size:0.9rem; line-height:1.45;
-  }
-  .hv-ref-toast[hidden]{ display:none; }
-  .hv-ref-toast-icon{ flex:0 0 auto; font-size:1.15rem; line-height:1.3; }
-  .hv-ref-toast-text{ flex:1 1 auto; min-width:0; }
-  .hv-ref-toast-close{ flex:0 0 auto; background:none; border:none; color:rgba(255,255,255,0.75); font-size:1.2rem; line-height:1; cursor:pointer; padding:2px 4px; }
-  @media (max-width:760px){ .hv-ref-toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); } }
-</style>
-<div class="hv-ref-toast" id="hvRefToast" hidden role="status" aria-live="polite">
-  <span class="hv-ref-toast-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-  <span class="hv-ref-toast-text" id="hvRefToastText"></span>
-  <button type="button" class="hv-ref-toast-close" id="hvRefToastClose" aria-label="Fermer">×</button>
-</div>
 <script>
 // =====================================================================
 // Parrainage : lien ?ref=CODE (https://hayeva.fr/rdv?ref=CODE) + champ
@@ -31601,18 +31553,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
     }, 0);
   });
 
-  var toast = document.getElementById('hvRefToast');
-  var toastText = document.getElementById('hvRefToastText');
-  var toastTimer = null;
-  window.hvRefToast = function(msg){
-    if (!toast || !toastText) return;
-    toastText.textContent = msg;
-    toast.hidden = false;
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ toast.hidden = true; }, 7000);
-  };
-  var closeBtn = document.getElementById('hvRefToastClose');
-  if (closeBtn) closeBtn.addEventListener('click', function(){ toast.hidden = true; });
 
   var sb = window.sudSupabase;
   function normalize(c){ return String(c || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); }
@@ -31632,6 +31572,17 @@ window.HV_APP_VERSION = 'hayeva-v39';
   window.hvBookingRefCode = function(){ return applied; };
   function setMsg(text, ok){ if (!msg) return; msg.textContent = text || ''; msg.hidden = !text; msg.classList.toggle('is-ok', !!ok); }
   var advEl = document.getElementById('bkRefAdv');
+  // Champ replié par défaut : « J'ai un code de parrainage » l'ouvre. Il
+  // s'ouvre seul uniquement quand un code (lien reçu) vient d'être appliqué.
+  var refToggle = document.getElementById('bkRefToggle');
+  var refPanel = document.getElementById('bkRefPanel');
+  function setRefOpen(open, focus){
+    if (!refToggle || !refPanel) return;
+    refPanel.hidden = !open;
+    refToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open && focus && input) input.focus();
+  }
+  if (refToggle) refToggle.addEventListener('click', function(){ setRefOpen(refPanel.hidden, true); });
   function setAdv(text){ if (!advEl) return; advEl.textContent = text || ''; advEl.hidden = !text; }
   // Avantage filleul : annoncé seulement si la prestation choisie y donne
   // droit (vérification serveur) — toujours « sous réserve des conditions ».
@@ -31659,6 +31610,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
       if (out && out.valid){
         applied = code;
         if (input) input.value = code;
+        setRefOpen(true, false);
         setMsg('✓ Code de parrainage ' + code + ' appliqué', true);
         refreshAdvantage();
         if (!silent && window.sudTrack) window.sudTrack('referral_code_applied', 'rdv');
@@ -31714,31 +31666,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
     Array.prototype.forEach.call(document.querySelectorAll('[data-ref-needs-payouts]'), function(el){ el.hidden = !cfg.payouts_enabled || (!uniform && el.hasAttribute('data-ref-uniform')); });
   }
   window.hvShowAmbassadorMarketing = function(cfg){
+    // Programme publié : montants des conditions + lien discret en pied de
+    // page. Jamais de bloc, de bannière ni de fenêtre sur l'accueil.
     fillAmounts(cfg);
-    var section = document.getElementById('parrainage');
-    if (section) section.hidden = false;
-    var bizBand = document.getElementById('refBizBand');
-    if (bizBand) bizBand.hidden = !cfg.business_program_public_enabled;
-    var indivBand = document.getElementById('refIndivBand');
-    if (indivBand) indivBand.hidden = !cfg.individual_applications_public_enabled;
-    var link = document.getElementById('refPromoTermsLink');
-    if (link) link.addEventListener('click', openRefTerms);
-    var closeB = document.getElementById('refTermsOverlayClose');
-    if (closeB) closeB.addEventListener('click', closeRefTerms);
-    if (termsOverlay) termsOverlay.addEventListener('click', function(e){ if (e.target === termsOverlay) closeRefTerms(); });
+    var link = document.getElementById('footerRefLink');
+    if (link) link.hidden = false;
     document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && termsOverlay && !termsOverlay.hidden) closeRefTerms(); });
-    var cta = document.getElementById('refPromoCta');
-    if (cta) cta.addEventListener('click', function(){
-      if (window.sudTrack) window.sudTrack('referral_page_view', 'parrainage');
-      if (window.sudEspaceClientGoToReferral && window.sudEspaceClientGoToReferral()){
-        if (window.sudOpenEspace) window.sudOpenEspace('espaceClient');
-        return;
-      }
-      try { window.sessionStorage.setItem('hayeva_open_referral', '1'); } catch(e){}
-      if (window.sudSetMode) window.sudSetMode('particulier');
-      if (window.sudOpenEspace) window.sudOpenEspace('espaceClient');
-    });
   };
+
 
   // ---------- Demande « apporteur d'affaires » (formulaire) ----------
   var bizOverlay = document.getElementById('refBizOverlay');
@@ -31884,7 +31819,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
     // Premier lien reçu prioritaire : jamais remplacé silencieusement.
     if (!existing) write({ code: code, ts: Date.now() });
     var kept = (existing && existing.code) || code;
-    window.hvRefToast('Code de parrainage ' + kept + ' enregistré : il sera appliqué à votre réservation.');
+    // Aucune notification à l'arrivée : le code est gardé en silence et
+    // prérempli dans le champ facultatif de la réservation.
     if (window.sudTrack) window.sudTrack('referral_code_applied', 'lien');
     prefillFromPending();
     // Client déjà connecté : rattachement immédiat à son compte.
@@ -34290,4 +34226,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
   html[data-bs~="particulier"] #espaceClient .ec-amb-btn.is-primary{ background:#D7A16B; color:#101A2B; border-color:#D7A16B; }
   html[data-bs~="particulier"] #espaceClient .ecx-offer-btn.is-ghost:hover{ background:rgba(255,255,255,0.08); }
   html:is([data-bs~="particulier"], [data-bs~="admin"]) .ref-steps li.is-done{ background:rgba(95,199,149,0.12); color:#5FC795; }
+  /* Parrainage discret : lien « J'ai un code de parrainage » (réservation, fond ivoire) et lien du pied de page */
+  html[data-bs~="public"] #rdv .bk-ref-toggle{ color:var(--bs-accent-ink); }
+  html[data-bs~="public"] #rdv .bk-ref-toggle:hover{ color:var(--bs-accent-ink-deep); }
+  html[data-bs~="public"] footer .footer-ref-link{ color:#B7C4D4; }
+  html[data-bs~="public"] footer .footer-ref-link:hover, html[data-bs~="public"] footer .footer-ref-link:focus-visible{ color:#FFFFFF; }
 </style>
