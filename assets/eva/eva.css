@@ -1,0 +1,157 @@
+/* EVA — assistante HAYEVA · BLACK SIGNATURE (bleu nuit, cuivre, ivoire). */
+.eva{
+  --e-bg:#101A2B; --e-bg2:#0C1422; --e-surface:#1B2B41; --e-surface2:#243247; --e-elev:#2A3B54;
+  --e-hair:rgba(255,255,255,.08); --e-text:#FFFFFF; --e-text2:#B7C4D4; --e-text3:#8FA1B8;
+  --e-cu:#D7A16B; --e-cu2:#E3B47F; --e-on-cu:#101A2B; --e-ok:#5FC795; --e-warn:#F2B84B; --e-no:#F28B7B; --e-info:#9CC8F2;
+  --e-ease:cubic-bezier(.2,0,0,1); --e-emph:cubic-bezier(.16,1,.3,1);
+  position:fixed; inset:0; z-index:2147483400; display:flex; flex-direction:column;
+  background:radial-gradient(90% 320px at 50% -60px, rgba(215,161,107,.14), transparent 70%), var(--e-bg);
+  color:var(--e-text); font-family:"Poppins",system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; line-height:1.5;
+  opacity:0; transform:translateY(12px); transition:opacity .28s var(--e-ease), transform .42s var(--e-emph);
+}
+.eva.is-open{ opacity:1; transform:none; }
+.eva[hidden]{ display:none !important; }
+.eva *, .eva *::before, .eva *::after{ box-sizing:border-box; }
+/* Neutralise les règles globales du site (p{color;font-weight:300}, h1…) sans
+   priorité ajoutée : :where() garde la spécificité d'un simple sélecteur d'élément. */
+html body :where(.eva) :is(p, h1, h2, h3, li, label, span, b){ color:inherit; font-family:inherit; font-weight:inherit; line-height:inherit; letter-spacing:inherit; }
+html body :where(.eva) b{ font-weight:700; }
+.eva [hidden]{ display:none !important; }
+.eva button{ font:inherit; color:inherit; }
+.eva :focus-visible{ outline:3px solid var(--e-cu); outline-offset:2px; border-radius:10px; }
+.eva-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+.eva-top{ display:flex; align-items:center; gap:12px; padding:calc(10px + env(safe-area-inset-top)) 16px 8px; max-width:880px; width:100%; margin:0 auto; }
+.eva-logo{ height:34px; width:auto; filter:drop-shadow(0 0 1px rgba(255,255,255,.65)) drop-shadow(0 0 9px rgba(255,255,255,.28)); }
+.eva-id{ flex:1; min-width:0; }
+.eva-id h1{ margin:0; font-size:1.15rem; letter-spacing:.18em; font-weight:700; line-height:1.2; }
+.eva-id h1 span{ color:var(--e-cu); }
+.eva-id p{ margin:0; font-size:.78rem; color:var(--e-text2); }
+.eva-x{ width:44px; height:44px; border-radius:50%; border:0; background:var(--e-surface); cursor:pointer; display:grid; place-items:center; }
+.eva-x svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; }
+
+.eva-tabs{ display:flex; gap:6px; padding:4px 16px 10px; max-width:880px; width:100%; margin:0 auto; overflow-x:auto; scrollbar-width:none; }
+.eva-tabs::-webkit-scrollbar{ display:none; }
+.eva-tab{ flex:0 0 auto; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--e-hair); background:transparent; color:var(--e-text2); font-size:.84rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.eva-tab[aria-selected="true"]{ background:var(--e-cu); color:var(--e-on-cu); border-color:var(--e-cu); }
+.eva-badge{ min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--e-no); color:#101A2B; font-size:.7rem; font-weight:700; display:inline-grid; place-items:center; }
+
+.eva-body{ flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.eva-pane{ max-width:880px; margin:0 auto; padding:4px 16px 24px; }
+
+.eva-tiles{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+@media (min-width:760px){ .eva-tiles{ grid-template-columns:repeat(4, minmax(0,1fr)); } }
+.eva-tile{ text-align:left; border:1px solid var(--e-hair); border-radius:18px; padding:14px; background:linear-gradient(160deg, #1F3049, #18263A); cursor:pointer; min-height:92px; display:flex; flex-direction:column; gap:4px; transition:border-color .25s, transform .25s var(--e-emph); }
+.eva-tile:hover{ border-color:rgba(215,161,107,.5); transform:translateY(-2px); }
+.eva-tile b{ font-size:1.7rem; line-height:1; font-weight:700; }
+.eva-tile span{ font-size:.8rem; color:var(--e-text2); }
+.eva-tile.is-alert b{ color:var(--e-warn); }
+.eva-tile.is-loading b{ color:var(--e-text3); }
+
+.eva-chips{ display:flex; gap:8px; margin:16px 0 4px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+.eva-chips::-webkit-scrollbar{ display:none; }
+.eva-chip{ flex:0 0 auto; min-height:38px; padding:0 14px; border-radius:999px; border:1px solid rgba(215,161,107,.45); background:rgba(215,161,107,.08); color:var(--e-cu2); font-size:.82rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+
+.eva-feed{ display:flex; flex-direction:column; gap:12px; margin-top:12px; }
+.eva-card{ border:1px solid var(--e-hair); border-radius:20px; background:var(--e-surface); padding:16px; box-shadow:0 18px 36px -26px rgba(0,0,0,.9); animation:evaIn .45s var(--e-emph); }
+@keyframes evaIn{ from{ opacity:0; transform:translateY(10px); } }
+.eva-card-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.eva-agent{ font-size:.68rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--e-cu); }
+.eva-q{ font-size:.8rem; color:var(--e-text3); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.eva-sum{ margin:0 0 10px; font-weight:600; font-size:1rem; }
+.eva-note{ margin:8px 0 0; font-size:.82rem; color:var(--e-text2); }
+.eva-empty{ margin:0; color:var(--e-text2); font-size:.92rem; }
+.eva-err{ border-color:rgba(242,139,123,.45); }
+.eva-err .eva-sum{ color:var(--e-no); }
+
+.eva-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.eva-item{ display:flex; gap:12px; align-items:flex-start; padding:12px; border-radius:14px; background:var(--e-surface2); min-width:0; }
+.eva-time{ flex:0 0 auto; min-width:62px; font-weight:700; color:var(--e-cu2); font-size:.92rem; line-height:1.3; }
+.eva-time small{ display:block; color:var(--e-text3); font-weight:500; font-size:.72rem; }
+.eva-main{ flex:1; min-width:0; }
+.eva-main b{ display:block; font-size:.92rem; }
+.eva-main span, .eva-main a{ display:block; font-size:.8rem; color:var(--e-text2); overflow-wrap:anywhere; }
+.eva-main a{ color:var(--e-info); text-decoration:none; }
+.eva-pill{ flex:0 0 auto; font-size:.7rem; font-weight:700; padding:4px 9px; border-radius:999px; white-space:nowrap; }
+.eva-pill.ok{ color:var(--e-ok); background:rgba(95,199,149,.14); }
+.eva-pill.wait{ color:var(--e-warn); background:rgba(242,184,75,.14); }
+.eva-pill.info{ color:var(--e-info); background:rgba(156,200,242,.14); }
+.eva-pill.no{ color:var(--e-no); background:rgba(242,139,123,.14); }
+.eva-warn{ margin:10px 0 0; padding:10px 12px; border-radius:12px; background:rgba(242,184,75,.1); color:#F7CF84; font-size:.84rem; }
+.eva-warn p{ margin:0 0 4px; } .eva-warn p:last-child{ margin:0; }
+.eva-h{ margin:14px 0 8px; font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--e-text3); font-weight:700; }
+
+.eva-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.eva-btn{ min-height:44px; padding:0 16px; border-radius:999px; border:0; cursor:pointer; font-weight:600; font-size:.86rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.eva-btn.cu{ background:var(--e-cu); color:var(--e-on-cu); }
+.eva-btn.cu:hover{ background:var(--e-cu2); }
+.eva-btn.ghost{ background:transparent; color:var(--e-text); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.28); }
+.eva-btn.sm{ min-height:36px; padding:0 12px; font-size:.78rem; }
+.eva-btn[disabled]{ opacity:.45; cursor:not-allowed; }
+
+.eva-prop{ border-color:rgba(215,161,107,.45); background:linear-gradient(150deg, #2A3B54 0%, #1B2B41 60%); }
+.eva-lvl{ font-size:.68rem; font-weight:700; padding:3px 9px; border-radius:999px; letter-spacing:.04em; }
+.eva-lvl.l2{ color:var(--e-info); background:rgba(156,200,242,.14); }
+.eva-lvl.l3{ color:var(--e-warn); background:rgba(242,184,75,.16); }
+.eva-cons{ margin:8px 0 0; padding-left:18px; color:var(--e-text2); font-size:.86rem; }
+.eva-cons li{ margin-bottom:4px; }
+.eva-check{ display:flex; gap:10px; align-items:flex-start; margin-top:10px; font-size:.84rem; color:var(--e-text); }
+.eva-check input{ width:22px; height:22px; flex:none; accent-color:var(--e-cu); margin:0; }
+
+.eva-radio{ display:flex; gap:10px; align-items:center; padding:10px 12px; border-radius:12px; background:var(--e-surface2); cursor:pointer; }
+.eva-radio input{ width:20px; height:20px; accent-color:var(--e-cu); flex:none; margin:0; }
+.eva-radio span{ flex:1; min-width:0; font-size:.88rem; }
+.eva-radio em{ font-style:normal; font-weight:700; color:var(--e-cu2); white-space:nowrap; }
+.eva-radio.is-off em{ color:var(--e-text3); font-weight:500; font-size:.78rem; }
+
+.eva-field{ display:flex; flex-direction:column; gap:6px; font-size:.82rem; color:var(--e-text2); }
+.eva-field input, .eva-field select, .eva-input-sm{ min-height:44px; border-radius:12px; border:1px solid #7D90A8; background:var(--e-surface2); color:#fff; padding:0 12px; font:inherit; font-size:1rem; min-width:0; }
+.eva-input-sm{ width:100%; }
+
+.eva-bar{ flex:0 0 auto; border-top:1px solid var(--e-hair); background:rgba(12,20,34,.92); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); }
+.eva-bar-in{ max-width:880px; margin:0 auto; display:flex; gap:8px; align-items:center; }
+.eva-input{ flex:1; min-width:0; min-height:50px; border-radius:999px; border:1px solid #7D90A8; background:var(--e-surface2); color:#fff; padding:0 18px; font:inherit; font-size:1rem; }
+.eva-input:focus{ outline:none; border-color:var(--e-cu); box-shadow:0 0 0 4px rgba(215,161,107,.2); }
+.eva-input::placeholder{ color:var(--e-text3); }
+.eva-mic, .eva-send{ flex:0 0 auto; width:50px; height:50px; border-radius:50%; border:0; cursor:pointer; display:grid; place-items:center; position:relative; }
+.eva-mic{ background:var(--e-surface2); box-shadow:inset 0 0 0 1.5px rgba(215,161,107,.55); color:var(--e-cu2); }
+.eva-send{ background:var(--e-cu); color:var(--e-on-cu); }
+.eva-mic svg, .eva-send svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.eva-mic[aria-pressed="true"]{ background:var(--e-cu); color:var(--e-on-cu); }
+.eva-mic[aria-pressed="true"]::after{ content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--e-cu); animation:evaPulse 1.2s ease-out infinite; }
+@keyframes evaPulse{ from{ opacity:.9; transform:scale(.9); } to{ opacity:0; transform:scale(1.25); } }
+.eva-hint{ max-width:880px; margin:6px auto 0; font-size:.74rem; color:var(--e-text3); text-align:center; min-height:1em; }
+
+.eva-days{ display:flex; flex-direction:column; gap:8px; }
+.eva-day{ display:grid; grid-template-columns:92px minmax(0,1fr); gap:8px; align-items:center; padding:10px; border-radius:12px; background:var(--e-surface2); }
+.eva-day > b{ font-size:.86rem; }
+.eva-ranges{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.eva-range{ display:flex; gap:4px; align-items:center; }
+.eva-range input{ width:96px; min-height:40px; border-radius:10px; border:1px solid #7D90A8; background:var(--e-bg); color:#fff; padding:0 6px; font:inherit; font-size:.92rem; }
+.eva-toggle{ display:flex; gap:10px; align-items:center; justify-content:space-between; padding:12px; border-radius:12px; background:var(--e-surface2); font-size:.9rem; }
+.eva-toggle input{ width:22px; height:22px; accent-color:var(--e-cu); }
+.eva-set{ display:flex; flex-direction:column; gap:10px; }
+.eva-msg{ margin:8px 0 0; font-size:.84rem; }
+.eva-msg.ok{ color:var(--e-ok); } .eva-msg.no{ color:var(--e-no); }
+
+.eva-hist .eva-item{ align-items:center; }
+.eva-hist time{ flex:0 0 auto; font-size:.74rem; color:var(--e-text3); min-width:86px; }
+
+@media (prefers-reduced-motion:reduce){
+  .eva, .eva *{ animation:none !important; transition:none !important; }
+}
+
+/* Écoute : voile bleu nuit, logo officiel, anneau cuivré qui réagit à la voix */
+.eva-listen{ position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px;
+  background:radial-gradient(60% 45% at 50% 42%, rgba(215,161,107,.16), transparent 70%), rgba(10,17,30,.94); text-align:center; }
+.eva-listen[hidden]{ display:none !important; }
+.eva-orb{ position:relative; width:180px; height:180px; border-radius:50%; display:grid; place-items:center;
+  background:radial-gradient(circle at 50% 46%, #51698C 0%, #34496A 32%, #1B2B41 60%, #101A2B 82%); box-shadow:0 30px 60px -26px rgba(0,0,0,.85); }
+.eva-orb img{ width:122px; height:auto; filter:drop-shadow(0 0 1.5px rgba(255,255,255,.95)) drop-shadow(0 0 3px rgba(255,255,255,.55)) drop-shadow(0 0 16px rgba(255,255,255,.35)); }
+.eva-ring{ --lvl:0; position:absolute; inset:-10px; border-radius:50%; border:3px solid #D7A16B;
+  box-shadow:0 0 calc(10px + 30px * var(--lvl)) rgba(215,161,107,calc(.25 + .5 * var(--lvl)));
+  transform:scale(calc(1 + .14 * var(--lvl))); transition:transform .18s cubic-bezier(.2,0,0,1), box-shadow .18s; }
+.eva-listen.is-on .eva-ring::after{ content:''; position:absolute; inset:-8px; border-radius:50%; border:1.5px solid rgba(215,161,107,.45); animation:evaPulse 1.6s ease-out infinite; }
+.eva-listen-t{ margin:6px 0 0; font-weight:600; font-size:1.05rem; color:#fff; }
+.eva-listen-q{ margin:0; min-height:1.4em; max-width:30ch; color:#B7C4D4; font-size:.95rem; }
+@media (prefers-reduced-motion:reduce){ .eva-ring{ transition:none; } }
