@@ -1,9 +1,10 @@
 // =====================================================================
-// EVA — assistante de gestion HAYEVA (V1, sans IA payante).
+// EVA — assistante de gestion HAYEVA (V1 + phase 2, sans IA payante).
 // - Comprend une commande en français grâce à EVAIntents (règles locales,
 //   aucune donnée envoyée à un service d'IA).
 // - Interroge le serveur via eva_run (rôle administrateur revérifié,
-//   données RÉELLES du planning, des devis et des factures).
+//   données RÉELLES du planning, des devis et des factures) et eva_query
+//   (fiches clients, catalogue, statistiques, parrainage, fidélité…).
 // - Toute écriture passe par une proposition (eva_propose) que vous
 //   confirmez par un bouton : jamais par une phrase.
 // - Micro : dictée du navigateur (Apple sur iPhone), uniquement quand
@@ -30,7 +31,7 @@
   function key(){ return 'ui-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
   function reg(o){ var k = 'r' + (++state.seq); state.reg[k] = o; return k; }
   var STATUS = { PENDING: ['À confirmer', 'wait'], CONFIRMED: ['Confirmé', 'ok'], IN_PROGRESS: ['En cours', 'info'], COMPLETED: ['Terminé', 'ok'] };
-  var AGENT = { planning: 'Agent Planning', devis: 'Agent Devis', factures: 'Agent Factures' };
+  var AGENT = { planning: 'Agent Planning', devis: 'Agent Devis', factures: 'Agent Factures', clients: 'Agent Clients', fidelite: 'Agent Fidélité' };
   var ERR = {
     EVA_DESACTIVEE: 'EVA est désactivée dans les réglages.',
     TROP_DE_DEMANDES: 'Trop de demandes en une minute : patientez un instant.',
@@ -39,11 +40,12 @@
     PERIODE_INVALIDE: 'Période trop longue : limitez-la à un mois.',
     INTENTION_INCONNUE: 'Commande non prise en charge.',
     DOSSIER_OCCUPE: 'Une proposition est déjà en attente sur ce dossier : confirmez-la ou annulez-la d’abord (onglet Propositions).',
-    CONFIRMATION_REQUISE: 'Confirmation explicite requise.'
+    CONFIRMATION_REQUISE: 'Confirmation explicite requise.',
+    PROPOSITION_INCONNUE: 'Action non prise en charge.'
   };
   function errText(e){
     var m = String((e && (e.message || e.details)) || e || '');
-    if (/PGRST202|Could not find the function|does not exist/i.test(m)) return 'EVA n’est pas encore installée sur la base de données (migration 0135 à appliquer).';
+    if (/PGRST202|Could not find the function|does not exist/i.test(m)) return 'EVA n’est pas encore installée sur la base de données (migrations 0135 et 0136 à appliquer).';
     var a = /AGENT_DESACTIVE:(\w+)/.exec(m); if (a) return (AGENT[a[1]] || 'Cet agent') + ' est désactivé dans les réglages.';
     for (var k in ERR) if (m.indexOf(k) !== -1) return ERR[k];
     if (/réservée|42501|permission/i.test(m)) return 'Action réservée à l’administrateur connecté.';
@@ -176,9 +178,26 @@
     }
     if (p.intent === 'not_yet') return notYet(p);
     if (p.intent === 'dev_request') return devRequestCard(p);
+    if (p.intent === 'bulk_refused'){
+      var sb1 = 'Je ne fais jamais d’action groupée.';
+      addCard(card(null, p.text, sb1, '<p class="eva-note">Envoyer, annuler, modifier ou supprimer plusieurs éléments d’un coup est volontairement impossible avec EVA. Traitez-les un par un : chaque action vous est montrée et vous la confirmez.</p>'));
+      speak(sb1); return;
+    }
+    if (p.intent === 'delete_refused'){
+      var sd1 = 'EVA ne supprime aucune donnée.';
+      addCard(card(null, p.text, sd1, '<p class="eva-note">Clients, rendez-vous, devis et factures sont conservés. Pour un rendez-vous, dites « annule le rendez-vous de … » : il passe en « Annulé » et reste dans l’historique. Pour une fiche client, utilisez la fusion de doublons dans la rubrique Clients.</p>'));
+      speak(sd1); return;
+    }
+    p = withCtx(p);
     var holder = addCard('<div class="eva-card"><div class="eva-card-head"><span class="eva-agent">EVA</span><span class="eva-q">« ' + esc(p.text) + ' »</span></div><p class="eva-empty">Je consulte vos données…</p></div>');
     if (p.intent === 'invoice_last') return invoiceLast(p, holder);
     if (p.intent === 'move_booking') return moveBooking(p, holder);
+    if (FLOW[p.intent]) return runFlow(p, holder);
+    if (p.ctxMissing){ var sc = 'De quel client parlez-vous ? Ouvrez d’abord sa fiche, par exemple « fiche de Monsieur Martin ».'; holder.outerHTML = card('clients', p.text, sc, ''); speak(sc); return; }
+    if (p.intent === 'quote_estimate' && !p.args.service) return askService(p, holder);
+    if (QUERY[p.intent]) return rpc('eva_query', { p_intent: p.intent, p_args: p.args, p_command: p.text }).then(function(r){
+      var out = renderQuery(p, r); holder.outerHTML = out.html; speak(out.say);
+    }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); speak(errText(e)); });
     return rpc('eva_run', { p_intent: p.intent, p_args: p.args, p_command: p.text }).then(function(r){
       var out = render(p, r);
       holder.outerHTML = out.html;
@@ -271,16 +290,19 @@
   }
   function renderClients(p, d){
     var c = d.clients || [];
+    if (c.length === 1) setCtx(c[0]);
     var sum = c.length ? c.length + ' client' + (c.length > 1 ? 's' : '') + ' trouvé' + (c.length > 1 ? 's' : '') + '.' : 'Aucun client ne correspond à « ' + (d.query || '') + ' » dans votre base.';
     var body = c.length ? '<ul class="eva-list">' + c.map(function(x){
       return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.name || 'Sans nom') + '</b>' + (x.city ? '<span>' + esc(x.city) + '</span>' : '') +
-        (x.phone ? '<a href="tel:' + esc(String(x.phone).replace(/\s/g, '')) + '">' + esc(x.phone) + '</a>' : '') + (x.email ? '<a href="mailto:' + esc(x.email) + '">' + esc(x.email) + '</a>' : '') + '</div></li>';
+        (x.phone ? '<a href="tel:' + esc(String(x.phone).replace(/\s/g, '')) + '">' + esc(x.phone) + '</a>' : '') + (x.email ? '<a href="mailto:' + esc(x.email) + '">' + esc(x.email) + '</a>' : '') +
+        '<div class="eva-actions">' + runBtn('Ouvrir la fiche', 'client_detail', { client_id: x.client_id }, 'Fiche de ' + (x.name || 'client')) + '</div></div></li>';
     }).join('') + '</ul>' : '';
     return { html: card(null, p.text, sum, body), say: sum };
   }
   function renderEstimate(p, d){
     var clients = d.clients || [], matches = d.matches || [], miss = d.missing || [];
     var client = clients.length === 1 ? clients[0] : null;
+    if (client) setCtx(client);
     var sum = matches.length ? 'Proposition de chiffrage à partir de votre catalogue.' : 'Prestation non trouvée dans votre catalogue : à chiffrer par vous.';
     var body = '';
     if (p.args.client && !clients.length) body += '<div class="eva-warn"><p>Client « ' + esc(p.args.client) + ' » introuvable dans votre base. Vérifiez le nom ou créez la fiche client.</p></div>';
@@ -483,6 +505,339 @@
       '<div class="eva-actions" style="margin-top:0"><button type="button" class="eva-btn sm cu" data-act="pay" data-k="' + reg({ invoice_id: o.invoice_id, idem: key() }) + '">Préparer l’enregistrement</button></div></div>');
   }
 
+  // ------------------------------------------------ phase 2 : lectures
+  var FLOW = { client_create: 1, client_update: 1, booking_create: 1, booking_cancel: 1, service_create: 1, quote_update: 1, quote_send: 1, report: 1, referrer_admin: 1, wallet_adjust: 1 };
+  var QUERY = { agenda_range: 1, stats: 1, catalog: 1, invoices_list: 1, client_detail: 1, loyalty: 1, maintenance_due: 1, referrals: 1 };
+  var ISTATUS = { DRAFT: ['Brouillon', 'info'], ISSUED: ['Émise', 'wait'], PARTIALLY_PAID: ['Partiellement réglée', 'wait'], PAID: ['Réglée', 'ok'], CANCELLED: ['Annulée', 'no'], CREDITED: ['Avoir', 'no'] };
+  var BSTATUS = { PENDING: ['À confirmer', 'wait'], CONFIRMED: ['Confirmé', 'ok'], IN_PROGRESS: ['En cours', 'info'], COMPLETED: ['Terminé', 'ok'], CANCELLED: ['Annulé', 'no'], NO_SHOW: ['Absent', 'no'] };
+  var EQUIP = { chaudiere_gaz: 'Chaudière gaz', chaudiere_fioul: 'Chaudière fioul', pompe_a_chaleur: 'Pompe à chaleur', climatisation: 'Climatisation', chauffe_eau: 'Chauffe-eau', ballon_thermo: 'Ballon thermodynamique' };
+  var METHOD = { virement: 'Virement', cheque: 'Chèque', especes: 'Espèces', carte: 'Carte bancaire', autre: 'Autre' };
+  function fdate(d){ var x = parseIso(d); return x ? x.toLocaleDateString('fr-FR') : '—'; }
+  function pill(map, k){ var s = map[k] || [k || '—', 'info']; return '<span class="eva-pill ' + s[1] + '">' + esc(s[0]) + '</span>'; }
+  function tel(p){ return p ? '<a href="tel:' + esc(String(p).replace(/\s/g, '')) + '">' + esc(p) + '</a>' : ''; }
+  function setCtx(c){ if (c && c.client_id) state.ctx = { client_id: c.client_id, name: c.name || '' }; }
+  function actBtn(label, act, o, cls){ return '<button type="button" class="eva-btn sm ' + (cls || 'ghost') + '" data-act="' + act + '" data-k="' + reg(o) + '">' + esc(label) + '</button>'; }
+  function runBtn(label, intent, args, text){ return actBtn(label, 'rerun', { intent: intent, args: args, text: text || label }); }
+  // « ce client » : remplacé par le client de la conversation, sinon EVA demande lequel.
+  function withCtx(p){
+    if (!p.args || p.args.client !== '@ctx') return p;
+    var a = Object.assign({}, p.args); delete a.client;
+    if (state.ctx) a.client_id = state.ctx.client_id;
+    return Object.assign({}, p, { args: a, ctxMissing: !state.ctx });
+  }
+
+  function renderQuery(p, r){
+    var d = r.data || {};
+    switch (p.intent){
+      case 'agenda_range': return renderRange(p, d);
+      case 'stats': return renderStats(p, d);
+      case 'catalog': return renderCatalog(p, d);
+      case 'invoices_list': return renderInvoicesList(p, d);
+      case 'client_detail': return renderDetail(p, d);
+      case 'loyalty': return renderLoyalty(p, d);
+      case 'maintenance_due': return renderMaintenance(p, d);
+      case 'referrals': return renderReferrals(p, d);
+    }
+    return { html: errorCard('Réponse inattendue.', p.text), say: '' };
+  }
+  function noClient(p, d, intent, extra){
+    var cl = d.clients || [];
+    if (cl.length > 1) return { html: card('clients', p.text, 'Plusieurs clients correspondent.', clientChoice(p, cl, intent, extra)), say: 'Plusieurs clients correspondent. Lequel ?' };
+    var s = 'Aucun client ne correspond à « ' + (p.args.client || p.args.query || '') + ' » dans votre base.';
+    return { html: card('clients', p.text, s, '<div class="eva-actions">' + runBtn('Créer cette fiche client', 'client_create', nameArgs(p.args.client), 'Nouveau client') + '</div>'), say: s };
+  }
+  function nameArgs(n){
+    var w = String(n || '').replace(/^(monsieur|madame|mademoiselle|mme|m\.|mr)\s+/i, '').trim().split(/\s+/).filter(Boolean);
+    return { first_name: w.length > 1 ? w[0] : '', last_name: w.length > 1 ? w.slice(1).join(' ') : (w[0] || ''), phone: '', email: '' };
+  }
+  function bookingRow(x, extra){
+    return '<li class="eva-item"><div class="eva-time">' + esc(x.start) + '<small>' + esc(x.end) + '</small></div><div class="eva-main"><b>' + esc(x.service) + '</b><span>' + esc(x.client) + ' · ' + esc(x.reference) + '</span>' + (extra || '') + '</div>' + pill(BSTATUS, x.status) + '</li>';
+  }
+  function renderRange(p, d){
+    var n = d.count || 0, by = d.by_status || {}, canc = (by.CANCELLED || 0) + (by.NO_SHOW || 0);
+    var sum = periodLabel(d).replace(/^./, function(c){ return c.toUpperCase(); }) + ' : ' + (n ? n + ' rendez-vous' : 'aucun rendez-vous') + '.';
+    var parts = [['PENDING', 'à confirmer'], ['CONFIRMED', 'confirmé(s)'], ['IN_PROGRESS', 'en cours'], ['COMPLETED', 'terminé(s)']].filter(function(k){ return by[k[0]]; }).map(function(k){ return by[k[0]] + ' ' + k[1]; });
+    var b = (parts.length ? '<p class="eva-note" style="margin-top:-6px">' + esc(parts.join(' · ')) + (canc ? ' · ' + canc + ' annulé(s) ou absent(s) non comptés' : '') + '.</p>' : (canc ? '<p class="eva-note">' + canc + ' rendez-vous annulé(s) sur la période, non comptés.</p>' : ''));
+    b += (d.days || []).map(function(day){ return '<p class="eva-h">' + esc(dayLabel(day.date)) + '</p><ul class="eva-list">' + day.items.map(function(x){ return bookingRow(x); }).join('') + '</ul>'; }).join('');
+    return { html: card('planning', p.text, sum, b), say: sum };
+  }
+  function renderStats(p, d){
+    var rows = [['Demandes reçues', d.requests_received], ['Rendez-vous confirmés', d.confirmed], ['Interventions terminées', d.completed], ['Annulés par le client', d.cancelled_client],
+      ['Annulés par vous', d.cancelled_admin], ['Demandes refusées', d.refused], ['Clients absents', d.no_show]];
+    var sum = 'Statistiques ' + periodLabel(d) + ' : ' + (d.requests_received || 0) + ' demande(s) reçue(s), ' + (d.confirmed || 0) + ' rendez-vous confirmé(s), ' + (d.completed || 0) + ' terminé(s).';
+    var b = '<ul class="eva-list">' + rows.map(function(r){ return '<li class="eva-item"><div class="eva-main"><b>' + esc(r[0]) + '</b></div><span class="eva-pill info">' + (r[1] || 0) + '</span></li>'; }).join('') +
+      '<li class="eva-item"><div class="eva-main"><b>Montant des interventions terminées</b><span>' + (d.revenue_countable || 0) + ' intervention(s) avec un montant enregistré</span></div><span class="eva-pill ok">' + eur(d.revenue_cents || 0) + '</span></li></ul>' +
+      '<p class="eva-note">Montants des rendez-vous terminés, pas des factures : pour le facturé et l’encaissé, demandez « combien j’ai facturé ce mois ».</p>';
+    return { html: card('planning', p.text, sum, b), say: sum };
+  }
+  function priceText(x){ return x.mode === 'QUOTE' ? 'Sur devis' : x.price_cents == null ? 'Prix non renseigné' : (x.mode === 'FROM' ? 'À partir de ' : '') + eur(x.price_cents); }
+  function renderCatalog(p, d){
+    var it = d.items || [];
+    var sum = it.length ? (it.length === 1 ? it[0].label + ' : ' + priceText(it[0]) + (it[0].duration_minutes ? ', ' + it[0].duration_minutes + ' min' : '') + '.' : it.length + ' prestation' + (it.length > 1 ? 's' : '') + ' dans votre catalogue' + (d.query ? ' pour « ' + d.query + ' »' : '') + '.')
+      : 'Aucune prestation de votre catalogue ne correspond à « ' + (d.query || '') + ' ».';
+    var cats = {}; it.forEach(function(x){ (cats[x.category || 'autre'] = cats[x.category || 'autre'] || []).push(x); });
+    var b = Object.keys(cats).map(function(c){ return '<p class="eva-h">' + esc(c.charAt(0).toUpperCase() + c.slice(1)) + '</p><ul class="eva-list">' + cats[c].map(function(x){
+      return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.label) + '</b><span>' + (x.duration_minutes ? x.duration_minutes + ' min' : 'Durée non renseignée') + (x.active ? '' : ' · masquée') + '</span></div><span class="eva-pill ' + (x.mode === 'FIXED' && x.price_cents != null ? 'ok' : 'info') + '">' + esc(priceText(x)) + '</span></li>';
+    }).join('') + '</ul>'; }).join('');
+    b += '<p class="eva-note">Tarifs enregistrés dans votre catalogue, sans frais de déplacement.</p><div class="eva-actions">' + runBtn('Ajouter une prestation', 'service_create', { name: '' }, 'Ajouter une prestation') + '</div>';
+    return { html: card('devis', p.text, sum, b), say: sum };
+  }
+  function renderInvoicesList(p, d){
+    if ((p.args.client || p.args.client_id) && (d.clients || []).length !== 1) return noClient(p, d, 'invoices_list', { from: p.args.from, to: p.args.to });
+    var inv = d.invoices || [], pay = d.payments || [], who = (d.clients || [])[0];
+    if (who) setCtx(who);
+    var paid = pay.reduce(function(s, x){ return s + (x.amount_cents || 0); }, 0);
+    var sum = (who ? who.name + ' : ' : '') + inv.length + ' facture' + (inv.length > 1 ? 's' : '') + ', ' + pay.length + ' paiement' + (pay.length > 1 ? 's' : '') + ' enregistré' + (pay.length > 1 ? 's' : '') + (pay.length ? ' (' + eur(paid) + ')' : '') + (p.args.from ? ' ' + periodLabel(p.args) : '') + '.';
+    var b = '';
+    if (inv.length) b += '<p class="eva-h">Factures</p><ul class="eva-list">' + inv.map(function(x){ return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.reference || 'Brouillon') + '</b><span>' + esc(x.client) + (x.issued_at ? ' · émise le ' + esc(new Date(x.issued_at).toLocaleDateString('fr-FR')) : '') + ' · réglé ' + eur(x.paid_cents) + ' sur ' + eur(x.total_cents) + '</span></div>' + pill(ISTATUS, x.status) + '</li>'; }).join('') + '</ul>';
+    if (pay.length) b += '<p class="eva-h">Paiements reçus</p><ul class="eva-list">' + pay.map(function(x){ return '<li class="eva-item"><div class="eva-time">' + esc((parseIso(x.paid_on) || new Date()).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })) + '</div><div class="eva-main"><b>' + esc(x.client) + '</b><span>' + esc(x.invoice || '') + ' · ' + esc(METHOD[x.method] || x.method || '') + '</span></div><span class="eva-pill ok">' + eur(x.amount_cents) + '</span></li>'; }).join('') + '</ul>';
+    b += '<div class="eva-actions"><button type="button" class="eva-btn sm ghost" data-act="goto" data-page="invoices">Ouvrir la rubrique Factures</button></div>';
+    return { html: card('factures', p.text, sum, b), say: sum };
+  }
+  function equipName(e){ return (EQUIP[e.type] || e.type || 'Équipement') + ((e.brand || e.model) ? ' ' + [e.brand, e.model].filter(Boolean).join(' ') : ''); }
+  function renderDetail(p, d){
+    if (!d.client) return noClient(p, d, 'client_detail', { focus: p.args.focus });
+    var c = d.client, iv = d.interventions || [], bk = d.bookings || [], eq = d.equipment || [], qs = d.quotes || [], fs = d.invoices || [];
+    setCtx(c);
+    var today = I.iso(new Date()), next = bk.filter(function(x){ return x.date >= today && (x.status === 'PENDING' || x.status === 'CONFIRMED'); }).slice(-1)[0];
+    var last = iv[0], lastDone = bk.filter(function(x){ return x.status === 'COMPLETED'; })[0], sum;
+    if (p.args.focus === 'interventions') sum = last ? 'Dernière intervention chez ' + c.name + ' : ' + last.service + ' le ' + fdate(last.date) + (last.equipment ? ' (' + last.equipment + ')' : '') + '.'
+      : (lastDone ? 'Dernière intervention chez ' + c.name + ' : ' + lastDone.service + ' le ' + fdate(lastDone.date) + ' (sans fiche d’intervention).' : 'Aucune intervention enregistrée chez ' + c.name + '.');
+    else if (p.args.focus === 'equipment') sum = eq.length ? c.name + ' : ' + eq.length + ' équipement' + (eq.length > 1 ? 's' : '') + ' enregistré' + (eq.length > 1 ? 's' : '') + '.' : 'Aucun équipement enregistré chez ' + c.name + '.';
+    else sum = 'Fiche de ' + c.name + ' : ' + bk.length + ' rendez-vous, ' + qs.length + ' devis, ' + fs.length + ' facture' + (fs.length > 1 ? 's' : '') + '.' + (next ? ' Prochain rendez-vous le ' + fdate(next.date) + ' à ' + next.start + '.' : '');
+    var b = '<ul class="eva-list"><li class="eva-item"><div class="eva-main"><b>' + esc(c.name) + (c.type === 'professionnel' ? ' · professionnel' : '') + '</b>' +
+      (c.address || c.city ? '<span>' + esc([c.address, [c.postal_code, c.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')) + '</span>' : '') + tel(c.phone) +
+      (c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '') + (c.notes ? '<span>Notes : ' + esc(c.notes) + '</span>' : '') +
+      '<span>' + (c.has_account ? 'Compte client actif' : 'Sans compte client') + (d.wallet_cents ? ' · crédit fidélité ' + eur(d.wallet_cents) : '') + (d.referral ? ' · parrain (code ' + esc(d.referral.code) + ', ' + esc(d.referral.status === 'active' ? 'actif' : d.referral.status) + ')' : '') + '</span></div></li></ul>';
+    if (iv.length) b += '<p class="eva-h">Interventions</p><ul class="eva-list">' + iv.slice(0, 6).map(function(x){
+      return '<li class="eva-item"><div class="eva-time">' + esc((parseIso(x.date) || new Date(x.date)).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })) + '</div><div class="eva-main"><b>' + esc(x.service) + '</b><span>' + esc(x.booking || '') + (x.equipment ? ' · ' + esc(x.equipment) : '') + '</span>' +
+        (x.observations ? '<span>Observations : ' + esc(x.observations) + '</span>' : '') + (x.recommendations ? '<span>Recommandations : ' + esc(x.recommendations) + '</span>' : '') + '</div>' +
+        '<span class="eva-pill ' + (x.report_status === 'FINALIZED' ? 'ok' : 'info') + '">' + (x.report_status === 'FINALIZED' ? 'CR validé' : 'CR brouillon') + '</span></li>';
+    }).join('') + '</ul>';
+    if (eq.length) b += '<p class="eva-h">Équipements</p><ul class="eva-list">' + eq.map(function(e){
+      var od = e.next_due && e.next_due < today;
+      return '<li class="eva-item"><div class="eva-main"><b>' + esc(equipName(e)) + '</b><span>' + (e.location ? esc(e.location) + ' · ' : '') + 'Dernier entretien : ' + (e.last_service ? fdate(e.last_service) : 'non renseigné') + '</span></div>' +
+        (e.next_due ? '<span class="eva-pill ' + (od ? 'no' : 'wait') + '">' + (od ? 'Échu le ' : 'Avant le ') + esc(fdate(e.next_due)) + '</span>' : '') + '</li>';
+    }).join('') + '</ul>';
+    if (bk.length) b += '<p class="eva-h">Rendez-vous</p><ul class="eva-list">' + bk.slice(0, 6).map(function(x){ return '<li class="eva-item"><div class="eva-time">' + esc((parseIso(x.date) || new Date()).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })) + '<small>' + esc(x.start) + '</small></div><div class="eva-main"><b>' + esc(x.service) + '</b><span>' + esc(x.reference) + '</span></div>' + pill(BSTATUS, x.status) + '</li>'; }).join('') + '</ul>';
+    if (qs.length) b += '<p class="eva-h">Devis</p><ul class="eva-list">' + qs.slice(0, 5).map(function(x){ return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.title || 'Devis') + '</b><span>' + esc(x.reference || '') + '</span></div><span class="eva-pill ' + (QSTATUS[x.status] || ['', 'info'])[1] + '">' + esc((QSTATUS[x.status] || [x.status])[0]) + ' · ' + eur(x.total_cents) + '</span></li>'; }).join('') + '</ul>';
+    if (fs.length) b += '<p class="eva-h">Factures</p><ul class="eva-list">' + fs.slice(0, 5).map(function(x){ return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.reference || 'Brouillon') + '</b></div>' + pill(ISTATUS, x.status) + '<span class="eva-pill info">' + eur(x.total_cents) + '</span></li>'; }).join('') + '</ul>';
+    var a = { client_id: c.client_id };
+    b += '<p class="eva-note">« ce client » désigne maintenant ' + esc(c.name) + '.</p><div class="eva-actions">' +
+      runBtn('Nouveau rendez-vous', 'booking_create', a, 'Nouveau rendez-vous — ' + c.name) + runBtn('Préparer un devis', 'quote_estimate', Object.assign({ service: '' }, a), 'Devis — ' + c.name) +
+      runBtn('Modifier la fiche', 'client_update', a, 'Modifier la fiche — ' + c.name) + (bk.some(function(x){ return x.status === 'COMPLETED' || x.status === 'IN_PROGRESS'; }) ? runBtn('Compte rendu', 'report', a, 'Compte rendu — ' + c.name) : '') +
+      runBtn('Fidélité', 'loyalty', a, 'Fidélité — ' + c.name) + '</div>';
+    return { html: card('clients', p.text, sum, b), say: sum };
+  }
+  var WTYPE = { REFERRAL_REFERRER: 'Récompense de parrainage', REFERRAL_REFEREE: 'Bienvenue (filleul)', ADJUSTMENT: 'Ajustement', EXPIRED: 'Expiration', BOOKING_CANCELLED: 'Rendez-vous annulé' };
+  function renderLoyalty(p, d){
+    if (d.balance_cents == null) return noClient(p, d, 'loyalty');
+    var who = (d.clients || [])[0] || { name: 'Ce client', client_id: d.client_id }; setCtx(who);
+    var t = d.transactions || [], sum = who.name + ' : crédit fidélité de ' + eur(d.balance_cents) + '.';
+    var b = t.length ? '<ul class="eva-list">' + t.map(function(x){ return '<li class="eva-item"><div class="eva-time">' + esc(new Date(x.at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })) + '</div><div class="eva-main"><b>' + esc(WTYPE[x.type] || 'Opération') + '</b>' + (x.reason ? '<span>' + esc(x.reason) + '</span>' : '') + '</div><span class="eva-pill ' + (x.amount_cents < 0 ? 'no' : 'ok') + '">' + (x.amount_cents > 0 ? '+' : '') + eur(x.amount_cents) + '</span></li>'; }).join('') + '</ul>' : '<p class="eva-empty">Aucune opération enregistrée.</p>';
+    b += '<div class="eva-actions">' + runBtn('Créditer ou débiter', 'wallet_adjust', { client_id: d.client_id, amount: null }, 'Crédit fidélité — ' + who.name) + '</div>';
+    return { html: card('fidelite', p.text, sum, b), say: sum };
+  }
+  function renderMaintenance(p, d){
+    var it = d.items || [], od = it.filter(function(x){ return x.overdue; }).length;
+    var sum = it.length ? it.length + ' entretien' + (it.length > 1 ? 's' : '') + ' à renouveler' + (od ? ', dont ' + od + ' en retard' : '') + ' (échéance dans les ' + d.days + ' jours ou dépassée).' : 'Aucun entretien à renouveler dans les ' + d.days + ' prochains jours.';
+    var b = it.length ? '<ul class="eva-list">' + it.map(function(x){
+      return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.client) + '</b><span>' + esc(EQUIP[x.type] && x.equipment === x.type ? EQUIP[x.type] : x.equipment) + (x.city ? ' · ' + esc(x.city) : '') + ' · dernier entretien ' + (x.last_service ? fdate(x.last_service) : 'non renseigné') + '</span>' + tel(x.phone) +
+        (x.next_booking ? '<span>Rendez-vous déjà prévu le ' + esc(fdate(x.next_booking)) + '</span>' : '<div class="eva-actions">' + runBtn('Prendre rendez-vous', 'booking_create', { client_id: x.client_id, service: 'entretien' }, 'Rendez-vous d’entretien — ' + x.client) + '</div>') + '</div>' +
+        '<span class="eva-pill ' + (x.overdue ? 'no' : 'wait') + '">' + (x.overdue ? 'Échu le ' : 'Avant le ') + esc(fdate(x.next_due)) + '</span></li>';
+    }).join('') + '</ul><p class="eva-note">Échéance calculée à partir de la date du dernier entretien enregistrée sur chaque équipement.</p>' : '';
+    return { html: card('planning', p.text, sum, b), say: sum };
+  }
+  function renderReferrals(p, d){
+    var r = d.referrers || [], act = r.filter(function(x){ return x.status === 'active'; }).length;
+    var sum = r.length ? r.length + ' parrain' + (r.length > 1 ? 's' : '') + (d.query ? ' pour « ' + d.query + ' »' : '') + ', dont ' + act + ' actif' + (act > 1 ? 's' : '') + '.' : 'Aucun parrain' + (d.query ? ' pour « ' + d.query + ' »' : '') + '.';
+    var b = r.length ? '<ul class="eva-list">' + r.map(function(x){
+      return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.name || 'Sans nom') + '</b><span>Code ' + esc(x.code) + ' · ' + (x.uses || 0) + ' utilisation(s)' + (x.clients != null ? ' · ' + x.clients + ' client(s) parrainé(s)' : '') + '</span><div class="eva-actions">' +
+        (x.status === 'active' ? actBtn('Suspendre', 'prop', { kind: 'referrer_status', payload: { client_id: x.client_id, status: 'suspended' }, idem: key() }) : actBtn('Réactiver', 'prop', { kind: 'referrer_status', payload: { client_id: x.client_id, status: 'active' }, idem: key() })) +
+        runBtn('Changer le code', 'referrer_admin', { client_id: x.client_id, code: '' }, 'Code de parrainage — ' + (x.name || '')) + '</div></div>' +
+        '<span class="eva-pill ' + (x.status === 'active' ? 'ok' : 'no') + '">' + (x.status === 'active' ? 'Actif' : x.status === 'suspended' ? 'Suspendu' : esc(x.status)) + '</span></li>';
+    }).join('') + '</ul>' : '';
+    b += '<div class="eva-actions"><button type="button" class="eva-btn sm ghost" data-act="goto" data-page="referrals">Ouvrir la rubrique Parrainage</button></div>';
+    return { html: card('fidelite', p.text, sum, b), say: sum };
+  }
+
+  // -------------------------------------- phase 2 : actions (formulaires)
+  // Chaque formulaire prépare une PROPOSITION : rien n'est écrit avant
+  // votre confirmation, et le serveur revérifie chaque valeur.
+  function field(f){
+    var v = f.value == null ? '' : f.value, req = f.required ? ' required aria-required="true"' : '', ph = f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '';
+    if (f.type === 'radio') return '<p class="eva-h">' + esc(f.label) + '</p><div class="eva-list">' + f.options.map(function(o, i){
+      return '<label class="eva-radio"><input type="radio" name="' + f.group + '" data-f="' + f.name + '" value="' + esc(o[0]) + '"' + (i === 0 ? ' checked' : '') + '><span>' + esc(o[1]) + '</span>' + (o[2] ? '<em>' + esc(o[2]) + '</em>' : '') + '</label>';
+    }).join('') + '</div>';
+    if (f.type === 'select') return '<label class="eva-field">' + esc(f.label) + '<select data-f="' + f.name + '"' + req + '>' + f.options.map(function(o){ return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(v) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+    if (f.type === 'textarea') return '<label class="eva-field">' + esc(f.label) + '<textarea data-f="' + f.name + '" rows="' + (f.rows || 3) + '" maxlength="' + (f.max || 1000) + '"' + req + ph + '>' + esc(v) + '</textarea></label>';
+    var type = f.type === 'eur' ? 'number' : (f.type || 'text');
+    var extra = f.type === 'eur' ? ' inputmode="decimal" min="0" step="0.01"' : f.type === 'number' ? ' inputmode="numeric" min="' + (f.min || 0) + '" step="' + (f.step || 1) + '"' : f.type === 'tel' ? ' inputmode="tel" autocomplete="off"' : f.type === 'email' ? ' inputmode="email" autocomplete="off"' : f.type === 'time' ? ' step="300"' : '';
+    return '<label class="eva-field">' + esc(f.label) + '<input type="' + type + '" data-f="' + f.name + '" value="' + esc(type === 'number' && f.type === 'eur' && v !== '' ? (Number(v) / 100).toFixed(2) : v) + '"' + extra + req + ph + (f.max ? ' maxlength="' + f.max + '"' : '') + '></label>';
+  }
+  // o = { kind, fields, build(values) → payload, submit, idem, intro, agent }
+  function formCard(p, sum, o){
+    o.idem = o.idem || key();
+    o.fields.forEach(function(f){ if (f.type === 'radio') f.group = 'g' + (++state.seq); });
+    return card(o.agent || KIND_AGENT[o.kind], p.text, sum, (o.intro || '') + '<div class="eva-set eva-form">' + o.fields.map(field).join('') +
+      '<div class="eva-actions" style="margin-top:4px"><button type="button" class="eva-btn cu" data-act="form" data-k="' + reg(o) + '">' + esc(o.submit || 'Préparer') + '</button></div>' +
+      '<p class="eva-msg" data-role="form-msg" hidden></p><p class="eva-note" style="margin:0">Rien n’est enregistré à cette étape : EVA vous montre d’abord ce qui va changer.</p></div>');
+  }
+  function submitForm(b, o){
+    var f = b.closest('.eva-form'), msg = f.querySelector('[data-role="form-msg"]'), v = {}, miss = [];
+    o.fields.forEach(function(x){
+      var el = x.type === 'radio' ? f.querySelector('input[data-f="' + x.name + '"]:checked') : f.querySelector('[data-f="' + x.name + '"]');
+      var val = el ? String(el.value).trim() : '';
+      if (x.type === 'eur') val = val === '' ? null : Math.round(Number(val.replace(',', '.')) * 100);
+      else if (x.type === 'number') val = val === '' ? null : Number(val);
+      if (x.required && (val === '' || val == null || (typeof val === 'number' && isNaN(val)))) miss.push(x.label);
+      v[x.name] = val;
+    });
+    if (miss.length){ msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = 'À compléter : ' + miss.join(', ') + '.'; return; }
+    var payload; try { payload = o.build(v); } catch (e){ msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = e.message; return; }
+    msg.hidden = true;
+    return propose(o.kind, payload, o.idem, b, msg);
+  }
+  // Fiche client complète (pour les actions qui en ont besoin).
+  function withClient(p, holder, then){
+    if (p.ctxMissing){ var s = 'De quel client parlez-vous ? Ouvrez d’abord sa fiche, par exemple « fiche de Monsieur Martin ».'; holder.outerHTML = card('clients', p.text, s, ''); speak(s); return Promise.resolve(); }
+    if (!p.args.client && !p.args.client_id){ var s2 = 'Pour quel client ? Précisez son nom, par exemple « … pour Monsieur Martin ».'; holder.outerHTML = card('clients', p.text, s2, ''); speak(s2); return Promise.resolve(); }
+    return rpc('eva_query', { p_intent: 'client_detail', p_args: p.args.client_id ? { client_id: p.args.client_id } : { client: p.args.client }, p_command: p.text }).then(function(r){
+      var d = r.data || {};
+      if (!d.client){ var out = noClient(p, d, p.intent, p.args); holder.outerHTML = out.html; speak(out.say); return; }
+      setCtx(d.client);
+      return then(d);
+    }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); speak(errText(e)); });
+  }
+  function say(holder, html, s){ holder.outerHTML = html; speak(s); }
+  var KIND_AGENT = { reschedule: 'planning', booking_confirm: 'planning', booking_create: 'planning', booking_cancel: 'planning', report_notes: 'planning',
+    quote_draft: 'devis', service_create: 'devis', service_publish: 'devis', quote_update: 'devis', quote_send: 'devis',
+    client_create: 'clients', client_update: 'clients', referrer_status: 'fidelite', referrer_code: 'fidelite', wallet_adjust: 'fidelite' };
+  var CANCEL_REASONS = [['', '— Choisir un motif —'], ['creneau_indisponible', 'Créneau indisponible'], ['hors_zone', 'Hors zone d’intervention'], ['prestation_non_proposee', 'Prestation non proposée'],
+    ['client_injoignable', 'Client injoignable'], ['doublon', 'Doublon'], ['erreur_reservation', 'Erreur de réservation'], ['autre', 'Autre (préciser)']];
+  var CLIENT_FIELDS = [['first_name', 'Prénom', 'text', 80], ['last_name', 'Nom', 'text', 80], ['phone', 'Téléphone', 'tel', 20], ['email', 'E-mail', 'email', 160],
+    ['address', 'Adresse', 'text', 200], ['postal_code', 'Code postal', 'text', 10], ['city', 'Ville', 'text', 80]];
+
+  function runFlow(p, holder){
+    var a = p.args || {};
+    switch (p.intent){
+      case 'client_create': {
+        var fields = CLIENT_FIELDS.map(function(f){ return { name: f[0], label: f[1], type: f[2], max: f[3], value: a[f[0]] || '' }; })
+          .concat([{ name: 'client_type', label: 'Type', type: 'select', value: 'particulier', options: [['particulier', 'Particulier'], ['professionnel', 'Professionnel']] }, { name: 'notes', label: 'Notes (facultatif)', type: 'textarea', max: 500 }]);
+        fields[1].required = true;
+        say(holder, formCard(p, 'Nouvelle fiche client : vérifiez puis préparez la création.', { kind: 'client_create', fields: fields, submit: 'Préparer la création',
+          build: function(v){ if (!v.phone && !v.email) throw new Error('Indiquez un téléphone ou un e-mail.'); return v; } }), 'Complétez la fiche du nouveau client.');
+        return;
+      }
+      case 'client_update': return withClient(p, holder, function(d){
+        var c = d.client, orig = {};
+        var fields = CLIENT_FIELDS.map(function(f){ orig[f[0]] = c[f[0]] || ''; return { name: f[0], label: f[1], type: f[2], max: f[3], value: c[f[0]] || '' }; })
+          .concat([{ name: 'notes', label: 'Notes', type: 'textarea', max: 500, value: c.notes || '' }]);
+        orig.notes = c.notes || '';
+        say(holder, formCard(p, 'Fiche de ' + c.name + ' : modifiez les champs voulus.', { kind: 'client_update', fields: fields, submit: 'Voir les modifications',
+          build: function(v){ var ch = {}; Object.keys(v).forEach(function(k){ if ((v[k] || '') !== orig[k]) ch[k] = v[k] || null; }); if (!Object.keys(ch).length) throw new Error('Aucune modification.'); return { client_id: c.client_id, changes: ch }; } }), 'Modifiez la fiche de ' + c.name + '.');
+      });
+      case 'booking_create': return withClient(p, holder, function(d){
+        var c = d.client;
+        return rpc('eva_query', { p_intent: 'catalog', p_args: { query: a.service || '' }, p_command: null }).then(function(r){
+          var it = (r.data && r.data.items) || [];
+          var go = function(items, note){
+            var opts = [['', '— Choisir la prestation —']].concat(items.map(function(x){ return [x.kind + ':' + x.id, x.label + ' · ' + priceText(x) + (x.duration_minutes ? ' · ' + x.duration_minutes + ' min' : '')]; }));
+            var fields = [{ name: 'svc', label: 'Prestation', type: 'select', options: opts, required: true, value: items.length === 1 ? items[0].kind + ':' + items[0].id : '' },
+              { name: 'date', label: 'Date', type: 'date', value: a.date || '', required: true }, { name: 'start', label: 'Heure', type: 'time', value: a.time || '', required: true },
+              { name: 'status', label: 'Statut', type: 'select', value: 'CONFIRMED', options: [['CONFIRMED', 'Confirmé (le client est prévenu)'], ['PENDING', 'À confirmer (aucun message)']] },
+              { name: 'notes', label: 'Notes (facultatif)', type: 'textarea', max: 500 }];
+            say(holder, formCard(p, 'Nouveau rendez-vous pour ' + c.name + '.', { kind: 'booking_create', fields: fields, submit: 'Vérifier le créneau', intro: note || '',
+              build: function(v){ var s = v.svc.split(':'); var o = { client_id: c.client_id, date: v.date, start: v.start, status: v.status, notes: v.notes }; o[s[0] === 'pack' ? 'pack_id' : 'service_id'] = s[1]; return o; } }), 'Choisissez la prestation et l’horaire pour ' + c.name + '.');
+          };
+          if (it.length || !a.service) return go(it);
+          return rpc('eva_query', { p_intent: 'catalog', p_args: { query: '' }, p_command: null }).then(function(r2){ go((r2.data && r2.data.items) || [], '<div class="eva-warn"><p>« ' + esc(a.service) + ' » ne correspond à aucune prestation : choisissez dans votre catalogue.</p></div>'); });
+        });
+      });
+      case 'booking_cancel': {
+        var pick = function(list, who){
+          var today = I.iso(new Date());
+          list = list.filter(function(x){ return (x.status === 'PENDING' || x.status === 'CONFIRMED') && x.date >= today && (!a.date || x.date === a.date); });
+          if (!list.length){ var s0 = 'Aucun rendez-vous à venir à annuler' + (who ? ' pour ' + who : '') + (a.date ? ' le ' + fdate(a.date) : '') + '.'; say(holder, card('planning', p.text, s0, ''), s0); return; }
+          var fields = [{ name: 'booking_id', label: list.length > 1 ? 'Quel rendez-vous ?' : 'Rendez-vous', type: 'radio', options: list.map(function(x){ return [x.booking_id, fdate(x.date) + ' à ' + x.start + ' — ' + x.service + ' (' + (x.client || who || '') + ')', (BSTATUS[x.status] || [''])[0]]; }) },
+            { name: 'reason_code', label: 'Motif', type: 'select', options: CANCEL_REASONS, required: true }, { name: 'detail', label: 'Précision (obligatoire si « Autre »)', type: 'textarea', max: 300 }];
+          say(holder, formCard(p, list.length > 1 ? list.length + ' rendez-vous possibles : choisissez celui à annuler.' : 'Rendez-vous à annuler : ' + fdate(list[0].date) + ' à ' + list[0].start + '.', { kind: 'booking_cancel', fields: fields, submit: 'Préparer l’annulation',
+            build: function(v){ if (v.reason_code === 'autre' && !v.detail) throw new Error('Précisez le motif.'); return v; } }), 'Choisissez le motif d’annulation.');
+        };
+        if (a.client || a.client_id || p.ctxMissing) return withClient(p, holder, function(d){ pick(d.bookings || [], d.client.name); });
+        if (!a.date){ var s1 = 'Quel rendez-vous ? Précisez le client ou la date, par exemple « annule le rendez-vous de Monsieur Dupont jeudi ».'; say(holder, card('planning', p.text, s1, ''), s1); return; }
+        return rpc('eva_run', { p_intent: 'agenda', p_args: { date: a.date }, p_command: p.text }).then(function(r){ pick((r.data.interventions || []).map(function(x){ return Object.assign({ date: r.data.date }, x); })); }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); });
+      }
+      case 'service_create': {
+        var fields2 = [{ name: 'name', label: 'Nom de la prestation', value: a.name || '', required: true, max: 120 },
+          { name: 'category', label: 'Catégorie', type: 'select', required: true, options: [['', '— Choisir —'], ['plomberie', 'Plomberie'], ['chauffage', 'Chauffage'], ['climatisation', 'Climatisation']] },
+          { name: 'mode', label: 'Type de prix', type: 'select', value: 'FIXED', options: [['FIXED', 'Prix fixe'], ['FROM', 'À partir de'], ['QUOTE', 'Sur devis']] },
+          { name: 'price_cents', label: 'Prix TTC (€) — saisi par vous', type: 'eur' }, { name: 'duration_minutes', label: 'Durée (minutes)', type: 'number', min: 15, step: 5 },
+          { name: 'description', label: 'Description (facultatif)', type: 'textarea', max: 600 }];
+        say(holder, formCard(p, 'Nouvelle prestation : EVA n’invente aucun tarif, saisissez-le.', { kind: 'service_create', fields: fields2, submit: 'Préparer l’ajout',
+          intro: '<p class="eva-note" style="margin-top:-4px">Elle sera créée masquée ; vous la publierez ensuite d’un geste.</p>',
+          build: function(v){ if (v.mode !== 'QUOTE' && !(v.price_cents > 0)) throw new Error('Saisissez le prix.'); if (v.mode !== 'QUOTE' && !v.duration_minutes) throw new Error('Saisissez la durée.'); return v; } }), 'Complétez la nouvelle prestation.');
+        return;
+      }
+      case 'quote_update': case 'quote_send': return withClient(p, holder, function(d){
+        var c = d.client, drafts = (d.quotes || []).filter(function(q){ return q.status === 'DRAFT'; });
+        if (!drafts.length){ var s = c.name + ' n’a aucun devis en brouillon.'; say(holder, card('devis', p.text, s, '<div class="eva-actions">' + runBtn('Préparer un devis', 'quote_estimate', { client_id: c.client_id, service: '' }, 'Devis — ' + c.name) + '</div>'), s); return; }
+        var ch = { name: 'quote_id', label: drafts.length > 1 ? 'Quel devis ?' : 'Devis', type: 'radio', options: drafts.map(function(q){ return [q.quote_id, (q.title || 'Devis') + ' · ' + (q.reference || ''), eur(q.total_cents)]; }) };
+        if (p.intent === 'quote_send'){
+          say(holder, formCard(p, drafts.length > 1 ? drafts.length + ' brouillons pour ' + c.name + ' : lequel envoyer ?' : 'Devis prêt à envoyer à ' + c.name + ' : ' + eur(drafts[0].total_cents) + '.', { kind: 'quote_send', fields: [ch], submit: 'Préparer l’envoi',
+            build: function(v){ return { quote_id: v.quote_id }; } }), 'Vérifiez le devis à envoyer à ' + c.name + '.');
+          return;
+        }
+        var fields3 = [ch, { name: 'title', label: 'Titre (vide = inchangé)', max: 160, placeholder: drafts[0].title || '' }, { name: 'supply_cents', label: 'Fournitures (€, vide = inchangé)', type: 'eur' },
+          { name: 'labor_cents', label: 'Main-d’œuvre (€, vide = inchangé)', type: 'eur' }, { name: 'travel_fee_cents', label: 'Déplacement (€, vide = inchangé)', type: 'eur' },
+          { name: 'description', label: 'Description (vide = inchangée)', type: 'textarea', max: 1000 }];
+        say(holder, formCard(p, 'Modifier un devis de ' + c.name + ' : saisissez seulement ce qui change.', { kind: 'quote_update', fields: fields3, submit: 'Voir le nouveau total',
+          build: function(v){ var o = { quote_id: v.quote_id }; ['title', 'description', 'supply_cents', 'labor_cents', 'travel_fee_cents'].forEach(function(k){ if (v[k] !== '' && v[k] != null) o[k] = v[k]; }); if (Object.keys(o).length < 2) throw new Error('Aucune modification.'); return o; } }), 'Modifiez le devis de ' + c.name + '.');
+      });
+      case 'report': return withClient(p, holder, function(d){
+        var c = d.client, list = (d.bookings || []).filter(function(x){ return x.status === 'COMPLETED' || x.status === 'IN_PROGRESS'; });
+        if (!list.length){ var s = 'Aucune intervention commencée ou terminée chez ' + c.name + '.'; say(holder, card('planning', p.text, s, ''), s); return; }
+        return openReport(p, holder, list[0], list.slice(1, 4));
+      });
+      case 'referrer_admin': return withClient(p, holder, function(d){
+        var c = d.client;
+        if (!d.referral){ var s = c.name + ' n’est pas parrain (aucun code de parrainage).'; say(holder, card('fidelite', p.text, s, ''), s); return; }
+        if (a.status){ holder.outerHTML = card('fidelite', p.text, c.name + ' : code ' + d.referral.code + ', statut ' + (d.referral.status === 'active' ? 'actif' : d.referral.status) + '.', ''); return propose('referrer_status', { client_id: c.client_id, status: a.status }, key(), null); }
+        say(holder, formCard(p, 'Code actuel de ' + c.name + ' : ' + d.referral.code + '.', { kind: 'referrer_code', fields: [{ name: 'code', label: 'Nouveau code (6 à 12 lettres ou chiffres)', value: a.code || '', required: true, max: 12 }], submit: 'Préparer le changement',
+          build: function(v){ return { client_id: c.client_id, code: v.code.toUpperCase().replace(/\s/g, '') }; } }), 'Saisissez le nouveau code.');
+      });
+      case 'wallet_adjust': return withClient(p, holder, function(d){
+        var c = d.client, amt = a.amount;
+        var fields4 = [{ name: 'dir', label: 'Opération', type: 'select', value: amt < 0 ? 'debit' : 'credit', options: [['credit', 'Créditer (geste commercial, correction)'], ['debit', 'Débiter']] },
+          { name: 'amount', label: 'Montant (€)', type: 'eur', value: amt ? Math.round(Math.abs(amt) * 100) : '', required: true }, { name: 'reason', label: 'Motif (obligatoire)', type: 'textarea', max: 300, required: true }];
+        say(holder, formCard(p, 'Crédit fidélité de ' + c.name + ' : ' + eur(d.wallet_cents || 0) + ' actuellement.', { kind: 'wallet_adjust', fields: fields4, submit: 'Préparer l’opération',
+          build: function(v){ if (!(v.amount > 0)) throw new Error('Montant invalide.'); return { client_id: c.client_id, amount_cents: (v.dir === 'debit' ? -1 : 1) * v.amount, reason: v.reason }; } }), 'Indiquez le montant et le motif.');
+      });
+    }
+  }
+  function openReport(p, holder, bk, others){
+    return rpc('eva_query', { p_intent: 'report', p_args: { booking_id: bk.booking_id }, p_command: p.text }).then(function(r){
+      var d = r.data || {}, iv = d.intervention, head = bk.service + ' — ' + fdate(bk.date) + ' (' + bk.reference + ')';
+      var more = others && others.length ? '<p class="eva-h">Autres interventions</p><div class="eva-actions" style="margin-top:0">' + others.map(function(x){ return actBtn(fdate(x.date) + ' · ' + x.service, 'report-open', { p: p, bk: x }); }).join('') + '</div>' : '';
+      if (!iv){ var s = 'Aucune fiche d’intervention pour ' + head + ' : commencez l’intervention depuis le planning.'; say(holder, card('planning', p.text, s, more), s); return; }
+      if (iv.report_status === 'FINALIZED'){
+        var s2 = 'Compte rendu ' + (iv.report_number || '') + ' déjà validé' + (iv.signed ? ' et signé' : '') + ' : il ne peut plus être modifié.';
+        say(holder, card('planning', p.text, s2, (iv.observations ? '<p class="eva-h">Observations</p><p class="eva-note" style="margin:0">' + esc(iv.observations) + '</p>' : '') + (iv.recommendations ? '<p class="eva-h">Recommandations</p><p class="eva-note" style="margin:0">' + esc(iv.recommendations) + '</p>' : '') + more), s2);
+        return;
+      }
+      say(holder, formCard(p, 'Compte rendu en brouillon : ' + head + '.', { kind: 'report_notes', submit: 'Préparer l’enregistrement',
+        intro: '<p class="eva-note" style="margin-top:-4px">Dictez avec le micro du clavier. La validation, les signatures et l’envoi restent dans la fiche d’intervention.</p>' + more,
+        fields: [{ name: 'observations', label: 'Observations', type: 'textarea', rows: 4, max: 4000, value: iv.observations || '' }, { name: 'recommendations', label: 'Recommandations', type: 'textarea', rows: 3, max: 4000, value: iv.recommendations || '' }],
+        build: function(v){ if (!v.observations && !v.recommendations) throw new Error('Saisissez des observations ou des recommandations.'); return { booking_id: bk.booking_id, observations: v.observations, recommendations: v.recommendations }; } }), 'Complétez le compte rendu.');
+    }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); });
+  }
+  function askService(p, holder){
+    holder.outerHTML = card('devis', p.text, 'Quelle prestation faut-il chiffrer' + (p.args.client ? ' pour ' + p.args.client : '') + ' ?',
+      '<div class="eva-set eva-form"><label class="eva-field">Prestation<input type="text" data-f="service" maxlength="120" placeholder="Ex. : remplacement du mitigeur"></label>' +
+      '<div class="eva-actions" style="margin-top:4px">' + actBtn('Chercher dans mon catalogue', 'ask-service', { p: p }, 'cu') + '</div></div>');
+    speak('Quelle prestation faut-il chiffrer ?');
+  }
+
   // -------------------------------------------------------- propositions
   function proposalCard(pr, fresh){
     var l3 = pr.level === 3;
@@ -495,14 +850,18 @@
       '<span class="eva-lvl ' + (l3 ? 'l3' : 'l2') + '">' + (l3 ? 'Action engageante' : 'Préparation') + '</span></div>' +
       '<p class="eva-sum">' + esc(pr.title) + '</p><ul class="eva-cons">' + (pr.consequences || []).map(function(c){ return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>' + acts + '<p class="eva-msg" data-role="msg" hidden></p></div>';
   }
-  function propose(kind, payload, idem, btn){
+  function propose(kind, payload, idem, btn, msgEl){
     if (btn) btn.disabled = true;
     return rpc('eva_propose', { p_kind: kind, p_payload: payload, p_idem_key: idem }).then(function(r){
       if (r.duplicate) return loadOverview().then(function(){ setTab('proposals'); });
-      var agent = (kind === 'reschedule' || kind === 'booking_confirm') ? 'planning' : kind === 'quote_draft' ? 'devis' : 'factures';
+      var agent = KIND_AGENT[kind] || 'factures';
       addCard(proposalCard({ proposal_id: r.proposal_id, level: r.level, agent: agent, title: r.title, consequences: r.consequences, status: 'PENDING' }, true));
       updateBadge();
-    }, function(e){ if (btn) btn.disabled = false; addCard(errorCard(errText(e))); });
+    }, function(e){
+      if (btn) btn.disabled = false;
+      if (msgEl){ msgEl.hidden = false; msgEl.className = 'eva-msg no'; msgEl.textContent = errText(e); } else addCard(errorCard(errText(e)));
+      speak(errText(e));
+    });
   }
   function confirmProp(id, btn){
     var cardEl = btn.closest('[data-prop]'), msg = cardEl.querySelector('[data-role="msg"]');
@@ -510,7 +869,20 @@
     rpc('eva_confirm_proposal', { p_id: id, p_confirm: true }).then(function(r){
       if (!r.ok){ msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = r.error || 'Action non réalisée.'; return; }
       var res = r.result || {}, txt = 'Fait.', page = null;
-      if (res.payment){ txt = 'Paiement enregistré.' + (res.invoice_status === 'PAID' ? ' La facture est entièrement réglée.' : ' La facture reste partiellement réglée.'); page = 'invoices'; }
+      var extra = '';
+      if (res.client_created){ txt = 'Fiche client créée.'; page = 'clients'; extra = runBtn('Ouvrir la fiche', 'client_detail', { client_id: res.client_id }, 'Fiche du nouveau client'); }
+      else if (res.client_updated){ txt = 'Fiche client mise à jour.'; page = 'clients'; extra = runBtn('Voir la fiche', 'client_detail', { client_id: res.client_id }, 'Fiche client'); }
+      else if (res.booking_created){ txt = 'Rendez-vous ' + (res.reference || '') + ' créé le ' + dayLabel(res.date) + ' à ' + res.start + (res.status === 'CONFIRMED' ? ' et confirmé : le client est prévenu, le calendrier est mis à jour.' : ', à confirmer.'); page = 'planning'; }
+      else if (res.booking_cancelled){ txt = 'Rendez-vous annulé. Il reste dans l’historique ; le client est prévenu.'; page = 'planning'; }
+      else if (res.service_created){ txt = 'Prestation « ' + (res.name || '') + ' » ajoutée, masquée pour vos clients.'; page = 'catalog'; extra = actBtn('Publier sur le site', 'prop', { kind: 'service_publish', payload: { service_id: res.service_id }, idem: key() }, 'cu'); }
+      else if (res.service_published){ txt = 'Prestation publiée : elle est visible et réservable.'; page = 'catalog'; }
+      else if (res.quote_updated){ txt = 'Devis modifié. Nouveau total : ' + eur(res.total_cents) + '. Il reste un brouillon.'; page = 'quotes'; }
+      else if (res.quote_sent){ txt = 'Devis envoyé au client' + (res.reference ? ' (' + res.reference + ')' : '') + '.'; page = 'quotes'; }
+      else if (res.report_saved){ txt = 'Compte rendu enregistré en brouillon. Validez et faites signer depuis la fiche d’intervention.'; page = 'interventions'; }
+      else if (res.referrer_status){ txt = res.referrer_status === 'active' ? 'Parrain réactivé.' : 'Parrain suspendu.'; page = 'referrals'; }
+      else if (res.referrer_code){ txt = 'Code de parrainage changé en ' + res.referrer_code + '.'; page = 'referrals'; }
+      else if (res.wallet_adjusted){ txt = 'Crédit fidélité mis à jour : solde ' + eur(res.balance_cents) + '.'; }
+      else if (res.payment){ txt = 'Paiement enregistré.' + (res.invoice_status === 'PAID' ? ' La facture est entièrement réglée.' : ' La facture reste partiellement réglée.'); page = 'invoices'; }
       else if (res.issued){ txt = 'Facture émise : ' + (res.reference || '') + '. Elle est désormais définitive.'; page = 'invoices'; }
       else if (res.quote_id){ txt = 'Brouillon de devis ' + (res.reference || '') + ' créé. Complétez-le puis envoyez-le depuis la rubrique Devis.'; page = 'quotes'; }
       else if (res.invoice_id){ txt = 'Brouillon de facture prêt' + (res.reference ? ' (' + res.reference + ')' : '') + '. Vérifiez-le dans la rubrique Factures avant toute émission.'; page = 'invoices'; }
@@ -519,7 +891,7 @@
       cardEl.querySelectorAll('.eva-actions, .eva-check').forEach(function(x){ x.remove(); });
       msg.hidden = false; msg.className = 'eva-msg ok'; msg.textContent = txt; speak(txt);
       loadToday();
-      if (page) msg.insertAdjacentHTML('afterend', '<div class="eva-actions"><button type="button" class="eva-btn sm ghost" data-act="goto" data-page="' + page + '">Ouvrir</button></div>');
+      if (page || extra) msg.insertAdjacentHTML('afterend', '<div class="eva-actions">' + extra + (page ? '<button type="button" class="eva-btn sm ghost" data-act="goto" data-page="' + page + '">Ouvrir la rubrique</button>' : '') + '</div>');
       updateBadge();
     }, function(e){ msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); cardEl.querySelectorAll('[data-act="cancel"]').forEach(function(b){ b.disabled = false; }); });
   }
@@ -557,7 +929,8 @@
       (done.length ? '<p class="eva-h">Terminées</p><div class="eva-feed" style="margin-top:0">' + done.map(function(p){ return proposalCard(p); }).join('') + '</div>' : '');
   }
   var OUT = { ok: 'Réponse', empty: 'Aucune donnée', refused: 'Refusé', error: 'Erreur', proposed: 'Proposé', confirmed: 'Confirmé', cancelled: 'Annulé', failed: 'Échec', settings: 'Réglages' };
-  var INT = { agenda: 'Interventions', free_slots: 'Créneaux libres', conflicts: 'Conflits', find_client: 'Recherche client', quote_estimate: 'Chiffrage', quotes_pending: 'Devis', invoices_todo: 'Factures', attention: 'Attention', brief: 'Ma journée' };
+  var INT = { agenda: 'Interventions', free_slots: 'Créneaux libres', conflicts: 'Conflits', find_client: 'Recherche client', quote_estimate: 'Chiffrage', quotes_pending: 'Devis', invoices_todo: 'Factures', attention: 'Attention', brief: 'Ma journée', agenda_range: 'Rendez-vous de la période', stats: 'Statistiques', catalog: 'Catalogue', invoices_list: 'Factures et paiements',
+    client_detail: 'Fiche client', loyalty: 'Fidélité', maintenance_due: 'Entretiens à renouveler', referrals: 'Parrainage', report: 'Compte rendu' };
   function renderHistory(o){
     var j = o.journal || [];
     root.querySelector('[data-pane="history"]').innerHTML = '<p class="eva-h" style="margin-top:4px">Vos dernières actions (' + (o.today_count || 0) + ' aujourd’hui)</p>' +
@@ -584,7 +957,7 @@
     root.querySelector('[data-pane="settings"]').innerHTML =
       '<p class="eva-h" style="margin-top:4px">EVA</p><div class="eva-set">' +
         '<label class="eva-toggle"><span>EVA activée</span><input type="checkbox" data-set="enabled"' + (s.enabled ? ' checked' : '') + '></label>' +
-        ['planning', 'devis', 'factures'].map(function(k){ return '<label class="eva-toggle"><span>' + AGENT[k] + '</span><input type="checkbox" data-set="agent" data-agent="' + k + '"' + (ag[k] ? ' checked' : '') + '></label>'; }).join('') +
+        ['planning', 'devis', 'factures', 'clients', 'fidelite'].map(function(k){ return '<label class="eva-toggle"><span>' + AGENT[k] + '</span><input type="checkbox" data-set="agent" data-agent="' + k + '"' + (ag[k] ? ' checked' : '') + '></label>'; }).join('') +
         '<label class="eva-toggle"><span>Lire les réponses à voix haute après une dictée</span><input type="checkbox" data-set="tts"' + (tts ? ' checked' : '') + '></label>' +
         '<p class="eva-msg" data-role="set-msg" hidden></p>' +
       '</div>' +
@@ -692,6 +1065,13 @@
       b.disabled = true; var m = b.closest('.eva-card').querySelector('[data-role="msg"]');
       return rpc('eva_add_dev_request', { p_request: o.text }).then(function(){ m.hidden = false; m.className = 'eva-msg ok'; m.textContent = 'Demande enregistrée dans vos évolutions (onglet Historique).'; speak('Demande enregistrée.'); },
         function(e){ b.disabled = false; m.hidden = false; m.className = 'eva-msg no'; m.textContent = errText(e); });
+    }
+    if (act === 'form' && o) return submitForm(b, o);
+    if (act === 'prop' && o) return propose(o.kind, o.payload, o.idem, b);
+    if (act === 'report-open' && o){ var h = addCard('<div class="eva-card"><p class="eva-empty">Je consulte vos données…</p></div>'); return openReport(o.p, h, o.bk, []); }
+    if (act === 'ask-service' && o){
+      var sv = b.closest('.eva-form').querySelector('[data-f="service"]').value.trim(); if (!sv) return;
+      return runOne({ intent: 'quote_estimate', args: Object.assign({}, o.p.args, { service: sv }), text: o.p.text + ' — ' + sv }, o.p.text);
     }
     if (act === 'stop-mic') return stopMic();
     if (act === 'confirm') return confirmProp(b.getAttribute('data-id'), b);

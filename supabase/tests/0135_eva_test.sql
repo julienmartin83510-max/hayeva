@@ -243,7 +243,7 @@ select eva_set_settings(true, '{}');
 -- =====================================================================
 select eva_set_settings(true, '{"planning": true, "devis": true, "factures": true}');
 select pg_temp.ok((select count(*) from jsonb_array_elements(eva_run('capabilities', '{}', null) -> 'data' -> 'tools') t where t ->> 'status' = 'disponible') >= 15
-  and (eva_run('capabilities', '{}', null) -> 'data' -> 'tools') @> '[{"key":"client_create","status":"a_developper"}]', 'I1 registre des capacités : disponibles / à développer / non réalisables');
+  and (eva_run('capabilities', '{}', null) -> 'data' -> 'tools') @> '[{"status":"a_developper"},{"status":"non_realisable"}]', 'I1 registre des capacités : disponibles / à développer / non réalisables');
 insert into quotes (client_id, customer_user_id, reference, status, title, subtotal_cents, total_cents, sent_at, created_at)
 select (select id from clients where email = 'dupont@test.local'), '00000000-0000-0000-0000-0000000000b1', 'DEV-2027-0007', 'SENT', 'Remplacement chauffe-eau', 89000, 89000, now() - interval '3 days', now() - interval '4 days';
 select pg_temp.ok((eva_run('client_quotes', '{"client":"Monsieur Dupont"}', null) -> 'data' -> 'quotes') @> '[{"reference":"DEV-2027-0007"}]'

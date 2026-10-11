@@ -768,6 +768,11 @@ begin
   if coalesce(char_length(p_idem_key), 0) not between 8 and 80 then raise exception 'CLE_INVALIDE'; end if;
   v_agent := case p_kind when 'invoice_draft' then 'factures' when 'quote_draft' then 'devis' when 'reschedule' then 'planning'
                          when 'booking_confirm' then 'planning' when 'invoice_issue' then 'factures' when 'invoice_payment' then 'factures' else null end;
+  -- Extensions (registre d'outils des migrations suivantes, ex. 0136) :
+  -- appel dynamique, sans effet si aucune extension n'est installée.
+  if v_agent is null and to_regprocedure('public._eva_ext_agent(text)') is not null then
+    execute 'select public._eva_ext_agent($1)' into v_agent using p_kind;
+  end if;
   if v_agent is null then raise exception 'PROPOSITION_INCONNUE'; end if;
   perform _eva_guard(v_agent);
   -- Même demande renvoyée deux fois : la même proposition est rendue.
@@ -870,6 +875,14 @@ begin
     v_cons := array['Le paiement est ajouté à la facture ' || (select reference from invoices where id = (v_payload ->> 'invoice_id')::uuid) || '.',
                     'Il doit correspondre à un règlement réellement reçu.', 'La facture passe en « Payée » si le total est atteint.'];
   end if;
+  if v_title is null then
+    declare v_ext jsonb;
+    begin
+      execute 'select public._eva_prepare_ext($1, $2)' into v_ext using p_kind, v_payload;
+      v_level := (v_ext ->> 'level')::int; v_title := v_ext ->> 'title'; v_entity := v_ext ->> 'entity';
+      v_payload := v_ext -> 'payload'; v_cons := array(select jsonb_array_elements_text(v_ext -> 'consequences'));
+    end;
+  end if;
 
   begin
     insert into eva_proposals (created_by, kind, level, agent, title, consequences, payload, entity_key, idem_key)
@@ -937,6 +950,8 @@ begin
       perform admin_record_invoice_payment((p.payload ->> 'invoice_id')::uuid, (p.payload ->> 'amount_cents')::int, p.payload ->> 'method', (p.payload ->> 'paid_on')::date, 'Enregistré via EVA');
       v_result := jsonb_build_object('invoice_id', p.payload ->> 'invoice_id', 'payment', true,
         'invoice_status', (select status from invoices where id = (p.payload ->> 'invoice_id')::uuid));
+    else
+      execute 'select public._eva_execute_ext($1, $2, $3)' into v_result using p.kind, p.payload, p.id;
     end if;
   exception when others then
     update eva_proposals set status = 'FAILED', error = left(sqlerrm, 300), decided_at = now(), decided_by = auth.uid() where id = p.id;

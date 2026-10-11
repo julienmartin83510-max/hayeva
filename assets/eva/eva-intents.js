@@ -1,8 +1,8 @@
 // EVA — interprète de commandes en français (déterministe, sans IA).
 // Traduit une phrase en une ou plusieurs intentions d'une liste FERMÉE
-// (agenda, free_slots, conflicts, find_client, quote_estimate,
-// quotes_pending, invoices_todo, attention, brief). Le serveur (eva_run)
-// revérifie tout : cet interprète ne donne aucun droit, il choisit seulement
+// (lectures : agenda, fiche client, catalogue, factures, statistiques… ;
+// actions : toujours une PROPOSITION à confirmer). Le serveur (eva_run,
+// eva_query, eva_propose) revérifie tout : cet interprète ne donne aucun droit, il choisit seulement
 // la question à poser. Aucune phrase n'est jamais interprétée comme une
 // confirmation d'action : les actions passent par un bouton dédié.
 (function(root, factory){
@@ -75,14 +75,36 @@
     return { from: iso(addDays(today, -dow)), to: iso(today), label: 'cette semaine' };
   }
 
-  // Actions connues mais pas encore disponibles dans EVA (registre « à développer »).
-  var NOT_YET = [
-    ['service_create', /\b(ajoute|ajouter|cree|creer|nouvelle)\w*\b.*\bprestations?\b/],
-    ['client_create', /\b(cree|creer|ajoute|ajouter|enregistre)\w*\b.*\b(nouveau |nouvelle )?(client|cliente)\b|\bnouveau client\b/],
-    ['quote_send', /\benvo(ie|yer|ies)\b.*\bdevis\b/],
-    ['booking_cancel', /\b(annule|annuler|refuse|refuser)\b.*\b(rendez|rdv|intervention|demande)/],
-    ['booking_create', /\b(prends?|prendre|cree|creer|planifie|planifier|ajoute)\b.*\b(rendez-vous|rendez vous|rdv)\b/]
-  ];
+  // Heure citée : « à 10 h », « à 14h30 », « 9 heures ».
+  function parseTime(t){
+    var m = /\b(?:a|vers|pour)\s+(\d{1,2})\s?(?:h|heures?)\s?(\d{2})?\b/.exec(t) || /\b(\d{1,2})\s?h\s?(\d{2})\b/.exec(t) || /\b(\d{1,2})\s?h\b(?!\s*de\s)/.exec(t);
+    if (!m) return null;
+    var h = Number(m[1]), mi = m[2] ? Number(m[2]) : 0;
+    return h < 24 && mi < 60 ? String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0') : null;
+  }
+  // Semaine complète (lundi → samedi) pour « cette semaine » / « la semaine prochaine ».
+  // ahead : pour le planning, « cette semaine » dit un dimanche désigne la semaine qui commence.
+  function weekRange(t, now, ahead){
+    var today = startOfDay(now), dow = (today.getDay() + 6) % 7, mon = addDays(today, -dow);
+    if (ahead && dow === 6) mon = addDays(mon, 7);
+    if (/\bsemaine prochaine\b/.test(t)) mon = addDays(mon, 7);
+    else if (/\bsemaine derniere\b/.test(t)) mon = addDays(mon, -7);
+    else if (/\b(ce mois|du mois|mois en cours)\b/.test(t)) return { from: iso(new Date(today.getFullYear(), today.getMonth(), 1)), to: iso(new Date(today.getFullYear(), today.getMonth() + 1, 0)), label: 'ce mois-ci' };
+    else if (/\bmois prochain\b/.test(t)) return { from: iso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: iso(new Date(today.getFullYear(), today.getMonth() + 2, 0)), label: 'le mois prochain' };
+    return { from: iso(mon), to: iso(addDays(mon, 5)), label: /\bsemaine prochaine\b/.test(t) ? 'la semaine prochaine' : (/\bsemaine derniere\b/.test(t) ? 'la semaine dernière' : 'cette semaine') };
+  }
+  // « ce client », « chez lui », « sa fiche » : client de la conversation en cours.
+  var CTX = /\b(ce client|cette cliente|ce meme client|chez lui|chez elle|sa fiche|son historique|ses equipements|son dernier|sa derniere|ce monsieur|cette dame)\b/;
+  function clientOrCtx(raw, t){ return parseClient(raw) || (CTX.test(t) ? '@ctx' : null); }
+  function afterWord(raw, words){
+    var m = new RegExp('\\b(?:' + words + ')\\b\\s*(?:de |d\'|d’|du |des |pour |:)?\\s*(.*)$', 'i').exec(raw);
+    return m ? m[1].replace(/[.?!]+$/, '').trim() : '';
+  }
+  function parseContact(raw){
+    var email = (/[^\s@]+@[^\s@]+\.[^\s@]+/.exec(raw) || [])[0] || '';
+    var phone = ((/(?:\+33\s?|0)[1-9](?:[\s.-]?\d{2}){4}/.exec(raw) || [])[0] || '').replace(/[\s.-]/g, '');
+    return { email: email.replace(/[.,;]+$/, ''), phone: phone };
+  }
 
   function parseDuration(t){
     var m;
@@ -96,7 +118,13 @@
     var m = /\b(?:de|pour|chez|du client|client|cliente)\s+((?:monsieur|madame|mademoiselle|m\.|mme|mr)\s+[A-Za-zÀ-ÿ'’-]+(?:\s+[A-Z][A-Za-zÀ-ÿ'’-]+)?)/i.exec(raw)
          || /\b((?:monsieur|madame|mademoiselle|mme)\s+[A-Za-zÀ-ÿ'’-]+(?:\s+[A-Z][A-Za-zÀ-ÿ'’-]+)?)/i.exec(raw)
          || /\b(?:client|cliente|chez)\s+([A-Z][A-Za-zÀ-ÿ'’-]+(?:\s+[A-Z][A-Za-zÀ-ÿ'’-]+)?)/.exec(raw);
-    return m ? m[1].replace(/\s+/g, ' ').trim() : null;
+    if (!m) return null;
+    // Le second mot n'est gardé que s'il commence par une majuscule (prénom ou nom composé),
+    // pour ne pas avaler « demain », « jeudi »… : « Monsieur Martin demain » → « Monsieur Martin ».
+    var w = m[1].replace(/\s+/g, ' ').trim().split(' ');
+    if (w.length === 3 && !/^[A-ZÀ-Ý]/.test(w[2])) w.pop();
+    if (w.length === 2 && /^(?:monsieur|madame|mademoiselle|m\.|mme|mr)$/i.test(w[0]) === false && !/^[A-ZÀ-Ý]/.test(w[1])) w.pop();
+    return w.join(' ');
   }
 
   // Prestation demandée dans « prépare un devis pour le remplacement du mitigeur de Monsieur Dupont ».
@@ -125,7 +153,57 @@
       var which = /\bdernier\b/.test(t) ? 'last' : (/\b(deuxieme|second)\b/.test(t) ? 1 : 0);
       return { intent: 'move_booking', args: { date: (when && (when.date || when.from)) || today, which: which, client: parseClient(raw) }, label: 'Déplacer un rendez-vous' };
     }
-    for (var i = 0; i < NOT_YET.length; i++) if (NOT_YET[i][1].test(t) && !/\bfiche\b|\btrouve|\bcherche/.test(t)) return { intent: 'not_yet', args: { tool: NOT_YET[i][0] }, label: 'Action à venir' };
+    // ---------- Phase 2 : actions et lectures étendues ----------
+    // Garde-fous : EVA ne supprime rien et ne traite jamais une action « en masse ».
+    var ACT = /\b(envoie|envoyer|envoies|annule|annuler|refuse|refuser|supprime|supprimer|efface|effacer|credite|crediter|debite|debiter|modifie|modifier|confirme|confirmer|valide|valider|emets|emettre|facture|facturer)\b/;
+    if (ACT.test(t) && /\b(tous|toutes) (les|mes|ces)\b|\ben masse\b|\bchaque (client|devis|facture|rendez)/.test(t)) return { intent: 'bulk_refused', args: {}, label: 'Action groupée refusée' };
+    if (/\b(supprime|supprimer|efface|effacer|detruis|detruire|vide|vider)\b/.test(t)) return { intent: 'delete_refused', args: {}, label: 'Suppression non disponible' };
+    if (/\bcompte[- ]?rendu\b|\brapport d intervention\b/.test(t)) return { intent: 'report', args: { client: clientOrCtx(raw, t) }, label: 'Compte rendu d’intervention' };
+    if (/\b(suspend|suspends|suspendre|desactive|desactiver|bloque)\b.*\bparrain/.test(t)) return { intent: 'referrer_admin', args: { client: clientOrCtx(raw, t), status: 'suspended' }, label: 'Suspendre un parrain' };
+    if (/\b(reactive|reactiver|active|activer|debloque)\b.*\bparrain/.test(t)) return { intent: 'referrer_admin', args: { client: clientOrCtx(raw, t), status: 'active' }, label: 'Réactiver un parrain' };
+    if (/\bcode (de )?parrainage\b/.test(t) && /\b(change|changer|modifie|modifier|remplace)\b/.test(t)){
+      var cm = /\ben\s+([a-z0-9]{6,12})\b/.exec(t);
+      return { intent: 'referrer_admin', args: { client: clientOrCtx(raw, t), code: cm ? cm[1].toUpperCase() : '' }, label: 'Changer un code de parrainage' };
+    }
+    var amt = /(\d+(?:[.,]\d{1,2})?)\s?(?:€|eur\b|euros?\b)/i.exec(raw);
+    if (amt && /\b(credite|crediter|ajoute|ajouter|offre|offrir|debite|debiter|retire|retirer)\b/.test(t) && /\b(fidelite|credit|cagnotte|avoir|geste)\b|\ba (monsieur|madame)\b/.test(t)){
+      var neg = /\b(debite|debiter|retire|retirer)\b/.test(t);
+      return { intent: 'wallet_adjust', args: { client: clientOrCtx(raw, t), amount: (neg ? -1 : 1) * Number(amt[1].replace(',', '.')) }, label: 'Crédit fidélité' };
+    }
+    if (/\bfidelite\b|\bcagnotte\b|\bcredit (de |du )?client\b|\bportefeuille\b/.test(t)) return { intent: 'loyalty', args: { client: clientOrCtx(raw, t) }, label: 'Fidélité' };
+    if (/\bparrains?\b|\bparrainages?\b|\bcodes? (de )?parrainage\b|\bambassadeurs?\b/.test(t)) return { intent: 'referrals', args: { query: (parseClient(raw) || '').replace(/^(monsieur|madame|mme|m\.)\s+/i, '') }, label: 'Parrainage' };
+    if (/\bentretiens?\b.*\b(renouveler|prevoir|a faire|echeance|echus?|en retard|arrive|depasse)|\ba renouveler\b|\bentretiens? annuels?\b/.test(t)) return { intent: 'maintenance_due', args: { days: /\bmois prochain|\b60\b/.test(t) ? 60 : 45 }, label: 'Entretiens à renouveler' };
+    if (/\bstatisti|\bstats\b|\btaux de/.test(t)){ var sp = /\bannee\b/.test(t) ? parsePeriod(t, now) : weekRange(/\bmois\b/.test(t) ? 'ce mois' : t, now); return { intent: 'stats', args: { from: sp.from, to: sp.to }, label: 'Statistiques (' + sp.label + ')' }; }
+    if (/\bcombien de (rendez|rdv|interventions?|chantiers?)\b|\b(rendez-vous|rendez vous|rdv|interventions|planning|agenda)\b.*\b(de la |cette |la |du )?(semaine|mois)\b/.test(t) && !/\b(prends?|cree|planifie|annule|decale|deplace)\b/.test(t)){
+      var wr = weekRange(t, now, true);
+      return { intent: 'agenda_range', args: { from: wr.from, to: wr.to }, label: 'Rendez-vous (' + wr.label + ')' };
+    }
+    if (/\b(ajoute|ajouter|cree|creer|nouvelle)\w*\b.*\bprestations?\b/.test(t)) return { intent: 'service_create', args: { name: afterWord(raw, 'prestation') }, label: 'Ajouter une prestation' };
+    if (/\btarifs?\b|\bprix\b|\bcombien coute|\bcombien ca coute|\bcatalogue\b|\bquelles? prestations\b/.test(t) && !/\bdevis\b/.test(t)){
+      return { intent: 'catalog', args: { query: norm(raw).replace(PREFIX, '').replace(/\b(quel|quelle|quels|est|le|la|les|du|de|d|un|une|des|mes|mon|ma|tarifs?|prix|combien|coute|ca|catalogue|prestations?|montre|affiche|moi|donne)\b/g, ' ').replace(/[?,.:\/-]+/g, ' ').replace(/\s+/g, ' ').trim() }, label: 'Catalogue et tarifs' };
+    }
+    if (/\b(cree|creer|ajoute|ajouter|enregistre|enregistrer|nouveau|nouvelle)\b.*\b(client|cliente)\b/.test(t) && !/\bfiche de\b|\btrouve|\bcherche|\brecherche/.test(t)){
+      var nm = afterWord(raw, 'client|cliente').replace(/(?:\+33\s?|0)[1-9](?:[\s.-]?\d{2}){4}.*$/, '').replace(/[^\s@]+@[^\s@]+\.[^\s@]+.*$/, '').replace(/\b(?:au|a|tel|telephone|téléphone|mail|e-mail)\s*$/i, '').trim();
+      var parts = nm.split(/\s+/).filter(Boolean), ct = parseContact(raw);
+      return { intent: 'client_create', args: { first_name: parts.length > 1 ? parts[0] : '', last_name: parts.length > 1 ? parts.slice(1).join(' ') : (parts[0] || ''), phone: ct.phone, email: ct.email }, label: 'Nouveau client' };
+    }
+    if (/\b(modifie|modifier|change|changer|mets? a jour|mettre a jour|corrige|corriger)\b.*\b(telephone|numero|adresse|e-?mail|mail|ville|nom|prenom|fiche|code postal|notes?)\b/.test(t) && !/\bdevis\b|\brendez|\brdv\b|\bparrain/.test(t)){
+      return { intent: 'client_update', args: { client: clientOrCtx(raw, t) }, label: 'Modifier une fiche client' };
+    }
+    if (/\b(annule|annuler|refuse|refuser)\b.*\b(rendez|rdv|intervention|demande)/.test(t)) return { intent: 'booking_cancel', args: { client: clientOrCtx(raw, t), date: when && (when.date || when.from) }, label: 'Annuler un rendez-vous' };
+    if (/\b(prends?|prendre|cree|creer|planifie|planifier|ajoute|ajouter|programme|programmer|fixe|fixer|cale|caler|reserve|reserver)\b.*\b(rendez-vous|rendez vous|rdv|intervention)\b/.test(t)){
+      var svc = (/\bpour (?:un |une |le |la |l )?((?!monsieur|madame|mme|m\.)[a-z][a-z\s'-]{3,})$/.exec(t.replace(/\b(demain|apres-demain|aujourd hui|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|a \d{1,2}\s?h\s?\d{0,2}|le \d{1,2}(\/\d{1,2})?|semaine prochaine)\b.*$/, '').trim()) || [])[1] || '';
+      return { intent: 'booking_create', args: { client: clientOrCtx(raw, t), date: when && (when.date || when.from), time: parseTime(t), service: svc.trim() }, label: 'Nouveau rendez-vous' };
+    }
+    if (/\benvo(ie|yer|ies)\b.*\bdevis\b/.test(t)) return { intent: 'quote_send', args: { client: clientOrCtx(raw, t) }, label: 'Envoyer un devis' };
+    if (/\b(modifie|modifier|change|changer|corrige|corriger|complete|completer|ajuste|ajuster)\b.*\bdevis\b/.test(t)) return { intent: 'quote_update', args: { client: clientOrCtx(raw, t) }, label: 'Modifier un devis' };
+    if ((/\bfactures? (de|du|pour|chez)\b/.test(t) && clientOrCtx(raw, t)) || /\bpaiements? (recus?|encaisses?)\b|\bliste des (factures|paiements)\b|\bpaiements? de la (semaine|journee)|\bpaiements? du mois\b/.test(t)){
+      var ir = /\b(semaine|mois|annee|aujourd hui|hier)\b/.test(t) ? parsePeriod(t, now) : null;
+      return { intent: 'invoices_list', args: { client: clientOrCtx(raw, t), from: ir && ir.from, to: ir && ir.to }, label: 'Factures et paiements' };
+    }
+    if (/\b(fiche|historique|equipements?|derniere intervention|dernieres interventions|coordonnees|chaudiere|climatiseur|appareils?)\b/.test(t) && clientOrCtx(raw, t)){
+      return { intent: 'client_detail', args: { client: clientOrCtx(raw, t), focus: /\bintervention/.test(t) ? 'interventions' : (/\bequipement|\bchaudiere|\bclimatiseur|\bappareil/.test(t) ? 'equipment' : '') }, label: 'Fiche client' };
+    }
     if (/\bcombien\b.*\b(factur|encaiss|gagne|chiffre)|\bchiffre d affaires\b|\b(j ai|ai-je) (facture|encaisse)\b|\bencaissements?\b|\brecettes?\b/.test(t)){
       var per = parsePeriod(t, now);
       return { intent: 'finance', args: { from: per.from, to: per.to }, label: 'Finances (' + per.label + ')' };
@@ -146,7 +224,7 @@
       return { intent: 'free_slots', args: { from: p.from, to: p.to, duration: parseDuration(t) || 60 }, label: 'Créneaux libres' + (when ? ' (' + when.label + ')' : '') };
     }
     if (/\b(prepare|fais|fait|etablis|redige|cree)\w*\b.*\b(devis|chiffrage)\b|\bchiffr(e|er)\b|\bdevis pour\b/.test(t) && !/\bdevis en attente\b|\bmes devis\b/.test(t)){
-      var client = parseClient(raw);
+      var client = clientOrCtx(raw, t);
       return { intent: 'quote_estimate', args: { client: client, service: parseService(raw, client) || '' }, label: 'Préparer un devis' };
     }
     if (/\bdevis\b/.test(t)) return { intent: 'quotes_pending', args: {}, label: 'Devis à traiter' };
@@ -174,7 +252,9 @@
   }
 
   var SUGGESTIONS = [
-    'Montre-moi mes interventions de demain',
+    'Montre-moi mes interventions d’aujourd’hui',
+    'Combien de rendez-vous ai-je cette semaine ?',
+    'Affiche les clients ayant un entretien à renouveler',
     'Quels clients attendent une réponse ?',
     'Combien j’ai facturé cette semaine ?',
     'Prépare ma journée de demain',

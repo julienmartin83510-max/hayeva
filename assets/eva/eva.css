@@ -105,6 +105,8 @@ html body :where(.eva) b{ font-weight:700; }
 .eva-radio.is-off em{ color:var(--e-text3); font-weight:500; font-size:.78rem; }
 
 .eva-field{ display:flex; flex-direction:column; gap:6px; font-size:.82rem; color:var(--e-text2); }
+.eva-field textarea{ min-height:88px; border-radius:12px; border:1px solid #7D90A8; background:var(--e-surface2); color:#fff; padding:10px 12px; font:inherit; font-size:1rem; line-height:1.45; resize:vertical; min-width:0; }
+.eva-form{ display:flex; flex-direction:column; gap:10px; }
 .eva-field input, .eva-field select, .eva-input-sm{ min-height:44px; border-radius:12px; border:1px solid #7D90A8; background:var(--e-surface2); color:#fff; padding:0 12px; font:inherit; font-size:1rem; min-width:0; }
 .eva-input-sm{ width:100%; }
 
