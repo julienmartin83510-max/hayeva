@@ -22397,9 +22397,24 @@ window.HV_APP_VERSION = 'hayeva-v39';
       });
       return loading;
     }
-    window.hvOpenEva = function(){
-      return load().then(function(){ window.EVA.open(); }, function(){ window.alert('EVA n\'a pas pu être chargée. Vérifiez votre connexion.'); });
+    window.hvOpenEva = function(prefill){
+      return load().then(function(){ window.EVA.open(prefill); }, function(){ window.alert('EVA n\'a pas pu être chargée. Vérifiez votre connexion.'); });
     };
+    // Lien « ?eva=… » renvoyé par Siri pour une action : EVA s'ouvre une fois
+    // l'espace administrateur affiché, la demande PRÉ-REMPLIE (jamais exécutée
+    // d'office : l'administrateur la relit puis l'envoie, et confirme l'action).
+    (function(){
+      var q = null;
+      try { q = new URLSearchParams(location.search).get('eva'); } catch (e){}
+      if (!q) return;
+      q = String(q).slice(0, 300);
+      try { var u = new URL(location.href); u.searchParams.delete('eva'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e){}
+      var tries = 0, iv = setInterval(function(){
+        var entry = document.querySelector('.adm-eva-entry'), nav = document.getElementById('admBottomNav');
+        if ((entry && entry.offsetParent !== null) || (nav && nav.offsetParent !== null)){ clearInterval(iv); window.hvOpenEva(q); }
+        else if (++tries > 600) clearInterval(iv);
+      }, 500);
+    })();
     document.addEventListener('click', function(e){
       var t = e.target.closest && e.target.closest('[data-eva-open]');
       if (!t) return;

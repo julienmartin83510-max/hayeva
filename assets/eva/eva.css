@@ -76,7 +76,7 @@ html body :where(.eva) b{ font-weight:700; }
 .eva-pill.ok{ color:var(--e-ok); background:rgba(95,199,149,.14); }
 .eva-pill.wait{ color:var(--e-warn); background:rgba(242,184,75,.14); }
 .eva-pill.info{ color:var(--e-info); background:rgba(156,200,242,.14); }
-.eva-pill.no{ color:var(--e-no); background:rgba(242,139,123,.14); }
+.eva-pill.no{ color:#F9A89B; background:rgba(242,139,123,.14); }
 .eva-warn{ margin:10px 0 0; padding:10px 12px; border-radius:12px; background:rgba(242,184,75,.1); color:#F7CF84; font-size:.84rem; }
 .eva-warn p{ margin:0 0 4px; } .eva-warn p:last-child{ margin:0; }
 .eva-h{ margin:14px 0 8px; font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--e-text3); font-weight:700; }
@@ -157,3 +157,19 @@ html body :where(.eva) b{ font-weight:700; }
 .eva-listen-t{ margin:6px 0 0; font-weight:600; font-size:1.05rem; color:#fff; }
 .eva-listen-q{ margin:0; min-height:1.4em; max-width:30ch; color:#B7C4D4; font-size:.95rem; }
 @media (prefers-reduced-motion:reduce){ .eva-ring{ transition:none; } }
+
+/* Siri : jeton affiché une seule fois, mode d'emploi du raccourci */
+.eva-token{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.eva-token code{ flex:1 1 220px; min-width:0; overflow-wrap:anywhere; font-size:.85rem; padding:10px 12px; border-radius:12px; background:var(--e-surface2); border:1px solid #7D90A8; color:#fff; }
+.eva code{ overflow-wrap:anywhere; }
+.eva-howto{ margin-top:12px; border:1px solid rgba(125,144,168,.45); border-radius:14px; padding:10px 14px; }
+.eva-howto summary{ cursor:pointer; min-height:44px; display:flex; align-items:center; font-weight:600; color:#fff; }
+.eva-howto ol{ margin:6px 0 4px; padding-left:20px; display:flex; flex-direction:column; gap:8px; color:var(--e-text2); font-size:.9rem; line-height:1.5; }
+
+/* Mains libres « Dis EVA » : indicateur permanent tant que l'écoute est active */
+.eva-hf{ max-width:880px; margin:8px auto 0; display:flex; align-items:center; justify-content:center; gap:10px; font-size:.86rem; color:var(--e-text2); }
+.eva-hf.is-on{ justify-content:space-between; padding:6px 6px 6px 14px; border-radius:999px; background:rgba(215,161,107,.14); border:1px solid rgba(215,161,107,.5); color:#fff; }
+.eva-hf.is-on > span[role="status"]{ flex:1; min-width:0; }
+.eva-hf-dot{ width:10px; height:10px; border-radius:50%; background:var(--e-cu); flex:0 0 auto; animation:eva-hf-pulse 1.4s ease-in-out infinite; }
+@keyframes eva-hf-pulse{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.45; transform:scale(.8); } }
+@media (prefers-reduced-motion: reduce){ .eva-hf-dot{ animation:none; } }

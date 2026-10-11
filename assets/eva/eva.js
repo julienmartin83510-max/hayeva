@@ -16,7 +16,7 @@
   var I = window.EVAIntents;
   var sb = function(){ return window.sudSupabase && window.sudSupabase.client; };
   var root, feed, input, micBtn, hintEl, state = { tab: 'today', overview: null, reg: {}, seq: 0, voice: false, listening: false };
-  var TTS_KEY = 'hv_eva_tts';
+  var TTS_KEY = 'hv_eva_tts', HF_KEY = 'hv_eva_handsfree';
 
   // ---------------------------------------------------------------- outils
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
@@ -59,7 +59,17 @@
   function speak(text){
     if (!state.voice || !window.speechSynthesis) return;
     try { if (localStorage.getItem(TTS_KEY) === '0') return; } catch (e){}
-    try { var u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e){}
+    try {
+      var u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR';
+      // Mains libres : l'écoute est suspendue pendant qu'EVA parle (elle ne s'entend pas elle-même).
+      if (hf.on){
+        hf.speaking = true; if (hf.rec) try { hf.rec.abort(); } catch (e){}
+        // Filet de sécurité si la synthèse vocale ne signale jamais sa fin.
+        var back = function(){ if (!hf.speaking) return; hf.speaking = false; hfRestart(); };
+        u.onend = u.onerror = back; setTimeout(back, Math.max(2500, String(text).length * 90));
+      }
+      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    } catch (e){}
   }
 
   // ------------------------------------------------------------- structure
@@ -99,6 +109,7 @@
           '<input class="eva-input" id="evaInput" type="text" enterkeyhint="send" maxlength="300" placeholder="EVA, montre-moi mes interventions de demain">' +
           '<button type="submit" class="eva-send" aria-label="Envoyer">' + ICON.send + '</button>' +
         '</div>' +
+        '<div class="eva-hf" id="evaHf" hidden></div>' +
         '<p class="eva-hint" id="evaHint"></p>' +
       '</form>';
     document.body.appendChild(root);
@@ -113,7 +124,7 @@
   function tabBtn(k, label){ return '<button type="button" class="eva-tab" role="tab" data-act="tab" data-tab="' + k + '" aria-selected="' + (k === 'today') + '">' + label + '</button>'; }
 
   var lastFocus = null;
-  function open(){
+  function open(prefill){
     if (!root) build();
     lastFocus = document.activeElement;
     root.hidden = false;
@@ -121,11 +132,13 @@
     requestAnimationFrame(function(){ root.classList.add('is-open'); });
     setTab('today');
     loadToday();
+    hfBar();
+    if (typeof prefill === 'string' && prefill){ input.value = prefill.slice(0, 300); hintEl.textContent = 'Demande reçue de Siri : relisez-la puis envoyez-la.'; }
     setTimeout(function(){ try { input.focus({ preventScroll: true }); } catch (e){} }, 120);
   }
   function close(){
     if (!root || root.hidden) return;
-    stopMic();
+    stopMic(); hfStop('');
     root.classList.remove('is-open');
     document.documentElement.style.overflow = '';
     root.hidden = true;
@@ -136,6 +149,7 @@
     root.querySelectorAll('.eva-tab').forEach(function(b){ b.setAttribute('aria-selected', b.getAttribute('data-tab') === k ? 'true' : 'false'); });
     root.querySelectorAll('.eva-pane').forEach(function(p){ p.hidden = p.getAttribute('data-pane') !== k; });
     root.querySelector('#evaForm').hidden = k === 'settings';
+    if (k === 'settings') hfStop('Mains libres arrêté.');
     if (k !== 'today') loadOverview();
   }
 
@@ -959,6 +973,8 @@
         '<label class="eva-toggle"><span>EVA activée</span><input type="checkbox" data-set="enabled"' + (s.enabled ? ' checked' : '') + '></label>' +
         ['planning', 'devis', 'factures', 'clients', 'fidelite'].map(function(k){ return '<label class="eva-toggle"><span>' + AGENT[k] + '</span><input type="checkbox" data-set="agent" data-agent="' + k + '"' + (ag[k] ? ' checked' : '') + '></label>'; }).join('') +
         '<label class="eva-toggle"><span>Lire les réponses à voix haute après une dictée</span><input type="checkbox" data-set="tts"' + (tts ? ' checked' : '') + '></label>' +
+        (SR ? '<label class="eva-toggle"><span>Proposer le mode mains libres « Dis EVA » (expérimental, sur cet appareil)</span><input type="checkbox" data-set="handsfree"' + (hfAllowed() ? ' checked' : '') + '></label>' +
+          '<p class="eva-note" style="margin:-2px 0 0">Uniquement quand EVA est ouverte et l’écran allumé, après avoir touché « Écouter “Dis EVA” ». La reconnaissance vocale du navigateur est utilisée (sur iPhone : la dictée d’Apple, qui traite l’audio sur ses serveurs). Seules les phrases commençant par « EVA » sont prises en compte ; le reste est ignoré et jamais enregistré. Arrêt automatique après 3 minutes sans « EVA ».</p>' : '') +
         '<p class="eva-msg" data-role="set-msg" hidden></p>' +
       '</div>' +
       '<p class="eva-h">Horaires de travail</p><p class="eva-note" style="margin-top:-4px">Laissez une plage vide pour la retirer, les deux pour un jour non travaillé. Ces horaires s’appliquent aussi aux créneaux proposés à vos clients sur le site.</p>' +
@@ -974,7 +990,51 @@
         '<label class="eva-check"><input type="checkbox" data-role="vat-ack"> <span>Je confirme que ce régime correspond à ma situation (à vérifier avec mon comptable). Il sera appliqué à mes factures.</span></label>' +
         '<div class="eva-actions" style="margin-top:0"><button type="button" class="eva-btn cu" data-act="save-vat" disabled>Confirmer le régime de TVA</button></div><p class="eva-msg" data-role="vat-msg" hidden></p>' +
       '</div>' +
-      '<p class="eva-h">Micro</p><p class="eva-note" style="margin-top:-4px">' + esc(micInfo()) + '</p>';
+      '<p class="eva-h">Micro</p><p class="eva-note" style="margin-top:-4px">' + esc(micInfo()) + '</p>' +
+      '<p class="eva-h">« Dis Siri, EVA »</p><div data-role="siri"><p class="eva-empty">Chargement…</p></div>';
+    loadSiri();
+  }
+  // ------------------------------------------------ Siri (lecture seule)
+  function fnUrl(){ var c = sb(); return ((c && c.supabaseUrl) || 'https://hvlzdsuyhrhaflwutwml.supabase.co').replace(/\/$/, '') + '/functions/v1/eva-siri'; }
+  function loadSiri(keep){
+    keep = keep || {};
+    var box = root.querySelector('[data-pane="settings"] [data-role="siri"]'); if (!box) return;
+    rpc('eva_devices_list').then(function(d){
+      var dv = d.devices || [], act = dv.filter(function(x){ return x.active; });
+      box.innerHTML = '<p class="eva-note" style="margin-top:-4px">Posez vos questions à EVA par Siri grâce à un raccourci iPhone. <b>Lecture seule</b> : par la voix, EVA répond (planning, devis, factures, clients) mais n’agit jamais ; pour créer, envoyer ou annuler, elle vous renvoie dans l’application. Gratuit : aucun service payant.</p>' +
+        '<div class="eva-set">' +
+          '<label class="eva-toggle"><span>Autoriser les questions par Siri</span><input type="checkbox" data-set="siri"' + (d.siri_enabled ? ' checked' : '') + '></label>' +
+          (dv.length ? '<ul class="eva-list">' + dv.map(function(x){
+            return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.label) + '</b><span>Jeton …' + esc(x.hint) + ' · ' + (x.last_used_at ? 'utilisé le ' + esc(new Date(x.last_used_at).toLocaleDateString('fr-FR')) + ' (' + x.use_count + ' fois)' : 'jamais utilisé') + '</span>' +
+              '<span>' + (x.active ? 'Expire le ' + esc(new Date(x.expires_at).toLocaleDateString('fr-FR')) : x.revoked_at ? 'Révoqué le ' + esc(new Date(x.revoked_at).toLocaleDateString('fr-FR')) : 'Expiré') + '</span>' +
+              (x.active ? '<div class="eva-actions">' + actBtn('Révoquer', 'siri-revoke', { id: x.id, label: x.label }) + '</div>' : '') + '</div>' +
+              '<span class="eva-pill ' + (x.active ? 'ok' : 'no') + '">' + (x.active ? 'Actif' : 'Inactif') + '</span></li>';
+          }).join('') + '</ul>' : '') +
+          (act.length < 5 ? '<label class="eva-field">Nom de l’appareil<input type="text" maxlength="60" data-role="siri-label" placeholder="Ex. : iPhone de Julien"></label>' +
+            '<label class="eva-check"><input type="checkbox" data-role="siri-ack"> <span>Je garde ce jeton pour moi : il permet de consulter mon planning et mes clients. Je pourrai le révoquer à tout moment.</span></label>' +
+            '<div class="eva-actions" style="margin-top:0"><button type="button" class="eva-btn cu" data-act="siri-create" disabled>Créer l’accès Siri pour cet iPhone</button></div>' : '<p class="eva-note">Cinq appareils actifs au maximum.</p>') +
+          '<div data-role="siri-token">' + (keep.token || '') + '</div><p class="eva-msg' + (keep.msg ? ' ok' : '') + '" data-role="siri-msg"' + (keep.msg ? '' : ' hidden') + '>' + esc(keep.msg || '') + '</p>' +
+        '</div>' +
+        '<details class="eva-howto"><summary>Créer le raccourci « EVA » sur l’iPhone (2 minutes)</summary><ol>' +
+          '<li>Ouvrez l’app <b>Raccourcis</b>, touchez <b>+</b> et nommez le raccourci <b>EVA</b>.</li>' +
+          '<li>Ajoutez l’action <b>Dicter le texte</b> (langue : Français ; arrêt : après une pause).</li>' +
+          '<li>Ajoutez <b>Obtenir le contenu de l’URL</b> : adresse <code>' + esc(fnUrl()) + '</code>, méthode <b>POST</b>, en-tête <code>x-eva-token</code> = votre jeton, corps <b>JSON</b> avec la clé <code>text</code> = <b>Texte dicté</b>.</li>' +
+          '<li>Ajoutez <b>Énoncer le texte</b> avec le <b>Contenu de l’URL</b>.</li>' +
+          '<li>Dites : « <b>Dis Siri, EVA</b> », puis votre question, par exemple « qu’est-ce que j’ai demain ? ».</li>' +
+        '</ol><p class="eva-note">Siri ouvre le raccourci, vous dictez, EVA répond à voix haute. iOS n’autorise aucune application à écouter en permanence : c’est Siri qui lance EVA.</p></details>';
+    }, function(e){ box.innerHTML = '<p class="eva-note">' + esc(/PGRST202|Could not find|does not exist/i.test(String(e && e.message)) ? 'Accès Siri disponible après installation de la migration 0137 et de la fonction eva-siri (à valider).' : errText(e)) + '</p>'; });
+  }
+  function siriMsg(t, cls){ var m = root.querySelector('[data-role="siri-msg"]'); if (m){ m.hidden = false; m.className = 'eva-msg ' + (cls || ''); m.textContent = t; } }
+  function siriCreate(b){
+    var lab = root.querySelector('[data-role="siri-label"]').value.trim();
+    if (lab.length < 2) return siriMsg('Nommez l’appareil, par exemple « iPhone de Julien ».', 'no');
+    b.disabled = true;
+    rpc('eva_device_create', { p_label: lab, p_days: 365 }).then(function(r){
+      var html = '<div class="eva-warn" style="background:rgba(95,199,149,.1);color:#9BE0BD"><p>Jeton de « ' + esc(lab) + ' » : copiez-le maintenant dans le raccourci. Il ne sera plus jamais affiché.</p></div>' +
+        '<div class="eva-token"><code data-role="siri-token-value">' + esc(r.token) + '</code><button type="button" class="eva-btn sm cu" data-act="siri-copy">Copier</button></div>' +
+        '<p class="eva-note">Valable jusqu’au ' + esc(new Date(r.expires_at).toLocaleDateString('fr-FR')) + '. Adresse du raccourci : <code>' + esc(fnUrl()) + '</code></p>';
+      loadSiri({ token: html, msg: 'Accès Siri créé.' });
+    }, function(e){ b.disabled = false; siriMsg(errText(e), 'no'); });
   }
   function micInfo(){
     return SR ? 'La dictée utilise la reconnaissance vocale de votre navigateur (Apple sur iPhone et iPad). EVA n’écoute que lorsque vous touchez le micro, jamais en arrière-plan.'
@@ -1013,6 +1073,11 @@
   function saveSetting(el){
     var pane = root.querySelector('[data-pane="settings"]'), msg = pane.querySelector('[data-role="set-msg"]');
     if (el.getAttribute('data-set') === 'tts'){ try { localStorage.setItem(TTS_KEY, el.checked ? '1' : '0'); } catch (e){} return; }
+    if (el.getAttribute('data-set') === 'handsfree'){ try { localStorage.setItem(HF_KEY, el.checked ? '1' : '0'); } catch (e){} if (!el.checked) hfStop(''); hfBar(); return; }
+    if (el.getAttribute('data-set') === 'siri'){
+      return rpc('eva_siri_set', { p_enabled: el.checked }).then(function(){ siriMsg(el.checked ? 'Questions par Siri autorisées (lecture seule).' : 'Questions par Siri désactivées : tous les iPhone sont refusés.', 'ok'); },
+        function(e){ el.checked = !el.checked; siriMsg(errText(e), 'no'); });
+    }
     var p = el.getAttribute('data-set') === 'enabled' ? { p_enabled: el.checked, p_agents: {} } : { p_enabled: null, p_agents: (function(){ var o = {}; o[el.getAttribute('data-agent')] = el.checked; return o; })() };
     rpc('eva_set_settings', p).then(function(){ msg.hidden = false; msg.className = 'eva-msg ok'; msg.textContent = 'Réglage enregistré.'; loadToday(); },
       function(e){ el.checked = !el.checked; msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); });
@@ -1024,6 +1089,7 @@
     if (t.matches('[data-set]')) return saveSetting(t);
     if (t.matches('[data-role="ack"]')){ var b = t.closest('[data-prop]').querySelector('[data-act="confirm"]'); if (b) b.disabled = !t.checked; return; }
     if (t.matches('[data-role="vat-regime"]')){ root.querySelector('[data-role="vat-rate-wrap"]').hidden = t.value !== 'assujetti'; return; }
+    if (t.matches('[data-role="siri-ack"]')){ var sb2 = root.querySelector('[data-act="siri-create"]'); if (sb2) sb2.disabled = !t.checked; return; }
     if (t.matches('[data-role="vat-ack"]')){ root.querySelector('[data-act="save-vat"]').disabled = !t.checked; }
   }
   function onClick(e){
@@ -1073,6 +1139,20 @@
       var sv = b.closest('.eva-form').querySelector('[data-f="service"]').value.trim(); if (!sv) return;
       return runOne({ intent: 'quote_estimate', args: Object.assign({}, o.p.args, { service: sv }), text: o.p.text + ' — ' + sv }, o.p.text);
     }
+    if (act === 'hf-start') return hfStart();
+    if (act === 'hf-stop') return hfStop('Mains libres arrêté.');
+    if (act === 'siri-create') return siriCreate(b);
+    if (act === 'siri-revoke' && o){
+      if (b.getAttribute('data-armed') !== '1'){ b.setAttribute('data-armed', '1'); b.textContent = 'Confirmer la révocation de « ' + o.label + ' »'; b.classList.remove('ghost'); b.classList.add('cu'); return; }
+      b.disabled = true;
+      return rpc('eva_device_revoke', { p_id: o.id }).then(function(){ loadSiri({ msg: 'Accès révoqué : cet iPhone ne peut plus interroger EVA.' }); }, function(e){ b.disabled = false; siriMsg(errText(e), 'no'); });
+    }
+    if (act === 'siri-copy'){
+      var tv = root.querySelector('[data-role="siri-token-value"]'), txt = tv ? tv.textContent : '';
+      var done = function(){ b.textContent = 'Copié'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).then(done, function(){ selectText(tv); });
+      return selectText(tv);
+    }
     if (act === 'stop-mic') return stopMic();
     if (act === 'confirm') return confirmProp(b.getAttribute('data-id'), b);
     if (act === 'cancel') return cancelProp(b.getAttribute('data-id'), b);
@@ -1080,6 +1160,7 @@
     if (act === 'save-vat') return saveVat(b);
   }
 
+  function selectText(el){ if (!el) return; var r = document.createRange(); r.selectNodeContents(el); var s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(r); }
   // ----------------------------------------------------------------- micro
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null, rec = null;
   function stopMic(){ if (rec){ try { rec.abort(); } catch (e){} } setListening(false); }
@@ -1105,6 +1186,7 @@
   function toggleMic(){
     if (!SR){ hintEl.textContent = 'Dictée indisponible ici : touchez le champ puis le micro de votre clavier.'; input.focus(); return; }
     if (state.listening) return stopMic();
+    hfStop('');
     rec = new SR(); rec.lang = 'fr-FR'; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
     var finalText = '';
     rec.onresult = function(ev){
@@ -1121,5 +1203,67 @@
     try { rec.start(); setListening(true); hintEl.textContent = 'Je vous écoute… (touchez à nouveau pour arrêter)'; } catch (e){ setListening(false); }
   }
 
-  window.EVA = { open: open, close: close, run: function(t){ if (!root) build(); return run(t, false); } };
+  // --------------------------------------- mains libres « Dis EVA » (prototype)
+  // Écoute UNIQUEMENT pendant qu'EVA est ouverte, visible, après un geste
+  // volontaire ; indicateur permanent et bouton d'arrêt ; seules les phrases
+  // commençant par « EVA » sont utilisées, les autres sont ignorées.
+  var hf = { on: false, rec: null, idleT: null, speaking: false, awaiting: false, restarts: 0, heard: 0 };
+  var WAKE = /^\s*(?:(?:dis|hey|ok|bonjour)\s+)?(?:eva|hayeva)\b[\s,.:!-]*(.*)$/i;
+  function hfAllowed(){ try { return !!SR && localStorage.getItem(HF_KEY) === '1'; } catch (e){ return false; } }
+  function hfIdleMs(){ return Number(window.__EVA_HF_IDLE_MS) || 180000; }
+  function hfBar(){
+    var bar = root && root.querySelector('#evaHf'); if (!bar) return;
+    if (!hfAllowed() && !hf.on){ bar.hidden = true; bar.innerHTML = ''; return; }
+    bar.hidden = false;
+    bar.className = 'eva-hf' + (hf.on ? ' is-on' : '');
+    bar.innerHTML = hf.on
+      ? '<span class="eva-hf-dot" aria-hidden="true"></span><span role="status">' + (hf.awaiting ? 'Je vous écoute…' : 'Mains libres : dites « EVA, … »') + '</span><button type="button" class="eva-btn sm ghost" data-act="hf-stop">Arrêter</button>'
+      : '<button type="button" class="eva-btn sm ghost" data-act="hf-start">Écouter « Dis EVA »</button>';
+  }
+  function hfArmIdle(){ clearTimeout(hf.idleT); hf.idleT = setTimeout(function(){ hfStop('Mains libres arrêté après 3 minutes sans « EVA ».'); }, hfIdleMs()); }
+  function hfStart(){
+    if (!SR || hf.on) return;
+    stopMic();
+    hf.on = true; hf.awaiting = false; hf.restarts = 0;
+    hfArmIdle(); hfListen(); hfBar();
+    hintEl.textContent = 'Mains libres actif tant qu’EVA reste ouverte. Dites « EVA » puis votre demande.';
+  }
+  function hfStop(msg){
+    if (!hf.on) return;
+    hf.on = false; hf.awaiting = false; clearTimeout(hf.idleT);
+    var r = hf.rec; hf.rec = null; if (r) try { r.onend = null; r.abort(); } catch (e){}
+    if (msg && hintEl) hintEl.textContent = msg;
+    hfBar();
+  }
+  function hfRestart(){
+    if (!hf.on || hf.speaking || !root || root.hidden || document.hidden) return;
+    setTimeout(function(){ if (hf.on && !hf.rec && !hf.speaking) hfListen(); }, 250);
+  }
+  function hfHandle(text){
+    var t = String(text || '').trim(); if (!t) return;
+    var m = WAKE.exec(t);
+    if (hf.awaiting){ hf.awaiting = false; hfArmIdle(); hfBar(); run(m ? (m[1] || '') || t : t, true); return; }
+    if (!m) return; // conversation ambiante : ignorée, jamais affichée ni enregistrée
+    hf.heard++; hfArmIdle();
+    var rest = (m[1] || '').trim();
+    if (rest.length > 2) run(rest, true);
+    else { hf.awaiting = true; hfBar(); }
+  }
+  function hfListen(){
+    var r;
+    try { r = new SR(); } catch (e){ return hfStop('Écoute impossible sur ce navigateur.'); }
+    hf.rec = r; r.lang = 'fr-FR'; r.continuous = true; r.interimResults = false; r.maxAlternatives = 1;
+    r.onresult = function(ev){
+      for (var i = ev.resultIndex || 0; i < ev.results.length; i++){ if (ev.results[i].isFinal !== false) hfHandle(ev.results[i][0].transcript); }
+    };
+    r.onerror = function(ev){
+      if (ev && (ev.error === 'not-allowed' || ev.error === 'service-not-allowed')){ hf.rec = null; hfStop('Micro refusé ou interrompu par le système : touchez « Écouter “Dis EVA” » pour reprendre.'); }
+    };
+    r.onend = function(){ if (hf.rec === r) hf.rec = null; hf.restarts++; hfRestart(); };
+    try { r.start(); } catch (e){ hf.rec = null; hfStop('Le système a interrompu l’écoute : touchez « Écouter “Dis EVA” » pour reprendre.'); }
+  }
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) hfStop('Mains libres arrêté (écran quitté).'); });
+
+  window.EVA = { open: open, close: close, run: function(t){ if (!root) build(); return run(t, false); },
+    handsFreeState: function(){ return { on: hf.on, awaiting: hf.awaiting, restarts: hf.restarts, heard: hf.heard }; } };
 })();
