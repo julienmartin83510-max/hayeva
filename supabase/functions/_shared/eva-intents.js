@@ -131,8 +131,8 @@
   function parseService(raw, client){
     var s = raw.replace(/^.*?\b(?:devis|chiffrage|chiffre|chiffrer)\b\s*(?:pour|de|d'|d’)?\s*/i, '');
     if (client) s = s.replace(new RegExp('\\s*(?:de|pour|chez|du client|client)?\\s*' + client.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '.*$', 'i'), '');
-    s = s.replace(/\b(?:et|puis)\b.*$/i, '').replace(/^(?:le|la|les|un|une|l'|l’)\s+/i, '').trim();
-    return s || null;
+    s = s.replace(/\b(?:et|puis)\b.*$/i, '').replace(/^(?:le|la|les|un|une|l'|l’)\s+/i, '').replace(/^[\s.,;:!?…-]+|[\s.,;:!?…-]+$/g, '').trim();
+    return s.length > 1 ? s : null;
   }
 
   var PREFIX = /^(?:(?:hey|ok|dis|bonjour|salut)\s+)?(?:eva|hayeva)\b[\s,:-]*/;
@@ -153,6 +153,13 @@
       var which = /\bdernier\b/.test(t) ? 'last' : (/\b(deuxieme|second)\b/.test(t) ? 1 : 0);
       return { intent: 'move_booking', args: { date: (when && (when.date || when.from)) || today, which: which, client: parseClient(raw) }, label: 'Déplacer un rendez-vous' };
     }
+    // Horaires de travail / disponibilité : réglage dans EVA (jamais deviné par la voix).
+    if (/\bhoraires?\b|\bheures? d ouverture\b/.test(t) && /\b(change|changer|modifie|modifier|mets? a jour|regle|regler|ajuste|ajuster|definis|definir)\b/.test(t)) return { intent: 'work_hours', args: {}, label: 'Horaires de travail' };
+    if (/\b(mes |les )?horaires?\b/.test(t) && /\b(quels?|quelles?|affiche|montre|donne)\b/.test(t) && !/\brendez|\brdv\b/.test(t)) return { intent: 'work_hours', args: { view: true }, label: 'Horaires de travail' };
+    // Réservations / demandes en attente de confirmation.
+    if (/\b(reservations?|demandes?|rendez-vous|rendez vous|rdv)\b.*\b(en attente|a confirmer|non confirme)/.test(t) && !/\bdevis\b/.test(t)) return { intent: 'awaiting', args: {}, label: 'Réservations en attente' };
+    // Dernière facture.
+    if (/\b(derniere|dernieres) factures?\b|\bfacture la plus recente\b/.test(t)) return { intent: 'invoices_list', args: { client: clientOrCtx(raw, t), last: true }, label: 'Dernière facture' };
     // ---------- Phase 2 : actions et lectures étendues ----------
     // Garde-fous : EVA ne supprime rien et ne traite jamais une action « en masse ».
     var ACT = /\b(envoie|envoyer|envoies|annule|annuler|refuse|refuser|supprime|supprimer|efface|effacer|credite|crediter|debite|debiter|modifie|modifier|confirme|confirmer|valide|valider|emets|emettre|facture|facturer)\b/;

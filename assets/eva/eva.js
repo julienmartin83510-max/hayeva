@@ -202,6 +202,7 @@
       addCard(card(null, p.text, sd1, '<p class="eva-note">Clients, rendez-vous, devis et factures sont conservés. Pour un rendez-vous, dites « annule le rendez-vous de … » : il passe en « Annulé » et reste dans l’historique. Pour une fiche client, utilisez la fusion de doublons dans la rubrique Clients.</p>'));
       speak(sd1); return;
     }
+    if (p.intent === 'work_hours') return workHours(p);
     p = withCtx(p);
     var holder = addCard('<div class="eva-card"><div class="eva-card-head"><span class="eva-agent">EVA</span><span class="eva-q">« ' + esc(p.text) + ' »</span></div><p class="eva-empty">Je consulte vos données…</p></div>');
     if (p.intent === 'invoice_last') return invoiceLast(p, holder);
@@ -601,6 +602,10 @@
     var inv = d.invoices || [], pay = d.payments || [], who = (d.clients || [])[0];
     if (who) setCtx(who);
     var paid = pay.reduce(function(s, x){ return s + (x.amount_cents || 0); }, 0);
+    if (p.args.last){
+      var l0 = inv[0], sl = l0 ? 'Dernière facture' + (who ? ' de ' + who.name : '') + ' : ' + (l0.reference || 'brouillon') + ', ' + l0.client + ', ' + eur(l0.total_cents) + ' (' + (ISTATUS[l0.status] || [l0.status])[0].toLowerCase() + ').' : 'Aucune facture' + (who ? ' pour ' + who.name : '') + '.';
+      return { html: card('factures', p.text, sl, l0 ? '<ul class="eva-list"><li class="eva-item"><div class="eva-main"><b>' + esc(l0.reference || 'Brouillon') + '</b><span>' + esc(l0.client) + (l0.issued_at ? ' · émise le ' + esc(new Date(l0.issued_at).toLocaleDateString('fr-FR')) : '') + ' · réglé ' + eur(l0.paid_cents) + ' sur ' + eur(l0.total_cents) + '</span></div>' + pill(ISTATUS, l0.status) + '</li></ul><div class="eva-actions"><button type="button" class="eva-btn sm ghost" data-act="goto" data-page="invoices">Ouvrir la rubrique Factures</button></div>' : ''), say: sl };
+    }
     var sum = (who ? who.name + ' : ' : '') + inv.length + ' facture' + (inv.length > 1 ? 's' : '') + ', ' + pay.length + ' paiement' + (pay.length > 1 ? 's' : '') + ' enregistré' + (pay.length > 1 ? 's' : '') + (pay.length ? ' (' + eur(paid) + ')' : '') + (p.args.from ? ' ' + periodLabel(p.args) : '') + '.';
     var b = '';
     if (inv.length) b += '<p class="eva-h">Factures</p><ul class="eva-list">' + inv.map(function(x){ return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.reference || 'Brouillon') + '</b><span>' + esc(x.client) + (x.issued_at ? ' · émise le ' + esc(new Date(x.issued_at).toLocaleDateString('fr-FR')) : '') + ' · réglé ' + eur(x.paid_cents) + ' sur ' + eur(x.total_cents) + '</span></div>' + pill(ISTATUS, x.status) + '</li>'; }).join('') + '</ul>';
@@ -844,6 +849,18 @@
         fields: [{ name: 'observations', label: 'Observations', type: 'textarea', rows: 4, max: 4000, value: iv.observations || '' }, { name: 'recommendations', label: 'Recommandations', type: 'textarea', rows: 3, max: 4000, value: iv.recommendations || '' }],
         build: function(v){ if (!v.observations && !v.recommendations) throw new Error('Saisissez des observations ou des recommandations.'); return { booking_id: bk.booking_id, observations: v.observations, recommendations: v.recommendations }; } }), 'Complétez le compte rendu.');
     }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); });
+  }
+  // Horaires : lus depuis le serveur ; la modification se fait dans Réglages (bouton Enregistrer = action explicite).
+  function workHours(p){
+    var holder = addCard('<div class="eva-card"><p class="eva-empty">Je consulte vos horaires…</p></div>');
+    return rpc('eva_overview').then(function(o){
+      var wh = (o.work && o.work.work_hours) || {}, lines = DAY_NAMES.map(function(n, i){ var r = wh[String(i + 1)] || []; return n + ' : ' + (r.length ? r.map(function(x){ return x[0] + '–' + x[1]; }).join(' et ') : 'fermé'); });
+      var sum = p.args.view ? 'Vos horaires de travail actuels.' : 'Vos horaires se modifient dans les réglages d’EVA ; ils s’appliquent aussi aux créneaux proposés sur le site.';
+      holder.outerHTML = card('planning', p.text, sum, '<ul class="eva-list">' + lines.map(function(l){ return '<li class="eva-item"><div class="eva-main"><b>' + esc(l) + '</b></div></li>'; }).join('') + '</ul>' +
+        '<p class="eva-note">Marge de trajet : ' + esc((o.work && o.work.travel_margin_minutes) != null ? o.work.travel_margin_minutes : 30) + ' min.</p>' +
+        '<div class="eva-actions"><button type="button" class="eva-btn sm cu" data-act="tab" data-tab="settings">Modifier mes horaires</button></div>');
+      speak(sum);
+    }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); speak(errText(e)); });
   }
   function askService(p, holder){
     holder.outerHTML = card('devis', p.text, 'Quelle prestation faut-il chiffrer' + (p.args.client ? ' pour ' + p.args.client : '') + ' ?',

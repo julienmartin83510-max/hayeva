@@ -47,7 +47,7 @@ function relDay(d: string, today: string){
 }
 
 // deno-lint-ignore no-explicit-any
-export function speech(intent: string, d: any, today: string): string {
+export function speech(intent: string, d: any, today: string, args: any = {}): string {
   switch (intent){
     case 'agenda': {
       const it = d.interventions || [], day = relDay(d.date, today);
@@ -138,6 +138,7 @@ export function speech(intent: string, d: any, today: string): string {
     }
     case 'invoices_list': {
       if ((d.clients || []).length > 1) return 'Plusieurs clients correspondent : précisez le prénom.';
+      if (args && args.last){ const l = (d.invoices || [])[0]; return l ? 'Dernière facture : ' + (l.reference || 'brouillon') + ', ' + l.client + ', ' + sayEur(l.total_cents) + '.' : 'Aucune facture.'; }
       const inv = d.invoices || [], pay = d.payments || [];
       return plural(inv.length, 'facture') + ' et ' + plural(pay.length, 'paiement') + ' enregistrés' + (pay.length ? ', pour ' + sayEur(pay.reduce((s: number, x: { amount_cents: number }) => s + x.amount_cents, 0)) : '') + '.';
     }
@@ -216,7 +217,7 @@ export async function handle(req: Request, rpc: Rpc, now: Date = parisNow()): Pr
       if (status === 401 || status === 403 || status === 429) return reply(status, msg);
       out.push(msg); continue;
     }
-    out.push(speech(p.intent, (data && data.data) || {}, today));
+    out.push(speech(p.intent, (data && data.data) || {}, today, p.args || {}));
   }
   return reply(200, out.join(' ') || "Je n'ai rien entendu.", openUrl ? { open_url: openUrl } : {});
 }
