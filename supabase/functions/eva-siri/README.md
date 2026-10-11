@@ -31,12 +31,12 @@ puis lit la réponse à voix haute.
 
 **Créer le raccourci** (mode d'emploi aussi affiché dans EVA → Réglages) :
 1. App **Raccourcis** → **+** → nommer le raccourci **EVA**.
-2. Ajouter l'action **Dicter le texte** (langue : Français).
+2. Ajouter l'action **Demander une entrée** (type Texte), question « Que souhaitez-vous faire ? » : Siri la pose à voix haute et écoute la réponse.
 3. Ajouter l'action **Obtenir le contenu de l'URL** :
    - adresse : `https://hvlzdsuyhrhaflwutwml.supabase.co/functions/v1/eva-siri` ;
    - méthode : **POST** ;
    - en-tête : `x-eva-token` = le jeton de l'iPhone ;
-   - corps : **JSON**, clé `text` = **Texte dicté**.
+   - corps : **JSON**, clé `text` = **Entrée fournie**.
 4. Ajouter l'action **Énoncer le texte** avec le **Contenu de l'URL**.
 5. Dire : « Dis Siri, EVA ».
 

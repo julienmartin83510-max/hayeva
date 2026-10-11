@@ -1034,8 +1034,8 @@
         '</div>' +
         '<details class="eva-howto"><summary>Créer le raccourci « EVA » sur l’iPhone (2 minutes)</summary><ol>' +
           '<li>Ouvrez l’app <b>Raccourcis</b>, touchez <b>+</b> et nommez le raccourci <b>EVA</b>.</li>' +
-          '<li>Ajoutez l’action <b>Dicter le texte</b> (langue : Français ; arrêt : après une pause).</li>' +
-          '<li>Ajoutez <b>Obtenir le contenu de l’URL</b> : adresse <code>' + esc(fnUrl()) + '</code>, méthode <b>POST</b>, en-tête <code>x-eva-token</code> = votre jeton, corps <b>JSON</b> avec la clé <code>text</code> = <b>Texte dicté</b>.</li>' +
+          '<li>Ajoutez l’action <b>Demander une entrée</b> (type Texte), question : « Que souhaitez-vous faire ? ». Siri la pose à voix haute et écoute votre réponse.</li>' +
+          '<li>Ajoutez <b>Obtenir le contenu de l’URL</b> : adresse <code>' + esc(fnUrl()) + '</code>, méthode <b>POST</b>, en-tête <code>x-eva-token</code> = votre jeton, corps <b>JSON</b> avec la clé <code>text</code> = <b>Entrée fournie</b>.</li>' +
           '<li>Ajoutez <b>Énoncer le texte</b> avec le <b>Contenu de l’URL</b>.</li>' +
           '<li>Dites : « <b>Dis Siri, EVA</b> », puis votre question, par exemple « qu’est-ce que j’ai demain ? ».</li>' +
         '</ol><p class="eva-note">Siri ouvre le raccourci, vous dictez, EVA répond à voix haute. iOS n’autorise aucune application à écouter en permanence : c’est Siri qui lance EVA.</p></details>';

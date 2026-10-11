@@ -150,12 +150,12 @@ Chaque action se vérifie puis se confirme avant d'être exécutée.
    - **Copier** le jeton (affiché une seule fois).
 2. **Créer le raccourci :**
    1. App **Raccourcis** → **+** → renommer en **EVA**.
-   2. Ajouter **Dicter le texte** (langue : Français).
+   2. Ajouter **Demander une entrée** (type Texte), question « Que souhaitez-vous faire ? » : Siri la pose à voix haute et écoute la réponse.
    3. Ajouter **Obtenir le contenu de l'URL** :
       - URL : celle affichée dans EVA → Réglages (`https://<projet-de-test>.supabase.co/functions/v1/eva-siri`) ;
       - **Méthode** : POST ;
       - **En-têtes** : `x-eva-token` = le jeton copié ;
-      - **Corps de la requête** : JSON, clé `text` = variable **Texte dicté**.
+      - **Corps de la requête** : JSON, clé `text` = variable **Entrée fournie**.
    4. Ajouter **Énoncer le texte**, avec **Contenu de l'URL**.
 3. **Essayer :**
    - Dire « **Dis Siri, EVA** », puis « Qu'est-ce que j'ai demain ? » : Siri lit la réponse.
