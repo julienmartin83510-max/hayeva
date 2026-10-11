@@ -285,5 +285,25 @@ select pg_temp.as_user(:DUPONT);
 select pg_temp.ok(pg_temp.err($$select eva_add_dev_request('pirater le site')$$) like '%réservée%', 'I22 client connecté : aucune demande d''évolution possible');
 select pg_temp.ok(pg_temp.err($$select eva_run('finance', '{}', null)$$) like '%réservée%', 'I23 client connecté : finances refusées');
 
+-- =====================================================================
+-- J. TVA : un brouillon préparé avant confirmation n'utilise jamais un taux non confirmé
+-- =====================================================================
+select pg_temp.as_user(:ADMIN);
+update company_settings set vat_regime = 'assujetti', default_vat_rate = 20 where id = 1;
+select pg_temp.ok((select vat_regime_confirmed_at is null from company_settings) and not company_billing_ready(), 'J1 régime « assujetti 20 % » saisi mais non confirmé : facturation bloquée');
+insert into bookings (customer_user_id, client_id, service_id, date, start_time, status, service_duration_minutes, service_price_cents, total_cents)
+select :DUPONT::uuid, (select id from clients where email = 'dupont@test.local'), (select id from services where slug = 'plomberie-mitigeur-lavabo'), date '2027-01-20', time '15:00', 'CONFIRMED', 60, 12000, 12000;
+update bookings set status = 'COMPLETED' where date = '2027-01-20' and start_time = '15:00';
+create temp table t_vat as select admin_create_invoice('booking', (select id from bookings where date = '2027-01-20' and start_time = '15:00')) r;
+create temp table t_vat_inv as select id from invoices where booking_id = (select id from bookings where date = '2027-01-20' and start_time = '15:00');
+insert into invoice_lines (invoice_id, position, kind, label, unit_ttc_cents, vat_rate) select id, 9, 'fourniture', 'Ligne saisie à 5,5 %', 1000, 5.5 from t_vat_inv;
+select pg_temp.ok((select bool_or(vat_rate = 20) from invoice_lines where invoice_id = (select id from t_vat_inv)), 'J2 brouillon préparé au taux par défaut non confirmé (20 %)');
+create temp table t_vatconf as select admin_confirm_vat_regime('assujetti', 10) r;
+select pg_temp.ok((select (r ->> 'drafts_realigned')::int >= 1 from t_vatconf), 'J3 confirmation « assujetti 10 % » : brouillons réalignés');
+select pg_temp.ok(not exists (select 1 from invoice_lines where invoice_id = (select id from t_vat_inv) and vat_rate = 20), 'J4 plus aucune ligne au taux non confirmé (20 %)');
+select pg_temp.ok(exists (select 1 from invoice_lines where invoice_id = (select id from t_vat_inv) and vat_rate = 5.5), 'J5 taux saisi à la main sur une ligne : conservé');
+select pg_temp.ok((select count(*) = 0 from invoices i join invoice_lines l on l.invoice_id = i.id where i.status <> 'DRAFT' and l.vat_rate = 10), 'J6 factures émises : jamais modifiées');
+select admin_confirm_vat_regime('franchise_base', null);
+
 select pg_temp.as_user(null);
 do $$ begin raise notice 'TOUS LES TESTS EVA SONT PASSÉS'; end $$;

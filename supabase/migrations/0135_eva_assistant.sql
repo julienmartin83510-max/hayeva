@@ -150,19 +150,30 @@ create trigger trg_company_vat_confirmation before update on public.company_sett
 
 create or replace function public.admin_confirm_vat_regime(p_regime text, p_rate numeric)
 returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_old numeric; v_new numeric; v_inv uuid; v_lines int := 0; v_drafts int := 0;
 begin
   if not is_admin() then raise exception 'Accès réservé à l''administration.' using errcode = '42501'; end if;
   if p_regime not in ('franchise_base', 'assujetti') then raise exception 'Régime de TVA inconnu.'; end if;
   if p_regime = 'assujetti' and (p_rate is null or p_rate not in (5.5, 10, 20)) then
     raise exception 'Taux de TVA par défaut requis (5,5 %%, 10 %% ou 20 %%).';
   end if;
+  select default_vat_rate into v_old from company_settings where id = 1;
+  v_new := case when p_regime = 'assujetti' then p_rate else 0 end;
   perform set_config('app.vat_confirm', 'on', true);
   update company_settings set vat_regime = p_regime, default_vat_rate = case when p_regime = 'assujetti' then p_rate else null end,
          vat_regime_confirmed_at = now(), vat_regime_confirmed_by = auth.uid(), updated_at = now()
    where id = 1;
   if not found then raise exception 'Informations entreprise introuvables.'; end if;
+  -- Brouillons de facture préparés AVANT la confirmation : leurs lignes au taux
+  -- par défaut non confirmé sont réalignées sur le taux confirmé (les taux saisis
+  -- à la main sur une ligne sont conservés). Aucune facture émise n'est touchée.
+  for v_inv in select id from invoices where status = 'DRAFT' loop
+    update invoice_lines set vat_rate = v_new where invoice_id = v_inv and vat_rate is not distinct from coalesce(v_old, 0) and vat_rate is distinct from v_new;
+    get diagnostics v_lines = row_count;
+    if v_lines > 0 then v_drafts := v_drafts + 1; perform _invoice_recompute_draft(v_inv); end if;
+  end loop;
   insert into audit_logs (actor_user_id, action, entity, entity_id) values (auth.uid(), 'vat_regime_confirmed', 'company_settings', null);
-  return jsonb_build_object('ok', true, 'vat_regime', p_regime, 'default_vat_rate', case when p_regime = 'assujetti' then p_rate end);
+  return jsonb_build_object('ok', true, 'vat_regime', p_regime, 'default_vat_rate', case when p_regime = 'assujetti' then p_rate end, 'drafts_realigned', v_drafts);
 end $$;
 revoke all on function public.admin_confirm_vat_regime(text, numeric) from public, anon;
 grant execute on function public.admin_confirm_vat_regime(text, numeric) to authenticated;

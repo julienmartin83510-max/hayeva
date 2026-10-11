@@ -178,7 +178,9 @@ export async function handle(req: Request, rpc: Rpc, now: Date = parisNow()): Pr
   const wantsJson = /application\/json/.test(req.headers.get('accept') || '') || new URL(req.url).searchParams.get('format') === 'json';
   const reply = (status: number, text: string, extra: Record<string, unknown> = {}) => wantsJson
     ? new Response(JSON.stringify({ speech: text, ...extra }), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } })
-    : new Response(text, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+    // Mode texte (raccourci simple) : toujours 200 pour que l'app Raccourcis LISE le message
+    // d'erreur au lieu d'échouer en silence ; le vrai code reste dans l'en-tête X-Eva-Status.
+    : new Response(text, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Eva-Status': String(status) } });
   if (req.method !== 'POST') return reply(405, 'Méthode non autorisée.');
   const token = (req.headers.get('x-eva-token') || '').trim();
   if (!TOKEN_RE.test(token)) return reply(401, ERRORS.APPAREIL_NON_AUTORISE[1]);

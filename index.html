@@ -236,6 +236,40 @@
   var SUPABASE_URL = 'https://hvlzdsuyhrhaflwutwml.supabase.co';
   var SUPABASE_ANON_KEY = 'sb_publishable_doi6KhNWHhfZ6oT13FLTIg_lPwXbt4a';
 
+  // ---------- Version de TEST (adresse eva-test--….netlify.app uniquement) ----------
+  // Sur l'adresse de test, le site ne parle JAMAIS à la production : toutes les
+  // requêtes vers le projet de production sont redirigées vers le projet de
+  // TEST (données fictives). Tant que le projet de test n'est pas renseigné
+  // ci-dessous, aucun appel réseau vers Supabase n'est fait (mode démonstration).
+  // Sur hayeva.fr, rien ne change.
+  var HV_TEST_URL = '';      // ex. 'https://xxxxxxxxxxxx.supabase.co' (projet de TEST)
+  var HV_TEST_KEY = '';      // clé PUBLIQUE (publishable) du projet de TEST
+  var HV_IS_TEST = /^eva-test--/.test(location.hostname);
+  window.HV_ENV = HV_IS_TEST ? 'test' : 'production';
+  if (HV_IS_TEST){
+    var hvProdHost = SUPABASE_URL.replace(/^https:\/\//, ''), hvTestReady = /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(HV_TEST_URL) && HV_TEST_URL.indexOf(hvProdHost) === -1 && !!HV_TEST_KEY;
+    SUPABASE_URL = hvTestReady ? HV_TEST_URL : 'YOUR_SUPABASE_URL';
+    SUPABASE_ANON_KEY = hvTestReady ? HV_TEST_KEY : 'YOUR_SUPABASE_ANON_KEY';
+    var hvFetch = window.fetch.bind(window);
+    window.fetch = function(input, init){
+      var u = typeof input === 'string' ? input : (input && input.url) || '';
+      if (u.indexOf(hvProdHost) !== -1){
+        if (!hvTestReady) return Promise.reject(new Error('Version de test : projet de test non configuré, aucun appel à la production.'));
+        u = u.split(hvProdHost).join(HV_TEST_URL.replace(/^https:\/\//, ''));
+        input = typeof input === 'string' ? u : new Request(u, input);
+      }
+      return hvFetch(input, init);
+    };
+    document.addEventListener('DOMContentLoaded', function(){
+      var b = document.createElement('div');
+      b.id = 'hvTestBanner'; b.setAttribute('role', 'status');
+      b.textContent = hvTestReady ? 'VERSION DE TEST — données fictives, aucun client réel' : 'VERSION DE TEST — projet de test non configuré (aucune donnée)';
+      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#B3261E;color:#fff;font:600 12px/1.2 system-ui,sans-serif;text-align:center;padding:4px 8px calc(4px + env(safe-area-inset-top,0px));pointer-events:none';
+      document.body.appendChild(b);
+      var m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex,nofollow'; document.head.appendChild(m);
+    });
+  }
+
   var configured = SUPABASE_URL.indexOf('YOUR_SUPABASE_URL') !== 0 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE_ANON_KEY') !== 0;
   var client = null;
 
@@ -30635,7 +30669,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var lines = [];
     // Mention de franchise UNIQUEMENT si ce régime est réellement renseigné :
     // jamais de mention fiscale déduite d'une information manquante.
-    if (co.vat_regime === 'franchise_base') lines.push('TVA non applicable, art. 293 B du CGI.');
+    // … et seulement une fois le régime CONFIRMÉ par l'entreprise (réglages d'EVA).
+    if (co.vat_regime === 'franchise_base' && co.vat_regime_confirmed_at) lines.push('TVA non applicable, art. 293 B du CGI.');
     (extra || []).forEach(function(x){ if (x) lines.push(x); });
     if (co.insurance_company) lines.push('Assurance professionnelle : ' + co.insurance_company + (co.insurance_contract_number ? ' — contrat n° ' + co.insurance_contract_number : '') + (co.insurance_coverage ? ' — couverture : ' + co.insurance_coverage : '') + '.');
     if (co.mediator_name) lines.push('Médiateur de la consommation : ' + co.mediator_name + (co.mediator_contact ? ' — ' + co.mediator_contact : '') + '.');
@@ -30691,7 +30726,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var ty = rows.length ? totalsTable(pdf, rows, pdf.lastAutoTable.finalY + 8) : pdf.lastAutoTable.finalY;
     ty += 18;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
-    pdf.text(assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : (co.vat_regime === 'franchise_base' ? 'Montants en euros, nets de taxe.' : 'Montants en euros.'), 40, ty);
+    // Régime de TVA non confirmé : aucune mention de taxe sur le devis (ni TTC, ni « nets de taxe »).
+    var vatConfirmed = !!co.vat_regime_confirmed_at;
+    pdf.text(!vatConfirmed ? 'Montants en euros.' : assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : (co.vat_regime === 'franchise_base' ? 'Montants en euros, nets de taxe.' : 'Montants en euros.'), 40, ty);
     if (co.payment_terms){ pdf.splitTextToSize('Conditions de paiement : ' + co.payment_terms, 515).forEach(function(s2, k){ pdf.text(s2, 40, ty + 14 + k * 12); }); ty += 14; }
     pdf.text('Bon pour accord — date et signature du client :', 40, ty + 30);
     pdf.rect(40, ty + 38, 240, 66);
@@ -30742,7 +30779,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
     footer(pdf, co, isDraft ? [
       'BROUILLON — document de préparation, non valable comme facture.',
       (co.siret && co.vat_regime && co.address_line1 && co.insurance_company && co.mediator_name) ? null
-        : 'Informations légales de l\'entreprise : À RENSEIGNER AVANT FACTURATION.'
+        : 'Informations légales de l\'entreprise : À RENSEIGNER AVANT FACTURATION.',
+      co.vat_regime_confirmed_at ? null : 'Régime de TVA non confirmé : taux indicatifs, recalculés à la confirmation.'
     ] : null);
     pdf.save((isDraft ? 'Brouillon-' : 'Facture-') + (inv.reference || 'HAYEVA') + '.pdf');
   }

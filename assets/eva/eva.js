@@ -1066,8 +1066,9 @@
     msg.hidden = false;
     if (!regime){ msg.className = 'eva-msg no'; msg.textContent = 'Choisissez un régime.'; return; }
     btn.disabled = true;
-    rpc('admin_confirm_vat_regime', { p_regime: regime, p_rate: rate }).then(function(){
-      msg.className = 'eva-msg ok'; msg.textContent = 'Régime de TVA confirmé.'; loadOverview();
+    rpc('admin_confirm_vat_regime', { p_regime: regime, p_rate: rate }).then(function(r){
+      var n = (r && r.drafts_realigned) || 0;
+      msg.className = 'eva-msg ok'; msg.textContent = 'Régime de TVA confirmé.' + (n ? ' ' + n + ' brouillon(s) de facture recalculé(s) au taux confirmé.' : ''); loadOverview();
     }, function(e){ btn.disabled = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); });
   }
   function saveSetting(el){
