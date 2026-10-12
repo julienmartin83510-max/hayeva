@@ -41,7 +41,8 @@
     INTENTION_INCONNUE: 'Commande non prise en charge.',
     DOSSIER_OCCUPE: 'Une proposition est déjà en attente sur ce dossier : confirmez-la ou annulez-la d’abord (onglet Propositions).',
     CONFIRMATION_REQUISE: 'Confirmation explicite requise.',
-    PROPOSITION_INCONNUE: 'Action non prise en charge.'
+    PROPOSITION_INCONNUE: 'Action non prise en charge.',
+    REAUTH_REQUISE: 'Action sensible : confirmez votre identité pour continuer.'
   };
   function errText(e){
     var m = String((e && (e.message || e.details)) || e || '');
@@ -55,6 +56,45 @@
   function rpc(name, args){
     var c = sb(); if (!c) return Promise.reject(new Error('Service indisponible.'));
     return c.rpc(name, args || {}).then(function(r){ if (r.error) throw r.error; return r.data; });
+  }
+  // Actions sensibles : si le serveur exige une connexion récente (REAUTH_REQUISE),
+  // EVA demande de confirmer l'identité puis relance UNE fois la même demande.
+  function rpcAuth(name, args){
+    return rpc(name, args).catch(function(e){
+      if (!/REAUTH_REQUISE/.test(String((e && (e.message || e.details)) || e))) throw e;
+      return reauth().then(function(){ return rpc(name, args); });
+    });
+  }
+  function reauth(){
+    return new Promise(function(resolve, reject){
+      var c = sb(); if (!c) return reject(new Error('Service indisponible.'));
+      c.auth.getUser().then(function(u){
+        var email = u && u.data && u.data.user && u.data.user.email;
+        if (!email) return reject(new Error('Votre session a expiré : reconnectez-vous.'));
+        var v = document.createElement('div'); v.className = 'eva-reauth'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-labelledby', 'evaReauthT');
+        v.innerHTML = '<form class="eva-reauth-box" autocomplete="on">' +
+          '<img src="' + (location.protocol === 'file:' ? '' : '/') + 'images/brand/hayeva-logo-sm.png" alt="" width="900" height="607">' +
+          '<p class="eva-h" id="evaReauthT" style="margin:0">Confirmer mon identité</p>' +
+          '<p class="eva-note" style="margin:0">Action sensible : reconnectez-vous pour la valider. Sur iPhone, touchez le champ mot de passe : si votre mot de passe est enregistré dans le trousseau iCloud, iOS le propose avec Face ID.</p>' +
+          '<input type="email" name="username" autocomplete="username" value="' + esc(email) + '" readonly class="eva-reauth-user" aria-label="Identifiant">' +
+          '<label class="eva-field">Mot de passe<input type="password" name="password" autocomplete="current-password" required data-role="reauth-pw"></label>' +
+          '<p class="eva-msg no" data-role="reauth-msg" hidden></p>' +
+          '<div class="eva-actions" style="margin-top:0"><button type="submit" class="eva-btn cu">Confirmer</button><button type="button" class="eva-btn ghost" data-role="reauth-cancel">Annuler</button></div></form>';
+        root.appendChild(v);
+        var f = v.querySelector('form'), pw = v.querySelector('[data-role="reauth-pw"]'), m = v.querySelector('[data-role="reauth-msg"]');
+        setTimeout(function(){ try { pw.focus(); } catch (e){} }, 60);
+        var done = function(){ v.remove(); };
+        v.querySelector('[data-role="reauth-cancel"]').addEventListener('click', function(){ done(); reject(new Error('Confirmation d’identité annulée : rien n’a été fait.')); });
+        f.addEventListener('submit', function(ev){
+          ev.preventDefault(); var btn = f.querySelector('[type="submit"]'); btn.disabled = true; m.hidden = true;
+          c.auth.signInWithPassword({ email: email, password: pw.value }).then(function(r){
+            pw.value = '';
+            if (r && r.error){ btn.disabled = false; m.hidden = false; m.textContent = 'Mot de passe incorrect.'; return; }
+            done(); resolve();
+          }, function(){ btn.disabled = false; m.hidden = false; m.textContent = 'Connexion impossible. Réessayez.'; });
+        });
+      }, function(){ reject(new Error('Votre session a expiré : reconnectez-vous.')); });
+    });
   }
   function speak(text){
     if (!state.voice || !window.speechSynthesis) return;
@@ -124,6 +164,14 @@
   function tabBtn(k, label){ return '<button type="button" class="eva-tab" role="tab" data-act="tab" data-tab="' + k + '" aria-selected="' + (k === 'today') + '">' + label + '</button>'; }
 
   var lastFocus = null;
+  function openProposal(id){
+    return rpc('eva_proposal_get', { p_id: id }).then(function(pr){
+      if (!pr){ addCard(errorCard('Proposition introuvable.')); return; }
+      addCard(proposalCard(pr));
+      var s = pr.status === 'PENDING' ? 'Action préparée par Siri : vérifiez puis confirmez.' : 'Cette proposition a déjà été traitée.';
+      hintEl.textContent = s;
+    }, function(e){ addCard(errorCard(errText(e))); });
+  }
   function open(prefill){
     if (!root) build();
     lastFocus = document.activeElement;
@@ -133,6 +181,7 @@
     setTab('today');
     loadToday();
     hfBar();
+    if (prefill && typeof prefill === 'object' && prefill.proposal){ openProposal(prefill.proposal); prefill = null; }
     if (typeof prefill === 'string' && prefill){ input.value = prefill.slice(0, 300); hintEl.textContent = 'Demande reçue de Siri : relisez-la puis envoyez-la.'; }
     setTimeout(function(){ try { input.focus({ preventScroll: true }); } catch (e){} }, 120);
   }
@@ -206,6 +255,7 @@
     p = withCtx(p);
     var holder = addCard('<div class="eva-card"><div class="eva-card-head"><span class="eva-agent">EVA</span><span class="eva-q">« ' + esc(p.text) + ' »</span></div><p class="eva-empty">Je consulte vos données…</p></div>');
     if (p.intent === 'invoice_last') return invoiceLast(p, holder);
+    if (p.intent === 'move_booking' && p.args.to_date && (p.args.client || p.args.client_id)) return runFlow({ intent: 'move_to', args: p.args, text: p.text }, holder);
     if (p.intent === 'move_booking') return moveBooking(p, holder);
     if (FLOW[p.intent]) return runFlow(p, holder);
     if (p.ctxMissing){ var sc = 'De quel client parlez-vous ? Ouvrez d’abord sa fiche, par exemple « fiche de Monsieur Martin ».'; holder.outerHTML = card('clients', p.text, sc, ''); speak(sc); return; }
@@ -521,7 +571,7 @@
   }
 
   // ------------------------------------------------ phase 2 : lectures
-  var FLOW = { client_create: 1, client_update: 1, booking_create: 1, booking_cancel: 1, service_create: 1, quote_update: 1, quote_send: 1, report: 1, referrer_admin: 1, wallet_adjust: 1 };
+  var FLOW = { booking_confirm: 1, move_to: 1, client_create: 1, client_update: 1, booking_create: 1, booking_cancel: 1, service_create: 1, quote_update: 1, quote_send: 1, report: 1, referrer_admin: 1, wallet_adjust: 1 };
   var QUERY = { agenda_range: 1, stats: 1, catalog: 1, invoices_list: 1, client_detail: 1, loyalty: 1, maintenance_due: 1, referrals: 1 };
   var ISTATUS = { DRAFT: ['Brouillon', 'info'], ISSUED: ['Émise', 'wait'], PARTIALLY_PAID: ['Partiellement réglée', 'wait'], PAID: ['Réglée', 'ok'], CANCELLED: ['Annulée', 'no'], CREDITED: ['Avoir', 'no'] };
   var BSTATUS = { PENDING: ['À confirmer', 'wait'], CONFIRMED: ['Confirmé', 'ok'], IN_PROGRESS: ['En cours', 'info'], COMPLETED: ['Terminé', 'ok'], CANCELLED: ['Annulé', 'no'], NO_SHOW: ['Absent', 'no'] };
@@ -748,6 +798,25 @@
           build: function(v){ if (!v.phone && !v.email) throw new Error('Indiquez un téléphone ou un e-mail.'); return v; } }), 'Complétez la fiche du nouveau client.');
         return;
       }
+      case 'move_to': return withClient(p, holder, function(d){
+        var c = d.client, today = I.iso(new Date()), up = (d.bookings || []).filter(function(x){ return (x.status === 'PENDING' || x.status === 'CONFIRMED') && x.date >= today && (!a.from_date || x.date === a.from_date); });
+        if (!up.length){ var s0 = 'Aucun rendez-vous à venir pour ' + c.name + '.'; say(holder, card('planning', p.text, s0, ''), s0); return; }
+        if (up.length > 1){ var s1 = c.name + ' a ' + up.length + ' rendez-vous à venir : précisez la date actuelle, par exemple « déplace le rendez-vous du 14/01 de ' + c.name + ' à vendredi 10 h ».'; say(holder, card('planning', p.text, s1, ''), s1); return; }
+        var b0 = up[0];
+        if (!a.to_time){
+          return rpc('eva_run', { p_intent: 'free_slots', p_args: { from: a.to_date, to: a.to_date, duration: 60 }, p_command: p.text }).then(function(r){
+            var out = renderSlots({ text: p.text }, r.data, { booking_id: b0.booking_id, reference: b0.reference }); holder.outerHTML = out.html; speak('Choisissez l’heure pour ' + c.name + '.');
+          });
+        }
+        holder.outerHTML = card('planning', p.text, 'Rendez-vous de ' + c.name + ' (' + fdate(b0.date) + ' à ' + b0.start + ') vers le ' + fdate(a.to_date) + ' à ' + a.to_time + '.', '');
+        return propose('reschedule', { booking_id: b0.booking_id, date: a.to_date, start: a.to_time }, key(), null);
+      });
+      case 'booking_confirm': return withClient(p, holder, function(d){
+        var c = d.client, today = I.iso(new Date()), pend = (d.bookings || []).filter(function(x){ return x.status === 'PENDING' && x.date >= today; });
+        if (!pend.length){ var s0 = 'Aucune demande de rendez-vous en attente pour ' + c.name + '.'; say(holder, card('planning', p.text, s0, ''), s0); return; }
+        holder.outerHTML = card('planning', p.text, pend.length > 1 ? pend.length + ' demandes en attente pour ' + c.name + ' : la plus proche est proposée.' : 'Demande de ' + c.name + ' : ' + fdate(pend[pend.length - 1].date) + ' à ' + pend[pend.length - 1].start + '.', '');
+        return propose('booking_confirm', { booking_id: pend[pend.length - 1].booking_id }, key(), null);
+      });
       case 'client_update': return withClient(p, holder, function(d){
         var c = d.client, orig = {};
         var fields = CLIENT_FIELDS.map(function(f){ orig[f[0]] = c[f[0]] || ''; return { name: f[0], label: f[1], type: f[2], max: f[3], value: c[f[0]] || '' }; })
@@ -897,7 +966,7 @@
   function confirmProp(id, btn){
     var cardEl = btn.closest('[data-prop]'), msg = cardEl.querySelector('[data-role="msg"]');
     cardEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
-    rpc('eva_confirm_proposal', { p_id: id, p_confirm: true }).then(function(r){
+    rpcAuth('eva_confirm_proposal', { p_id: id, p_confirm: true }).then(function(r){
       if (!r.ok){ msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = r.error || 'Action non réalisée.'; return; }
       var res = r.result || {}, txt = 'Fait.', page = null;
       var extra = '';
@@ -924,7 +993,12 @@
       loadToday();
       if (page || extra) msg.insertAdjacentHTML('afterend', '<div class="eva-actions">' + extra + (page ? '<button type="button" class="eva-btn sm ghost" data-act="goto" data-page="' + page + '">Ouvrir la rubrique</button>' : '') + '</div>');
       updateBadge();
-    }, function(e){ msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); cardEl.querySelectorAll('[data-act="cancel"]').forEach(function(b){ b.disabled = false; }); });
+    }, function(e){
+      msg.hidden = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); speak(errText(e));
+      cardEl.querySelectorAll('[data-act="cancel"]').forEach(function(b){ b.disabled = false; });
+      var ack = cardEl.querySelector('[data-role="ack"]'), cf = cardEl.querySelector('[data-act="confirm"]');
+      if (cf) cf.disabled = !!(ack && !ack.checked);
+    });
   }
   function cancelProp(id, btn){
     var cardEl = btn.closest('[data-prop]'), msg = cardEl.querySelector('[data-role="msg"]');
@@ -1022,12 +1096,13 @@
         '<div class="eva-set">' +
           '<label class="eva-toggle"><span>Autoriser les questions par Siri</span><input type="checkbox" data-set="siri"' + (d.siri_enabled ? ' checked' : '') + '></label>' +
           (dv.length ? '<ul class="eva-list">' + dv.map(function(x){
-            return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.label) + '</b><span>Jeton …' + esc(x.hint) + ' · ' + (x.last_used_at ? 'utilisé le ' + esc(new Date(x.last_used_at).toLocaleDateString('fr-FR')) + ' (' + x.use_count + ' fois)' : 'jamais utilisé') + '</span>' +
+            return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.label) + '</b><span>' + (x.scope === 'propose' ? 'Questions + préparation d’actions' : 'Questions seulement') + '</span><span>Jeton …' + esc(x.hint) + ' · ' + (x.last_used_at ? 'utilisé le ' + esc(new Date(x.last_used_at).toLocaleDateString('fr-FR')) + ' (' + x.use_count + ' fois)' : 'jamais utilisé') + '</span>' +
               '<span>' + (x.active ? 'Expire le ' + esc(new Date(x.expires_at).toLocaleDateString('fr-FR')) : x.revoked_at ? 'Révoqué le ' + esc(new Date(x.revoked_at).toLocaleDateString('fr-FR')) : 'Expiré') + '</span>' +
               (x.active ? '<div class="eva-actions">' + actBtn('Révoquer', 'siri-revoke', { id: x.id, label: x.label }) + '</div>' : '') + '</div>' +
               '<span class="eva-pill ' + (x.active ? 'ok' : 'no') + '">' + (x.active ? 'Actif' : 'Inactif') + '</span></li>';
           }).join('') + '</ul>' : '') +
           (act.length < 5 ? '<label class="eva-field">Nom de l’appareil<input type="text" maxlength="60" data-role="siri-label" placeholder="Ex. : iPhone de Julien"></label>' +
+            '<label class="eva-check"><input type="checkbox" data-role="siri-scope" checked> <span>Autoriser Siri à <b>préparer</b> des actions (fiche client, devis et facture en brouillon, confirmer ou déplacer un rendez-vous). Rien n’est exécuté sans votre confirmation dans EVA.</span></label>' +
             '<label class="eva-check"><input type="checkbox" data-role="siri-ack"> <span>Je garde ce jeton pour moi : il permet de consulter mon planning et mes clients. Je pourrai le révoquer à tout moment.</span></label>' +
             '<div class="eva-actions" style="margin-top:0"><button type="button" class="eva-btn cu" data-act="siri-create" disabled>Créer l’accès Siri pour cet iPhone</button></div>' : '<p class="eva-note">Cinq appareils actifs au maximum.</p>') +
           '<div data-role="siri-token">' + (keep.token || '') + '</div><p class="eva-msg' + (keep.msg ? ' ok' : '') + '" data-role="siri-msg"' + (keep.msg ? '' : ' hidden') + '>' + esc(keep.msg || '') + '</p>' +
@@ -1046,7 +1121,8 @@
     var lab = root.querySelector('[data-role="siri-label"]').value.trim();
     if (lab.length < 2) return siriMsg('Nommez l’appareil, par exemple « iPhone de Julien ».', 'no');
     b.disabled = true;
-    rpc('eva_device_create', { p_label: lab, p_days: 365 }).then(function(r){
+    var scopeEl = root.querySelector('[data-role="siri-scope"]');
+    rpcAuth('eva_device_create', { p_label: lab, p_days: 365, p_scope: scopeEl && scopeEl.checked ? 'propose' : 'read' }).then(function(r){
       var html = '<div class="eva-warn" style="background:rgba(95,199,149,.1);color:#9BE0BD"><p>Jeton de « ' + esc(lab) + ' » : copiez-le maintenant dans le raccourci. Il ne sera plus jamais affiché.</p></div>' +
         '<div class="eva-token"><code data-role="siri-token-value">' + esc(r.token) + '</code><button type="button" class="eva-btn sm cu" data-act="siri-copy">Copier</button></div>' +
         '<p class="eva-note">Valable jusqu’au ' + esc(new Date(r.expires_at).toLocaleDateString('fr-FR')) + '. Adresse du raccourci : <code>' + esc(fnUrl()) + '</code></p>';
@@ -1073,7 +1149,7 @@
     msg.hidden = false;
     if (bad){ msg.className = 'eva-msg no'; msg.textContent = 'Chaque plage doit avoir un début et une fin, la fin après le début.'; return; }
     btn.disabled = true;
-    rpc('admin_set_work_hours', { p_work_hours: out, p_travel_margin: margin }).then(function(){
+    rpcAuth('admin_set_work_hours', { p_work_hours: out, p_travel_margin: margin }).then(function(){
       btn.disabled = false; msg.className = 'eva-msg ok'; msg.textContent = 'Horaires enregistrés.';
     }, function(e){ btn.disabled = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); });
   }
@@ -1083,7 +1159,7 @@
     msg.hidden = false;
     if (!regime){ msg.className = 'eva-msg no'; msg.textContent = 'Choisissez un régime.'; return; }
     btn.disabled = true;
-    rpc('admin_confirm_vat_regime', { p_regime: regime, p_rate: rate }).then(function(r){
+    rpcAuth('admin_confirm_vat_regime', { p_regime: regime, p_rate: rate }).then(function(r){
       var n = (r && r.drafts_realigned) || 0;
       msg.className = 'eva-msg ok'; msg.textContent = 'Régime de TVA confirmé.' + (n ? ' ' + n + ' brouillon(s) de facture recalculé(s) au taux confirmé.' : ''); loadOverview();
     }, function(e){ btn.disabled = false; msg.className = 'eva-msg no'; msg.textContent = errText(e); });
@@ -1093,7 +1169,7 @@
     if (el.getAttribute('data-set') === 'tts'){ try { localStorage.setItem(TTS_KEY, el.checked ? '1' : '0'); } catch (e){} return; }
     if (el.getAttribute('data-set') === 'handsfree'){ try { localStorage.setItem(HF_KEY, el.checked ? '1' : '0'); } catch (e){} if (!el.checked) hfStop(''); hfBar(); return; }
     if (el.getAttribute('data-set') === 'siri'){
-      return rpc('eva_siri_set', { p_enabled: el.checked }).then(function(){ siriMsg(el.checked ? 'Questions par Siri autorisées (lecture seule).' : 'Questions par Siri désactivées : tous les iPhone sont refusés.', 'ok'); },
+      return rpcAuth('eva_siri_set', { p_enabled: el.checked }).then(function(){ siriMsg(el.checked ? 'Siri autorisé.' : 'Questions par Siri désactivées : tous les iPhone sont refusés.', 'ok'); },
         function(e){ el.checked = !el.checked; siriMsg(errText(e), 'no'); });
     }
     var p = el.getAttribute('data-set') === 'enabled' ? { p_enabled: el.checked, p_agents: {} } : { p_enabled: null, p_agents: (function(){ var o = {}; o[el.getAttribute('data-agent')] = el.checked; return o; })() };

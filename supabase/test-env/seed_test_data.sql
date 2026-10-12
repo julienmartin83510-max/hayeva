@@ -14,20 +14,20 @@ insert into clients (first_name, last_name, email, phone, address, postal_code, 
   ('Jean', 'Dupont', 'jean.dupont@exemple.test', '0600000002', '5 rue des Pins', '83700', 'Saint-Raphaël', 'particulier'),
   ('Élodie', 'Lefèvre', 'elodie.lefevre@exemple.test', '0600000003', '9 bd de la Mer', '83600', 'Fréjus', 'particulier'),
   ('Sophie', 'Bernard', 'sophie.bernard@exemple.test', '0600000004', '14 av. de Verdun', '83600', 'Fréjus', 'particulier');
--- Rendez-vous : demain (2 confirmés + 1 à confirmer), hier (terminé), la semaine prochaine.
+-- Rendez-vous : demain (2 confirmés + 1 à confirmer), dernier jour ouvré (terminé), la semaine prochaine.
 with d as (select ((now() at time zone 'Europe/Paris')::date) t),
 s as (select id, slug, coalesce(base_price_cents, 0) p, coalesce(duration_minutes, 60) dur from services where is_active order by sort_order nulls last, name limit 3)
 insert into bookings (client_id, guest_name, guest_email, guest_phone, guest_address, service_id, date, start_time, status, service_duration_minutes, service_price_cents, total_cents)
 select c.id, c.first_name || ' ' || c.last_name, c.email, c.phone, c.address || ' ' || c.postal_code || ' ' || c.city, sv.id,
-       d.t + x.dd, x.tm::time, x.st, sv.dur, sv.p, sv.p
+       d.t + x.dd - (case when x.dd < 0 and extract(isodow from d.t + x.dd) = 7 then 1 else 0 end), x.tm::time, x.st, sv.dur, sv.p, sv.p
   from d, (values ('paul.martin@exemple.test', 1, '09:00', 'CONFIRMED', 1), ('jean.dupont@exemple.test', 1, '11:00', 'CONFIRMED', 2),
                ('elodie.lefevre@exemple.test', 1, '14:30', 'PENDING', 3), ('paul.martin@exemple.test', -1, '10:00', 'CONFIRMED', 1),
                ('sophie.bernard@exemple.test', 8, '09:30', 'CONFIRMED', 2)) x(em, dd, tm, st, rk)
   join clients c on c.email = x.em
   join (select *, row_number() over () rk from s) sv on sv.rk = x.rk
- where extract(isodow from d.t + x.dd) < 7;
+ where x.dd < 0 or extract(isodow from d.t + x.dd) < 7;
 select set_config('app.allow_status_change', 'on', true);
-update bookings set status = 'COMPLETED' where date = (now() at time zone 'Europe/Paris')::date - 1 and guest_email = 'paul.martin@exemple.test';
+update bookings set status = 'COMPLETED' where date < (now() at time zone 'Europe/Paris')::date and guest_email = 'paul.martin@exemple.test';
 select set_config('app.allow_status_change', '', true);
 insert into interventions (booking_id, report_status, observations)
 select id, 'DRAFT', 'Robinet de machine à laver grippé (donnée fictive).' from bookings where status = 'COMPLETED' and guest_email = 'paul.martin@exemple.test';

@@ -1,6 +1,6 @@
 # EVA — « Dis Siri, EVA » et « Dis EVA »
 
-## 1. « Dis Siri, EVA » (raccourci iPhone) — lecture seule
+## 1. « Dis Siri, EVA » (raccourci iPhone) — questions et actions préparées
 
 **Fonctionnement.** Siri lance un raccourci nommé « EVA ». Le raccourci dicte la
 question, l'envoie à la fonction serveur `eva-siri` avec le jeton de l'iPhone,
@@ -21,7 +21,9 @@ puis lit la réponse à voix haute.
   - seule son empreinte SHA-256 est conservée en base ;
   - valable 365 jours au plus, révocable à tout moment ;
   - 5 appareils actifs au maximum.
-- **Lecture seule.** Les actions (créer, envoyer, annuler, modifier) ne sont jamais exécutées par la voix. EVA répond « ouvrez EVA » et propose un lien qui ouvre l'application avec la demande pré-remplie, à relire puis à confirmer.
+- **Aucune action exécutée par la voix.** Par défaut, l'accès est en lecture : EVA répond « ouvrez EVA » et propose un lien qui ouvre l'application avec la demande pré-remplie.
+- **Actions préparées (portée « propose », 0138).** Si l'accès a été créé avec « Autoriser Siri à préparer des actions », Siri **prépare** une fiche client, un devis ou une facture en brouillon, la confirmation ou le déplacement d'un rendez-vous (`eva_siri_propose`, liste fermée réglable dans `eva_settings.siri_propose_intents`). Rien n'est exécuté : la proposition attend dans EVA (`?eva_prop=<id>`). Envoi, annulation, suppression : jamais par Siri.
+- **Confirmation sécurisée.** Les actions sensibles (`eva_settings.reauth_kinds`) exigent une connexion de moins de `reauth_minutes` (10 par défaut), vérifiée par le serveur. Sinon, l'écran « Confirmer mon identité » demande le mot de passe ; le trousseau iCloud peut le remplir avec Face ID (fonction d'iOS, non contrôlée par HAYEVA).
 - **Mêmes garde-fous que l'application :**
   - rôle administrateur revérifié à chaque demande ;
   - EVA et ses agents doivent être activés ;
@@ -45,10 +47,10 @@ puis lit la réponse à voix haute.
 pour les actions.
 
 **Mise en service** (NON effectuée, à valider) :
-1. Appliquer la migration `0137_eva_siri.sql`, après `0135` et `0136`.
+1. Appliquer les migrations `0137_eva_siri.sql` puis `0138_eva_siri_actions_reauth.sql`, après `0135` et `0136`.
 2. Déployer la fonction : `supabase functions deploy eva-siri --no-verify-jwt`.
    - Elle utilise les variables `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY`, déjà fournies par Supabase.
-   - `PUBLIC_SITE_URL` est facultative.
+   - `PUBLIC_SITE_URL` est facultative (sur un projet autre que la production, sans elle, aucun lien `open_url` n'est renvoyé).
 3. Publier le site, qui contient la section Réglages et le lien `?eva=`.
 4. Dans EVA : activer Siri, créer l'accès de l'iPhone, puis créer le raccourci.
 

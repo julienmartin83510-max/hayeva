@@ -8,8 +8,9 @@
 //     SHA-256, révocable, expirable), l'activation de Siri, et n'autorise que
 //     des LECTURES, au nom de l'administrateur, avec le journal d'EVA ;
 //  3. renvoie une phrase courte que le raccourci lit à voix haute.
-// Aucune action (création, envoi, annulation…) n'est possible par cette voie :
-// EVA répond qu'il faut ouvrir l'application, où chaque action se confirme.
+// Aucune action n'est EXÉCUTÉE par cette voie. Si l'appareil a la portée « propose »,
+// certaines actions sont PRÉPARÉES (eva_siri_propose) et se confirment dans EVA,
+// avec réauthentification récente pour les plus sensibles ; sinon EVA renvoie vers l'application.
 //
 // Déploiement (NON effectué, sur validation uniquement) :
 //   supabase functions deploy eva-siri --no-verify-jwt
@@ -21,11 +22,16 @@ import '../_shared/eva-intents.js';
 
 // deno-lint-ignore no-explicit-any
 const I = (globalThis as any).EVAIntents;
-const SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || 'https://hayeva.fr';
+// Hors projet de production (projet de test), aucun lien n'est renvoyé vers hayeva.fr
+// tant que PUBLIC_SITE_URL n'est pas renseigné.
+const SUPA_URL = Deno.env.get('SUPABASE_URL') || '';
+const SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || (!SUPA_URL || SUPA_URL.includes('hvlzdsuyhrhaflwutwml') ? 'https://hayeva.fr' : '');
 const QUERY_INTENTS = new Set(['agenda_range', 'stats', 'catalog', 'client_detail', 'maintenance_due', 'invoices_list']);
 const READ_INTENTS = new Set(['agenda', 'brief', 'free_slots', 'conflicts', 'find_client', 'quotes_pending', 'invoices_todo', 'attention', 'finance',
   'client_quotes', 'awaiting', 'capabilities', ...QUERY_INTENTS]);
 const TOKEN_RE = /^eva_[0-9a-f]{48}$/;
+// Actions que Siri peut PRÉPARER (jamais confirmer) si l'appareil y est autorisé.
+const PROPOSE_INTENTS = new Set(['client_create', 'booking_confirm', 'move_booking', 'quote_estimate', 'invoice_last']);
 
 // ------------------------------------------------------------ mise en mots
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -109,7 +115,7 @@ export function speech(intent: string, d: any, today: string, args: any = {}): s
       return [b.length ? plural(b.length, 'demande') + ' de rendez-vous à confirmer : ' + list(b.map((x: any) => x.client), 3) + '.' : '', c.length ? plural(c.length, 'demande') + ' de rappel.' : ''].join(' ').trim();
     }
     case 'capabilities':
-      return "Par Siri, je réponds à vos questions : planning, créneaux libres, devis, factures, clients, entretiens et statistiques. Pour créer, envoyer ou annuler, ouvrez EVA dans l'application : chaque action s'y confirme.";
+      return "Par Siri, je réponds à vos questions : planning, créneaux libres, devis, factures, clients, entretiens et statistiques. Si cet iPhone y est autorisé, je prépare aussi une fiche client, un devis ou une facture en brouillon, ou un rendez-vous à confirmer ou à déplacer : vous confirmez ensuite dans EVA. Rien n'est envoyé ni annulé par la voix.";
     case 'agenda_range': {
       const n = d.count || 0;
       return 'Du ' + sayDate(d.from) + ' au ' + sayDate(d.to) + ' : ' + (n ? plural(n, 'rendez-vous', 'rendez-vous') : 'aucun rendez-vous') + '.' +
@@ -204,9 +210,26 @@ export async function handle(req: Request, rpc: Rpc, now: Date = parisNow()): Pr
     if (p.intent === 'empty') continue;
     if (p.intent === 'unknown'){ out.push("Je n'ai pas compris. Essayez par exemple : qu'est-ce que j'ai demain ?"); continue; }
     if (p.args && (p.args.client === '@ctx')){ out.push('Précisez le nom du client.'); continue; }
+    if (PROPOSE_INTENTS.has(p.intent) && !(p.intent === 'move_booking' && !(p.args && p.args.client))){
+      const pr = await rpc('eva_siri_propose', { p_token_hash: hash, p_intent: p.intent, p_args: p.args || {}, p_command: p.text || text });
+      if (!pr.error && pr.data){
+        if (pr.data.ok){
+          if (SITE_URL) openUrl = SITE_URL + '/?eva_prop=' + encodeURIComponent(pr.data.proposal_id);
+          out.push("J'ai préparé : " + pr.data.title + '. Ouvrez EVA pour vérifier et confirmer' + (pr.data.sensitive ? ', avec Face ID ou votre mot de passe.' : '.'));
+        } else out.push(String(pr.data.need || "Je n'ai pas pu préparer cette action."));
+        continue;
+      }
+      const msg = String((pr.error && pr.error.message) || '');
+      if (!/LECTURE_SEULE/.test(msg)){
+        const [status, m] = errorOf(msg);
+        if (status === 401 || status === 403 || status === 429) return reply(status, m);
+        out.push(m); continue;
+      }
+      // Appareil en lecture seule : renvoi vers l'application, comme les autres actions.
+    }
     if (!READ_INTENTS.has(p.intent)){
       // Action : jamais exécutée par la voix. Le raccourci peut ouvrir EVA avec la demande pré-remplie.
-      openUrl = SITE_URL + '/?eva=' + encodeURIComponent(p.text || text);
+      if (SITE_URL) openUrl = SITE_URL + '/?eva=' + encodeURIComponent(p.text || text);
       out.push(p.intent === 'bulk_refused' ? 'Je ne fais jamais d’action groupée.' : p.intent === 'delete_refused' ? 'EVA ne supprime aucune donnée.'
         : (p.label || 'Cette action') + " : ouvrez EVA dans l'application, l'action s'y vérifie et s'y confirme.");
       continue;

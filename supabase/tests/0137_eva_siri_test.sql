@@ -11,7 +11,9 @@ begin
   raise notice 'OK  %', msg;
 end $$;
 create or replace function pg_temp.as_user(u uuid) returns void language sql as $$
-  select set_config('request.jwt.claim.sub', coalesce(u::text, ''), false), set_config('request.jwt.claim.role', case when u is null then 'anon' else 'authenticated' end, false);
+  select set_config('request.jwt.claim.sub', coalesce(u::text, ''), false), set_config('request.jwt.claim.role', case when u is null then 'anon' else 'authenticated' end, false),
+         -- Session « fraîche » (connexion il y a moins d'une minute), comme après une connexion réelle.
+         set_config('request.jwt.claims', case when u is null then '' else jsonb_build_object('sub', u, 'role', 'authenticated', 'amr', jsonb_build_array(jsonb_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text end, false);
 $$;
 create or replace function pg_temp.err(p_sql text) returns text language plpgsql as $$
 begin execute p_sql; return null; exception when others then return sqlerrm; end $$;

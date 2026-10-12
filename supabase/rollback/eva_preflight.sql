@@ -1,4 +1,4 @@
--- CONTRÔLE AVANT MISE EN PRODUCTION d'EVA (0135 → 0137). LECTURE SEULE.
+-- CONTRÔLE AVANT MISE EN PRODUCTION d'EVA (0135 → 0138). LECTURE SEULE.
 -- Vérifie que la production n'a pas changé depuis l'audit du 11/10/2026 :
 -- si une ligne « BLOQUANT » apparaît, NE PAS appliquer les migrations et refaire l'audit.
 with expected(sig, h) as (values
@@ -27,6 +27,8 @@ select 'BLOQUANT : fonction modifiée depuis l''audit : ' || e.sig
   from expected e left join pg_proc p on p.oid::regprocedure::text = e.sig and p.pronamespace = 'public'::regnamespace
  where p.oid is null or md5(pg_get_functiondef(p.oid)) <> e.h
 union all select 'BLOQUANT : objet EVA déjà présent : ' || relname from pg_class where relnamespace = 'public'::regnamespace and relname like 'eva\_%'
+union all select 'BLOQUANT : fonction EVA déjà présente : ' || proname from pg_proc where pronamespace = 'public'::regnamespace
+   and (proname like 'eva\_%' or proname like '\_eva\_%' or proname in ('_admin_set_work_hours_core', '_admin_confirm_vat_regime_core', 'admin_set_work_hours', 'admin_confirm_vat_regime'))
 union all select 'BLOQUANT : extension pgcrypto absente' where not exists (select 1 from pg_extension where extname = 'pgcrypto')
 union all select 'BLOQUANT : colonne déjà présente : ' || table_name || '.' || column_name from information_schema.columns
  where table_schema = 'public' and ((table_name = 'booking_settings' and column_name in ('work_hours', 'travel_margin_minutes')) or (table_name = 'company_settings' and column_name like 'vat_regime_confirmed%'))

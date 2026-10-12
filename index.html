@@ -242,8 +242,8 @@
   // TEST (données fictives). Tant que le projet de test n'est pas renseigné
   // ci-dessous, aucun appel réseau vers Supabase n'est fait (mode démonstration).
   // Sur hayeva.fr, rien ne change.
-  var HV_TEST_URL = '';      // ex. 'https://xxxxxxxxxxxx.supabase.co' (projet de TEST)
-  var HV_TEST_KEY = '';      // clé PUBLIQUE (publishable) du projet de TEST
+  var HV_TEST_URL = 'https://hqsszehccqgalkhkdbis.supabase.co';  // projet de TEST hayeva-eva-test (données fictives)
+  var HV_TEST_KEY = 'sb_publishable_IL4-spvs9NO0KR-o8yNbxw_Y4y8UCMa';  // clé PUBLIQUE (publishable) du projet de TEST
   var HV_IS_TEST = /^eva-test--/.test(location.hostname);
   window.HV_ENV = HV_IS_TEST ? 'test' : 'production';
   if (HV_IS_TEST){
@@ -22438,11 +22438,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
     // l'espace administrateur affiché, la demande PRÉ-REMPLIE (jamais exécutée
     // d'office : l'administrateur la relit puis l'envoie, et confirme l'action).
     (function(){
-      var q = null;
-      try { q = new URLSearchParams(location.search).get('eva'); } catch (e){}
-      if (!q) return;
-      q = String(q).slice(0, 300);
-      try { var u = new URL(location.href); u.searchParams.delete('eva'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e){}
+      var q = null, pid = null;
+      try { var sp = new URLSearchParams(location.search); q = sp.get('eva'); pid = sp.get('eva_prop'); } catch (e){}
+      if (pid && /^[0-9a-f-]{36}$/i.test(pid)) q = { proposal: pid }; else if (!q) return; else q = String(q).slice(0, 300);
+      try { var u = new URL(location.href); u.searchParams.delete('eva'); u.searchParams.delete('eva_prop'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e){}
       var tries = 0, iv = setInterval(function(){
         var entry = document.querySelector('.adm-eva-entry'), nav = document.getElementById('admBottomNav');
         if ((entry && entry.offsetParent !== null) || (nav && nav.offsetParent !== null)){ clearInterval(iv); window.hvOpenEva(q); }

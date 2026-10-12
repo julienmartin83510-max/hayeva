@@ -151,7 +151,19 @@
     if (/\b(facture|facturer|preparer? (une|la) facture)\b.*\bderniere intervention\b|\bderniere intervention\b.*\bfactur/.test(t)) return { intent: 'invoice_last', args: {}, label: 'Facture de la dernière intervention' };
     if (/\b(decale|decaler|deplace|deplacer|reporte|reporter|bouge|bouger|avance|avancer|change|changer)\b.*\b(rendez|rdv|intervention)/.test(t)){
       var which = /\bdernier\b/.test(t) ? 'last' : (/\b(deuxieme|second)\b/.test(t) ? 1 : 0);
-      return { intent: 'move_booking', args: { date: (when && (when.date || when.from)) || today, which: which, client: parseClient(raw) }, label: 'Déplacer un rendez-vous' };
+      // Nouvelle date visée : « … à jeudi 14 h », « … au 15/01 à 9 h », « … pour demain 10 h ».
+      var mt = new RegExp('\\s(?:a|au|pour|vers)\\s+(?=(?:' + DAYS.join('|') + '|demain|apres-demain|le \\d|\\d{1,2}\\/|\\d{1,2} (?:' + MONTHS.join('|') + ')))').exec(t);
+      var before = mt ? t.slice(0, mt.index) : t, after = mt ? t.slice(mt.index) : '';
+      var wFrom = parseWhen(before, now), wTo = after ? parseWhen(after, now) : null;
+      var mv = { date: (wFrom && (wFrom.date || wFrom.from)) || (!mt && when && (when.date || when.from)) || today, which: which, client: parseClient(raw) };
+      if (wFrom && (wFrom.date || wFrom.from)) mv.from_date = wFrom.date || wFrom.from;
+      if (wTo && wTo.date){ mv.to_date = wTo.date; mv.to_time = parseTime(after.replace(/^\s*(?:a|au|pour|vers)\s+/, ' ')) || ''; }
+      return { intent: 'move_booking', args: mv, label: 'Déplacer un rendez-vous' };
+    }
+    // Confirmer une demande de rendez-vous précise (jamais une simple phrase « je confirme »).
+    if (/\b(confirme|confirmer|accepte|accepter|valide|valider)\b/.test(t) && /\b(demande|rendez|rdv|reservation)/.test(t) && !/\b(tous|toutes)\b/.test(t)){
+      var cc = clientOrCtx(raw, t);
+      return cc ? { intent: 'booking_confirm', args: { client: cc }, label: 'Confirmer une demande de rendez-vous' } : { intent: 'awaiting', args: {}, label: 'Demandes à confirmer' };
     }
     // Horaires de travail / disponibilité : réglage dans EVA (jamais deviné par la voix).
     if (/\bhoraires?\b|\bheures? d ouverture\b/.test(t) && /\b(change|changer|modifie|modifier|mets? a jour|regle|regler|ajuste|ajuster|definis|definir)\b/.test(t)) return { intent: 'work_hours', args: {}, label: 'Horaires de travail' };

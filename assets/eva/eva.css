@@ -173,3 +173,9 @@ html body :where(.eva) b{ font-weight:700; }
 .eva-hf-dot{ width:10px; height:10px; border-radius:50%; background:var(--e-cu); flex:0 0 auto; animation:eva-hf-pulse 1.4s ease-in-out infinite; }
 @keyframes eva-hf-pulse{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.45; transform:scale(.8); } }
 @media (prefers-reduced-motion: reduce){ .eva-hf-dot{ animation:none; } }
+
+/* Confirmation d'identité (actions sensibles) */
+.eva-reauth{ position:absolute; inset:0; z-index:8; display:flex; align-items:flex-end; justify-content:center; background:rgba(6,11,20,.72); padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px)); }
+.eva-reauth-box{ width:100%; max-width:440px; display:flex; flex-direction:column; gap:12px; background:var(--e-surface); border:1px solid rgba(215,161,107,.45); border-radius:20px; padding:18px; box-shadow:0 18px 50px rgba(0,0,0,.45); }
+.eva-reauth-box img{ width:64px; height:auto; align-self:center; }
+.eva-reauth-user{ position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }

@@ -1,4 +1,4 @@
--- RETOUR ARRIÈRE des migrations EVA 0135, 0136 et 0137 (production).
+-- RETOUR ARRIÈRE des migrations EVA 0135, 0136, 0137 et 0138 (production).
 -- À n'exécuter QUE sur décision explicite, en un seul bloc (transaction).
 -- Effet : la base revient exactement à son état d'avant EVA :
 --   * les 4 fonctions existantes modifiées par 0135 retrouvent leur définition
@@ -67,6 +67,16 @@ do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_
 do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = 'eva_siri_set' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
 do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = 'work_hours_valid' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
 do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = 'work_ranges' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+-- 0138 (actions préparées par Siri, réauthentification) : enveloppes et fonctions internes
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_eva_reauth_ok' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_eva_require_reauth' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = 'eva_proposal_get' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = 'eva_siri_propose' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_admin_confirm_vat_regime_core' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_admin_set_work_hours_core' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_eva_confirm_proposal_core' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_eva_device_create_core' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
+do $$ declare f regprocedure; begin for f in select p.oid::regprocedure from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = '_eva_siri_set_core' loop execute 'drop function ' || f || ' cascade'; end loop; end $$;
 
 -- 2) Déclencheur et colonnes ajoutés
 drop trigger if exists trg_company_vat_confirmation on public.company_settings;

@@ -25,7 +25,7 @@ begin
   -- 2) Tâches planifiées : toutes arrêtées (rappels, SMS) — inutiles en test.
   for j in select jobid from cron.job loop perform cron.unschedule(j.jobid); end loop;
   -- 3) Secret des appels internes : propre au projet de test (la production le refuse).
-  update vault.secrets set secret = encode(extensions.gen_random_bytes(32), 'hex') where name = 'webhook_secret';
+  perform vault.update_secret(id, encode(extensions.gen_random_bytes(32), 'hex')) from vault.secrets where name = 'webhook_secret';
   -- 4) Contrôle : plus aucune référence à la production.
   if exists (select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.prosrc like '%' || v_prod || '%') then
     raise exception 'Isolation incomplète.';
