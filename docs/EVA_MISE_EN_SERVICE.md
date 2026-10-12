@@ -114,7 +114,7 @@ Les déclencheurs de la base appellent les fonctions de **production** par leur 
 |---|---|---|
 | T1 ✅ | Vous | Autoriser la création d'un **2ᵉ projet Supabase gratuit** « hayeva-eva-test » (0 €, plan gratuit : 2 projets actifs autorisés). |
 | T2 ✅ | Claude | Appliquer les migrations, aligner les fonctions sur la production, isoler le projet, déployer `eva-siri` **dans le projet de test uniquement**. |
-| T3 | Vous | Dans le projet de test : *Authentication > Users > Add user*, avec votre e-mail, un mot de passe de test et « Auto confirm ». Ensuite, Claude passe ce compte administrateur et charge les données fictives. |
+| T3 | Vous | Dans le projet de test : *Authentication > Users > Add user > Create new user*, avec votre e-mail, un mot de passe de test et « Auto Confirm User ». Ce premier compte confirmé devient **automatiquement** administrateur de test, et les rendez-vous fictifs sont recalés sur ce jour : « demain » contient toujours 3 rendez-vous. Script : `supabase/test-env/auto_admin_first_user.sql`, installé et testé. |
 | T4 ✅ | Claude | Renseigner `HV_TEST_URL` et `HV_TEST_KEY` (clé publique du projet de test), puis pousser la branche `eva-test`. |
 | T4 | Vous | Dans Netlify : *Site configuration > Build & deploy > Branches and deploy contexts > Branch deploys > Let me add individual branches* → `eva-test`. |
 | T5 | Vous | Tests sur l'iPhone (§ 5). |

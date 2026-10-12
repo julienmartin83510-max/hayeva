@@ -254,6 +254,8 @@
       return { intent: 'find_client', args: { query: q.replace(/^(?:client|cliente)\s+/i, '') }, label: 'Recherche de client' };
     }
     if (/\bintervention|\brendez|\brdv\b|\bplanning\b|\bagenda\b|\bprogramme\b|\bmontre\b|\bqu ai-je\b|\bqu est-ce que j ai\b/.test(t) || when){
+      // Période (« cette semaine », « les 10 prochains jours ») : tout le planning de la période, pas seulement le 1er jour.
+      if (when && when.from && when.to && when.from !== when.to) return { intent: 'agenda_range', args: { from: when.from, to: when.to }, label: 'Rendez-vous (' + when.label + ')' };
       return { intent: 'agenda', args: { date: (when && (when.date || when.from)) || today }, label: 'Interventions' + (when ? ' (' + when.label + ')' : " (aujourd'hui)") };
     }
     return { intent: 'unknown', label: 'Commande non reconnue' };
