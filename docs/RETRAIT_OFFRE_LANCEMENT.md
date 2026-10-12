@@ -53,8 +53,21 @@ Branche : `feature/retrait-offre-lancement`, créée à partir de `main` (3fde26
 - La fidélité.
 - Le parrainage, y compris l'avantage filleul et `_referral_set_booking_discount`.
 - Le bandeau « Interventions disponibles à partir du 2 janvier 2027 ». C'est une information de fonctionnement, pas une promotion.
-- Le texte « Profitez de -10 % si vous réglez votre prestation à l'avance ». Il n'est pas lié au lancement : **à confirmer par vous** (voir § 5).
 - Tout l'historique en base.
+
+## 3 bis. Réduction « -10 % si vous réglez à l'avance » (retirée)
+
+- **Texte retiré** de `index.html` (Tarifs) et de `sudmaintenance.html`.
+- **Aucun calcul ne l'appliquait.** Vérifié dans le code et dans la base de production :
+  - les fonctions de réservation (`create_booking`, `create_guest_or_quote_booking`, `guard_direct_booking_insert`) enregistrent toujours une remise de 0 ;
+  - la seule remise automatique est l'avantage filleul du parrainage, conservé ;
+  - production : 0 réservation, 0 devis et 0 ligne de facture portent une remise.
+- **Conservé :** le champ « Remise (€) » du calculateur de devis de l'administration. Il est manuel, vaut 0 par défaut et n'est jamais appliqué automatiquement.
+
+## 3 ter. À décider (non modifié, car ce sont des tarifs ou le contenu de vos offres)
+
+- **Remises professionnelles multi-logements** (Tarifs professionnels) : -10 % de 2 à 4 logements, -15 % de 5 à 9, -20 % à partir de 10. C'est une grille permanente affichée et calculée automatiquement pour les professionnels. Elle n'est pas liée au lancement.
+- **« Un cadeau surprise HAYEVA offert, au choix »** : il figure dans les packs Premium (climatisation, chaudière gaz, chaudière fioul, dans la base) et dans l'Entretien Multi-Services. C'est un élément permanent des offres, pas lié au lancement.
 
 ## 4. Désactivation côté base : migration préparée, NON appliquée
 
@@ -70,13 +83,30 @@ Testée sur une copie locale de la base :
 - déclencheurs désactivés, fonctions inaccessibles ;
 - la migration peut être rejouée sans effet de bord.
 
+**Vérifications préalables (production, lecture seule, 12/10/2026) :**
+- 11 participations, 6 participants distincts, **toutes annulées**. Leurs 11 réservations sont annulées : aucune réservation active depuis l'ouverture de la fenêtre.
+- La seule participation « annulée par HAYEVA » est une entrée de test technique, selon sa note admin.
+- 0 tirage, 0 gagnant, règlement jamais publié, aucun e-mail envoyé au sujet du jeu (types d'e-mails : réservation reçue, confirmée, annulée, déplacée).
+- **Aucun engagement en cours envers un participant.**
+- Les migrations des branches déjà poussées (0134 à 0138) ne sont pas appliquées en production : un push n'applique aucune migration.
+
+**Sauvegarde et retour arrière :**
+- Avant toute modification, 0139 enregistre dans `launch_campaign_closure_0139` (accès réservé au serveur) l'ancienne date de fin, l'état des déclencheurs et les droits.
+- `supabase/rollback/0139_rollback.sql` restaure exactement cet état.
+- Testé sur copie locale : application, deuxième application sans effet, puis retour arrière identique à l'état d'origine. Les participations sont intactes.
+- Aucune donnée n'étant supprimée, aucun export n'est indispensable. Un export CSV de `launch_campaign_entries` depuis le tableau de bord reste possible par précaution (le plan gratuit n'a pas de sauvegarde téléchargeable).
+
 `HAYEVA100` est déjà inactif : rien à faire. On peut aussi le laisser tel quel, pour que l'assistant continue de répondre qu'il n'est pas valable.
 
 ## 5. Décisions qui vous reviennent
 
-1. Appliquer `0139` en production, pour arrêter la création de participations.
-2. Garder ou retirer « -10 % si vous réglez à l'avance » (Tarifs). Je n'y ai pas touché.
-3. Publier cette branche : push, puis fusion. Attention, `main` n'a pas le garde-fou Netlify des branches EVA : un push de branche peut créer une prévisualisation Netlify.
+1. Appliquer `0139` en production (principe validé le 12/10, exécution en attente de votre feu vert).
+2. Remises multi-logements et cadeau des packs Premium (§ 3 ter).
+3. Fusion vers `main` et mise en ligne : non effectuées.
+
+**Garde-fou Netlify** (`netlify.toml`, sur cette branche) : seule la production (branche `main`) est construite. Simulé pour chaque contexte :
+- production/main → construction ;
+- branch-deploy et deploy-preview de toute autre branche → annulés.
 
 ## 6. Vérifications effectuées
 
