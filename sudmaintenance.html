@@ -806,7 +806,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
        reskinner en immersion une page univers métier). Trouvé en audit :
        plusieurs composants de "chrome" permanents — bulle assistant
        flottante, avatar/puces/icônes de l'Espace Client-Pro, carte
-       "prochain rendez-vous", bandeau du jeu de lancement — combinaient un
+       "prochain rendez-vous" — combinaient un
        fond/texte figé (souvent #fff) avec CES variables réskinnables,
        fonctionnant par coïncidence tant qu'aucun univers n'était actif. Dès
        qu'un visiteur cliquait un onglet Climatisation/Chauffage/Plomberie
@@ -2394,31 +2394,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
   }
 
   /* Tarifs */
-  .promo-banner{
-    background:var(--terracotta);
-    color:var(--white);
-    border-radius:12px;
-    padding:22px 26px;
-    margin-bottom:28px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-  }
-  .promo-badge{
-    display:inline-block;
-    align-self:flex-start;
-    font-size:0.76rem;
-    font-weight:800;
-    letter-spacing:0.04em;
-    text-transform:uppercase;
-    background:color-mix(in srgb, var(--white) 20%, transparent);
-    padding:5px 12px;
-    border-radius:999px;
-  }
-  .promo-banner h3{color:var(--white); font-size:1.15rem; text-transform:none; letter-spacing:0;}
-  .promo-banner p{color:color-mix(in srgb, var(--white) 88%, transparent); font-size:0.92rem;}
-  .promo-legal{font-size:0.78rem !important; font-style:italic;}
-
   .multi-card{
     position:relative;
     background:var(--cream);
@@ -3308,14 +3283,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .ec-badge-confirmed{ background:rgba(44,111,179,0.15); color:#2C6FB3; }
   .ec-badge-progress{ background:rgba(44,111,179,0.15); color:#2C6FB3; }
   .ec-badge-completed{ background:rgba(47,122,79,0.15); color:#2F7A4F; }
-  .ec-launch-badge{
-    width:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    font-size:0.78rem; color:var(--ink-soft-fixed); margin-top:2px;
-  }
-  .ec-launch-badge-tag{
-    display:inline-block; font-size:0.66rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
-    background:rgba(232,90,18,0.12); color:var(--terracotta-deep-fixed); border-radius:999px; padding:3px 10px;
-  }
   .ec-badge-cancelled{ background:rgba(178,58,58,0.12); color:#B23A3A; }
   .ec-badge-draft{ background:var(--sand-deep); color:var(--ink-soft-fixed); }
   .ec-badge-particulier{ background:var(--sky-accent-soft); color:var(--sky-accent); }
@@ -4905,8 +4872,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
   /* [hidden] doit rester prioritaire même sous 880px (ex. #proBottomNav
      masqué pour un compte admin, voir initAdminPanel) — sans cette règle,
      la déclaration display:flex ci-dessus (origine "auteur") l'emporterait
-     sur le display:none du user-agent pour [hidden] (même piège que le
-     placeholder Switch 2 de la campagne de lancement). */
+     sur le display:none du user-agent pour [hidden]. */
   .hv-bottomnav[hidden]{ display:none !important; }
   .hv-bottomnav-item{
     flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
@@ -6370,162 +6336,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
     .lightbox-close{ top:-46px; right:0; }
   }
 
-  /* ---------- Campagne "Grand jeu de lancement HAYEVA" ----------
-     Section autonome entre le hero et #besoin, entièrement pilotée par
-     window.HAYEVA_LAUNCH_CAMPAIGN (voir le <script> juste après son HTML) :
-     dates, noms/valeurs des lots et activation se modifient à un seul
-     endroit, jamais en dur ici. N'utilise aucun nouveau parcours de
-     réservation : le CTA pointe vers #rdv, le parcours existant. */
-  .launch-campaign{
-    position:relative;
-    overflow:hidden;
-    padding-block:64px;
-    background:linear-gradient(160deg, var(--sky-deep-fixed) 0%, var(--navy-fixed) 100%);
-    color:#fff;
-  }
-  .lc-particle{
-    position:absolute;
-    border-radius:50%;
-    pointer-events:none;
-    background:radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%);
-    opacity:0.35;
-  }
-  @media (prefers-reduced-motion: no-preference){
-    .lc-particle{ animation:lcParticleFloat 9s ease-in-out infinite; }
-  }
-  @keyframes lcParticleFloat{
-    0%, 100%{ transform:translateY(0) scale(1); opacity:0.25; }
-    50%{ transform:translateY(-18px) scale(1.15); opacity:0.55; }
-  }
-  .lc-inner{ position:relative; z-index:1; max-width:1080px; margin-inline:auto; padding-inline:20px; text-align:center; }
-  .lc-eyebrow{
-    display:inline-flex; align-items:center; gap:8px;
-    font-size:0.78rem; letter-spacing:0.14em; text-transform:uppercase;
-    color:#FFD9B8; font-weight:700; margin-bottom:14px;
-  }
-  .lc-title{
-    font-family:'Poppins',sans-serif; font-weight:800;
-    font-size:clamp(1.7rem, 4vw, 2.6rem);
-    letter-spacing:0.01em; margin:0 0 8px;
-    background:linear-gradient(90deg, #fff 0%, #FFD9B8 100%);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
-  .lc-subtitle{ max-width:620px; margin:0 auto 28px; font-size:1.05rem; color:rgba(255,255,255,0.85); line-height:1.5; }
-  .lc-timeline{
-    display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
-    gap:0 18px; margin-bottom:28px;
-  }
-  .lc-timeline-item{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 4px; }
-  .lc-timeline-label{ font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.6); }
-  .lc-timeline-value{ font-weight:700; font-size:0.92rem; letter-spacing:0.02em; color:#FFD9B8; }
-  .lc-timeline-sep{ width:1px; height:28px; background:rgba(255,255,255,0.18); }
-  @media (max-width:640px){
-    .lc-timeline{ flex-direction:column; gap:10px; }
-    .lc-timeline-sep{ display:none; }
-  }
-  .lc-intro{ max-width:640px; margin:0 auto 16px; font-size:1.02rem; line-height:1.6; color:rgba(255,255,255,0.9); }
-  .lc-intro-note{ font-size:0.88rem; color:rgba(255,255,255,0.65); margin-bottom:32px; }
-  .lc-lots-heading{
-    font-family:'Poppins',sans-serif; font-weight:700; font-size:1.05rem;
-    letter-spacing:0.04em; text-transform:uppercase; color:#fff; margin-bottom:20px;
-  }
-  .lc-cards{
-    display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:20px;
-    text-align:left; margin-bottom:16px;
-  }
-  .lc-card--hero{ grid-column:1 / -1; }
-  @media (max-width:760px){ .lc-cards{ grid-template-columns:1fr; } }
-  .lc-card{
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.14);
-    border-radius:16px; padding:22px;
-    display:flex; flex-direction:column; gap:10px;
-    backdrop-filter:blur(6px);
-  }
-  .lc-card--hero{
-    background:linear-gradient(135deg, rgba(232,90,18,0.14), rgba(255,255,255,0.06));
-    border:1px solid rgba(232,90,18,0.45);
-    padding:28px;
-  }
-  @media (min-width:761px){
-    .lc-card--hero{ display:grid; grid-template-columns:1.1fr 1fr; gap:28px; align-items:center; }
-    .lc-card--hero .lc-card-visual{ margin-bottom:0; }
-  }
-  .lc-card-tag{
-    align-self:flex-start; font-size:0.7rem; font-weight:700; letter-spacing:0.08em;
-    text-transform:uppercase; padding:4px 12px; border-radius:999px;
-  }
-  .lc-card--hero .lc-card-tag{ grid-column:1 / -1; }
-  .lc-card-tag--grand{ background:var(--terracotta-fixed); color:#fff; }
-  .lc-card-tag--hayeva{ background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.3); }
-  .lc-card-visual{
-    width:100%; aspect-ratio:4/3; border-radius:12px;
-    background:linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
-    border:1px dashed rgba(255,255,255,0.25);
-    display:flex; align-items:center; justify-content:center;
-    overflow:hidden; position:relative;
-  }
-  .lc-card-visual--hero{ order:-1; aspect-ratio:1/1; max-width:340px; margin-inline:auto; }
-  @media (min-width:761px){ .lc-card-visual--hero{ order:0; max-width:none; } }
-  .lc-card-visual img{ width:100%; height:100%; object-fit:contain; display:block; }
-  .lc-card-visual-placeholder{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:8px; padding:16px; text-align:center; color:rgba(255,255,255,0.65);
-  }
-  .lc-card-visual-placeholder[hidden]{ display:none; }
-  .lc-card-visual-placeholder svg{ width:52px; height:52px; opacity:0.7; }
-  .lc-card-visual-placeholder span{ font-size:0.74rem; line-height:1.4; }
-
-  /* Lot n°2 et n°3 — visuels photo/carte pleine largeur (aucune bande
-     blanche) : recadrage centré plutôt que le "contain" par défaut utilisé
-     pour le carton produit du Lot n°1. */
-  .lc-card-visual.lc-visual--cover img{ object-fit:cover; object-position:center; }
-  .lc-card-name{ font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; margin:0; }
-  .lc-card--hero .lc-card-name{ font-size:1.5rem; }
-  .lc-card-value{ font-weight:700; font-size:0.92rem; color:#FFD9B8; margin:0; }
-  .lc-card-desc{ font-size:0.92rem; color:rgba(255,255,255,0.8); line-height:1.5; margin:0; }
-  .lc-card-fineprint{ font-size:0.76rem; color:rgba(255,255,255,0.55); margin:2px 0 0; font-style:italic; }
-  .lc-total-value{
-    text-align:center; font-family:'Poppins',sans-serif; font-weight:700;
-    font-size:1rem; letter-spacing:0.03em; color:rgba(255,255,255,0.9); margin-bottom:28px;
-  }
-  .lc-draw{
-    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
-    font-family:'Poppins',sans-serif; font-weight:700;
-    font-size:clamp(1rem, 2.4vw, 1.35rem);
-    padding:16px 24px; border-radius:14px; margin-bottom:28px;
-    background:linear-gradient(90deg, rgba(232,90,18,0.22), rgba(44,74,102,0.22));
-    border:1px solid rgba(232,90,18,0.5);
-    letter-spacing:0.03em;
-  }
-  .lc-cta-row{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:14px; }
-  .lc-terms-link{
-    display:block; margin-top:18px; font-size:0.85rem;
-    color:rgba(255,255,255,0.65); text-decoration:underline; text-underline-offset:3px;
-  }
-  .lc-terms-link:hover{ color:#fff; }
-  .launch-campaign[hidden]{ display:none; }
-
-  /* Badge "Offre de lancement" dans la zone de réservation (#rdv) */
-  .rdv-launch-badge{
-    display:flex; align-items:flex-start; gap:12px;
-    max-width:640px; margin:16px auto 0;
-    padding:14px 18px; border-radius:12px;
-    background:linear-gradient(135deg, rgba(232,90,18,0.08), rgba(44,74,102,0.08));
-    border:1px solid rgba(232,90,18,0.35);
-    text-align:left;
-  }
-  .rdv-launch-badge[hidden]{ display:none; }
-  .rdv-launch-badge-icon{
-    flex-shrink:0; width:34px; height:34px; border-radius:50%;
-    background:var(--terracotta); color:#fff;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .rdv-launch-badge-icon svg{ width:18px; height:18px; }
-  .rdv-launch-badge strong{ display:block; font-size:0.82rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--terracotta-deep); margin-bottom:3px; }
-  .rdv-launch-badge span{ font-size:0.9rem; color:var(--ink-soft); line-height:1.4; }
-  .rdv-launch-badge-link{ display:inline-block; margin-left:6px; font-weight:700; color:var(--terracotta-deep); text-decoration:underline; text-underline-offset:2px; white-space:nowrap; }
-
   /* HAYEVA Pro (application installée) : aucun lien vers le site public. */
   html.hayeva-pro-app .hv-site-link{ display:none !important; }
   #admIvSyncBadge[data-state="offline"]{ color:#B23A3A !important; }
@@ -6961,114 +6771,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
     </div>
   </section>
 
-  <!-- ============================================================
-       CAMPAGNE "GRAND JEU DE LANCEMENT HAYEVA" — entièrement pilotée par
-       window.HAYEVA_LAUNCH_CAMPAIGN (script juste après cette section) :
-       dates, lots et activation se modifient à un seul endroit. Aucun
-       second parcours de réservation : le CTA renvoie vers #rdv (parcours
-       existant). Aucun tirage n'est effectué côté navigateur ; ce bloc est
-       uniquement informatif. */ -->
-  <section class="launch-campaign section-relative" id="campagneLancement">
-    <span class="lc-particle" style="width:6px; height:6px; top:12%; left:8%;"></span>
-    <span class="lc-particle" style="width:4px; height:4px; top:24%; left:88%; animation-delay:-2s;"></span>
-    <span class="lc-particle" style="width:5px; height:5px; top:68%; left:14%; animation-delay:-4s;"></span>
-    <span class="lc-particle" style="width:7px; height:7px; top:78%; left:92%; animation-delay:-1s;"></span>
-    <span class="lc-particle" style="width:4px; height:4px; top:40%; left:50%; animation-delay:-6s;"></span>
-    <span class="lc-particle" style="width:5px; height:5px; top:8%; left:60%; animation-delay:-3s;"></span>
-    <div class="lc-inner">
-      <p class="lc-eyebrow">Lancement HAYEVA</p>
-      <h2 class="lc-title">GRAND JEU<br>DE LANCEMENT</h2>
-      <p class="lc-subtitle">Réservez votre intervention HAYEVA pendant la période de lancement et tentez de remporter l'un de nos 3 grands lots.</p>
-
-      <div class="lc-timeline" id="lcTimeline">
-        <div class="lc-timeline-item">
-          <span class="lc-timeline-label">Réservations</span>
-          <span class="lc-timeline-value" id="lcTimelineBooking">06 OCT. → 06 DÉC. 2026</span>
-        </div>
-        <div class="lc-timeline-sep" aria-hidden="true"></div>
-        <div class="lc-timeline-item">
-          <span class="lc-timeline-label">Interventions</span>
-          <span class="lc-timeline-value" id="lcTimelineService">À PARTIR DU 02 JAN. 2027</span>
-        </div>
-        <div class="lc-timeline-sep" aria-hidden="true"></div>
-        <div class="lc-timeline-item">
-          <span class="lc-timeline-label">Tirage</span>
-          <span class="lc-timeline-value" id="lcTimelineDraw">31 JAN. 2027</span>
-        </div>
-      </div>
-
-      <p class="lc-intro" id="lcIntro">Pour célébrer son lancement, HAYEVA organise un grand tirage au sort. Réservez une prestation éligible entre le 6 octobre et le 6 décembre 2026 inclus pour une intervention à partir du 2 janvier 2027 et participez au tirage au sort selon les conditions du règlement.</p>
-      <p class="lc-intro lc-intro-note">La participation associée à une réservation est soumise aux conditions du règlement, notamment concernant la réalisation, l'annulation ou le report de la prestation.</p>
-
-      <p class="lc-lots-heading">3 grands lots à gagner</p>
-
-      <div class="lc-cards">
-        <div class="lc-card lc-card--hero">
-          <span class="lc-card-tag lc-card-tag--grand">Lot n°1 — Grand lot</span>
-          <div class="lc-card-visual lc-card-visual--hero">
-            <img loading="lazy" decoding="async" src="images/campaign/nintendo-switch-2.jpg" alt="Nintendo Switch 2 — visuel produit officiel"
-                 id="lcSwitchImg"
-                 onerror="this.hidden=true; var ph=this.nextElementSibling; if(ph) ph.hidden=false;">
-            <div class="lc-card-visual-placeholder" id="lcSwitchPlaceholder" hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="4"/><circle cx="7.5" cy="12" r="1.6"/><circle cx="16.5" cy="10" r="1"/><circle cx="16.5" cy="14" r="1"/></svg>
-              <span>Visuel produit officiel à venir<br>(image Nintendo Switch 2 sous licence)</span>
-            </div>
-          </div>
-          <h3 class="lc-card-name">Nintendo Switch 2</h3>
-          <p class="lc-card-value" id="lcLot1Value">Valeur indicative : 499,99 €</p>
-          <p class="lc-card-desc">Le grand lot du jeu de lancement HAYEVA.</p>
-          <p class="lc-card-fineprint">Visuel non contractuel.</p>
-        </div>
-
-        <div class="lc-card">
-          <span class="lc-card-tag lc-card-tag--hayeva">Lot n°2</span>
-          <div class="lc-card-visual lc-visual--cover">
-            <img src="images/campaign/lot-credit-hayeva.jpg" alt="Carte cadeau HAYEVA — 200 € de crédit prestations"
-                 loading="lazy"
-                 onerror="this.hidden=true; var ph=this.nextElementSibling; if(ph) ph.hidden=false;">
-            <div class="lc-card-visual-placeholder" hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>
-              <span>Crédit HAYEVA</span>
-            </div>
-          </div>
-          <h3 class="lc-card-name">200 € de crédit HAYEVA</h3>
-          <p class="lc-card-value" id="lcLot2Value">Valeur : 200 €</p>
-          <p class="lc-card-desc">200 € à utiliser sur des prestations HAYEVA éligibles, selon les conditions du règlement.</p>
-          <p class="lc-card-fineprint">Avantage commercial HAYEVA non convertible en espèces.</p>
-        </div>
-
-        <div class="lc-card">
-          <span class="lc-card-tag lc-card-tag--hayeva">Lot n°3</span>
-          <div class="lc-card-visual lc-visual--cover">
-            <img src="images/campaign/lot-entretien-climatisation.jpg"
-                 alt="Technicien HAYEVA réalisant l'entretien d'une climatisation murale"
-                 loading="lazy"
-                 onerror="this.hidden=true; var ph=this.nextElementSibling; if(ph) ph.hidden=false;">
-            <div class="lc-card-visual-placeholder" hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6Z"/><path d="M9 12l2 2 4-4"/></svg>
-              <span>Entretien climatisation</span>
-            </div>
-          </div>
-          <h3 class="lc-card-name">Entretien climatisation offert</h3>
-          <p class="lc-card-value" id="lcLot3Value">Valeur : jusqu'à 129 €</p>
-          <p class="lc-card-desc">Un entretien de climatisation HAYEVA offert, d'une valeur maximale de 129 €, selon les conditions du règlement.</p>
-        </div>
-      </div>
-
-      <p class="lc-total-value" id="lcTotalValue">Près de 780 € de lots</p>
-
-      <p class="lc-draw" id="lcDraw">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 2v4M16 2v4"/></svg>
-        TIRAGE AU SORT — 31 JANVIER 2027
-      </p>
-
-      <div class="lc-cta-row">
-        <a class="btn-hero-primary" href="#rdv">Réserver mon intervention</a>
-      </div>
-      <a href="#" class="lc-terms-link" id="lcTermsOpenBtn">Voir le règlement du jeu</a>
-    </div>
-  </section>
-
   <section id="besoin" class="section-relative">
     <div class="deco-blob" style="width:240px; height:240px; top:-70px; right:4%; background:var(--sky-accent); opacity:0.13;"></div>
     <div class="wrap">
@@ -7435,13 +7137,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
         <p>Un tarif fixe pour la plupart des interventions courantes, un devis gratuit pour le reste — souvent confirmé grâce à une simple photo.</p>
       </div>
 
-      <div id="climPromo" class="promo-banner" hidden>
-        <span class="promo-badge">Offre exclusive Noël</span>
-        <h3>Pack Découverte Entretien Climatisation — 99 € TTC</h3>
-        <p>Du 15 octobre au 15 novembre, toute réservation d'un entretien de climatisation vous fait participer à un tirage au sort pour tenter de gagner une Nintendo Switch 2.</p>
-        <p class="promo-legal">Jeu sans obligation d'achat — pour participer sans réserver, contactez-nous par email ou téléphone.</p>
-      </div>
-
       <div class="multi-card">
         <span class="multi-badge">Le plus économique</span>
         <div class="multi-head">
@@ -7731,14 +7426,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
 
   <script>
     try{
-      var promo = document.getElementById('climPromo');
-      var now = new Date();
-      var start = new Date(now.getFullYear(), 9, 15);
-      var end = new Date(now.getFullYear(), 10, 15, 23, 59, 59);
-      if (now >= start && now <= end) promo.hidden = false;
-    }catch(e){}
-
-    try{
       var priceLogos = document.getElementById('priceLogos');
       var priceEmpty = document.getElementById('priceEmpty');
       var priceGroups = document.querySelectorAll('#priceReveal .price-group');
@@ -8008,16 +7695,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
         <p class="eyebrow">Réservation en ligne</p>
         <h2>Prenez rendez-vous en quelques clics.</h2>
         <p>Choisissez votre prestation, une date et un horaire, puis envoyez votre demande. Nous vous confirmons la disponibilité du créneau par retour rapide.</p>
-        <div class="rdv-launch-badge" id="rdvLaunchBadge">
-          <span class="rdv-launch-badge-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6Z"/><path d="M9 12l2 2 4-4"/></svg>
-          </span>
-          <span>
-            <strong>Offre de lancement</strong>
-            <span id="rdvLaunchBadgeText">Votre réservation peut être éligible au Grand Jeu de lancement HAYEVA.</span>
-            <a href="#" id="rdvLaunchBadgeLink" class="rdv-launch-badge-link">En savoir plus</a>
-          </span>
-        </div>
       </div>
 
       <div class="booking-card">
@@ -8161,7 +7838,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
             <p>Votre demande de rendez-vous a bien été envoyée. Nous vous confirmons rapidement le créneau.</p>
             <p class="hint">Vous pouvez joindre une photo directement dans l'email qui vient de s'ouvrir avant de l'envoyer.</p>
             <p class="hint" id="confirmFallback"></p>
-            <p class="hint bk-launch-eligible-note" id="bkConfirmDemoLaunchNote" hidden>Cette réservation est enregistrée pour l'opération de lancement HAYEVA. Son éligibilité définitive dépend des conditions du règlement.</p>
           </div>
           <div class="confirm-screen" id="bkConfirmReal" hidden>
             <span class="confirm-check">✓</span>
@@ -8169,7 +7845,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
             <p>Merci d'avoir pris rendez-vous avec Hayeva.</p>
             <p>Votre demande a bien été enregistrée. Nous vous confirmerons votre rendez-vous très prochainement.</p>
             <p class="hint" id="bkConfirmRealDetails"></p>
-            <p class="hint bk-launch-eligible-note" id="bkConfirmRealLaunchNote" hidden>Cette réservation est enregistrée pour l'opération de lancement HAYEVA. Son éligibilité définitive dépend des conditions du règlement.</p>
             <div class="bk-prep-block" id="bkConfirmPrepBlock" hidden>
               <p class="bk-prep-block-title">Préparez votre intervention</p>
               <p id="bkConfirmPrepText"></p>
@@ -8900,9 +8575,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
                 <button type="button" class="adm-nav-btn" data-adm-page="quotes" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Devis</span>
                 </button>
-                <button type="button" class="adm-nav-btn" data-adm-page="launch-campaign" role="tab" aria-selected="false">
-                  <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Jeu de lancement</span>
-                </button>
                 <button type="button" class="adm-nav-btn" data-adm-page="referrals" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Parrainages</span>
                   <span class="adm-nav-badge" id="admRefBadge" hidden>0</span>
@@ -9137,56 +8809,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
                 <h3 class="adm-subhead" style="margin-top:28px;">Devis chiffrés</h3>
                 <p class="adm-page-sub" style="margin-top:-8px;">Devis avec options et pièces jointes envoyés aux clients. Pour en créer un, ouvrez une demande de devis ci-dessus et cliquez « Créer un devis chiffré ».</p>
                 <div id="adminPricedQuotesList"><p class="ec-loading">Chargement…</p></div>
-              </section>
-
-              <!-- "Jeu de lancement" — lecture seule : chaque participation est créée
-                   et fait évoluer son statut automatiquement côté Supabase (triggers,
-                   migration 0041), jamais modifiable depuis cette page. Le tirage
-                   lui-même n'est pas déclenché ici (préparé uniquement, demande
-                   explicite). -->
-              <section class="adm-page" id="admPageLaunchCampaign" data-adm-page="launch-campaign" hidden>
-                <div class="adm-page-head">
-                  <p class="adm-eyebrow">Administration</p>
-                  <h2 class="adm-page-title">Jeu de lancement</h2>
-                  <p class="adm-page-sub">Participations au tirage au sort du 31 janvier 2027. Une participation ne devient éligible (« Validée ») que lorsque la prestation correspondante est marquée « Terminé » dans le planning.</p>
-                </div>
-                <div class="adm-stats-grid">
-                  <div class="adm-stat-card adm-stat-sand">
-                    <span class="adm-stat-icon" aria-hidden="true"></span>
-                    <span class="adm-stat-value" id="lcAdmStatPending">—</span>
-                    <span class="adm-stat-label">En attente</span>
-                  </div>
-                  <div class="adm-stat-card adm-stat-turquoise">
-                    <span class="adm-stat-icon" aria-hidden="true"></span>
-                    <span class="adm-stat-value" id="lcAdmStatValidated">—</span>
-                    <span class="adm-stat-label">Validées</span>
-                  </div>
-                  <div class="adm-stat-card adm-stat-coral">
-                    <span class="adm-stat-icon" aria-hidden="true"></span>
-                    <span class="adm-stat-value" id="lcAdmStatCancelled">—</span>
-                    <span class="adm-stat-label">Annulées</span>
-                  </div>
-                  <div class="adm-stat-card adm-stat-ocean">
-                    <span class="adm-stat-icon" aria-hidden="true"></span>
-                    <span class="adm-stat-value" id="lcAdmStatReview">—</span>
-                    <span class="adm-stat-label">À vérifier</span>
-                  </div>
-                </div>
-                <div class="admin-bk-filters" id="lcAdmFilters" role="group" aria-label="Filtrer par statut de participation">
-                  <button type="button" class="gallery-filter-btn is-active" data-lc-filter="ALL">Toutes</button>
-                  <button type="button" class="gallery-filter-btn" data-lc-filter="PENDING">En attente</button>
-                  <button type="button" class="gallery-filter-btn" data-lc-filter="VALIDATED">Validées</button>
-                  <button type="button" class="gallery-filter-btn" data-lc-filter="CANCELLED">Annulées</button>
-                  <button type="button" class="gallery-filter-btn" data-lc-filter="REVIEW_REQUIRED">À vérifier</button>
-                </div>
-                <div class="admin-accounts-search-wrap">
-                  <input type="search" id="lcAdmSearch" class="admin-accounts-search" placeholder="Rechercher par nom, e-mail, téléphone ou numéro de réservation…" autocomplete="off">
-                </div>
-                <div id="lcAdmList"><p class="ec-loading">Chargement…</p></div>
-
-                <h3 class="adm-subhead" style="margin-top:32px;">Préparer le tirage</h3>
-                <p class="adm-page-sub" style="margin-top:-8px;">Le tirage réel (31 janvier 2027) ne peut être lancé qu'explicitement depuis cette page, et reste bloqué automatiquement avant cette date même en cas de clic accidentel.</p>
-                <div id="lcDrawReadiness"><p class="ec-loading">Chargement…</p></div>
               </section>
 
               <!-- ============================================================
@@ -9770,7 +9392,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
                 <button type="button" class="hv-more-item" data-hv-nav="contracts">Contrats chaudière</button>
                 <button type="button" class="hv-more-item" data-hv-nav="archives">Archives</button>
                 <button type="button" class="hv-more-item" data-hv-nav="accounts">Inscriptions</button>
-                <button type="button" class="hv-more-item" data-hv-nav="launch-campaign">Jeu de lancement</button>
                 <button type="button" class="hv-more-item" data-hv-nav="referrals">Parrainages</button>
                 <button type="button" class="hv-more-item" data-hv-nav="offers">Packs &amp; prestations</button>
                 <button type="button" class="hv-more-item" data-hv-nav="sms">SMS clients</button>
@@ -10618,219 +10239,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
   </div>
 </div>
 
-<!-- ============================================================
-     OVERLAY "CONDITIONS DU JEU" — calqué sur #founderBioOverlay (mêmes
-     classes .legal-overlay*). Présentation publique du jeu : uniquement
-     les informations déjà certaines (dates) ; le règlement complet sera
-     publié avant l'ouverture du jeu. Ouvert depuis le
-     lien discret "Voir les conditions du jeu" de la section campagne.
-     ============================================================ -->
-<div class="legal-overlay" id="lcTermsOverlay" hidden>
-  <div class="legal-overlay-inner">
-    <div class="legal-overlay-topbar">
-      <span class="legal-overlay-brand">HAYEVA — Règlement du jeu</span>
-      <button type="button" class="legal-overlay-close" id="lcTermsOverlayClose" aria-label="Fermer">✕</button>
-    </div>
-    <div class="legal-overlay-content">
-      <article class="founder-bio-card">
-        <h2>Grand jeu de lancement HAYEVA</h2>
-        <p>À l'occasion de son lancement, HAYEVA organise un grand jeu permettant aux clients remplissant les conditions de participation de tenter de remporter l'un des lots mis en jeu. Le règlement complet sera disponible avant l'ouverture du jeu.</p>
-
-        <h4>Dates</h4>
-        <p id="lcTermsPeriod">Réservations éligibles du 6 octobre au 6 décembre 2026.</p>
-        <p id="lcTermsService">Interventions planifiées à partir du 2 janvier 2027.</p>
-        <p id="lcTermsDraw">Tirage au sort le 31 janvier 2027.</p>
-
-        <p>Les modalités détaillées de participation, les conditions d'éligibilité, la description des lots et les modalités du tirage seront précisées dans le règlement complet du jeu, publié avant son ouverture.</p>
-      </article>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  /* ========================================================================
-     CONFIGURATION DE LA CAMPAGNE — seul endroit à modifier pour changer les
-     dates, les lots ou activer/désactiver l'opération. Tout le texte
-     affiché (section d'accueil, badge réservation, modale règlement) est
-     recalculé automatiquement à partir de cet objet — jamais de date ou de
-     montant en dur ailleurs dans le HTML/CSS.
-     - active : true/false — bascule d'affichage globale de la campagne.
-     - bookingStart / bookingEnd : fenêtre de réservation éligible (les
-       triggers Supabase, migration 0041/0042, utilisent la même fenêtre —
-       si elle change ici, la mettre à jour aussi côté serveur).
-     - serviceStart : première date d'intervention réellement planifiable
-       (doit rester cohérente avec enforce_hayeva_opening_date, 0042).
-     - drawDate : date du tirage (doit rester cohérente avec le garde-fou
-       en dur d'admin_run_launch_draw, 0042).
-     - lots.lotN.valueCents : valeur indicative en centimes — utilisée pour
-       calculer automatiquement le total affiché, jamais recopiée à la main.
-     ======================================================================== */
-  window.HAYEVA_LAUNCH_CAMPAIGN = window.HAYEVA_LAUNCH_CAMPAIGN || {
-    active: true,
-    bookingStart: '2026-10-06',
-    bookingEnd: '2026-12-06',
-    serviceStart: '2027-01-02',
-    drawDate: '2027-01-31',
-    lots: {
-      lot1: { name: 'Nintendo Switch 2', valueCents: 49999, valueLabel: 'Valeur indicative : 499,99 €' },
-      lot2: { name: '200 € de crédit HAYEVA', valueCents: 20000, valueLabel: 'Valeur : 200 €' },
-      lot3: { name: 'Entretien climatisation offert', valueCents: 12900, valueLabel: 'Valeur : jusqu\'à 129 €' }
-    }
-  };
-  var CONFIG = window.HAYEVA_LAUNCH_CAMPAIGN;
-
-  var MONTHS_FR = ['JANVIER','FÉVRIER','MARS','AVRIL','MAI','JUIN','JUILLET','AOÛT','SEPTEMBRE','OCTOBRE','NOVEMBRE','DÉCEMBRE'];
-  var MONTHS_FR_ABBR = ['JANV.','FÉVR.','MARS','AVR.','MAI','JUIN','JUIL.','AOÛT','SEPT.','OCT.','NOV.','DÉC.'];
-  function parseIsoDate(iso){
-    var parts = (iso || '').split('-').map(Number);
-    return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
-  }
-  function pad2(n){ return n < 10 ? '0' + n : String(n); }
-  function dayLabel(d, upper){
-    var n = d.getDate();
-    var suffix = (n === 1) ? (upper ? '1ER' : '1ᵉʳ') : String(n);
-    return suffix;
-  }
-  function periodLabel(upper){
-    var start = parseIsoDate(CONFIG.bookingStart);
-    var end = parseIsoDate(CONFIG.bookingEnd);
-    var months = upper ? MONTHS_FR : MONTHS_FR.map(function(m){ return m.toLowerCase(); });
-    var startStr = dayLabel(start, upper) + ' ' + months[start.getMonth()];
-    var endStr = dayLabel(end, upper) + ' ' + months[end.getMonth()] + ' ' + end.getFullYear();
-    return (upper ? 'DU ' : 'Du ') + startStr + (upper ? ' AU ' : ' au ') + endStr + '.';
-  }
-  function fullDateLabel(iso, upper){
-    var d = parseIsoDate(iso);
-    var months = upper ? MONTHS_FR : MONTHS_FR.map(function(m){ return m.toLowerCase(); });
-    return dayLabel(d, upper) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
-  }
-  // Comme fullDateLabel, mais sans l'année — pour "entre le 6 octobre et le
-  // 6 décembre 2026 inclus" (l'année n'apparaît qu'une fois, sur la 2e date).
-  function dayMonthLabel(iso){
-    var d = parseIsoDate(iso);
-    var months = MONTHS_FR.map(function(m){ return m.toLowerCase(); });
-    return dayLabel(d, false) + ' ' + months[d.getMonth()];
-  }
-  function shortDateLabel(iso){
-    var d = parseIsoDate(iso);
-    return pad2(d.getDate()) + ' ' + MONTHS_FR_ABBR[d.getMonth()] + ' ' + d.getFullYear();
-  }
-  function totalLotsValueCents(){
-    var lots = CONFIG.lots || {};
-    return Object.keys(lots).reduce(function(sum, k){ return sum + (lots[k].valueCents || 0); }, 0);
-  }
-
-  var section = document.getElementById('campagneLancement');
-  var badge = document.getElementById('rdvLaunchBadge');
-  if (!CONFIG.active){
-    if (section) section.hidden = true;
-    if (badge) badge.hidden = true;
-    return;
-  }
-
-  var elTimelineBooking = document.getElementById('lcTimelineBooking');
-  if (elTimelineBooking) elTimelineBooking.textContent = shortDateLabel(CONFIG.bookingStart) + ' → ' + shortDateLabel(CONFIG.bookingEnd);
-  var elTimelineService = document.getElementById('lcTimelineService');
-  if (elTimelineService) elTimelineService.textContent = 'À PARTIR DU ' + shortDateLabel(CONFIG.serviceStart);
-  var elTimelineDraw = document.getElementById('lcTimelineDraw');
-  if (elTimelineDraw) elTimelineDraw.textContent = shortDateLabel(CONFIG.drawDate);
-
-  var introEl = document.getElementById('lcIntro');
-  if (introEl){
-    introEl.textContent = 'Pour célébrer son lancement, HAYEVA organise un grand tirage au sort. Réservez une prestation éligible entre le ' +
-      dayMonthLabel(CONFIG.bookingStart) + ' et le ' + fullDateLabel(CONFIG.bookingEnd, false) +
-      ' inclus pour une intervention à partir du ' + fullDateLabel(CONFIG.serviceStart, false) +
-      ' et participez au tirage au sort selon les conditions du règlement.';
-  }
-
-  var drawEl = document.getElementById('lcDraw');
-  if (drawEl){
-    var icon = drawEl.querySelector('svg');
-    drawEl.textContent = 'TIRAGE AU SORT — ' + fullDateLabel(CONFIG.drawDate, true);
-    if (icon) drawEl.insertBefore(icon, drawEl.firstChild);
-  }
-
-  ['lot1','lot2','lot3'].forEach(function(key){
-    var lot = CONFIG.lots[key];
-    var el = document.getElementById('lc' + key.charAt(0).toUpperCase() + key.slice(1) + 'Value');
-    if (el && lot) el.textContent = lot.valueLabel;
-  });
-
-  var totalEl = document.getElementById('lcTotalValue');
-  if (totalEl){
-    var totalEuros = totalLotsValueCents() / 100;
-    var roundedUp = Math.ceil(totalEuros / 10) * 10;
-    totalEl.textContent = 'Près de ' + roundedUp + ' € de lots (valeur indicative totale : ' +
-      totalEuros.toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €)';
-  }
-
-  var termsPeriodEl = document.getElementById('lcTermsPeriod');
-  if (termsPeriodEl) termsPeriodEl.textContent = 'Réservations éligibles ' + periodLabel(false).replace(/^Du /, 'du ');
-  var termsServiceEl = document.getElementById('lcTermsService');
-  if (termsServiceEl) termsServiceEl.textContent = 'Interventions planifiées à partir du ' + fullDateLabel(CONFIG.serviceStart, false) + '.';
-  var termsDrawEl = document.getElementById('lcTermsDraw');
-  if (termsDrawEl) termsDrawEl.textContent = 'Tirage au sort le ' + fullDateLabel(CONFIG.drawDate, false) + '.';
-  var termsValuesEl = document.getElementById('lcTermsValues');
-  if (termsValuesEl){
-    var l = CONFIG.lots;
-    termsValuesEl.textContent = 'Valeurs indicatives au jour de la publication de cette page : ' +
-      l.lot1.name + ' — ' + l.lot1.valueLabel.replace(/^Valeur( indicative)? : /, '') + ' ; ' +
-      l.lot2.name + ' — ' + l.lot2.valueLabel.replace(/^Valeur( indicative)? : /, '') + ' ; ' +
-      l.lot3.name + ' — ' + l.lot3.valueLabel.replace(/^Valeur( indicative)? : /, '') + '.';
-  }
-
-  var overlay = document.getElementById('lcTermsOverlay');
-  function openTerms(e){
-    if (e) e.preventDefault();
-    if (!overlay) return;
-    overlay.hidden = false;
-    document.body.style.overflow = 'hidden';
-    var contentEl = overlay.querySelector('.legal-overlay-content');
-    if (contentEl) contentEl.scrollTop = 0;
-  }
-  function closeTerms(){
-    if (!overlay) return;
-    overlay.hidden = true;
-    document.body.style.overflow = '';
-  }
-  var openBtn = document.getElementById('lcTermsOpenBtn');
-  if (openBtn) openBtn.addEventListener('click', openTerms);
-  var closeBtn = document.getElementById('lcTermsOverlayClose');
-  if (closeBtn) closeBtn.addEventListener('click', closeTerms);
-  if (overlay){
-    overlay.addEventListener('click', function(e){ if (e.target === overlay) closeTerms(); });
-  }
-  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && overlay && !overlay.hidden) closeTerms(); });
-
-  // Exposé pour le badge "Offre de lancement" (réservation) et l'écran de
-  // confirmation post-réservation — jamais une 2e implémentation de cette
-  // modale.
-  window.sudOpenLaunchCampaignTerms = openTerms;
-  window.sudLaunchCampaignConfig = CONFIG;
-  var badgeLink = document.getElementById('rdvLaunchBadgeLink');
-  if (badgeLink) badgeLink.addEventListener('click', openTerms);
-
-  // Note d'éligibilité sur les écrans de confirmation de réservation
-  // (#bkConfirmDemo/#bkConfirmReal, déjà existants) — purement informative,
-  // jamais "vous participez définitivement" : ce n'est qu'un rappel, la
-  // vraie décision reste entièrement côté serveur (voir migration 0041/0042).
-  if (window.sudLaunchCampaignIsEligibleNow && window.sudLaunchCampaignIsEligibleNow()){
-    var demoNote = document.getElementById('bkConfirmDemoLaunchNote');
-    var realNote = document.getElementById('bkConfirmRealLaunchNote');
-    if (demoNote) demoNote.hidden = false;
-    if (realNote) realNote.hidden = false;
-  }
-  window.sudLaunchCampaignIsEligibleNow = function(){
-    var now = new Date();
-    var start = parseIsoDate(CONFIG.bookingStart);
-    var end = parseIsoDate(CONFIG.bookingEnd);
-    end.setHours(23,59,59,999);
-    return CONFIG.active && now >= start && now <= end;
-  };
-})();
-</script>
-
 <script>
 (function(){
   var overlay = document.getElementById('legalOverlay');
@@ -11166,10 +10574,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
     return d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   }
 
-  // Ouverture officielle HAYEVA : 2 janvier 2027 — le Grand Jeu de
-  // lancement se réserve du 6 octobre au 6 décembre 2026 inclus, mais
-  // aucune intervention n'est réellement planifiée
-  // avant cette date, voir migration 0042). Le serveur applique la même
+  // Ouverture officielle HAYEVA : 2 janvier 2027 — aucune intervention
+  // n'est réellement planifiée avant cette date (voir migration 0042). Le serveur applique la même
   // règle (enforce_hayeva_opening_date) : ce garde-fou frontend n'est qu'un
   // confort d'affichage du calendrier, jamais la seule protection.
   // Valeurs par défaut remplacées dès le chargement par la configuration
@@ -14802,7 +14208,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
     { cat:'reservation-faq', popular:false, q:"Pourquoi l'adresse exacte est-elle demandée ?",
       a:"Elle permet notamment d'organiser l'intervention, de calculer le trajet et, lorsque cela s'applique, les éventuels frais de déplacement." },
     { cat:'reservation-faq', popular:true, q:"À partir de quand puis-je réserver une intervention ?",
-      a:"{{BRAND}} ouvre officiellement le {{OPENING_DATE}}. Vous pouvez dès maintenant consulter les prestations et tarifs, et réserver un rendez-vous à partir du 2 janvier 2027 — y compris pendant le Grand Jeu de lancement HAYEVA (réservations du {{LAUNCH_BOOKING_START}} au {{LAUNCH_BOOKING_END}})." },
+      a:"{{BRAND}} ouvre officiellement le {{OPENING_DATE}}. Vous pouvez dès maintenant consulter les prestations et tarifs, et réserver un rendez-vous à partir du 2 janvier 2027." },
 
     // ---- Particulier : Zone d'intervention ----
     { cat:'zone-faq', popular:true, q:"Dans quelles villes intervenez-vous ?",
@@ -14899,19 +14305,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
       tokens.CHECK_EXPRESS = (window.sudBooking.getService('pro-check-express') || {}).price || '';
       tokens.CHECK_COMPLET = (window.sudBooking.getService('pro-check-complet') || {}).price || '';
       tokens.CHECK_PREMIUM = (window.sudBooking.getService('pro-check-premium') || {}).price || '';
-    }
-    // Dates du Grand Jeu de lancement — même source que la bannière
-    // (window.sudLaunchCampaignConfig), jamais une 2e paire de dates en dur
-    // dans une réponse de FAQ.
-    if (window.sudLaunchCampaignConfig){
-      var lcMonths = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-      var lcFmt = function(iso){
-        var p = iso.split('-').map(Number);
-        var d = new Date(p[0], p[1] - 1, p[2]);
-        return (d.getDate() === 1 ? '1er' : d.getDate()) + ' ' + lcMonths[d.getMonth()] + ' ' + d.getFullYear();
-      };
-      tokens.LAUNCH_BOOKING_START = lcFmt(window.sudLaunchCampaignConfig.bookingStart);
-      tokens.LAUNCH_BOOKING_END = lcFmt(window.sudLaunchCampaignConfig.bookingEnd);
     }
     return text.replace(/\{\{(\w+)\}\}/g, function(m, key){
       return tokens.hasOwnProperty(key) ? tokens[key] : m;
@@ -21483,8 +20876,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
     if (key === 'stats' && typeof admLoadStats === 'function') admLoadStats();
     if (key === 'pricing' && typeof qcInit === 'function') qcInit();
     if (key === 'archives' && typeof admRenderArchives === 'function') admRenderArchives();
-    if (key === 'launch-campaign' && typeof admLoadLaunchCampaign === 'function') admLoadLaunchCampaign();
-    if (key === 'launch-campaign' && typeof lcRenderDrawReadiness === 'function') lcRenderDrawReadiness();
   }
 
   // ============================================================
@@ -21840,287 +21231,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
       var row = e.target.closest('.admin-account-row');
       if (!row) return;
       admOpenBookingModal(row.getAttribute('data-booking-id'));
-    });
-  }
-
-  // ============================================================
-  // ---------- "Jeu de lancement" : participations au tirage au sort ----------
-  // Lecture seule : chaque ligne vient de launch_campaign_entries (créée et
-  // maintenue à jour uniquement par les triggers Supabase de la migration
-  // 0041 — voir launch_campaign_on_booking_insert/_status_change). Cette
-  // page ne fait AUCUNE écriture, elle affiche simplement l'état réel
-  // côté serveur pour que l'admin comprenne immédiatement pourquoi une
-  // participation est ou n'est pas éligible.
-  // ============================================================
-  var lcAdminCache = null;
-  var lcAdminFilter = 'ALL';
-  var lcAdminSearch = '';
-
-  var LC_INVALID_REASON_LABEL = {
-    cancelled_by_customer: 'Annulée par le client',
-    no_show: 'Non présenté(e)',
-    duplicate_participant: 'Doublon — ce participant a déjà une participation',
-    hayeva_cancelled: 'Rendez-vous annulé par HAYEVA — à vérifier',
-    manual_review: 'Signalée manuellement pour vérification',
-    admin_review: 'Annulée après vérification manuelle'
-  };
-
-  function lcStatusBadgeHtml(status){
-    var map = {
-      PENDING: ['adm-badge-pending', 'En attente'],
-      VALIDATED: ['adm-badge-confirmed', 'Validée'],
-      CANCELLED: ['adm-badge-cancelled', 'Annulée'],
-      REVIEW_REQUIRED: ['adm-badge-review', 'À vérifier']
-    };
-    var conf = map[status];
-    if (!conf) return '';
-    return ' <span class="adm-badge ' + conf[0] + '">' + conf[1] + '</span>';
-  }
-
-  // Écritures admin sur une participation : uniquement via ces deux RPC
-  // SECURITY DEFINER (migration 0042), jamais un update direct — la RLS de
-  // launch_campaign_entries n'autorise de toute façon aucune écriture
-  // depuis le frontend.
-  function lcCallRpc(fnName, args, successMsg){
-    return sb.client.rpc(fnName, args).then(function(res){
-      if (res.error){
-        console.error('lcCallRpc(' + fnName + ')', res.error);
-        window.alert(res.error.message || "Une erreur est survenue.");
-        return false;
-      }
-      admLoadLaunchCampaign();
-      return true;
-    });
-  }
-  function lcFlagForReview(entryId){
-    var note = window.prompt('Note (facultatif) — pourquoi ce dossier doit-il être vérifié avant le tirage ?', '');
-    if (note === null) return;
-    lcCallRpc('admin_flag_launch_entry_for_review', { p_entry_id: entryId, p_note: note || null });
-  }
-  function lcResolve(entryId, resolution){
-    var label = resolution === 'VALIDATED' ? 'valider' : 'annuler';
-    var note = window.prompt('Note (facultatif) — pourquoi ' + label + '-vous ce dossier ?', '');
-    if (note === null) return;
-    lcCallRpc('admin_resolve_launch_entry', { p_entry_id: entryId, p_resolution: resolution, p_note: note || null });
-  }
-
-  function admLoadLaunchCampaign(){
-    var listEl = document.getElementById('lcAdmList');
-    if (!listEl) return;
-    listEl.innerHTML = '<p class="ec-loading">Chargement…</p>';
-    sb.client.from('launch_campaign_entries')
-      .select('id, status, invalid_reason, hayeva_cancelled_at, participant_key, created_at, booking_id, bookings(id, reference, date, start_time, status, created_at, guest_name, guest_email, guest_phone, customer_user_id, professional_account_id, services(name), customer_addresses(address,postal_code,city), professional_accounts(legal_name,phone,address_line1,address_line2,postal_code,city))')
-      .order('created_at', { ascending:false })
-      .limit(1000)
-      .then(function(res){
-        if (res.error){
-          console.error('admLoadLaunchCampaign: échec de la requête Supabase (table launch_campaign_entries)', res.error);
-          listEl.innerHTML = '<p class="admin-accounts-hint">Impossible de charger les participations pour le moment.</p>';
-          return;
-        }
-        var rows = res.data || [];
-        var custIds = rows
-          .map(function(r){ return r.bookings && r.bookings.customer_user_id; })
-          .filter(function(id, i, arr){ return id && arr.indexOf(id) === i; });
-
-        function withProfiles(profileMap){
-          lcAdminCache = { rows: rows, profiles: profileMap };
-          lcRenderStats();
-          lcRenderList();
-        }
-
-        if (!custIds.length){ withProfiles({}); return; }
-        Promise.all([
-          sb.client.from('customer_profiles').select('user_id,first_name,last_name,phone').in('user_id', custIds),
-          sb.client.from('profiles').select('user_id,email').in('user_id', custIds)
-        ]).then(function(res2){
-          var cp = res2[0].data || [];
-          var pf = res2[1].data || [];
-          var map = {};
-          cp.forEach(function(r){
-            map[r.user_id] = map[r.user_id] || {};
-            map[r.user_id].first_name = r.first_name;
-            map[r.user_id].last_name = r.last_name;
-            map[r.user_id].phone = r.phone;
-          });
-          pf.forEach(function(r){
-            map[r.user_id] = map[r.user_id] || {};
-            map[r.user_id].email = r.email;
-          });
-          withProfiles(map);
-        });
-      })
-      .catch(function(err){
-        console.error('admLoadLaunchCampaign: exception', err);
-        listEl.innerHTML = '<p class="admin-accounts-hint">Impossible de charger les participations pour le moment.</p>';
-      });
-  }
-
-  function lcRenderStats(){
-    if (!lcAdminCache) return;
-    var counts = { PENDING:0, VALIDATED:0, CANCELLED:0, REVIEW_REQUIRED:0 };
-    lcAdminCache.rows.forEach(function(r){ if (counts[r.status] != null) counts[r.status]++; });
-    var elP = document.getElementById('lcAdmStatPending');
-    var elV = document.getElementById('lcAdmStatValidated');
-    var elC = document.getElementById('lcAdmStatCancelled');
-    var elR = document.getElementById('lcAdmStatReview');
-    if (elP) elP.textContent = String(counts.PENDING);
-    if (elV) elV.textContent = String(counts.VALIDATED);
-    if (elC) elC.textContent = String(counts.CANCELLED);
-    if (elR) elR.textContent = String(counts.REVIEW_REQUIRED);
-  }
-
-  function lcMatchesSearch(r, b, contact){
-    if (!lcAdminSearch) return true;
-    var q = lcAdminSearch.toLowerCase();
-    var haystack = [
-      contact.name, contact.email, contact.phone, b.reference
-    ].filter(Boolean).join(' ').toLowerCase();
-    return haystack.indexOf(q) !== -1;
-  }
-
-  function lcRenderList(){
-    var listEl = document.getElementById('lcAdmList');
-    if (!listEl || !lcAdminCache) return;
-    var rows = lcAdminCache.rows.filter(function(r){
-      if (lcAdminFilter !== 'ALL' && r.status !== lcAdminFilter) return false;
-      if (!lcAdminSearch) return true;
-      if (!r.bookings) return false;
-      var contact = admContactFor(r.bookings, lcAdminCache.profiles);
-      return lcMatchesSearch(r, r.bookings, contact);
-    });
-    if (!rows.length){
-      listEl.innerHTML = '<p class="admin-accounts-hint">Aucune participation' + (lcAdminFilter === 'ALL' && !lcAdminSearch ? '' : ' pour ces critères') + ' pour le moment.</p>';
-      return;
-    }
-    var html = '<div class="admin-accounts-list">';
-    rows.forEach(function(r){
-      var b = r.bookings;
-      if (!b){
-        html += '<div class="admin-account-row"><div class="admin-account-row-summary">' +
-          '<span class="admin-account-row-name">Réservation supprimée</span>' + lcStatusBadgeHtml(r.status) +
-          '</div></div>';
-        return;
-      }
-      var contact = admContactFor(b, lcAdminCache.profiles);
-      var svcName = (b.services && b.services.name) || 'Intervention';
-      var reasonLabel = r.invalid_reason ? LC_INVALID_REASON_LABEL[r.invalid_reason] || r.invalid_reason : '';
-      var hayevaNote = r.hayeva_cancelled_at
-        ? '<p class="admin-bk-modal-note">Rendez-vous annulé par HAYEVA le ' + admFmtDateTime(r.hayeva_cancelled_at) + ' — dossier à traiter/reporter, droit potentiel conservé.</p>'
-        : '';
-      var adminNote = r.admin_note
-        ? '<p class="admin-bk-modal-note">Note admin : ' + admEscape(r.admin_note) + '</p>'
-        : '';
-      var actionsHtml = '';
-      if (r.status === 'REVIEW_REQUIRED'){
-        actionsHtml = '<div class="ec-appt-actions">' +
-          '<button type="button" class="admin-bk-accept-btn" data-lc-action="validate" data-entry-id="' + r.id + '">Valider</button>' +
-          '<button type="button" class="admin-bk-refuse-btn" data-lc-action="cancel" data-entry-id="' + r.id + '">Annuler</button>' +
-        '</div>';
-      } else if (r.invalid_reason !== 'duplicate_participant'){
-        actionsHtml = '<div class="ec-appt-actions">' +
-          '<button type="button" class="ec-appt-move-btn" data-lc-action="flag" data-entry-id="' + r.id + '">Signaler à vérifier</button>' +
-        '</div>';
-      }
-      html += '<div class="admin-account-row" data-booking-id="' + admEscape(b.id) + '">' +
-        '<div class="admin-account-row-summary">' +
-          '<span class="admin-account-row-name">' + admEscape(contact.name) + '</span>' +
-          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(svcName) + '</span>' +
-          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">' + admEscape(b.reference) + '</span>' +
-          lcStatusBadgeHtml(r.status) +
-        '</div>' +
-        '<div class="admin-account-row-summary" style="margin-top:4px;">' +
-          '<span class="admin-account-row-detail">Réservé le ' + admFmtDateTime(b.created_at) + '</span>' +
-          '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">RDV le ' + admFmtDate(b.date) + ' à ' + admFmtTime(b.start_time) + '</span>' +
-          (reasonLabel ? '<span class="admin-account-row-sep">—</span><span class="admin-account-row-detail">Motif : ' + admEscape(reasonLabel) + '</span>' : '') +
-        '</div>' +
-        hayevaNote + adminNote + actionsHtml +
-      '</div>';
-    });
-    html += '</div>';
-    listEl.innerHTML = html;
-  }
-
-  var lcAdmListEl = document.getElementById('lcAdmList');
-  if (lcAdmListEl){
-    lcAdmListEl.addEventListener('click', function(e){
-      var actionBtn = e.target.closest('[data-lc-action]');
-      if (actionBtn){
-        var entryId = actionBtn.getAttribute('data-entry-id');
-        var action = actionBtn.getAttribute('data-lc-action');
-        if (action === 'flag') lcFlagForReview(entryId);
-        else if (action === 'validate') lcResolve(entryId, 'VALIDATED');
-        else if (action === 'cancel') lcResolve(entryId, 'CANCELLED');
-        return;
-      }
-      var row = e.target.closest('.admin-account-row');
-      if (!row || !row.getAttribute('data-booking-id')) return;
-      admOpenBookingModal(row.getAttribute('data-booking-id'));
-    });
-  }
-  var lcAdmFiltersEl = document.getElementById('lcAdmFilters');
-  if (lcAdmFiltersEl){
-    lcAdmFiltersEl.addEventListener('click', function(e){
-      var btn = e.target.closest('[data-lc-filter]');
-      if (!btn) return;
-      lcAdminFilter = btn.getAttribute('data-lc-filter');
-      Array.prototype.forEach.call(lcAdmFiltersEl.querySelectorAll('[data-lc-filter]'), function(b){
-        b.classList.toggle('is-active', b === btn);
-      });
-      lcRenderList();
-    });
-  }
-  var lcAdmSearchEl = document.getElementById('lcAdmSearch');
-  if (lcAdmSearchEl){
-    lcAdmSearchEl.addEventListener('input', function(){
-      lcAdminSearch = lcAdmSearchEl.value.trim();
-      lcRenderList();
-    });
-  }
-
-  // ---------- Préparer le tirage ----------
-  // admin_launch_draw_readiness() est une simple lecture (aucune écriture,
-  // aucun risque) : appelée à chaque affichage de la page pour montrer où
-  // en est la campagne. Le bouton "Lancer le tirage" appelle
-  // admin_run_launch_draw(), qui refuse lui-même tout appel avant le 31
-  // janvier 2027 ou tant que des dossiers "À vérifier" subsistent — ce
-  // n'est donc jamais qu'un clic accidentel qui pourrait déclencher un
-  // tirage prématuré.
-  function lcRenderDrawReadiness(){
-    var el = document.getElementById('lcDrawReadiness');
-    if (!el) return;
-    sb.client.rpc('admin_launch_draw_readiness').then(function(res){
-      if (res.error || !res.data || !res.data.length){
-        el.innerHTML = '<p class="admin-accounts-hint">Impossible de charger l\'état du tirage pour le moment.</p>';
-        return;
-      }
-      var d = res.data[0];
-      var html = '<div class="admin-account-row"><div class="admin-account-row-summary" style="flex-direction:column; align-items:flex-start; gap:4px;">' +
-        '<span class="admin-account-row-detail">Participations validées (éligibles) : <strong>' + d.eligible_count + '</strong></span>' +
-        '<span class="admin-account-row-detail">Dossiers « À vérifier » restants : <strong>' + d.review_required_count + '</strong></span>' +
-        '<span class="admin-account-row-detail">Date du tirage : <strong>' + admFmtDate(d.draw_date) + '</strong>' + (d.is_draw_day ? ' (atteinte)' : ' (pas encore atteinte)') + '</span>' +
-        (d.already_drawn ? '<span class="admin-account-row-detail"><strong>Le tirage a déjà été effectué.</strong></span>' : '') +
-      '</div></div>';
-      if (!d.already_drawn){
-        html += '<div style="margin-top:14px;"><button type="button" class="admin-bk-refuse-btn" id="lcRunDrawBtn"' + (d.ready ? '' : ' disabled title="Des dossiers À vérifier doivent être résolus avant le tirage."') + '>Lancer le tirage</button></div>';
-      }
-      el.innerHTML = html;
-      var runBtn = document.getElementById('lcRunDrawBtn');
-      if (runBtn) runBtn.addEventListener('click', function(){
-        if (!window.confirm('Lancer le tirage au sort maintenant ? Cette action est définitive et ne peut être effectuée qu\'une seule fois.')) return;
-        sb.client.rpc('admin_run_launch_draw').then(function(res2){
-          if (res2.error){
-            window.alert(res2.error.message || 'Impossible de lancer le tirage.');
-            return;
-          }
-          window.alert('Tirage effectué : ' + (res2.data || []).length + ' lot(s) attribué(s).');
-          lcRenderDrawReadiness();
-          admLoadLaunchCampaign();
-        });
-      });
-    }).catch(function(err){
-      console.error('lcRenderDrawReadiness: exception', err);
-      el.innerHTML = '<p class="admin-accounts-hint">Impossible de charger l\'état du tirage pour le moment.</p>';
     });
   }
 
@@ -24885,18 +23995,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
     return bDate >= today;
   }
 
-  // Badge "Jeu de lancement" (Mes rendez-vous) : lu depuis
-  // launch_campaign_entries via la policy RLS "owner read" (migration
-  // 0042) — jamais recalculé côté client, uniquement affiché. Un
-  // déplacement de rendez-vous garde le même booking_id, donc le même
-  // statut de participation continue de s'afficher automatiquement.
-  var LC_CLIENT_BADGE_LABEL = { PENDING: 'Participation en attente', VALIDATED: 'Participation validée' };
-  function ecLaunchBadgeHtml(status){
-    var label = LC_CLIENT_BADGE_LABEL[status];
-    if (!label) return '';
-    return '<div class="ec-launch-badge"><span class="ec-launch-badge-tag">Jeu de lancement</span><span>' + label + '</span></div>';
-  }
-
   function ecLoadAppointments(){
     var panel = document.getElementById('ecPanelAppointments');
     panel.innerHTML = '<p class="ec-loading">Chargement…</p>';
@@ -24918,19 +24016,12 @@ window.HV_APP_VERSION = 'hayeva-v39';
           panel.innerHTML = ecxCompositeSubNavHtml('appointments') + '<div class="ec-empty"><strong>Aucun rendez-vous pour le moment</strong>Vos réservations apparaîtront ici.<br><a class="btn-primary" href="#rdv">Prendre rendez-vous</a></div>';
           return;
         }
-        // Statut de participation uniquement (jamais la note admin) : lecture
-        // directe de launch_campaign_entries réservée à l'admin (0109).
-        return sb.client.rpc('get_my_launch_entry_statuses', { p_booking_ids: rows.map(function(b){ return b.id; }) })
-          .then(function(lcRes){
-            var lcMap = {};
-            (lcRes.data || []).forEach(function(e){ lcMap[e.booking_id] = e.status; });
-            ecRenderAppointmentsList(panel, rows, prepCategories, lcMap);
-          });
+        ecRenderAppointmentsList(panel, rows, prepCategories);
       })
       .catch(function(){ panel.innerHTML = ecErrorBlock(); });
   }
 
-  function ecRenderAppointmentsList(panel, rows, prepCategories, lcMap){
+  function ecRenderAppointmentsList(panel, rows, prepCategories){
         var html = ecxCompositeSubNavHtml('appointments') + '<p class="ec-section-title">Mes rendez-vous</p><p class="ec-section-sub">Retrouvez et gérez vos interventions.</p><div class="ec-list">';
         rows.forEach(function(b){
           var svcName = (b.services && b.services.name) || 'Service';
@@ -24958,7 +24049,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
             '<span class="ec-row-meta">Réf. ' + ecEscape(b.reference) + '</span>' +
             (priceLine.length ? '<span class="ec-row-meta">' + priceLine.join(' · ') + '</span>' : '') +
             (prepText ? '<span class="ec-row-meta ec-row-prep">Préparez votre intervention : ' + ecEscape(prepText) + '</span>' : '') +
-            '</div>' + ecBadge(b.status) + ecLaunchBadgeHtml(lcMap[b.id]) +
+            '</div>' + ecBadge(b.status) +
             (ecIsUpcomingModifiable(b) ?
               '<div class="ec-appt-actions">' +
                 '<button type="button" class="ec-appt-move-btn" data-booking-id="' + b.id + '">Déplacer mon rendez-vous</button>' +
@@ -31704,7 +30795,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .besoin-cat-sub{ font-weight:400; }
   .section-head p{ font-size:1.06rem; }
   /* Plus aucun texte utile sous 12 px (badges, étiquettes, durées, menus). */
-  .opt-duration, .ba-slider-tag, .lc-timeline-label, .lc-card-tag, .chip-subhead, .multi-badge, .call-btn-text,
+  .opt-duration, .ba-slider-tag, .chip-subhead, .multi-badge, .call-btn-text,
   .photo-frame-tag, .price-from-tag, .map-card-caption, .ecx-svc-card-duration, .d-name, .d-month, .pack-badge,
   .hvk-badge, .hvk-new, .hvk-detail-eyebrow, .ec-eyebrow, .pro-eyebrow, .adm-eyebrow, .ec-badge, .adm-badge,
   .hvp-pill, .pro-empty-badge, .adm-signup-split, .adm-cal-card-title, .legal-placeholder{ font-size:max(0.78rem, 12.5px); }
@@ -31800,12 +30891,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
      même bleu HAYEVA, plus soutenu (5,3:1). */
   .call-btn{ background:linear-gradient(135deg, #1F6FAE 0%, #185A8F 100%); }
   .map-card-caption{ color:rgba(255,255,255,0.94); font-size:max(0.74rem, 12px); }
-  /* Section « Grand jeu de lancement » (fond bleu nuit) : textes blancs
-     semi-transparents remontés à 85 % minimum. */
-  .lc-timeline-label{ color:rgba(255,255,255,0.88); }
-  .lc-intro-note, .lc-terms-link{ color:rgba(255,255,255,0.88); }
-  .lc-card-desc{ color:rgba(255,255,255,0.92); }
-  .lc-card-fineprint{ color:rgba(255,255,255,0.84); }
   .ec-next-appt .ec-eyebrow{ opacity:1; color:rgba(255,255,255,0.9); }
 
   /* Hero (sur photo très claire) : surtitre bleu clair à 2,7:1 → même bleu
@@ -31841,11 +30926,6 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .pro-check-book .pro-page-sub{ color:var(--pro-ink-soft, var(--hv-text-2)); }
   #catalogImportFile{ color:var(--adm-ink); }
 
-  /* Jeu de lancement (fond bleu nuit) : noms des lots en titre h3 qui
-     héritaient du bleu nuit du thème (invisibles), bandeau « Tirage au
-     sort » sans couleur de texte. */
-  .lc-card-name{ color:#FFFFFF; }
-  .lc-draw{ color:#FFD9B8; }
   .map-card-caption b{ color:#FFFFFF; }
 
   /* Carte « prochain rendez-vous » (fond bleu nuit) : titres et statut
