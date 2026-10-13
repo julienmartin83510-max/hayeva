@@ -207,6 +207,13 @@ export async function handle(req: Request, rpc: Rpc, now: Date = parisNow()): Pr
   const plan = I.parse(text, now).slice(0, 2);
   const out: string[] = [];
   let openUrl: string | null = null;
+  // Phrases traitées localement (bonjour, merci, détails, phrase incomprise) : le jeton est
+  // quand même vérifié en base avant toute réponse ; un appareil inconnu n'obtient rien.
+  const LOCAL = new Set(['empty', 'unknown', 'greeting', 'thanks', 'bye', 'details', 'yes']);
+  if (plan.every((p: { intent: string }) => LOCAL.has(p.intent))){
+    const chk = await rpc('eva_siri_run', { p_token_hash: hash, p_intent: 'capabilities', p_args: {}, p_command: text });
+    if (chk.error){ const [status, msg] = errorOf(String(chk.error.message || '')); return reply(status, msg); }
+  }
   for (const p of plan){
     if (p.intent === 'empty') continue;
     if (p.intent === 'unknown'){ out.push("Je n'ai pas compris. Essayez par exemple : qu'est-ce que j'ai demain ?"); continue; }
