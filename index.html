@@ -236,6 +236,47 @@
   var SUPABASE_URL = 'https://hvlzdsuyhrhaflwutwml.supabase.co';
   var SUPABASE_ANON_KEY = 'sb_publishable_doi6KhNWHhfZ6oT13FLTIg_lPwXbt4a';
 
+  // ---------- Version de TEST (adresse eva-test--….netlify.app uniquement) ----------
+  // Sur l'adresse de test, le site ne parle JAMAIS à la production : toutes les
+  // requêtes vers le projet de production sont redirigées vers le projet de
+  // TEST (données fictives). Tant que le projet de test n'est pas renseigné
+  // ci-dessous, aucun appel réseau vers Supabase n'est fait (mode démonstration).
+  // Sur hayeva.fr, rien ne change.
+  var HV_TEST_URL = 'https://hqsszehccqgalkhkdbis.supabase.co';  // projet de TEST hayeva-eva-test (données fictives)
+  var HV_TEST_KEY = 'sb_publishable_IL4-spvs9NO0KR-o8yNbxw_Y4y8UCMa';  // clé PUBLIQUE (publishable) du projet de TEST
+  // Adresse de branche « eva-test » ET toute prévisualisation de demande de fusion
+  // (deploy-preview-N--…) : toujours en mode TEST, jamais reliées à la production.
+  // Marqueur lu par netlify.toml : HV-PREVIEW-TEST-MODE
+  var HV_IS_TEST = /^(eva-test|deploy-preview-\d+)--/.test(location.hostname);
+  window.HV_ENV = HV_IS_TEST ? 'test' : 'production';
+  if (HV_IS_TEST){
+    var hvProdHost = SUPABASE_URL.replace(/^https:\/\//, ''), hvTestReady = /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(HV_TEST_URL) && HV_TEST_URL.indexOf(hvProdHost) === -1 && !!HV_TEST_KEY;
+    SUPABASE_URL = hvTestReady ? HV_TEST_URL : 'YOUR_SUPABASE_URL';
+    SUPABASE_ANON_KEY = hvTestReady ? HV_TEST_KEY : 'YOUR_SUPABASE_ANON_KEY';
+    var hvFetch = window.fetch.bind(window);
+    window.fetch = function(input, init){
+      var u = typeof input === 'string' ? input : (input && input.url) || '';
+      if (u.indexOf(hvProdHost) !== -1){
+        if (!hvTestReady) return Promise.reject(new Error('Version de test : projet de test non configuré, aucun appel à la production.'));
+        u = u.split(hvProdHost).join(HV_TEST_URL.replace(/^https:\/\//, ''));
+        input = typeof input === 'string' ? u : new Request(u, input);
+      }
+      return hvFetch(input, init);
+    };
+    document.addEventListener('DOMContentLoaded', function(){
+      var b = document.createElement('div');
+      b.id = 'hvTestBanner'; b.setAttribute('role', 'status');
+      b.textContent = hvTestReady ? 'VERSION DE TEST — données fictives, aucun client réel' : 'VERSION DE TEST — projet de test non configuré (aucune donnée)';
+      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#B3261E;color:#fff;font:600 12px/1.2 system-ui,sans-serif;text-align:center;padding:calc(4px + env(safe-area-inset-top,0px)) 8px 4px;pointer-events:none';
+      document.body.appendChild(b);
+      // Version de test uniquement : EVA s'ouvre sous le bandeau (titre et fermeture jamais masqués).
+      var st = document.createElement('style');
+      st.textContent = '.eva{top:calc(22px + env(safe-area-inset-top,0px)) !important}';
+      document.head.appendChild(st);
+      var m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex,nofollow'; document.head.appendChild(m);
+    });
+  }
+
   var configured = SUPABASE_URL.indexOf('YOUR_SUPABASE_URL') !== 0 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE_ANON_KEY') !== 0;
   var client = null;
 
@@ -5563,6 +5604,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
   .ec-amb-pending{ font-family:"Poppins",sans-serif; font-weight:700; font-size:0.84rem; color:var(--ink-soft-fixed); white-space:nowrap; }
   .ec-amb-none{ color:var(--ink-soft-fixed); }
   .ec-amb-notif{ border-color:var(--turquoise); }
+  .adm-eva-entry{ display:flex; align-items:center; gap:10px; width:calc(100% - 16px); min-height:44px; margin:4px 8px 10px; padding:0 14px; border-radius:12px; border:1px solid rgba(215,161,107,.55); background:rgba(215,161,107,.10); color:#8A5A2B; font:600 .88rem/1.2 "Poppins",sans-serif; cursor:pointer; text-align:left; }
+  .adm-eva-entry svg{ width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
+  html[data-bs~="admin"] .adm-eva-entry{ color:#E3B47F; }
+  .hv-more-item.hv-more-eva{ font-weight:700; }
   .ec-amb-legal{ font-size:0.74rem; color:var(--ink-soft-fixed); line-height:1.45; margin:6px 0 20px; }
   @media (max-width:440px){ .ec-amb-btns{ grid-template-columns:1fr 1fr; } .ec-amb-btns .ec-amb-btn:last-child{ grid-column:1/-1; } }
   @media (max-width:520px){
@@ -9140,6 +9185,10 @@ window.HV_APP_VERSION = 'hayeva-v39';
               <div class="adm-sidebar-brand">
                 <img src="images/brand/hayeva-logo.png" alt="HAYEVA" class="adm-sidebar-logo">
               </div>
+              <button type="button" class="adm-eva-entry" data-eva-open>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+                <span>EVA — Mon assistante</span>
+              </button>
               <div class="adm-sidebar-nav" id="admSidebarNav" role="tablist">
                 <button type="button" class="adm-nav-btn" data-adm-page="tech" role="tab" aria-selected="false">
                   <span class="adm-nav-icon" aria-hidden="true"></span><span class="adm-nav-label">Mes interventions</span>
@@ -10030,6 +10079,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
                 </button>
               </div>
               <div class="hv-more-list">
+                <button type="button" class="hv-more-item hv-more-eva" data-eva-open>EVA — Mon assistante</button>
                 <button type="button" class="hv-more-item" data-hv-nav="dashboard">Tableau de bord</button>
                 <button type="button" class="hv-more-item" data-hv-nav="requests">Demandes de RDV</button>
                 <button type="button" class="hv-more-item" data-hv-nav="quotes">Devis</button>
@@ -11393,8 +11443,18 @@ window.HV_APP_VERSION = 'hayeva-v39';
     return scored.slice(0, 7).map(function(x){ return x.s; });
   }
 
+  // Horaires de travail : réglage central (booking_settings.work_hours, lu
+  // aussi par le serveur). Valeurs ci-dessous = repli identique au réglage
+  // par défaut, utilisé seulement si la configuration n'est pas encore lue.
+  var HAYEVA_WORK_HOURS = null;
+  function hhmmToMin(v){ var m = /^(\d{2}):(\d{2})$/.exec(String(v || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
   function hoursForDate(d){
     var day = d.getDay();
+    if (HAYEVA_WORK_HOURS){
+      var list = HAYEVA_WORK_HOURS[String(day === 0 ? 7 : day)] || [];
+      return list.map(function(r){ return [hhmmToMin(r[0]), hhmmToMin(r[1])]; })
+        .filter(function(r){ return r[0] !== null && r[1] !== null && r[0] < r[1]; });
+    }
     if (day === 0) return [];
     if (day === 6) return [[8*60, 12*60]];
     return [[8*60, 13*60], [14*60, 18*60]];
@@ -11460,6 +11520,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
       var openEl = document.getElementById('hvOpeningDateText');
       if (openEl) openEl.textContent = window.hvOpeningDateLabel();
       if (Number(d.booking_horizon_days) > 0) HAYEVA_BOOKING_HORIZON_DAYS = Number(d.booking_horizon_days);
+      if (d.work_hours && typeof d.work_hours === 'object') HAYEVA_WORK_HOURS = d.work_hours;
     }).catch(function(){});
   })();
 
@@ -11471,7 +11532,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var maxDate = new Date(cursor);
     maxDate.setDate(maxDate.getDate() + HAYEVA_BOOKING_HORIZON_DAYS);
     while (cursor <= maxDate){
-      if (cursor.getDay() !== 0) out.push(new Date(cursor));
+      if (hoursForDate(cursor).length) out.push(new Date(cursor));
       cursor.setDate(cursor.getDate()+1);
     }
     return out;
@@ -22177,9 +22238,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var sb = window.sudSupabase;
     if (!sb || !sb.client || admStatsRealtimeChannel || admStatsRealtimeSubscribing) return;
     admStatsRealtimeSubscribing = true;
+    // closed : removeChannel() relance lui-même le statut CLOSED sur ce canal ;
+    // sans ce verrou, le rappel se rappelait à l'infini (pile saturée, session
+    // supabase-js bloquée, plus aucune requête possible — constaté en test réel).
+    var closed = false;
     var channel = sb.client.channel('admin-stats-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'analytics_events' }, admStatsCountOnline)
       .subscribe(function(status, err){
+        if (closed) return;
         if (status === 'SUBSCRIBED'){
           admStatsRealtimeSubscribing = false;
           admStatsRealtimeChannel = channel;
@@ -22187,6 +22253,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
           return;
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+          closed = true;
           admStatsRealtimeSubscribing = false;
           console.error('admStatsSubscribeOnlineRealtime: connexion Realtime en échec (' + status + ') — nouvelle tentative dans 4s', err || '');
           try { sb.client.removeChannel(channel); } catch(e){}
@@ -22356,6 +22423,53 @@ window.HV_APP_VERSION = 'hayeva-v39';
   // même IIFE qu'admShowPage — window.hvWireBottomNav est défini par le
   // script Espace Pro, exécuté avant celui-ci dans le document.
   if (window.hvWireBottomNav) window.hvWireBottomNav('admBottomNav', 'admMoreSheet', 'admMoreCloseBtn', 'admMoreLogoutBtn', admShowPage);
+  // EVA — assistante de gestion (assets/eva/, chargée seulement à la
+  // première ouverture, uniquement depuis l'administration). Aucun service
+  // d'IA externe : les données viennent de eva_run (administrateur revérifié).
+  (function(){
+    var loading = null;
+    function base(){ return location.protocol === 'file:' ? '' : '/'; }
+    function load(){
+      if (window.EVA) return Promise.resolve();
+      if (loading) return loading;
+      loading = new Promise(function(resolve, reject){
+        var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = base() + 'assets/eva/eva.css'; document.head.appendChild(css);
+        var files = ['assets/eva/eva-intents.js', 'assets/eva/eva.js'], i = 0;
+        (function next(){
+          if (i >= files.length) return resolve();
+          var s = document.createElement('script'); s.src = base() + files[i++]; s.onload = next;
+          s.onerror = function(){ loading = null; reject(new Error('EVA indisponible')); };
+          document.head.appendChild(s);
+        })();
+      });
+      return loading;
+    }
+    window.hvOpenEva = function(prefill){
+      return load().then(function(){ window.EVA.open(prefill); }, function(){ window.alert('EVA n\'a pas pu être chargée. Vérifiez votre connexion.'); });
+    };
+    // Lien « ?eva=… » renvoyé par Siri pour une action : EVA s'ouvre une fois
+    // l'espace administrateur affiché, la demande PRÉ-REMPLIE (jamais exécutée
+    // d'office : l'administrateur la relit puis l'envoie, et confirme l'action).
+    (function(){
+      var q = null, pid = null;
+      try { var sp = new URLSearchParams(location.search); q = sp.get('eva'); pid = sp.get('eva_prop'); } catch (e){}
+      if (pid && /^[0-9a-f-]{36}$/i.test(pid)) q = { proposal: pid }; else if (!q) return; else q = String(q).slice(0, 300);
+      try { var u = new URL(location.href); u.searchParams.delete('eva'); u.searchParams.delete('eva_prop'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e){}
+      var tries = 0, iv = setInterval(function(){
+        var entry = document.querySelector('.adm-eva-entry'), nav = document.getElementById('admBottomNav');
+        if ((entry && entry.offsetParent !== null) || (nav && nav.offsetParent !== null)){ clearInterval(iv); window.hvOpenEva(q); }
+        else if (++tries > 600) clearInterval(iv);
+      }, 500);
+    })();
+    document.addEventListener('click', function(e){
+      var t = e.target.closest && e.target.closest('[data-eva-open]');
+      if (!t) return;
+      e.preventDefault();
+      var more = document.getElementById('admMoreCloseBtn');
+      if (more && t.closest('#admMoreSheet')) more.click();
+      window.hvOpenEva();
+    });
+  })();
   // Raccourcis "Ouvrir le planning" / "Voir les dernières demandes" du
   // Tableau de bord — mêmes cibles que la sidebar, juste un autre point
   // d'entrée.
@@ -23764,12 +23878,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
     // simplement l'ouverture normale (le chargement initial admLoadBookings()
     // appelé séparément suffit déjà, pas besoin d'un second fetch complet).
     var hasBeenSubscribedOnce = false;
+    var closed = false; // voir admStatsSubscribeOnlineRealtime : évite la récursion removeChannel → CLOSED
     var channel = sb.client
       .channel('admin-bookings-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .subscribe(function(status, err){
+        if (closed) return;
         if (status === 'SUBSCRIBED'){
           admBkRealtimeSubscribing = false;
           admBkPendingChannel = null;
@@ -23784,6 +23900,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
           return;
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+          closed = true;
           admBkRealtimeSubscribing = false;
           console.error('admSetupBkRealtime: connexion Realtime en échec (' + status + ') — nouvelle tentative dans 4s', err || '');
           try { sb.client.removeChannel(channel); } catch(e){}
@@ -30567,7 +30684,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var lines = [];
     // Mention de franchise UNIQUEMENT si ce régime est réellement renseigné :
     // jamais de mention fiscale déduite d'une information manquante.
-    if (co.vat_regime === 'franchise_base') lines.push('TVA non applicable, art. 293 B du CGI.');
+    // … et seulement une fois le régime CONFIRMÉ par l'entreprise (réglages d'EVA).
+    if (co.vat_regime === 'franchise_base' && co.vat_regime_confirmed_at) lines.push('TVA non applicable, art. 293 B du CGI.');
     (extra || []).forEach(function(x){ if (x) lines.push(x); });
     if (co.insurance_company) lines.push('Assurance professionnelle : ' + co.insurance_company + (co.insurance_contract_number ? ' — contrat n° ' + co.insurance_contract_number : '') + (co.insurance_coverage ? ' — couverture : ' + co.insurance_coverage : '') + '.');
     if (co.mediator_name) lines.push('Médiateur de la consommation : ' + co.mediator_name + (co.mediator_contact ? ' — ' + co.mediator_contact : '') + '.');
@@ -30623,7 +30741,9 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var ty = rows.length ? totalsTable(pdf, rows, pdf.lastAutoTable.finalY + 8) : pdf.lastAutoTable.finalY;
     ty += 18;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5);
-    pdf.text(assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : (co.vat_regime === 'franchise_base' ? 'Montants en euros, nets de taxe.' : 'Montants en euros.'), 40, ty);
+    // Régime de TVA non confirmé : aucune mention de taxe sur le devis (ni TTC, ni « nets de taxe »).
+    var vatConfirmed = !!co.vat_regime_confirmed_at;
+    pdf.text(!vatConfirmed ? 'Montants en euros.' : assujetti ? 'Montants TTC ; le détail HT / TVA figurera sur la facture.' : (co.vat_regime === 'franchise_base' ? 'Montants en euros, nets de taxe.' : 'Montants en euros.'), 40, ty);
     if (co.payment_terms){ pdf.splitTextToSize('Conditions de paiement : ' + co.payment_terms, 515).forEach(function(s2, k){ pdf.text(s2, 40, ty + 14 + k * 12); }); ty += 14; }
     pdf.text('Bon pour accord — date et signature du client :', 40, ty + 30);
     pdf.rect(40, ty + 38, 240, 66);
@@ -30674,7 +30794,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
     footer(pdf, co, isDraft ? [
       'BROUILLON — document de préparation, non valable comme facture.',
       (co.siret && co.vat_regime && co.address_line1 && co.insurance_company && co.mediator_name) ? null
-        : 'Informations légales de l\'entreprise : À RENSEIGNER AVANT FACTURATION.'
+        : 'Informations légales de l\'entreprise : À RENSEIGNER AVANT FACTURATION.',
+      co.vat_regime_confirmed_at ? null : 'Régime de TVA non confirmé : taux indicatifs, recalculés à la confirmation.'
     ] : null);
     pdf.save((isDraft ? 'Brouillon-' : 'Facture-') + (inv.reference || 'HAYEVA') + '.pdf');
   }
@@ -33076,6 +33197,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
   /* ---------- Navigation : indicateur glissant de l'onglet actif ---------- */
   .hv-ind-on{ position:relative; isolation:isolate; }
   .hv-ind-on > :not(.hv-ind){ position:relative; z-index:1; }
+  /* La barre de navigation basse doit rester collée en bas de l'écran (sticky) : l'indicateur ne doit pas la repasser en relative. */
+  .hv-bottomnav.hv-ind-on, .ecx-bottomnav.hv-ind-on{ position:sticky; }
   .hv-ind{
     position:absolute; left:0; top:0; z-index:0; pointer-events:none; opacity:0;
     transition:transform var(--hv-dur-view) var(--hv-ease-expo), width var(--hv-dur-view) var(--hv-ease-expo), height var(--hv-dur-view) var(--hv-ease-expo), opacity .2s;
