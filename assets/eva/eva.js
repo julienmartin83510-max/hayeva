@@ -356,7 +356,8 @@
   function renderClients(p, d){
     var c = d.clients || [];
     if (c.length === 1) setCtx(c[0]);
-    var sum = c.length ? c.length + ' client' + (c.length > 1 ? 's' : '') + ' trouvé' + (c.length > 1 ? 's' : '') + '.' : 'Aucun client ne correspond à « ' + (d.query || '') + ' » dans votre base.';
+    var sum = d.last ? (c.length ? 'Votre dernier client : ' + (c[0].name || 'sans nom') + '.' : 'Aucune fiche client pour le moment.')
+      : c.length ? c.length + ' client' + (c.length > 1 ? 's' : '') + ' trouvé' + (c.length > 1 ? 's' : '') + '.' : 'Aucun client ne correspond à « ' + (d.query || '') + ' » dans votre base.';
     var body = c.length ? '<ul class="eva-list">' + c.map(function(x){
       return '<li class="eva-item"><div class="eva-main"><b>' + esc(x.name || 'Sans nom') + '</b>' + (x.city ? '<span>' + esc(x.city) + '</span>' : '') +
         (x.phone ? '<a href="tel:' + esc(String(x.phone).replace(/\s/g, '')) + '">' + esc(x.phone) + '</a>' : '') + (x.email ? '<a href="mailto:' + esc(x.email) + '">' + esc(x.email) + '</a>' : '') +

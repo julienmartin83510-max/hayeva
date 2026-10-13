@@ -148,6 +148,8 @@
     if (/\b(fonctionnalite|evolution|amelioration)s?\b/.test(t) && /\b(ajoute|ajouter|cree|creer|developpe|voudrais|veux|nouvelle|propose)\w*\b/.test(t)){
       return { intent: 'dev_request', args: { text: raw.replace(/^\s*(?:(?:hey|ok|dis|bonjour|salut)\s+)?(?:eva|hayeva)\b\s*[,:-]?\s*/i, '').trim() }, label: 'Demande d’évolution' };
     }
+    // « Retrouve mon dernier client » : dernière fiche client créée (lecture seule).
+    if (/\b(dernier client|derniere cliente|client le plus recent|dernier client (cree|ajoute|enregistre))\b/.test(t) && !/\b(cree|creer|ajoute|ajouter|enregistre|enregistrer)\b.*\b(un|une|nouveau|nouvelle)\b/.test(t)) return { intent: 'find_client', args: { query: '@dernier' }, label: 'Dernier client' };
     if (/\b(facture|facturer|preparer? (une|la) facture)\b.*\bderniere intervention\b|\bderniere intervention\b.*\bfactur/.test(t)) return { intent: 'invoice_last', args: {}, label: 'Facture de la dernière intervention' };
     if (/\b(decale|decaler|deplace|deplacer|reporte|reporter|bouge|bouger|avance|avancer|change|changer)\b.*\b(rendez|rdv|intervention)/.test(t)){
       var which = /\bdernier\b/.test(t) ? 'last' : (/\b(deuxieme|second)\b/.test(t) ? 1 : 0);

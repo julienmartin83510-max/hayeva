@@ -5,10 +5,14 @@
   # (code 0 = annuler, 1 = construire), même si les « branch deploys » ou les
   # « deploy previews » sont activés dans les réglages Netlify. Aucune
   # prévisualisation publique des branches de travail.
-  # Seule exception : la branche « eva-test » (version de TEST d'EVA, données
-  # fictives, isolée de la production par index.html), à condition de l'avoir
-  # autorisée dans les réglages Netlify (Branch deploys > eva-test).
-  ignore = "if [ \"$CONTEXT\" = \"production\" ] || [ \"$BRANCH\" = \"main\" ] || { [ \"$CONTEXT\" = \"branch-deploy\" ] && [ \"$BRANCH\" = \"eva-test\" ]; }; then exit 1; else exit 0; fi"
+  # Exceptions (versions de TEST d'EVA, données fictives, isolées de la
+  # production par index.html) :
+  #   * la branche « eva-test », si elle est autorisée dans Netlify
+  #     (Branch deploys > eva-test) ;
+  #   * une prévisualisation de demande de fusion (deploy-preview-N--…),
+  #     SEULEMENT si l'index.html de la branche contient le marqueur
+  #     HV-PREVIEW-TEST-MODE (mode test forcé sur ces adresses).
+  ignore = "if [ \"$CONTEXT\" = \"production\" ] || [ \"$BRANCH\" = \"main\" ] || { [ \"$CONTEXT\" = \"branch-deploy\" ] && [ \"$BRANCH\" = \"eva-test\" ]; } || { [ \"$CONTEXT\" = \"deploy-preview\" ] && grep -q HV-PREVIEW-TEST-MODE index.html; }; then exit 1; else exit 0; fi"
 
 # En-têtes globaux minimaux, sans risque pour Supabase/les CDN externes
 # (Leaflet, Google Fonts, Mapbox) déjà utilisés par le site : pas de

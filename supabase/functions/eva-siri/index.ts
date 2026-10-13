@@ -85,6 +85,7 @@ export function speech(intent: string, d: any, today: string, args: any = {}): s
     }
     case 'find_client': {
       const c = d.clients || [];
+      if (d.last) return c.length ? 'Votre dernier client : ' + c[0].name + (c[0].city ? ', ' + c[0].city : '') + (c[0].phone ? ', téléphone ' + String(c[0].phone).replace(/(\d{2})(?=\d)/g, '$1 ') : '') + '.' : 'Aucune fiche client pour le moment.';
       if (!c.length) return 'Aucun client ne correspond à ' + (d.query || 'cette recherche') + '.';
       // deno-lint-ignore no-explicit-any
       return plural(c.length, 'client trouvé', 'clients trouvés') + '. ' + list(c.map((x: any) => x.name + (x.city ? ', ' + x.city : '') + (x.phone ? ', téléphone ' + String(x.phone).replace(/(\d{2})(?=\d)/g, '$1 ') : '')), 3) + '.';
@@ -210,6 +211,11 @@ export async function handle(req: Request, rpc: Rpc, now: Date = parisNow()): Pr
     if (p.intent === 'empty') continue;
     if (p.intent === 'unknown'){ out.push("Je n'ai pas compris. Essayez par exemple : qu'est-ce que j'ai demain ?"); continue; }
     if (p.args && (p.args.client === '@ctx')){ out.push('Précisez le nom du client.'); continue; }
+    // Devis demandé sans client : dire ce qui manque plutôt que « client introuvable ».
+    if (p.intent === 'quote_estimate' && !(p.args && p.args.client)){
+      out.push("Pour préparer un devis, précisez la prestation et le client. Par exemple : prépare un devis pour l'entretien climatisation de Monsieur Dupont.");
+      continue;
+    }
     if (PROPOSE_INTENTS.has(p.intent) && !(p.intent === 'move_booking' && !(p.args && p.args.client))){
       const pr = await rpc('eva_siri_propose', { p_token_hash: hash, p_intent: p.intent, p_args: p.args || {}, p_command: p.text || text });
       if (!pr.error && pr.data){

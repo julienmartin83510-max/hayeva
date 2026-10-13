@@ -244,7 +244,10 @@
   // Sur hayeva.fr, rien ne change.
   var HV_TEST_URL = 'https://hqsszehccqgalkhkdbis.supabase.co';  // projet de TEST hayeva-eva-test (données fictives)
   var HV_TEST_KEY = 'sb_publishable_IL4-spvs9NO0KR-o8yNbxw_Y4y8UCMa';  // clé PUBLIQUE (publishable) du projet de TEST
-  var HV_IS_TEST = /^eva-test--/.test(location.hostname);
+  // Adresse de branche « eva-test » ET toute prévisualisation de demande de fusion
+  // (deploy-preview-N--…) : toujours en mode TEST, jamais reliées à la production.
+  // Marqueur lu par netlify.toml : HV-PREVIEW-TEST-MODE
+  var HV_IS_TEST = /^(eva-test|deploy-preview-\d+)--/.test(location.hostname);
   window.HV_ENV = HV_IS_TEST ? 'test' : 'production';
   if (HV_IS_TEST){
     var hvProdHost = SUPABASE_URL.replace(/^https:\/\//, ''), hvTestReady = /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(HV_TEST_URL) && HV_TEST_URL.indexOf(hvProdHost) === -1 && !!HV_TEST_KEY;
@@ -264,8 +267,12 @@
       var b = document.createElement('div');
       b.id = 'hvTestBanner'; b.setAttribute('role', 'status');
       b.textContent = hvTestReady ? 'VERSION DE TEST — données fictives, aucun client réel' : 'VERSION DE TEST — projet de test non configuré (aucune donnée)';
-      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#B3261E;color:#fff;font:600 12px/1.2 system-ui,sans-serif;text-align:center;padding:4px 8px calc(4px + env(safe-area-inset-top,0px));pointer-events:none';
+      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#B3261E;color:#fff;font:600 12px/1.2 system-ui,sans-serif;text-align:center;padding:calc(4px + env(safe-area-inset-top,0px)) 8px 4px;pointer-events:none';
       document.body.appendChild(b);
+      // Version de test uniquement : EVA s'ouvre sous le bandeau (titre et fermeture jamais masqués).
+      var st = document.createElement('style');
+      st.textContent = '.eva{top:calc(22px + env(safe-area-inset-top,0px)) !important}';
+      document.head.appendChild(st);
       var m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex,nofollow'; document.head.appendChild(m);
     });
   }
@@ -22231,9 +22238,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
     var sb = window.sudSupabase;
     if (!sb || !sb.client || admStatsRealtimeChannel || admStatsRealtimeSubscribing) return;
     admStatsRealtimeSubscribing = true;
+    // closed : removeChannel() relance lui-même le statut CLOSED sur ce canal ;
+    // sans ce verrou, le rappel se rappelait à l'infini (pile saturée, session
+    // supabase-js bloquée, plus aucune requête possible — constaté en test réel).
+    var closed = false;
     var channel = sb.client.channel('admin-stats-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'analytics_events' }, admStatsCountOnline)
       .subscribe(function(status, err){
+        if (closed) return;
         if (status === 'SUBSCRIBED'){
           admStatsRealtimeSubscribing = false;
           admStatsRealtimeChannel = channel;
@@ -22241,6 +22253,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
           return;
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+          closed = true;
           admStatsRealtimeSubscribing = false;
           console.error('admStatsSubscribeOnlineRealtime: connexion Realtime en échec (' + status + ') — nouvelle tentative dans 4s', err || '');
           try { sb.client.removeChannel(channel); } catch(e){}
@@ -23865,12 +23878,14 @@ window.HV_APP_VERSION = 'hayeva-v39';
     // simplement l'ouverture normale (le chargement initial admLoadBookings()
     // appelé séparément suffit déjà, pas besoin d'un second fetch complet).
     var hasBeenSubscribedOnce = false;
+    var closed = false; // voir admStatsSubscribeOnlineRealtime : évite la récursion removeChannel → CLOSED
     var channel = sb.client
       .channel('admin-bookings-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'bookings' }, admHandleBookingRealtimeEvent)
       .subscribe(function(status, err){
+        if (closed) return;
         if (status === 'SUBSCRIBED'){
           admBkRealtimeSubscribing = false;
           admBkPendingChannel = null;
@@ -23885,6 +23900,7 @@ window.HV_APP_VERSION = 'hayeva-v39';
           return;
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+          closed = true;
           admBkRealtimeSubscribing = false;
           console.error('admSetupBkRealtime: connexion Realtime en échec (' + status + ') — nouvelle tentative dans 4s', err || '');
           try { sb.client.removeChannel(channel); } catch(e){}
