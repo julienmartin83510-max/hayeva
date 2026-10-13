@@ -2,25 +2,31 @@
 
 Rien de ce qui suit n'est fait sans votre autorisation explicite.
 
-## Ordre de fusion vers `main`
+## Le jeu-concours reste en place
 
-| Ordre | Branche | Migrations | Conflit attendu |
-|---|---|---|---|
-| 1 | `parrainage/programme-complet` | 0134 | aucun |
-| 2 | `feature/retrait-offre-lancement` | 0139 | `netlify.toml` (lignes du garde-fou) |
-| 3 | `feature/eva-assistant` | 0135 → 0138, 0140 | `netlify.toml` |
+- **NE PAS fusionner `feature/retrait-offre-lancement`** et **NE PAS appliquer `0139_end_launch_campaign.sql`**. Cette branche supprime le jeu-concours :
+  - la section et les lots (dont la Nintendo Switch 2) ;
+  - les visuels ;
+  - les déclencheurs de participation.
+- La branche EVA ne touche à aucun élément du jeu-concours : ni section, ni règlement, ni lots, ni visuels, ni tables `launch_campaign_*`, ni déclencheurs. Vérifié par comparaison avec `main`.
+- État constaté en production le 13/10/2026 (lecture seule) :
+  - campagne active jusqu'au 06/12/2026 ;
+  - 11 participations ;
+  - 2 déclencheurs actifs ;
+  - 54 réservations.
 
-- **Résolution de `netlify.toml`** : garder la version EVA, la plus complète (production, `eva-test` et prévisualisations en mode test).
-- `index.html` fusionne sans conflit. Vérifié par fusion simulée.
+## Fusion vers `main`
+
+EVA part seule, par la PR #3 (`feature/eva-assistant`). `main` est son ancêtre direct, donc la fusion se fait sans conflit (vérifié). Elle ne dépend pas de Parrainage (0134) : les fonctions de parrainage qu'elle lit existent déjà en production. `parrainage/programme-complet` reste une décision séparée.
 
 ## Avant (production, lecture seule)
 
-1. **Contrôle préalable** : `supabase/rollback/eva_preflight.sql`. Il doit afficher « OK » seulement.
-2. **Sauvegarde** : le plan gratuit n'offre pas de sauvegarde téléchargeable. Exportez en CSV (Table editor → Export) les tables `company_settings`, `booking_settings`, `bookings`, `clients`, `quotes`, `invoices`.
+1. **Contrôle préalable** : `supabase/rollback/eva_preflight.sql` doit afficher « OK » seulement. Dernier passage le 13/10/2026 : OK.
+2. **Sauvegarde** : le plan gratuit n'offre pas de sauvegarde téléchargeable. Exportez en CSV (Table editor → Export) les tables `company_settings`, `booking_settings`, `bookings`, `clients`, `quotes`, `invoices`, `launch_campaign_entries`.
 
 ## Migrations (dans cet ordre)
 
-`0134` (si Parrainage n'est pas encore en production) → `0135` → `0136` → `0137` → `0138` → `0139` (après les vérifications de `docs/RETRAIT_OFFRE_LANCEMENT.md`) → `0140`.
+`0135` → `0136` → `0137` → `0138` → `0140`. Aucune ne modifie ni ne supprime de réservation, de client, de devis, de facture ou de participation.
 
 ## Fonctions Supabase
 
@@ -33,17 +39,15 @@ La fusion vers `main` déclenche la publication de production. Il n'y a aucune v
 
 ## Après
 
-Dans EVA → Réglages :
-- confirmer le régime de TVA réel ;
-- vérifier les horaires ;
-- activer Siri ;
-- créer l'accès de l'iPhone.
+1. Vérifier que le jeu-concours s'affiche toujours sur hayeva.fr.
+2. Dans EVA → Réglages :
+   - confirmer le régime de TVA réel ;
+   - vérifier les horaires ;
+   - activer Siri ;
+   - créer l'accès de l'iPhone.
 
 ## Retour arrière
 
 - **Site** : sur Netlify → Deploys, faire « Publish deploy » sur la version précédente, ou annuler le commit de fusion sur `main`.
-- **Base** :
-  - `supabase/rollback/eva_0135_0137_rollback.sql` couvre 0135 à 0138 et 0140, car il supprime toutes les fonctions `_eva_*` ;
-  - `supabase/rollback/0139_rollback.sql` couvre 0139 ;
-  - aucune donnée client, réservation, devis ou facture n'est touchée.
+- **Base** : `supabase/rollback/eva_0135_0137_rollback.sql` couvre 0135 à 0138 et 0140, car il supprime toutes les fonctions `_eva_*`. Aucune donnée client, réservation, devis, facture ou participation n'est touchée.
 - **Fonction** : supprimer `eva-siri` (Edge Functions → eva-siri → Delete).
