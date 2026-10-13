@@ -15,7 +15,7 @@
   if (window.EVA) return;
   var I = window.EVAIntents;
   var sb = function(){ return window.sudSupabase && window.sudSupabase.client; };
-  var root, feed, input, micBtn, hintEl, state = { tab: 'today', overview: null, reg: {}, seq: 0, voice: false, listening: false };
+  var root, feed, input, micBtn, hintEl, state = { tab: 'today', overview: null, reg: {}, seq: 0, voice: false, listening: false, convo: false, speaking: false, pending: 0, last: null };
   var TTS_KEY = 'hv_eva_tts', HF_KEY = 'hv_eva_handsfree';
 
   // ---------------------------------------------------------------- outils
@@ -51,11 +51,14 @@
     for (var k in ERR) if (m.indexOf(k) !== -1) return ERR[k];
     if (/réservée|42501|permission/i.test(m)) return 'Action réservée à l’administrateur connecté.';
     if (/JWT|session/i.test(m)) return 'Votre session a expiré : reconnectez-vous.';
+    if (/Failed to fetch|NetworkError|Load failed|network|ERR_INTERNET|timeout/i.test(m)) return 'Connexion interrompue : vérifiez le réseau, puis reposez la question.';
     return m && m.length < 220 ? m : 'EVA n’a pas pu répondre. Réessayez dans un instant.';
   }
   function rpc(name, args){
     var c = sb(); if (!c) return Promise.reject(new Error('Service indisponible.'));
-    return c.rpc(name, args || {}).then(function(r){ if (r.error) throw r.error; return r.data; });
+    state.pending++; updVoice();
+    var fin = function(){ state.pending = Math.max(0, state.pending - 1); updVoice(); };
+    return c.rpc(name, args || {}).then(function(r){ fin(); if (r.error) throw r.error; return r.data; }, function(e){ fin(); throw e; });
   }
   // Actions sensibles : si le serveur exige une connexion récente (REAUTH_REQUISE),
   // EVA demande de confirmer l'identité puis relance UNE fois la même demande.
@@ -96,17 +99,27 @@
       }, function(){ reject(new Error('Votre session a expiré : reconnectez-vous.')); });
     });
   }
+  function ttsOn(){ if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false; try { return localStorage.getItem(TTS_KEY) !== '0'; } catch (e){ return true; } }
+  function stopVoice(){ try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e){} state.speaking = false; updVoice(); }
+  // Fin d'une réponse parlée : en conversation, EVA rouvre le micro pour la suite.
+  function spoke(){
+    if (!state.speaking) return; state.speaking = false; updVoice();
+    if (state.convo && !hf.on && root && !root.hidden && !state.listening) setTimeout(function(){ if (state.convo && !state.speaking && !state.listening) startRec(true); }, 350);
+  }
   function speak(text){
-    if (!state.voice || !window.speechSynthesis) return;
-    try { if (localStorage.getItem(TTS_KEY) === '0') return; } catch (e){}
+    if (!state.voice || !text) return;
+    if (!ttsOn()){ if (state.convo) state.convo = false, updVoice(); return; }
     try {
       var u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR';
+      state.speaking = true; updVoice();
+      var safety = setTimeout(spoke, Math.max(3000, String(text).length * 95));
+      u.onend = u.onerror = function(){ clearTimeout(safety); spoke(); };
       // Mains libres : l'écoute est suspendue pendant qu'EVA parle (elle ne s'entend pas elle-même).
       if (hf.on){
         hf.speaking = true; if (hf.rec) try { hf.rec.abort(); } catch (e){}
         // Filet de sécurité si la synthèse vocale ne signale jamais sa fin.
         var back = function(){ if (!hf.speaking) return; hf.speaking = false; hfRestart(); };
-        u.onend = u.onerror = back; setTimeout(back, Math.max(2500, String(text).length * 90));
+        var prev = u.onend; u.onend = u.onerror = function(){ prev(); back(); }; setTimeout(back, Math.max(2500, String(text).length * 90));
       }
       window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
     } catch (e){}
@@ -149,6 +162,9 @@
           '<input class="eva-input" id="evaInput" type="text" enterkeyhint="send" maxlength="300" placeholder="EVA, montre-moi mes interventions de demain">' +
           '<button type="submit" class="eva-send" aria-label="Envoyer">' + ICON.send + '</button>' +
         '</div>' +
+        '<div class="eva-voice" id="evaVoice" hidden role="status" aria-live="polite"><span class="eva-voice-dot" aria-hidden="true"></span><span class="eva-voice-t" id="evaVoiceT"></span>' +
+          '<button type="button" class="eva-btn sm ghost" data-act="stop-voice" id="evaStopVoice" hidden>Arrêter la voix</button>' +
+          '<button type="button" class="eva-btn sm ghost" data-act="end-convo" id="evaEndConvo" hidden>Terminer</button></div>' +
         '<div class="eva-hf" id="evaHf" hidden></div>' +
         '<p class="eva-hint" id="evaHint"></p>' +
       '</form>';
@@ -187,7 +203,7 @@
   }
   function close(){
     if (!root || root.hidden) return;
-    stopMic(); hfStop('');
+    endConvo(''); hfStop('');
     root.classList.remove('is-open');
     document.documentElement.style.overflow = '';
     root.hidden = true;
@@ -232,6 +248,11 @@
   }
   function runOne(p, fullText){
     if (p.intent === 'empty') return;
+    if (p.intent === 'greeting'){ var hr = new Date().getHours(), g = (hr >= 18 || hr < 5 ? 'Bonsoir' : 'Bonjour') + ' ! Que puis-je faire pour vous aujourd’hui ?'; addCard(card(null, p.text, g, '')); speak(g); return; }
+    if (p.intent === 'thanks'){ var th = 'Avec plaisir. Autre chose ?'; addCard(card(null, p.text, th, '')); speak(th); return; }
+    if (p.intent === 'bye'){ var by = 'À bientôt !'; state.convo = false; addCard(card(null, p.text, by, '')); speak(by); updVoice(); return; }
+    if (p.intent === 'details') return details(p);
+    if (p.intent === 'yes'){ if (state.offer && state.last){ state.offer = false; return details({ text: p.text, args: { index: null } }); } var ys = 'D’accord. Que souhaitez-vous savoir ?'; addCard(card(null, p.text, ys, '')); speak(ys); return; }
     if (p.intent === 'unknown'){
       addCard('<div class="eva-card"><div class="eva-card-head"><span class="eva-agent">EVA</span><span class="eva-q">« ' + esc(p.text) + ' »</span></div>' +
         '<p class="eva-sum">Je n’ai pas compris cette demande.</p><p class="eva-note">Je ne réponds qu’à partir de vos données réelles. Essayez par exemple :</p>' +
@@ -261,14 +282,74 @@
     if (p.ctxMissing){ var sc = 'De quel client parlez-vous ? Ouvrez d’abord sa fiche, par exemple « fiche de Monsieur Martin ».'; holder.outerHTML = card('clients', p.text, sc, ''); speak(sc); return; }
     if (p.intent === 'quote_estimate' && !p.args.service) return askService(p, holder);
     if (QUERY[p.intent]) return rpc('eva_query', { p_intent: p.intent, p_args: p.args, p_command: p.text }).then(function(r){
-      var out = renderQuery(p, r); holder.outerHTML = out.html; speak(out.say);
+      remember(p, r); var out = renderQuery(p, r); holder.outerHTML = out.html; speak(out.say);
     }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); speak(errText(e)); });
     return rpc('eva_run', { p_intent: p.intent, p_args: p.args, p_command: p.text }).then(function(r){
-      var out = render(p, r);
+      remember(p, r); var out = render(p, r);
       holder.outerHTML = out.html;
       speak(out.say);
     }, function(e){ holder.outerHTML = errorCard(errText(e), p.text); speak(errText(e)); });
   }
+  // ------------------------------------------------ suite de conversation
+  // « Donne-moi les détails », « et le premier ? » : portent sur la dernière réponse
+  // (données déjà reçues du serveur, rien n'est inventé ni relu ailleurs).
+  function remember(p, r){ state.offer = false; state.last = { intent: p.intent, data: (r && r.data) || {}, at: Date.now() }; }
+  function hm(t){ var m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) + ' h' + (m[2] !== '00' ? ' ' + m[2] : '') : ''; }
+  function detailsOf(L, idx){
+    var d = L.data || {}, items, fmt, agent = null, noun;
+    switch (L.intent){
+      case 'agenda': items = d.interventions || []; agent = 'planning'; noun = 'intervention';
+        fmt = function(x){ return 'À ' + hm(x.start) + ' : ' + x.service + ' chez ' + x.client + (x.address ? ', ' + x.address : '') + (x.phone ? ', téléphone ' + x.phone : '') + (x.status === 'PENDING' ? ', à confirmer' : '') + '.'; }; break;
+      case 'agenda_range': items = [].concat.apply([], (d.days || []).map(function(day){ return day.items || []; })); agent = 'planning'; noun = 'rendez-vous';
+        fmt = function(x){ return dayLabel(x.date) + ' à ' + hm(x.start) + ' : ' + x.service + ', ' + x.client + (x.status === 'PENDING' ? ', à confirmer' : '') + '.'; }; break;
+      case 'brief': return d.agenda ? detailsOf({ intent: 'agenda', data: d.agenda }, idx) : null;
+      case 'quotes_pending': items = (d.drafts || []).concat(d.sent || []); agent = 'devis'; noun = 'devis';
+        fmt = function(x){ return (x.title || x.reference || 'Devis') + ', ' + x.client + ', ' + eur(x.total_cents) + (x.sent_days != null ? ', envoyé il y a ' + x.sent_days + ' jour' + (x.sent_days > 1 ? 's' : '') : ', brouillon') + '.'; }; break;
+      case 'awaiting': items = d.booking_requests || []; agent = 'planning'; noun = 'demande';
+        fmt = function(x){ return x.client + ' : ' + x.service + ', ' + dayLabel(x.date) + ' à ' + hm(x.start) + '.'; }; break;
+      case 'find_client': items = d.clients || []; agent = 'clients'; noun = 'client';
+        fmt = function(x){ return x.name + (x.city ? ', ' + x.city : '') + (x.phone ? ', téléphone ' + x.phone : '') + (x.email ? ', ' + x.email : '') + '.'; }; break;
+      case 'maintenance_due': items = d.items || []; agent = 'planning'; noun = 'entretien';
+        fmt = function(x){ return x.client + ' : ' + (x.equipment || x.type || 'équipement') + (x.overdue ? ', en retard' : ', à prévoir avant le ' + fdate(x.next_due)) + '.'; }; break;
+      case 'attention': items = d.items || []; noun = 'point';
+        fmt = function(x){ return x.message; }; break;
+      case 'free_slots': items = d.slots || []; agent = 'planning'; noun = 'créneau';
+        fmt = function(x){ return dayLabel(x.date) + ', de ' + hm(x.start) + ' à ' + hm(x.end) + '.'; }; break;
+      case 'invoices_todo': agent = 'factures'; noun = 'élément';
+        items = (d.completed_without_invoice || []).map(function(x){ return Object.assign({ k: 'b' }, x); }).concat((d.unpaid || []).map(function(x){ return Object.assign({ k: 'u' }, x); }));
+        fmt = function(x){ return x.k === 'b' ? 'Intervention ' + x.reference + ' terminée chez ' + x.client + ', sans facture.' : 'Facture ' + x.reference + ', ' + x.client + ', ' + eur((x.total_cents || 0) - (x.paid_cents || 0)) + ' restant dus.'; }; break;
+      default: return null;
+    }
+    var pl = noun === 'créneau' ? 'créneaux' : /[sx]$/.test(noun) ? noun : noun + 's';
+    if (!items.length) return { agent: agent, sum: 'Il n’y a aucun ' + noun + ' à détailler.' };
+    if (idx != null){
+      var k = idx < 0 ? items.length + idx : idx, x = items[k];
+      if (!x) return { agent: agent, sum: 'Il n’y en a que ' + items.length + '.' };
+      if (x.client_id) setCtx({ client_id: x.client_id, name: x.client || x.name });
+      return { agent: agent, sum: fmt(x) };
+    }
+    var lines = items.slice(0, 8).map(fmt);
+    return { agent: agent, sum: items.length + ' ' + (items.length > 1 ? pl : noun) + (items.length > 8 ? ', voici les 8 premiers' : '') + ' :',
+      body: '<ul class="eva-list">' + lines.map(function(l){ return '<li class="eva-item"><div class="eva-main"><span>' + esc(l) + '</span></div></li>'; }).join('') + '</ul>', say: lines.join(' ') };
+  }
+  function details(p){
+    var L = state.last, out = L && Date.now() - L.at < 15 * 60000 ? detailsOf(L, p.args && p.args.index) : null;
+    if (!out){ var s0 = 'De quoi souhaitez-vous le détail ? Posez d’abord une question, par exemple « mes rendez-vous de demain ».'; addCard(card(null, p.text, s0, '')); speak(s0); return; }
+    addCard(card(out.agent, p.text, out.sum, out.body || '')); speak(out.say ? out.sum + ' ' + out.say : out.sum);
+  }
+  // Barre d'état vocale : écoute, réflexion, parole ; arrêt de la voix et fin de conversation.
+  function updVoice(){
+    if (!root) return;
+    var v = root.querySelector('#evaVoice'); if (!v) return;
+    var mode = state.listening ? 'listening' : state.pending > 0 ? 'thinking' : state.speaking ? 'speaking' : state.convo ? 'waiting' : '';
+    root.classList.toggle('is-listening', mode === 'listening'); root.classList.toggle('is-thinking', mode === 'thinking'); root.classList.toggle('is-speaking', mode === 'speaking');
+    v.hidden = !mode; v.setAttribute('data-mode', mode);
+    root.querySelector('#evaVoiceT').textContent = { listening: 'EVA vous écoute…', thinking: 'EVA réfléchit…', speaking: 'EVA vous répond…', waiting: 'Conversation en cours' }[mode] || '';
+    root.querySelector('#evaStopVoice').hidden = mode !== 'speaking';
+    root.querySelector('#evaEndConvo').hidden = !state.convo;
+    var vb = root.querySelector('#evaListen [data-act="end-convo"]'); if (vb) vb.hidden = !state.convo;
+  }
+  function endConvo(msg){ state.convo = false; stopMic(); stopVoice(); updVoice(); if (msg && hintEl) hintEl.textContent = msg; }
   function addCard(html){
     var w = document.createElement('div'); w.innerHTML = html;
     var el = w.firstElementChild; feed.insertBefore(el, feed.firstChild);
@@ -330,7 +411,9 @@
     }
     var first = d.interventions[0];
     var sum = day + ' : ' + n + ' intervention' + (n > 1 ? 's' : '') + ', la première à ' + first.start + ' (' + first.client + ').';
-    return { html: card('planning', p.text, sum, '<p class="eva-note" style="margin:-6px 0 10px">' + esc(full) + '</p>' + agendaItems(d) + agendaExtras(d)), say: sum };
+    var say = day + ', vous avez ' + n + ' intervention' + (n > 1 ? 's prévues' : ' prévue') + '. ' + (n > 1 ? 'La première à ' : 'À ') + hm(first.start) + ', chez ' + first.client + '.' + (n > 1 ? ' Voulez-vous les détails ?' : '');
+    state.offer = n > 1;
+    return { html: card('planning', p.text, sum, '<p class="eva-note" style="margin:-6px 0 10px">' + esc(full) + '</p>' + agendaItems(d) + agendaExtras(d)), say: say };
   }
   function renderSlots(p, d, ctx){
     var by = {};
@@ -1018,6 +1101,17 @@
       b.textContent = n; b.hidden = !n;
     }, function(){});
   }
+  // RGPD : efface le TEXTE des conversations (demandes, réponses lues) ; les traces des
+  // actions proposées ou confirmées restent, pour l'historique des opérations.
+  function clearHistory(b){
+    if (!window.confirm('Effacer le texte de vos conversations avec EVA ?\n\nLes traces des actions proposées ou confirmées sont conservées.')) return;
+    b.disabled = true;
+    rpc('eva_clear_history', {}).then(function(r){
+      feed.innerHTML = ''; state.last = null; state.ctx = null;
+      hintEl.textContent = (r && r.cleared != null ? r.cleared : 0) + ' conversation(s) effacée(s).';
+      loadOverview();
+    }, function(e){ b.disabled = false; hintEl.textContent = errText(e); });
+  }
   function loadOverview(){
     return rpc('eva_overview').then(function(o){
       state.overview = o;
@@ -1040,6 +1134,8 @@
   function renderHistory(o){
     var j = o.journal || [];
     root.querySelector('[data-pane="history"]').innerHTML = '<p class="eva-h" style="margin-top:4px">Vos dernières actions (' + (o.today_count || 0) + ' aujourd’hui)</p>' +
+      '<p class="eva-note">Aucun enregistrement audio n’est conservé : seul le texte de vos demandes est noté. ' +
+      '<button type="button" class="eva-btn sm ghost" data-act="clear-history">Effacer le texte de mes conversations</button></p>' +
       (j.length ? '<ul class="eva-list eva-hist">' + j.map(function(x){
         var t = new Date(x.at), when = t.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         var label = x.command || INT[x.intent] || String(x.intent || '').replace(/^(propose|confirm|cancel):/, function(m, a){ return { propose: 'Proposition ', confirm: 'Confirmation ', cancel: 'Annulation ' }[a]; });
@@ -1248,7 +1344,10 @@
       if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).then(done, function(){ selectText(tv); });
       return selectText(tv);
     }
-    if (act === 'stop-mic') return stopMic();
+    if (act === 'stop-mic') return state.convo ? endConvo('Conversation terminée.') : stopMic();
+    if (act === 'stop-voice') return stopVoice();
+    if (act === 'end-convo') return endConvo('Conversation terminée.');
+    if (act === 'clear-history') return clearHistory(b);
     if (act === 'confirm') return confirmProp(b.getAttribute('data-id'), b);
     if (act === 'cancel') return cancelProp(b.getAttribute('data-id'), b);
     if (act === 'save-hours') return saveHours(b);
@@ -1258,14 +1357,16 @@
   function selectText(el){ if (!el) return; var r = document.createRange(); r.selectNodeContents(el); var s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(r); }
   // ----------------------------------------------------------------- micro
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null, rec = null;
-  function stopMic(){ if (rec){ try { rec.abort(); } catch (e){} } setListening(false); }
+  // L'écoute arrêtée est oubliée AVANT abort() : ses événements tardifs (fin, résultat) sont ignorés.
+  function stopMic(){ var r = rec; rec = null; if (r){ try { r.abort(); } catch (e){} } setListening(false); }
   function listenVeil(){
     var v = root.querySelector('#evaListen');
     if (!v){
       v = document.createElement('div'); v.id = 'evaListen'; v.className = 'eva-listen'; v.setAttribute('role', 'status'); v.setAttribute('aria-live', 'polite');
       v.innerHTML = '<div class="eva-orb"><span class="eva-ring" id="evaRing"></span><img src="' + (location.protocol === 'file:' ? '' : '/') + 'images/brand/hayeva-logo-sm.png" alt="" width="900" height="607"></div>' +
         '<p class="eva-listen-t">EVA vous écoute…</p><p class="eva-listen-q" id="evaListenQ"></p>' +
-        '<button type="button" class="eva-btn ghost" data-act="stop-mic">Arrêter le micro</button>';
+        '<div class="eva-actions" style="justify-content:center"><button type="button" class="eva-btn ghost" data-act="stop-mic">Arrêter le micro</button>' +
+        '<button type="button" class="eva-btn ghost" data-act="end-convo" hidden>Terminer la conversation</button></div>';
       root.appendChild(v);
     }
     return v;
@@ -1277,14 +1378,23 @@
     if (!root) return;
     var v = listenVeil(); v.classList.toggle('is-on', on); v.hidden = !on;
     if (!on) pulse(0); else root.querySelector('#evaListenQ').textContent = '';
+    updVoice();
   }
   function toggleMic(){
     if (!SR){ hintEl.textContent = 'Dictée indisponible ici : touchez le champ puis le micro de votre clavier.'; input.focus(); return; }
-    if (state.listening) return stopMic();
+    if (state.listening) return state.convo ? endConvo('Conversation terminée.') : stopMic();
+    // Toucher le micro pendant qu'EVA parle l'interrompt et donne la parole.
+    if (state.speaking) stopVoice();
     hfStop('');
+    // Conversation orale : EVA répond à voix haute puis réécoute, jusqu'à « au revoir », « Terminer » ou un silence.
+    state.convo = ttsOn();
+    startRec(false);
+  }
+  function startRec(auto){
     rec = new SR(); rec.lang = 'fr-FR'; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
-    var finalText = '';
+    var finalText = '', mine = rec;
     rec.onresult = function(ev){
+      if (rec !== mine) return;
       var txt = ''; for (var i = 0; i < ev.results.length; i++){ txt += ev.results[i][0].transcript; if (ev.results[i].isFinal) finalText = txt; }
       input.value = txt;
       var q = root.querySelector('#evaListenQ'); if (q) q.textContent = '« ' + txt + ' »';
@@ -1293,9 +1403,23 @@
     };
     rec.onspeechstart = function(){ pulse(0.6); };
     rec.onaudiostart = function(){ pulse(0.2); };
-    rec.onerror = function(ev){ setListening(false); hintEl.textContent = ev.error === 'not-allowed' || ev.error === 'service-not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur, ou utilisez le micro du clavier.' : 'Dictée interrompue. Réessayez ou tapez votre commande.'; };
-    rec.onend = function(){ setListening(false); var v = (finalText || input.value).trim(); hintEl.textContent = ''; if (v){ input.value = ''; run(v, true); } };
-    try { rec.start(); setListening(true); hintEl.textContent = 'Je vous écoute… (touchez à nouveau pour arrêter)'; } catch (e){ setListening(false); }
+    rec.onerror = function(ev){
+      if (rec !== mine) return;
+      var denied = ev.error === 'not-allowed' || ev.error === 'service-not-allowed';
+      if (auto && !denied && ev.error === 'no-speech') return;
+      setListening(false); state.convo = false; updVoice();
+      hintEl.textContent = denied ? (auto ? 'Touchez le micro pour continuer la conversation.' : 'Micro refusé : autorisez-le dans les réglages du navigateur, ou utilisez le micro du clavier.')
+        : ev.error === 'network' ? 'Dictée interrompue (réseau). Réessayez ou tapez votre commande.' : 'Dictée interrompue. Réessayez ou tapez votre commande.';
+    };
+    rec.onend = function(){
+      if (rec !== mine) return;
+      rec = null; setListening(false); var v = (finalText || input.value).trim(); hintEl.textContent = '';
+      if (v){ input.value = ''; run(v, true); return; }
+      // Silence : la conversation se termine d'elle-même, le micro est coupé.
+      if (state.convo){ state.convo = false; updVoice(); hintEl.textContent = auto ? 'Conversation terminée (silence). Touchez le micro pour reprendre.' : ''; }
+    };
+    try { rec.start(); setListening(true); hintEl.textContent = state.convo ? 'Je vous écoute… (dites « au revoir » ou touchez Terminer pour arrêter)' : 'Je vous écoute… (touchez à nouveau pour arrêter)'; }
+    catch (e){ setListening(false); state.convo = false; updVoice(); hintEl.textContent = 'Touchez le micro pour parler.'; }
   }
 
   // --------------------------------------- mains libres « Dis EVA » (prototype)

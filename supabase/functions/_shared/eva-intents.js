@@ -139,10 +139,25 @@
   var POLITE = /\b(?:s il te plait|s il vous plait|stp|svp|merci)\b/g;
 
   function parseOne(raw, now){
-    var t = norm(raw).replace(PREFIX, '').replace(POLITE, '').trim();
+    var t0 = norm(raw).replace(PREFIX, '').trim();
+    var t = t0.replace(POLITE, '').trim();
+    // Conversation : salutations, remerciements, fin d'échange (réponses locales, aucune donnée lue).
+    var small = t0.replace(/[.!?,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/^(?:bonjour|bonsoir|salut|hello|coucou|hey|rebonjour)(?: eva| hayeva)?(?: (?:ca va|comment (?:ca va|vas-tu|vas tu|allez-vous|allez vous)))?$/.test(small)) return { intent: 'greeting', args: {}, label: 'Bonjour' };
+    if (/^(?:oui|ouais|oui merci|oui s il te plait|oui s il vous plait|volontiers|vas-y|vas y|allez-y|allez y|je veux bien|avec plaisir)$/.test(small)) return { intent: 'yes', args: {}, label: 'Oui' };
+    if (/^(?:merci(?: beaucoup| bien)?(?: eva)?|parfait|super|top|genial|tres bien|d accord|ok(?: merci)?|c est note|nickel)$/.test(small)) return { intent: 'thanks', args: {}, label: 'Merci' };
+    if (/^(?:au revoir|a plus(?: tard)?|a bientot|bonne (?:journee|soiree|nuit)|c est tout(?: pour (?:moi|aujourd hui))?|ce sera tout|termine|fin(?: de (?:la )?conversation)?|stop|arrete(?:-toi| toi)?|tais-toi|tais toi)$/.test(small)) return { intent: 'bye', args: {}, label: 'Fin de la conversation' };
+    // « Bonjour, quels sont mes rendez-vous demain ? » : la salutation est ignorée.
+    t = t.replace(/^(?:bonjour|bonsoir|salut|coucou|hello)\b[\s,]*/, '').trim();
     var when = parseWhen(t, now);
     var today = iso(startOfDay(now));
     if (!t) return { intent: 'empty' };
+    // Suite de conversation : « donne-moi les détails », « et le premier ? » portent sur la réponse précédente.
+    var ORD = { premier: 0, premiere: 0, deuxieme: 1, second: 1, seconde: 1, troisieme: 2, quatrieme: 3, cinquieme: 4, dernier: -1, derniere: -1 };
+    var ON = '(premier|premiere|deuxieme|second|seconde|troisieme|quatrieme|cinquieme|dernier|derniere)';
+    var om = new RegExp('^(?:et |puis |alors )?(?:(?:donne|dis|montre|affiche|lis|detaille)(?:-?moi)? )?(?:(?:moi |nous )?(?:les |des |plus de |le |la )?(?:details?|precisions?|infos?|informations?)(?: (?:du|de la|sur le|sur la|pour le|pour la) ' + ON + '(?: [a-z-]+)?)?' +
+      '|(?:le |la |du |de la )?' + ON + '(?: (?:rendez-vous|rendez vous|rdv|intervention|client|cliente|devis|creneau|demande))?|lesquels|lesquelles|qui (?:sont-ils|sont ils|est-ce|c est)|c est qui|detaille(?:-moi)?(?: ca)?)$').exec(t.replace(/[.,;:!?]+/g, ' ').replace(/\s+/g, ' ').trim());
+    if (om && !parseClient(raw)) return { intent: 'details', args: { index: (om[1] || om[2]) ? ORD[om[1] || om[2]] : null }, label: 'Détails' };
 
     if (/\b(que sais[- ]tu faire|que peux[- ]tu faire|tes capacites|qu est-ce que tu (sais|peux) faire|^aide$)/.test(t)) return { intent: 'capabilities', args: {}, label: 'Ce que je sais faire' };
     if (/\b(fonctionnalite|evolution|amelioration)s?\b/.test(t) && /\b(ajoute|ajouter|cree|creer|developpe|voudrais|veux|nouvelle|propose)\w*\b/.test(t)){
@@ -266,11 +281,15 @@
   // Demandes composées : « … et regarde mes disponibilités la semaine prochaine ».
   function parse(raw, now){
     now = now || new Date();
+    // « EVA », « Bonjour EVA », « Dis EVA » seuls : une salutation, pas une commande vide.
+    if (/^\s*(?:(?:bonjour|bonsoir|salut|hello|coucou|hey|ok|dis)\s+)?(?:eva|hayeva)\s*[,.!?]*\s*$/i.test(String(raw || ''))) return [{ intent: 'greeting', args: {}, label: 'Bonjour', text: String(raw).trim() }];
     var text = String(raw || '').slice(0, 300).replace(/^\s*(?:(?:hey|ok|dis|bonjour|salut)\s+)?(?:eva|hayeva)\b\s*[,:-]?\s*/i, '');
     var parts = text.split(/\s*(?:,|\bet\b|\bpuis\b|\bensuite\b)\s+(?=(?:regarde|montre|verifie|vérifie|prepare|prépare|cherche|trouve|donne|affiche|dis|liste|quels|quelles|quelle|quel|resume|résume)\b)/i)
       .map(function(s){ return s.trim(); }).filter(Boolean);
     var out = parts.map(function(p){ var r = parseOne(p, now); r.text = p; return r; })
       .filter(function(r){ return r.intent !== 'empty'; });
+    // « Bonjour, quels sont mes rendez-vous ? » : on répond directement à la question.
+    if (out.length > 1) out = out.filter(function(r){ return r.intent !== 'greeting' && r.intent !== 'thanks'; });
     return out.length ? out : [{ intent: 'empty', text: text }];
   }
 
