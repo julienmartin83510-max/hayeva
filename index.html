@@ -33197,6 +33197,8 @@ window.HV_APP_VERSION = 'hayeva-v39';
   /* ---------- Navigation : indicateur glissant de l'onglet actif ---------- */
   .hv-ind-on{ position:relative; isolation:isolate; }
   .hv-ind-on > :not(.hv-ind){ position:relative; z-index:1; }
+  /* La barre de navigation basse doit rester collée en bas de l'écran (sticky) : l'indicateur ne doit pas la repasser en relative. */
+  .hv-bottomnav.hv-ind-on, .ecx-bottomnav.hv-ind-on{ position:sticky; }
   .hv-ind{
     position:absolute; left:0; top:0; z-index:0; pointer-events:none; opacity:0;
     transition:transform var(--hv-dur-view) var(--hv-ease-expo), width var(--hv-dur-view) var(--hv-ease-expo), height var(--hv-dur-view) var(--hv-ease-expo), opacity .2s;
