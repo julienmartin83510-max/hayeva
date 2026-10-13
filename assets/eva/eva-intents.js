@@ -15,7 +15,7 @@
   var MONTHS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
 
   function norm(s){
-    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[’']/g, ' ').replace(/[^a-z0-9/:,.\s-]/g, ' ').replace(/\s+/g, ' ').trim();
   }
   function iso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
