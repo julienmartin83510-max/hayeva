@@ -12,7 +12,7 @@
 // certaines actions sont PRÉPARÉES (eva_siri_propose) et se confirment dans EVA,
 // avec réauthentification récente pour les plus sensibles ; sinon EVA renvoie vers l'application.
 //
-// Déploiement (NON effectué, sur validation uniquement) :
+// Déploiement :
 //   supabase functions deploy eva-siri --no-verify-jwt
 // --no-verify-jwt : l'appelant est un raccourci iPhone sans session ; la seule
 // clé acceptée est le jeton d'appareil, vérifié en base.
@@ -207,9 +207,22 @@ export async function handle(req: Request, rpc: Rpc, now: Date = parisNow()): Pr
   const plan = I.parse(text, now).slice(0, 2);
   const out: string[] = [];
   let openUrl: string | null = null;
+  // Phrases traitées localement (bonjour, merci, détails, phrase incomprise) : le jeton est
+  // quand même vérifié en base avant toute réponse ; un appareil inconnu n'obtient rien.
+  const LOCAL = new Set(['empty', 'unknown', 'greeting', 'thanks', 'bye', 'details', 'yes']);
+  if (plan.every((p: { intent: string }) => LOCAL.has(p.intent))){
+    const chk = await rpc('eva_siri_run', { p_token_hash: hash, p_intent: 'capabilities', p_args: {}, p_command: text });
+    if (chk.error){ const [status, msg] = errorOf(String(chk.error.message || '')); return reply(status, msg); }
+  }
   for (const p of plan){
     if (p.intent === 'empty') continue;
     if (p.intent === 'unknown'){ out.push("Je n'ai pas compris. Essayez par exemple : qu'est-ce que j'ai demain ?"); continue; }
+    // Conversation : réponses locales, sans lecture de données.
+    if (p.intent === 'greeting'){ out.push('Bonjour ! Que puis-je faire pour vous ?'); continue; }
+    if (p.intent === 'thanks'){ out.push('Avec plaisir.'); continue; }
+    if (p.intent === 'bye'){ out.push('À bientôt !'); continue; }
+    // Siri ne garde pas le fil d'une question à l'autre : on le dit au lieu d'inventer un contexte.
+    if (p.intent === 'details' || p.intent === 'yes'){ out.push("Par Siri, chaque question est indépendante. Demandez par exemple : quels sont mes rendez-vous demain ? Pour poursuivre une conversation, ouvrez EVA dans HAYEVA."); continue; }
     if (p.args && (p.args.client === '@ctx')){ out.push('Précisez le nom du client.'); continue; }
     // Devis demandé sans client : dire ce qui manque plutôt que « client introuvable ».
     if (p.intent === 'quote_estimate' && !(p.args && p.args.client)){
